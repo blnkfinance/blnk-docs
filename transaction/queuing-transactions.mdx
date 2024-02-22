@@ -1,0 +1,125 @@
+---
+title: 'Queuing Transactions'
+description: ''
+---
+
+Queuing plays a vital role in managing and optimizing transactions within Blnk. It enhances performance and ensures synchronization, allowing only one transaction to act on a balance at any given time. This section provides key insights into how Blnk leverages queues for efficient transaction processing.
+
+
+## Things to Notes
+
+1. **Partitioning for Similar Transactions**: Blnk employs a partitioning strategy where similar transactions belonging to the same balance are grouped together. This ensures that related transactions are processed sequentially, maintaining data consistency and reducing the likelihood of conflicts.
+
+2. **Idempotency and Queue Transactions**: The idempotent nature of transactions, as discussed earlier, complements queue support seamlessly. By combining idempotency with queues, Blnk guarantees that even if a transaction is repeated, the outcome remains consistent. This is crucial in scenarios where network errors or other issues may cause a transaction to be reattempted.
+
+## Architecture Overview
+
+To provide a visual representation of how queue support fits into the Blnk architecture, refer to the diagram below:
+
+![Blnk Architecture](https://res.cloudinary.com/dp8bwjdvg/image/upload/v1697446181/lopw0lqnqwsyo5nul79z.png)
+
+
+## Queue/Record Credit Transaction
+```json record transaction
+{
+    "amount": 200,
+    "description": "for cake",
+    "reference": "ref-12343",
+    "drcr": "Credit",
+    "currency": "NGN",
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "risk_tolerance_threshold": 0
+}
+```
+
+```json response
+{
+    "id": "txn_844c23ef-6cca-45b6-9878-0189e02334f7",
+    "reference": "ref-12343",
+    "amount": 200,
+    "currency": "NGN",
+    "description": "for cake",
+    "drcr": "Cebit",
+    "status": "QUEUED",
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "credit_balance_before": 0,
+    "debit_balance_before": 0,
+    "credit_balance_after": 200,
+    "debit_balance_after": 0,
+    "balance_before": 0,
+    "balance_after": 200,
+    "created_at": "2024-02-20T05:37:35.535621126Z",
+    "risk_tolerance_threshold": 0,
+    "risk_score": 0.0009
+}
+```
+
+## Queue/Record Debit Transaction
+```json record transaction
+{
+    "amount": 100,
+    "description": "for cake",
+    "reference": "ref-12344",
+    "drcr": "Debit",
+    "currency": "NGN",
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "risk_tolerance_threshold": 0
+}
+```
+
+```json response from external service
+{
+    "id": "txn_844c23ef-6cca-45b6-9878-0189e02334g9",
+    "reference": "ref-12344",
+    "amount": 100,
+    "currency": "NGN",
+    "description": "for cake",
+    "drcr": "Debit",
+    "status": "QUEUED",
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "credit_balance_before": 200,
+    "debit_balance_before": 0,
+    "credit_balance_after": 200,
+    "debit_balance_after": 100,
+    "balance_before": 200,
+    "balance_after": 100,
+    "created_at": "2024-02-20T05:37:35.535621126Z",
+    "risk_tolerance_threshold": 0,
+    "risk_score": 0.0029
+}
+```
+
+## Quick start
+<CardGroup>
+
+    <Card title="Create Ledger" icon="square-code" href="/settings/global">
+        Add flair to your docs with personalized branding.
+    </Card>
+
+    <Card
+        title="Get Ledger"
+        icon="square-code"
+        href="/api-playground/configuration"
+    >
+        Implement your OpenAPI spec and enable API user interaction.
+    </Card>
+
+    <Card
+        title="Create Balance"
+        icon="square-code"
+        href="/analytics/supported-integrations"
+    >
+        Draw insights from user interactions with your documentation.
+    </Card>
+
+    <Card
+        title="Record Transaction"
+        icon="square-code"
+        href="/settings/custom-domain/subdomain"
+    >
+        Keep your docs on your own website's subdomain.
+    </Card>
+
+</CardGroup>
