@@ -1,0 +1,82 @@
+---
+title: 'Load Testing Blnk with k6'
+---
+
+Load testing is a critical step in ensuring your Blnk deployment can handle expected traffic and maintain performance under various conditions. Blnk uses k6, a modern load testing tool, to facilitate this process. This guide will walk you through setting up and running a load test on your Blnk server using k6, with insights from a sample test result to help you understand and interpret your data.
+
+## Prerequisites
+
+Before starting, make sure you have:
+
+- Cloned the Blnk repository to your local machine (if not done during server setup).
+- Docker and Docker Compose installed (for running the Blnk server).
+- k6 installed on your machine. Visit [k6.io](https://k6.io/docs/getting-started/installation) for installation instructions.
+
+## Setting Up Your Load Test
+
+### Step 1: Clone the Blnk Repository
+
+If the Blnk repository isn't already cloned:
+
+```bash
+git clone https://github.com/jerry-enebeli/Blnk && cd Blnk
+```
+
+### Step 2: Navigate to the Load Test Directory
+
+Switch to the load test folder within the Blnk repository:
+
+```bash
+cd tests/load
+```
+
+### Step 3: Review the Load Test Script
+
+The `script.js` file in the load test directory outlines the test:
+
+- It sends HTTP POST requests to the `/transactions` endpoint of the Blnk server.
+- Each request simulates a transaction with a unique reference ID, generated using the `uuidv4` function.
+- The script is set to run with 5 virtual users (VUs) for 30 seconds.
+
+#### Load Test Script (`script.js`)
+
+```javascript
+import http from "k6/http";
+import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
+import { check, sleep } from "k6";
+
+export const options = {
+    vus: 5,
+    duration: '30s',
+};
+
+export default function () {
+    const url = 'http://localhost:5001/transactions';
+    const payload = JSON.stringify({
+        "amount": 100,
+        "allow_over_draft": true,
+        "reference": uuidv4(),
+        "currency": "NGN",
+        "source": "@cash",
+        "destination": "@interests"
+    });
+
+    const params = {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    };
+
+    let response = http.post(url, payload, params);
+    check(response, {
+        'is status 201': r => r.status === 201,
+    });
+}
+```
+
+### Step 4: Run the Load Test
+Within the `tests/load` directory:
+
+```bash
+k6 run script.js
+```
