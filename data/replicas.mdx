@@ -1,0 +1,80 @@
+---
+title: 'Setting Up Replicas  💻➕'
+---
+
+Creating a resilient and scalable financial data infrastructure with Blnk involves configuring a replication setup that supports one primary (writable) server and multiple replicas (read-only). This enhanced guide provides detailed instructions on setting up Blnk replicas, including steps for registering new replicas, managing the replica set, and leveraging a distributed architecture for improved performance and reliability.
+
+## Prerequisites
+
+Before proceeding, ensure you have the following:
+
+- Docker version 20.10.11 or newer
+- Docker Compose version 1.29.2 or newer
+- An operational Blnk main server instance
+- A basic understanding of RESTful APIs
+- Familiarity with using command-line interfaces (CLI) and shell scripting
+
+## Understanding Blnk Replication
+
+Blnk's architecture supports a single-writer, multiple-readers model. This design allows for one Blnk server to function as the primary server (handling write operations) while additional servers can serve as replicas (handling read operations). This setup is crucial for distributing read load and enhancing data reliability.
+
+## Steps to Configure Blnk Replicas
+
+### Step 1: Initialize the Main Server
+
+Confirm that your main Blnk server is operational. This server will be responsible for all write operations and will stream data changes to the replicas.
+
+### Step 2: Registering a New Replica
+
+To add a new server as a replica, you'll need to use the `/register-replica` endpoint on the main server. This involves sending a POST request with the new replica's host and port information.
+
+```bash
+curl -X POST http://main-server-domain:port/register-replica \
+     -H "Content-Type: application/json" \
+     -d '{"host": "replica-host", "port": "replica-port"}'
+```
+
+- Replace `main-server-domain:port` with the domain and port of your main Blnk server.
+- Replace `replica-host` and `replica-port` with the host and port information of the new replica server.
+
+
+### Step 3: Confirming Replica Registration
+
+After registering a new replica, it's crucial to ensure it has been successfully added to the replica set and is synchronizing data from the main server. This can be verified by querying the replica for specific data that exists on the main server, ensuring synchronization is occurring as expected.
+
+
+## Promoting a Replica to Primary
+
+In scenarios where the primary server needs to be replaced or load distribution strategies change, promoting a replica to the primary role is necessary. This is achieved using the `/promote-replica` endpoint, which not only elevates a replica to primary status but also demotes the current primary to a replica, ensuring a smooth transition and continuous data availability.
+
+```bash
+curl -X POST http://main-server-domain:port/promote-replica \
+     -H "Content-Type: application/json" \
+     -d '{"host": "target-replica-host", "port": "target-replica-port"}'
+```
+
+- Replace `main-server-domain:port` with your main server's domain and port.
+- Replace `target-replica-host` and `target-replica-port` with the host and port of the replica you wish to promote.
+
+## Key Benefits of Using Blnk Replicas
+
+### Enhanced Disaster Recovery
+
+Distributing ledger data across multiple data centers increases system resilience against failures. If the primary server fails, a replica can be promoted to the primary role, ensuring continuous operation.
+
+### Load Balancing
+
+Redirecting read operations to replicas reduces the load on the primary server. This allows the primary server to concentrate on write operations, enhancing the system's overall efficiency and responsiveness.
+
+### Improved Data Locality
+
+Positioning replicas closer to users in different geographical locations can decrease latency for read operations, offering a quicker and more seamless experience for users accessing financial data.
+
+### Scalability
+
+The addition of replicas enables horizontal scaling of your infrastructure. This means you can increase read capacity as needed without overloading the primary server.
+
+### Efficient Reporting and Analytics
+
+Executing resource-intensive queries on replicas ensures that the primary server's performance, which handles critical write operations, remains unaffected.
+
