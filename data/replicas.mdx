@@ -24,8 +24,32 @@ Blnk's architecture supports a single-writer, multiple-readers model. This desig
 
 Confirm that your main Blnk server is operational. This server will be responsible for all write operations and will stream data changes to the replicas.
 
-### Step 2: Registering a New Replica
 
+### Step 2:  Generating SSH Keys (If Not Already Done)
+
+If you haven't already, generate an SSH key pair using the following command on your local machine (where the Go program runs):
+```bash
+ssh-keygen -t rsa -b 4096
+````
+#### Explanation:
+* -t rsa: Specifies the key type (RSA is commonly used).
+* -b 4096: Sets the key size (4096 bits is recommended for security).
+This command generates a private key (usually stored in ~/.ssh/id_rsa) and a public key (usually stored in ~/.ssh/id_rsa.pub).
+
+
+### Step 3:   Copying the Public Key to Replica Servers
+Transfer the public key to the ~/.ssh/authorized_keys file on each replica server. There are two methods:
+```bash
+ssh-copy-id -i ~/.ssh/id_rsa.pub your_ssh_user@replica1.example.com
+````
+#### Explanation:
+- -i ~/.ssh/id_rsa.pub: Specifies the path to your public key file.
+- your_ssh_user: Your username for accessing the replica server.
+- replica1.example.com: Replace with the actual hostname or IP address of the replica server.
+
+Repeat this process for each replica server in your setup.
+
+### Step 4: Registering a New Replica
 To add a new server as a replica, you'll need to use the `/register-replica` endpoint on the main server. This involves sending a POST request with the new replica's host and port information.
 
 ```bash
