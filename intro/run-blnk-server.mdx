@@ -1,0 +1,106 @@
+---
+title: Run Blnk Server
+description: How to deploy the Blnk server
+---
+### Overview
+
+Deploy Blnk to get access of Blnk's features and begin using it.
+
+To get started, you need a basic understanding of [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) — essential tools for deploying containerized applications like Blnk.
+
+<Note>
+     **Prerequisites:**
+     - Docker 20.10.11 or later
+     - Compose 1.29.2 or later
+</Note>
+
+## Deployment steps
+
+<Steps>
+	<Step title="Clone Blnk to your local server or computer">
+		Clone the open-source repository to your local environment. This will create a copy of the latest Blnk source code on your machine.
+		
+		```bash
+		git clone https://github.com/jerry-enebeli/Blnk && cd Blnk
+		```
+	</Step>
+	<Step title="Create a configuration file">
+		Create a configuration file called `blnk.json`. This file will contain essential settings for running your Blnk server.
+		
+		```bash
+		touch blnk.json
+		```
+	</Step>
+	<Step title="Configure your Blnk server">
+		Open the `blnk.json` file you've just created and copy the following JSON into it. Make sure to adjust the settings according to your environment and needs like the `time_zone`, database credentials `data_source`, and any other specific configurations you require.
+		
+		```bash
+		{
+		  "project_name": "Blnk",
+		  "time_zone": "UTC", // Specify your time zone
+		  "data_source": {
+		    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
+		  },
+		  "redis": {
+		    "dns": "redis:6379"
+		  },
+		  "account_number_generation": {
+		    "enable_auto_generation": true,
+		    "http_service": {
+		      "url": "http://localhost:5001/mocked-account",
+		      "headers": {
+		        "Authorization": "Bearer some_auth_token"
+		      }
+		    }
+		  },
+		  "server": {
+		    "domain": "blnk.io",
+		    "ssl": false,
+		    "ssl_email": "jerryenebeli@gmail.com",
+		    "port": "5001"
+		  },
+		  "notification": {
+		    "slack": {
+		      "webhook_url": "https://hooks.slack.com"
+		    },
+		    "webhook": {
+		      "url": "http://server:5001/webhooks",
+		      "headers": {}
+		    }
+		  }
+		}
+		```
+	</Step>
+	<Step title="Start your Blnk server with Docker Compose">
+		With your configuration file in place, you can now start the Blnk server using Docker Compose. This pulls the required Docker images, create containers, and starts the services defined in your Docker Compose file.
+		
+		```bash
+		docker compose up
+		```
+		
+		After executing the command, Docker Compose will automatically handle the deployment of the Blnk server. 
+		
+		Once the process is complete, your Blnk server will be running and accessible at `http://localhost:5001`.
+	</Step>
+</Steps>
+
+### You're ready!
+
+Once your server is successfully running, it's time to explore what Blnk can do. To get started with Blnk, go to ["The Blnk Ledger"](/ledger/overview).
+
+### Recommended
+
+<CardGroup>
+	<Card title="The Blnk Ledger" icon="book-open-cover" href="/ledger/overview">
+        Learn how ledgers work
+    </Card>
+    <Card title="Understanding ledger architecture" icon="book-open-cover" href="/ledger/guide/ledger-architecture">
+        Learn how to design your Blnk Ledger
+    </Card>
+    <Card title="Enable secure mode" icon="sliders" href="/intro/secure-blnk-server">
+        Secure your Blnk server
+    </Card>
+    <Card title="Load testing with k6" icon="sliders`" href="/intro/load-testing">
+        Set up a load test for your server
+    </Card>
+</CardGroup>

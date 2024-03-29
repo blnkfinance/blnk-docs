@@ -1,0 +1,122 @@
+---
+title: Create a balance
+description:
+---
+### Overview
+This guide shows you how to create and connect a balance to an existing ledger. A **Balance** represents the source or destination of a transaction record.
+
+<Note>
+	The Blnk Ledger is designed based on the **Double Entry Accounting Principle**; this means that all transactions must have a source (credit record) and a destination (debit record)
+</Note>
+
+Balances are always updated whenever a new transaction is recorded, and they can be used to track the flow of funds within the organization ensuring that your books are always balanced.
+
+Every **Balance** is made up of 3 sub-balances:
+
+1. **Credit balance:** The total sum of all transactions where the balance was `Source`. 
+2. **Debit balance:** The total sum of all transactions where the balance was `Destination`. 
+3. **Total balance:** Calculated by subtraction the Debit balance from the Credit balance.
+
+<AccordionGroup>
+	<Accordion title="Sample transaction entries" icon="message-lines">
+		This example shows how transactions are represented in the Blnk Ledger using `Source` and `Destination`.
+		
+		| Reference | Currency | Amount | Source | Destination 
+		| ------ | ------ | ------ | ------ | ------ | 
+		| ref_01 | NGN | 100.00 | bal_00 | bal_01
+		| ref_02 | NGN | 500.00 | bal_00 | bal_01
+		| ref_03 | NGN | 300.00 | bal_01 | bal_00
+		| ref_04 | NGN | 150.00 | bal_01 | bal_00
+		| ref_05 | NGN | 450.00 | bal_00 | bal_01
+		| ref_06 | NGN | 200.00 | bal_00 | bal_01
+		| ref_07 | NGN | 200.00 | bal_01 | bal_00
+	</Accordion>
+	<Accordion title="Sample Balance" icon="message-lines">
+		Based on the sample transaction entries above, this is how a Balance with `"balance_id": "bal_01"` is computed within a ledger.
+		
+		| Ledger ID | Balance ID | Currency | Credit balance | Debit balance | Total balance
+		| ------ | ------ | ------ | ------ | ------ | ------ |
+		| ldg_01 | bal_01 | NGN | 1250.00 | 650.00 | 600.00
+	</Accordion>
+</AccordionGroup>
+
+### Create a balance
+
+<Steps>
+	<Step title="Create a ledger">
+		You cannot create a Balance without an existing ledger. If you do not have a ledger created yet, [click here to create one](/ledger/tutorial/create-a-ledger).
+	</Step>
+	<Step title="Send an API request">
+		Call the [create-balance](/misc/create-balance) endpoint and provide the required attributes.
+		
+		```json request
+		{
+		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+		    "currency": "NGN"
+		}
+		```
+		
+		- `ledger_id`: The unique id of the ledger that this balance belongs to **(required).**
+		- `currency`: The currency in which transactions recorded in this balance will be recorded **(required)**. 
+		
+		<Tip>
+			Do not use one balance to record transactions for more than one currency. When recording transactions in a particular balance, The Blnk Ledger assumes all transactions in that balance are in the same currency. 
+		</Tip>
+	</Step>
+	<Step title="Your balance gets created">
+		Once your Balance has been created, you can move on to record your first transaction in your Blnk Ledger.
+		
+		```json response
+		{
+		    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+		    "balance": 0,
+		    "credit_balance": 0,
+		    "debit_balance": 0,
+		    "currency": "NGN",
+		    "precision": 0,
+		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+		    "identity_id": "",
+		    "created_at": "2024-02-20T05:33:01.311600208Z",
+		    "meta_data": null
+		}
+		```
+		
+		- `balance_id`: The unique id of the balance you created **(string).**
+		- `credit_balance`: Sum of all credit transaction amounts in the balance **(int64).**
+		- `debit_balance`: Sum of all debit transaction amounts in the balance **(int64).**
+		- `balance`: Sum of `credit_balance` and `debit_balance` **(int64).**
+		- `precision`: Used to convert the amount to their smallest unit as defined by you **(int64).**
+		- `identity_id`: The unique id of the user profile linked to the balance you created **(string).**
+		- `created_at`: Date and timestamp of creation **(string).**
+		
+		<Tip>
+			Balances are always displayed as `int64`. Jump to [Balance Precision](/ledger/tutorial/precision) to learn more.
+		</Tip>
+	</Step>
+</Steps>
+
+### View your balance
+
+You can request to see a list of all balances in your system, or the details of a particular balance.
+
+To do this, call the [get-balance](/misc/get-balance) endpoint URL — `/balance/[balance_id]`.
+
+- Provide the `balance_id` to see the details of a specific balance.
+- Call the same URL without the `balance_id` to see a list of all the balances in your system.
+
+### Recommended
+
+<CardGroup>
+	<Card title="Set up your balance precision" icon="book-open-cover" href="/ledger/tutorial/precision">
+        Optimize your balances with precision
+    </Card>
+    <Card title="Introduction to Identity" icon="book-open-cover" href="/#">
+        Link a user profile to your balance
+    </Card>
+</CardGroup>
+
+### Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+We'd love to help! [Join our Slack community](https://join.slack.com/t/newworkspace-1tr5864/shared_invite/zt-2d9oejhwl-6VJsXV7Vmy0mCX2vzBXnWA) and share your questions/thoughts with other developers building fintech like you.

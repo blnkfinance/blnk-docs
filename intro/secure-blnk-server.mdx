@@ -1,0 +1,64 @@
+---
+title: Secure your Blnk server
+description:
+---
+### Overview
+
+The security of your Blnk server is very important, especially when dealing with financial applications where data integrity and privacy are critical. 
+
+This guide will walk you through the steps to run your Blnk server in secure mode and implement best practices for maintaining a secure environment.
+
+### Before you start
+
+Make sure you that the Blnk server has been successfully deployed and is running on your machine.
+<Card title="Deploy Blnk" icon="square-1" href="/intro/run-blnk-server">
+        Start here to run your Blnk server
+</Card>
+
+<Steps>
+  <Step title="Enable secure mode">
+    Modify your `blnk.json` configuration file to enable secure mode. Set `server.secure` to true and provide a strong `server.secret_key`
+
+    ```json
+    {
+      "server": {
+        "secure": true,
+        "secret_key": "your_strong_secret_key"
+      }
+    }
+    ```
+  </Step>
+  <Step title="Secure your secret key">
+    The `server.secret_key` is important for the security of your Blnk server. It is used to encrypt data and authenticate requests to/fro the Blnk server. 
+
+    Follow these guidelines to manage your secret key securely:
+
+    1. **Generate a strong key**: Use a strong, random value for your secret key. Avoid using easily guessable or common strings.
+
+    2. **Keep it confidential**: Never share your secret key or commit it to a public repository. Consider using environment variables or secret management tools to manage your key securely.
+
+    3. **Regular rotation**: Periodically change your secret key to mitigate the risk of it being compromised. Ensure you update all necessary configurations and restart your server accordingly.
+  </Step>
+</Steps>
+
+### Sending secure HTTP requests to your Blnk server
+
+When making HTTP requests to your Blnk server running in secure mode, it's required to include the `X-Blnk-Key` header with your secret key:
+
+```bash
+curl -H "X-Blnk-Key: your_strong_secret_key" https://yourdomain.com:5001 -I
+```
+
+This header authenticates all your requests, ensuring that only clients with the correct secret key can interact with your server.
+
+### Security precautions
+
+There's a lot more you can do to improve the security of your Blnk server beyond your configuration settings. Adhere the following precautions to maintain a more secure environment:
+
+1. **Configuration management:** Avoid committing sensitive information, like your `blnk.json` configuration file with the secret key to version control systems. Use `.gitignore` or its equivalent to exclude such files.
+
+2. **Access control:** Limit access to your Blnk server and its configurations to authorized personnel only. Implement role-based access control and audit logs to monitor access and activities on your server.
+
+3. **Update regularly:** Keep your server softwares, including Docker, Compose, and Blnk, up to date to protect against known vulnerabilities.
+
+4. **Monitor and audit:** Regularly monitor your server for unauthorized access attempts and audit logs for suspicious activity. Implement alerting mechanisms for anomalous behavious.
