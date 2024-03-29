@@ -1,0 +1,32 @@
+---
+title: Managing Concurrency
+description: ""
+---
+Concurrency control is a fundamental aspect of transaction management in Blnk, ensuring high performance and data integrity across simultaneous transactions. Blnk employs a dual strategy to manage concurrency effectively: queuing and optimistic locking. This document explores how these mechanisms work together to streamline transaction processing, prevent data conflicts, and maintain system integrity.
+
+## How The Queue Works
+
+### 1. **Partitioning for Similar Transactions**
+Blnk's strategy of partitioning groups similar transactions for the same balance, ensuring that transactions are processed sequentially. This approach is crucial for maintaining data consistency and minimizing conflict risks, thereby optimizing the transaction flow.
+
+### 2. **Idempotency in Queued Transactions**
+The idempotent nature of transactions in Blnk, combined with queuing, guarantees consistent outcomes for repeated transactions. This is particularly important for addressing issues related to network errors or other disruptions that might necessitate transaction retries.
+
+## Architectural Insights
+Blnk's architecture incorporates queuing and optimistic locking to manage concurrency, as illustrated in the following diagram:
+
+![Blnk Architecture](https://res.cloudinary.com/dp8bwjdvg/image/upload/v1697446181/lopw0lqnqwsyo5nul79z.png)
+
+This structure ensures efficient and reliable transaction processing, with each transaction accurately tracked and managed. The diagram illustrates Blnk's layered architecture, where transactions enter through the API layer and are then routed to the appropriate service based on the transaction type. The queuing system acts as a buffer, managing the flow of transactions to ensure sequential processing for similar operations. This is crucial for maintaining order and consistency. The database layer, equipped with optimistic locking, is where the final check for version consistency occurs, ensuring that only transactions based on the current state of data are committed.
+
+## Optimistic Locking for Conflict Resolution
+
+In addition to queuing, Blnk implements optimistic locking as a concurrency control mechanism. Optimistic locking allows multiple transactions to proceed concurrently without locking resources. Instead, it checks for data conflicts at the time of transaction commit. If a conflict is detected—indicating that another transaction has modified the data since it was last read—the transaction is rolled back, and the operation may be retried.
+
+### How Optimistic Locking Works in Blnk:
+
+- **Version Tracking:** Each record in the database is associated with a version number. When a transaction reads a record, it notes the version number.
+- **Update Attempt:** When the transaction attempts to update the record, it specifies the version number it originally read.
+- **Conflict Detection:** If the current version number in the database does not match the version number specified by the transaction, a conflict is detected, indicating that another transaction has updated the record.
+- **Resolution:** Upon conflict detection, the transaction is rolled back. Blnk may automatically retry the transaction, depending on the scenario and the conflict's nature.
+
