@@ -1,0 +1,106 @@
+`---
+title: Handling concurrency
+description: ""
+---
+
+Queuing is a cornerstone of transaction management in Blnk, playing a crucial role in enhancing performance and maintaining synchronization across transactions. This approach ensures that transactions affecting a single balance are executed sequentially, preserving data integrity and minimizing conflict risks. This document delves into the intricacies of Blnk's queuing system and its pivotal role in streamlining transaction processing.
+
+## Key Concepts
+
+### 1. **Partitioning for Similar Transactions**
+Blnk implements a partitioning strategy that groups similar transactions for the same balance. This method ensures sequential processing of related transactions, enhancing data consistency and minimizing potential conflicts, thereby optimizing the transaction flow.
+
+### 2. **Idempotency in Queued Transactions**
+The idempotent design of transactions in Blnk works hand in hand with queuing. This combination ensures consistent outcomes for repeated transactions, a critical feature for resolving issues related to network errors or other disruptions that might cause transaction retries.
+
+## Architectural Insights
+
+Blnk's architecture integrates queuing seamlessly, as depicted in the following diagram:
+
+![Blnk Architecture](https://res.cloudinary.com/dp8bwjdvg/image/upload/v1697446181/lopw0lqnqwsyo5nul79z.png)
+
+This structure is designed to facilitate efficient and reliable transaction processing, ensuring that each transaction is accurately tracked and managed.
+
+
+
+### Example Transactions
+
+- **Transaction to a User Balance from Cash:**
+
+```json
+{
+    "amount": 750000,
+    "reference": "ref",
+    "currency": "NGN",
+    "source": "@cash",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746"
+}
+```
+
+- **Transaction Between User Balances:**
+
+```json
+{
+    "amount": 750000,
+    "reference": "ref",
+    "currency": "NGN",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746"
+}
+```
+
+- **Fee Deduction Transaction:**
+
+```json
+{
+    "amount": 100,
+    "reference": "ref",
+    "currency": "NGN",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "@fees"
+}
+```
+
+- **Transaction Queued Response:**
+
+```json response
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "reference": "ref",
+    "amount": 10000000,
+    "currency": "NGN",
+    "description": "",
+    "status": "QUEUED",
+    "created_at": "2024-02-28T20:31:01.776677+01:00",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "risk_tolerance_threshold": 0,
+    "risk_score": 0
+}
+```
+
+## Quick Start Guide
+
+To facilitate a smooth start with Blnk's transaction processing, the following resources are available:
+
+<CardGroup>
+
+    <Card title="Create Ledger" icon="square-code" href="/misc/create-ledger">
+        Create and manage ledgers efficiently.
+    </Card>
+
+    <Card title="Get Ledger" icon="square-code" href="/misc/create-ledger">
+        Access ledger details with ease.
+    </Card>
+
+    <Card title="Create Balance" icon="square-code" href="/misc/create-balance">
+        Set up multi-currency balances.
+    </Card>
+
+    <Card title="Record Transaction" icon="square-code" href="/misc/record-transaction">
+        Begin processing transactions seamlessly.
+    </Card>
+
+</CardGroup>
+
