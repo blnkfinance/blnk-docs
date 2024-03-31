@@ -2,81 +2,165 @@
 title: Balance precision
 description: ""
 ---
+### Overview
 
-When managing financial transactions in a multi-currency environment, it's crucial to accurately represent and store balances in a consistent manner. Balance multipliers play a key role in this process by converting balance amounts to their lowest currency denomination. This ensures precision and avoids rounding errors in transactions and balance calculations.
+While transaction amounts are accepted as float, `float`, balances are stored as integers, `int64`, in Blnk. To compute your balance, transaction amounts have to be stored as integers. This makes sure that your computed balance is accurate and precise.
 
-## How Multipliers Work
+Balance precision allows Blnk to convert your transaction amounts into the lowest unit possible for your asset class (or currency), e.g. converting Naira to kobo.
 
-Before a multiplier is applied, balances are stored in their standard format. Applying a multiplier converts these balances into their smallest unit, facilitating easier and more accurate calculations and storage.
+### Sample scenario (without balance precision)
 
-### Before Multiplier is Applied
+Consider the following transactions on a balance, `bal_01`, with 3 credits and 1 debit.
 
-| BalanceID | Currency | Credit Balance | Debit Balance | Balance | Multiplier |
-|-----------|----------|----------------|---------------|---------|------------|
-| 1         | USD      | 150.00         | 0.00          | 150.00  | 100        |
-| 2         | BTC      | 1              | 0             | 1       | 100000000  |
+| Reference  | Currency | Amount    | Source     | Destination |
+| ---------- | -------- | --------- | ---------- | ----------- |
+| ref_01     | NGN      | 200.50    | bal_00     | bal_01      |
+| **ref_02** | **NGN**  | **50.00** | **bal_01** | **bal_00**  |
+| ref_ 03    | NGN      | 15.30     | bal_00     | bal_01      |
+| ref_04     | NGN      | 10.00     | bal_00     | bal_01      |
 
-### After Multiplier is Applied
+<Note>It is a debit when the participating balance is the `Source`, and it is a credit when it is the `Destination`.</Note>
 
-| BalanceID | Currency | Credit Balance | Debit Balance | Balance  | Multiplier  |
-|-----------|----------|----------------|---------------|----------|-------------|
-| 1         | USD      | 15000          | 0             | 15000    | 100         |
-| 2         | BTC      | 100000000      | 0             | 100000000| 100000000   |
+The computed total balance based on the amount sent and received by balance, `bal_01`, is calculated as **175.80**. Because balances are stored as integers, it gets rounded up to the nearest integer, which is **176**. This means an **extra 20 kobo**, with no transaction record, has been generated in your application. 
 
+If this happens large scale, it leads to significant discrepancy and errors in your transaction records and balances; you and your customers will also continue to lose money depending on if the balance is rounded up or rounded down.
 
-## Important Notice on Multipliers 🚨
+### Applying balance precision
 
-When dealing with multi-currency balances and transactions, it's crucial to maintain consistency in how multipliers are applied. Multipliers convert balance amounts to their lowest currency denomination, ensuring precision in transactions and balance tracking. However, inconsistencies in multiplier application can lead to significant discrepancies and errors in financial records.
+To solve this problem for a **NGN** balance, all amounts must be converted into **kobo**, the lowest unit possible. To do that, all amounts must be multiplied by 100.
 
-### Why Consistency Matters
+<Tip>The lowest unit for an asset class is a value that has no decimal point regardless of what amount is passed.</Tip>
 
-- **Accuracy**: Consistent use of multipliers ensures that all balances are accurately represented in the database, preventing calculation errors.
-- **Comparability**: Transactions and balances with the same multiplier are directly comparable, simplifying financial analysis and reporting.
-- **Integrity**: Maintaining a uniform approach to multipliers helps preserve the integrity of your financial data, making it more reliable and trustworthy.
+To set a balance precision, the attribute must be passed during the creation of the balance. **See also → [How to create a balance](/ledger/tutorial/create-a-balance).**
 
-### 🚨 Warning 🚨
+```json request
+		{
+		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+		    "currency": "NGN",
+		    "precision": 100
+		}
+```
 
-It is **strongly advisable** to avoid transacting with balances that have different multipliers applied. Mixing multipliers can complicate financial operations and lead to errors in balance calculations. To ensure the integrity and accuracy of your financial data, choose a consistent approach to applying multipliers across all currencies and transactions.
+```json response
+		{
+		    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+		    "balance": 0,
+		    "credit_balance": 0,
+		    "debit_balance": 0,
+		    "currency": "NGN",
+		    "precision": 100,
+		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+		    "identity_id": "",
+		    "created_at": "2024-02-20T05:33:01.311600208Z",
+		    "meta_data": null
+		}
+		```
 
-### Best Practices
+If the Balance is configured with `precision`, then its transaction amounts are converted and recorded using the precision value. The table below is an updated version of the sample scenario above with `"precision": 100`.
 
-- **Define a Standard**: Establish a clear policy on multipliers for different currencies within your system.
-- **Consistency**: Apply the same multiplier across all transactions and balances for each currency.
-- **Review and Audit**: Regularly review and audit your financial data to ensure multipliers are applied consistently and correctly.
+| Reference  | Currency | Amount   | Source     | Destination |
+| ---------- | -------- | -------- | ---------- | ----------- |
+| ref_01     | NGN      | 20050    | bal_00     | bal_01      |
+| **ref_02** | **NGN**  | **5000** | **bal_01** | **bal_00**  |
+| ref_ 03    | NGN      | 1530     | bal_00     | bal_01      |
+| ref_04     | NGN      | 1000     | bal_00     | bal_01      |
 
-By adhering to these guidelines, you can minimize risks and ensure your financial data remains accurate and reliable.
+The total balance for `bal_01` is now **17580**. No decimal point means the value accurately reflects the transactions performed on the balance.
 
----
+>When retrieving transaction amounts or balances to display in your application, you can convert the lowest unit back to its primary asset class by dividing with the `precision`. For instance, displaying `bal_01` in my application becomes **17580 / 100 = 175.80.**
 
-## Quick start
+### Important to note
+
+It is very crucial to maintain consistency in how balance precision is applied in your application. Consider the following when using balance precision:
+
+1. **Balances with the same asset class must have the same balance precision:** An asset class is defined by its `currency` attribute. If you set `precision` for one balance, then all balances with the same asset class must have the same value. 
+
+2. **Ensure your balance precision value converts all amounts to the lowest unit possible**: For instance, while `"precision": 100` converts most national currencies in the world to their lowest unit, it is not the same for crypto assets. Crypto can have up to `100000000` as their precision value.
+
+The default value set by Blnk is `"precision": 1` on all balances created without balance precision. This is best for asset classes that do not have decimal points in their amounts, e.g., loyalty points.
+
+### Best practices
+
+1. **Define a standard:** Establish a clear policy on how balance precision is applied for different asset classes (`currency`) within your system.
+
+2. **Consistency:** Always apply the same balance precision across all balances with the same asset class.
+
+3. **Review and audit:** Regularly review and audit your Blnk Ledger to ensure that multipliers are applied consistently and correctly.
+
+### 🚨 Warning
+
+Do not perform transactions between balances with different asset classes and/or balance precisions. This can complicate your financial operations, and will definitely lead to errors in balance calculations.
+
+<Accordion icon="lightbulb" title="Handling transactions between 2 different asset classes">
+	Consider a scenario where you want to move money from a NGN balance (`bal_ngn`) to a USD balance (`bal_usd`). The following [record-transaction](/misc/record-transaction) request is wrong and leads to inaccurate records.
+	
+	```json request
+	{
+	    "amount": 5000,
+	    "reference": "ref_001adcfgf",
+	    "currency": "NGN",
+	    "source": "bal_ngn",
+	    "destination": "bal_usd"
+	}
+	```
+	
+	The best way to do this is to create 2 new balances, `@GlobalNGN` and `@GlobalUSD` and post two transaction records:
+	
+	- Move money from `bal_ngn` to `@GlobalNGN`. `@GlobalNGN` is also a NGN balance and it receives the Naira you intend to send to the USD balance.
+	  
+	```json request
+		{
+		    "amount": 5000,
+		    "reference": "ref_001adcfgf",
+		    "currency": "NGN",
+		    "source": "bal_ngn",
+		    "destination": "@GlobalNGN"
+		}
+	```
+	- Move money from `@GlobalUSD` to `bal_usd`. `@GlobalUSD` is a USD balance and it sends the dollar equivalent of the Naira you want to send from the NGN balance.
+	
+    ```json request
+		{
+		    "amount": 5000,
+		    "reference": "ref_001adcfgf",
+		    "currency": "USD",
+		    "source": "@GlobalUSD",
+		    "destination": "bal_usd"
+		}
+	```
+	
+	<Tip>You have full control and flexibility over how you want to name your balances. To learn more about naming balances with the "@" prefix, see → [How internal ledgers work](/ledgers/guide/internal-ledgers).</Tip>
+</Accordion>
+
+To ensure the integrity and accuracy of your financial data, choose a consistent approach for applying balance precision across your application.
+
+### Why consistency matters
+
+1. **Accuracy:** Consistent use of balance precision ensures that all transaction amounts and balances are accurately represented in your Blnk Ledger, preventing calculation errors, where applicable.
+
+2. **Comparability:** Transactions and balances with the same balance precision are directly comparable, simplifying financial analysis and reporting.
+
+3. **Integrity:** Maintaining a uniform approach to balance precision preserves the integrity of your Blnk Ledger, making it more reliable and trustworthy for other financial operations.
+
+### Recommended
+
 <CardGroup>
-
-    <Card title="Create Ledger" icon="square-code" href="/misc/create-ledger">
-        Create a new ledger
+	<Card title="How internal ledgers work" icon="book-open-cover" href="/ledger/guide/internal-ledgers">
+		Why some balances have the "@" prefix
     </Card>
-
-    <Card
-        title="Get Ledger"
-        icon="square-code"
-        href="/misc/create-ledger"
-    >
-        Fetch ledger details easily
+    <Card title="Asset classes" icon="book-open-cover" href="/ledger/guide/asset-classes">
+	    Learn how to define your asset classes
     </Card>
-
-    <Card
-        title="Create Balance"
-        icon="square-code"
-        href="/misc/create-balance"
-    >
-        Create multi currency balances
+    <Card title="Record a transaction" icon="book-open-cover" href="/ledger/tutorial/record-a-transaction">
+	    Post a transaction to your Blnk Ledger
     </Card>
-
-    <Card
-        title="Record Transaction"
-        icon="square-code"
-        href="/misc/record-transaction"
-    >
-       Start processing transactions
+    <Card title="Handling overdrafts" icon="book-open-cover" href="/ledger/tutorial/overdrafts">
+	    Learn how Blnk handles overdrafts
     </Card>
-
 </CardGroup>
+
+### Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/newworkspace-1tr5864/shared_invite/zt-2d9oejhwl-6VJsXV7Vmy0mCX2vzBXnWA) and share your questions/thoughts with other developers building financial applications like you.
