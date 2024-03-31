@@ -4,30 +4,30 @@ description:
 ---
 ### Overview
 
-This guide shows you how to post or record a transaction into your Blnk Ledger. It is best practice to ensure precise bookkeeping of all transaction activity happening in your app or software. 
+This guide shows you how to record a transaction into your Blnk Ledger. 
 
 There are 3 main ways a transaction can be categorized:
 
-1. Money is received from an external source (accounts, cards, crypto, etc.)
-2. Money is sent out to an external source (accounts, wallets, etc.)
+1. Money is received from an external balance (accounts, cards, crypto, etc.)
+2. Money is sent out to an external balance (accounts, wallets, etc.)
 3. Money is sent between balances in your application.
 
 <Tip>
 	An external source refers to a source or destination that isn't owned by your application. This includes other bank accounts, card payment providers, payout providers, etc.
 </Tip>
 
-To successfully post or record a transaction, the following attributes are required:
+To successfully post or record a transaction, the following fields are required:
 
-- `amount`: The transaction amount **(float).**
+- `amount`: The transaction amount **(float).** **See also → [Balance precision](/ledger/tutorial/precision)**
 - `reference`: A unique string for referencing the transaction later **(string).** 
 - `currency`: Short code for your asset class **(string)**. It can be currency, crypto or custom to your app or software.
-- `source`: Balance ID of the sending balance **(string)**.
-- `destination`: Balance ID of the receiving balance **(string)**.
+- `source`: Sender's balance ID **(string)**.
+- `destination`: Recipient's balance ID **(string)**.
 - `description`: Description or narration of the transaction **(string).** This is optional.
 
->There are multiple ways to manage `Source` and `Destination` for transactions that involve an external source.
+>There are multiple ways to manage `Source` and `Destination` for transactions that involve an external balance.
 >
->However, it is best to create a dedicated balance, `@World`, to represent external sources, i.e., when receiving money from an external source, it is `"source": "@World"` and when sending money to an external source, it is "`destination: "@World"`. 
+>However, it is best to create a dedicated balance, `@World`, to represent external balance, i.e., when receiving money from an external balance, it is `"source": "@World"` and when sending money to an external balance, it is "`destination: "@World"`. 
 >
 >Go to [Internal ledgers](/ledger/guide/internal-ledgers) for more information on how to use and manage `@World`.
 
@@ -40,22 +40,20 @@ Blnk cares about the accuracy, security and integrity of your transaction data. 
 	<Accordion title="Immutability" icon="shield-halved">
 		All transactions in Blnk are immutable.
 		
-		Once they have been recorded, they cannot be altered or tampered with. This ensures the accuracy and unchangeability of the transaction record, even if the transaction is modified or reversed later.
+		Once they have been recorded, they cannot be altered or tampered with. This ensures the accuracy and unchangeability of the transaction record. **See also → [Transaction Hashing](data/hash).**
 	</Accordion>
 	<Accordion title="Idempotency" icon ="code">
 		All transactions in Blnk are idempotent.
 		
 		This ensures that performing the same operation multiple times results in the same outcome as doing it once. This property is crucial for maintaining consistent outcomes regardless of how many times a transaction is repeated, especially in scenarios where network errors or other issues might cause transaction failures.
 		
-		E.g., a transaction moving funds from one `balance_id` to another, if idempotent, will result in the same balance regardless of how many times the transaction is executed. This prevents unintended consequences like multiple transfers or incorrect balances.
-		
-		Blnk ensures idempotency through the use of a unique `reference` for every transaction. This is why it is required for you to provide one when recording a transaction. It prevents Blnk from storing two transactions with the same reference and ensures consistent outcomes regardless of transaction repetition.
+		Blnk ensures idempotency through the use of a unique `reference` for every transaction. This is why it is required for you to provide one when recording a transaction. 
 	</Accordion>
 </AccordionGroup>
 
 ### Record a transaction
 
-Send a request to the [record-transaction](/misc/record-transaction) endpoint and input the required attribute values. 
+Send a request to the [record-transaction](/misc/record-transaction) endpoint and input the required fields. 
 
 ```json request
 {
@@ -64,15 +62,11 @@ Send a request to the [record-transaction](/misc/record-transaction) endpoint an
     "currency": "NGN",
     "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
     "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "description": ""
+    "description": "For fees"
 }
 ```
 
 Passing detailed data with the `meta_data` object is encouraged; it provides you with 360-degree insights about each transaction record. Examples of data you can pass include `sender_name`, `account_number`, `bank_name`, `receiver_name`, `payment_id`, `ip_address`, `location`, `payment_method`, etc.
-
-<Tip>
-	You can choose to title the attributes in the `meta_data` however you want.
-</Tip>
 
 <CardGroup>
 	<Card title="Setting up metadata" icon="book-open-cover" href="/ledger/tutorial/metadata">
@@ -88,29 +82,24 @@ Passing detailed data with the `meta_data` object is encouraged; it provides you
     "reference": "ref_001adcfgf",
     "amount": 10000000,
     "currency": "NGN",
-    "description": "",
+    "description": "For fees",
     "status": "QUEUED",
     "created_at": "2024-02-28T20:31:01.776677+01:00",
-    "scheduled_for": "",
     "risk_tolerance_threshold": 0,
     "risk_score": 0
 }
 ```
 
 - `id`: Unique id for the transaction **(string)**. This is generated by Blnk.
-- `source`: Balance ID of the sending balance **(string)**.
-- `destination`: Balance ID of the receiving balance **(string)**.
-- `reference`: A unique string for referencing/tracking the transaction **(string).** 
-- `amount`: The transaction amount **(float)**. Jump to [Balance precision](/ledger/tutorial/precision) to learn how transaction amounts and Balances work together.
-- `currency`: Short code for your asset class **(string)**. It can be currency, crypto or custom to your app or software.
-- `description`: 
+- `currency`: Short code for your asset class **(string)**. **See also → [Defining asset classes](ledger/guide/asset-classes).**
+- `description`:  Narration of the transaction **(string)**.
 - `status`: Current state of your transaction record **(string)**. [See below.](#transaction-statuses)
-- `created_at`: Date and timestamp of the transaction record **(string).**
-- `scheduled_for`: Scheduled date and timestamp for processing **(string)**. **See also →** [Scheduling transactions](/ledger/tutorial/scheduling-transactions).
+- `created_at`: Date and time of the transaction record **(string).**
+- `scheduled_for`: Scheduled date and time for processing **(string)**. **See also →** [Scheduling transactions](/ledger/tutorial/scheduling-transactions).
 
 ### Transaction statuses
 
-There are two primary statuses for any transaction in the Blnk Ledger.
+There are three primary statuses for any transaction in the Blnk Ledger.
 
 - `QUEUED`: This is the default status of any new transaction record. It means your transaction record has been accepted by Blnk, added to a queue and is waiting to be applied. 
   
@@ -122,9 +111,11 @@ There are two primary statuses for any transaction in the Blnk Ledger.
   >- the default transaction status is `QUEUED`; 
   >- the status changes to `APPLIED` when ₦1,000 has been deducted from `bal_01` and added to `bal_02`.
 
+- `REJECTED`: The status of a transaction is updated to rejected when one of the following happens;
+	- Insufficient balance in the `source`.
+	- Mismatch in asset class (`currency`) during a transaction between `source` and `destination`.
+
 <Note>
-	There are no `successful`, `pending`, or `failed` statuses in the Blnk Ledger. 
-	
 	Blnk focuses on helping you efficiently keep the records of how money moves in your application. Whether a transaction is successfully processed or not is managed by you and your payment partners.
 	
 	**Recommended →** [How to use Blnk with payment partners](ledger/guide/payment-partners)
@@ -141,7 +132,7 @@ There are two primary statuses for any transaction in the Blnk Ledger.
     </Card>
 	<Card title="Handling concurrency" icon="book-open-cover" href="/ledger/tutorial/queuing-transactions">
     </Card>
-    <Card title="Scheduling transactions" icon="book-open-cover" href="/ledger/tutorial/scheduling-transactions">
+    <Card title="Managing notifications" icon="book-open-cover" href="/ledger/guide/notifications">
     </Card>
 </CardGroup>
 
@@ -149,4 +140,4 @@ There are two primary statuses for any transaction in the Blnk Ledger.
 
 Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
 
-[Join our Slack community](https://join.slack.com/t/newworkspace-1tr5864/shared_invite/zt-2d9oejhwl-6VJsXV7Vmy0mCX2vzBXnWA) and share your questions/thoughts with other developers building financial applications like you.
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.

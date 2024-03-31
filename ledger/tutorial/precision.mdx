@@ -6,32 +6,21 @@ description: ""
 
 While transaction amounts are accepted as float, `float`, balances are stored as integers, `int64`, in Blnk. To compute your balance, transaction amounts have to be stored as integers. This makes sure that your computed balance is accurate and precise.
 
-Balance precision allows Blnk to convert your transaction amounts into the lowest unit possible for your asset class (or currency), e.g. converting Naira to kobo.
-
-### Sample scenario (without balance precision)
-
-Consider the following transactions on a balance, `bal_01`, with 3 credits and 1 debit.
-
-| Reference  | Currency | Amount    | Source     | Destination |
-| ---------- | -------- | --------- | ---------- | ----------- |
-| ref_01     | NGN      | 200.50    | bal_00     | bal_01      |
-| **ref_02** | **NGN**  | **50.00** | **bal_01** | **bal_00**  |
-| ref_ 03    | NGN      | 15.30     | bal_00     | bal_01      |
-| ref_04     | NGN      | 10.00     | bal_00     | bal_01      |
-
-<Note>It is a debit when the participating balance is the `Source`, and it is a credit when it is the `Destination`.</Note>
-
-The computed total balance based on the amount sent and received by balance, `bal_01`, is calculated as **175.80**. Because balances are stored as integers, it gets rounded up to the nearest integer, which is **176**. This means an **extra 20 kobo**, with no transaction record, has been generated in your application. 
-
-If this happens large scale, it leads to significant discrepancy and errors in your transaction records and balances; you and your customers will also continue to lose money depending on if the balance is rounded up or rounded down.
-
-### Applying balance precision
-
-To solve this problem for a **NGN** balance, all amounts must be converted into **kobo**, the lowest unit possible. To do that, all amounts must be multiplied by 100.
+Balance precision allows Blnk to convert your transaction amounts into the lowest unit possible for your asset class (or currency), e.g. converting Naira to kobo. This guide shows you how to balance precision works and best practices for applying it in your application.
 
 <Tip>The lowest unit for an asset class is a value that has no decimal point regardless of what amount is passed.</Tip>
 
-To set a balance precision, the attribute must be passed during the creation of the balance. **See also → [How to create a balance](/ledger/tutorial/create-a-balance).**
+### Why balance precision?
+
+Balance precision is crucial because computers are not great at storing and managing floating points as best as Blnk needs it to. **Read more → [Floating Point Math](https://0.30000000000000004.com/)**
+
+For instance, if a customer sends 1000.50 to a vendor, Blnk accepts the amount value as 1000.50 (float), retrieves the defined balance precision (e.g. 100), and applies it to the amount. This converts our amount from 1000.50 to 100050.
+
+This way all amounts is accounted for when computing the balance.
+
+### Applying balance precision
+
+To set a balance precision, the `precision` field must be passed during the creation of the balance. **See also → [How to create a balance](/ledger/tutorial/create-a-balance).**
 
 ```json request
 		{
@@ -56,18 +45,14 @@ To set a balance precision, the attribute must be passed during the creation of 
 		}
 		```
 
-If the Balance is configured with `precision`, then its transaction amounts are converted and recorded using the precision value. The table below is an updated version of the sample scenario above with `"precision": 100`.
+If the Balance is configured with `precision`, then its transaction amounts are converted and recorded using the precision value.
 
-| Reference  | Currency | Amount   | Source     | Destination |
-| ---------- | -------- | -------- | ---------- | ----------- |
-| ref_01     | NGN      | 20050    | bal_00     | bal_01      |
-| **ref_02** | **NGN**  | **5000** | **bal_01** | **bal_00**  |
-| ref_ 03    | NGN      | 1530     | bal_00     | bal_01      |
-| ref_04     | NGN      | 1000     | bal_00     | bal_01      |
-
-The total balance for `bal_01` is now **17580**. No decimal point means the value accurately reflects the transactions performed on the balance.
-
->When retrieving transaction amounts or balances to display in your application, you can convert the lowest unit back to its primary asset class by dividing with the `precision`. For instance, displaying `bal_01` in my application becomes **17580 / 100 = 175.80.**
+>When retrieving transaction amounts or balances to display in your application, you can always convert the lowest unit back to its primary asset class by dividing with the `precision`. 
+>
+>For instance, to display the amount above in your application:
+>
+>- Retrieve the amount using the [Get Transaction](/misc/get-transaction) endpoint.
+>- Retrieve the defined balance precision and apply it to the amount through division. This converts it from 100050 to 1000.50 to display in your app.
 
 ### Important to note
 
@@ -75,7 +60,7 @@ It is very crucial to maintain consistency in how balance precision is applied i
 
 1. **Balances with the same asset class must have the same balance precision:** An asset class is defined by its `currency` attribute. If you set `precision` for one balance, then all balances with the same asset class must have the same value. 
 
-2. **Ensure your balance precision value converts all amounts to the lowest unit possible**: For instance, while `"precision": 100` converts most national currencies in the world to their lowest unit, it is not the same for crypto assets. Crypto can have up to `100000000` as their precision value.
+2. **Ensure your balance precision value converts all amounts to the lowest unit possible**: For instance, while `"precision": 100` converts most national currencies in the world to their lowest unit, it is not the same for crypto assets. Bitcoin can have up to `100000000` as their precision value.
 
 The default value set by Blnk is `"precision": 1` on all balances created without balance precision. This is best for asset classes that do not have decimal points in their amounts, e.g., loyalty points.
 
@@ -163,4 +148,4 @@ To ensure the integrity and accuracy of your financial data, choose a consistent
 
 Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
 
-[Join our Slack community](https://join.slack.com/t/newworkspace-1tr5864/shared_invite/zt-2d9oejhwl-6VJsXV7Vmy0mCX2vzBXnWA) and share your questions/thoughts with other developers building financial applications like you.
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
