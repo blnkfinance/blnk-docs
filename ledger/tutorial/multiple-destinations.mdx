@@ -1,0 +1,131 @@
+---
+title: Managing multiple destinations
+description: Learn how to process transactions with multiple destinations
+---
+### Overview
+
+You can also send money from a single source to multiple destinations, exploring the same level of customization and efficiency for your application.
+
+**See also → [Managing multiple sources](/ledger/tutorial/multiple-sources).**
+
+This enhances transaction transparency and traceability within your application by offering you and your end users enhanced control over financial operations. By distributing a single transaction into multiple destinations, you can facilitate complex transaction flows resulting from a single transaction.
+### How it works
+
+Consider the following example.
+
+Every time a customer sends money from their account balance (`bal_01`), your application charges a transfer processing fee and an SMS charge for phone notifications. 
+
+| Destinations | Currency | Amount to be received 
+| -------------------- | -------- | ------------------- 
+| bal_recipient | NGN      | 20000               
+| @Fees           | NGN      | 50              
+| @SMSCharges            | NGN      | 20              
+
+<Steps>
+	<Step title="Define your transaction parameters">
+		Define the total amount to be sent, the source balance you are sending from, and the destination balances you are sending to.
+		
+		- **Amount**: 20070
+		- **Source:** `bal_01`
+		- **Destinations:** `bal_recipient`, `@Fees`, `@SMSCharges`
+		
+		<Note>
+			When sending to multiple destinations, you can only send from one source.
+		</Note>
+	</Step>
+	<Step title="Initiate the transaction">
+		Call the [Record Transaction](/misc/record-transaction) endpoint and provide the following required fields.
+		
+		```json request
+		{
+		    "amount": 20070,
+		    "reference": "ref_001adcfgf",
+		    "currency": "NGN",
+		    "source": "bal_01"
+		    "destinations": {
+			    {
+				    "identifier": "@bal_recipient",
+				    "distribution": "20000"
+			    },
+			    {
+				    "identifier": "@Fees",
+				    "distribution": "50"
+			    },
+			    {
+				    "identifier": "@SMSCharges",
+				    "distribution": "20"
+			    }
+		    }
+		}
+		```
+		
+		- `amount`: Total amount of money being sent **(float).**
+		- `reference`: Unique transaction reference **(string).**
+		- `currency`: Short code for your asset class **(string)**. **See also → [Defining asset classes](/ledger/guide/asset-classes).**
+		- `source`: Sender's balance ID **(string).**
+		- `destinations`: Contains information about the destinations the money is being sent to. Each object within this array represents a destination and includes two required fields:
+			- `identifier`: Destination's balance ID **(string).**
+			- `distribution`: Specific amount being sent to the respective destination **(string).**
+		
+		<Note>When sending to multiple destinations, you do not need to include the `destination` parameter in your payload. Use the `destinations` array to group the participating balances in your payload.</Note>
+	</Step>
+	<Step title="Confirm your amount">
+		Always make sure that the value of `amount` is equal to the sum of all values in the `distribution` fields.
+		
+		There are three ways you can fill in the `distribution` field.
+		
+		1. **Provide a specific amount:** Provide a specific amount that should be received (`"distribution": "100000"`)
+		2. **Use percentages:** When you provide a percentage (`"distribution": "50%"`), Blnk calculates it against the total amount to determine the exact amount to be received.
+		3. **Use `"left"`:** When you have defined the amount of money to be received by other destinations, use `"distribution": "left"` to instruct Blnk to send the remaining amount left to the last remaining destination.
+		   
+		   <Warning>Please note that there cannot be two or more objects in the `destinations` array with `"distribution": "left"`.</Warning>
+	</Step>
+	<Step title="Send your request">
+		Once your request is received, Blnk automatically creates separate transaction records for each destination with their respective amounts. This is crucial because Blnk runs on the [Double Entry Accounting Principle](/ledger/overview#ledger-and-balances).
+		
+		Blnk queues and processes the transactions like this:
+		
+		| Reference | Currency | Amount | Source | Destination
+		| --- | --- | --- | --- | ---
+		| ref_001adcfgf01 | NGN | 20000 | bal_001 | bal_recipient
+		| ref_001adcfgf02 | NGN | 50 | bal_001 | @Fees
+		| ref_001adcfgf03 | NGN | 20 | bal_001 | @SMSCharges
+		
+		At the end of the transaction, the sender's balance will have sent a total of 20070.
+		
+		Transactions are queued by default waiting to be [applied](/ledger/tutorial/record-a-transaction#transaction-statuses). We will notify you via the `transaction.applied` webhook once they are done.
+	</Step>
+</Steps>
+
+### Track your transaction
+
+Blnk auto-generates a unique transaction reference for each transaction record based on the original reference you provided in your transaction request. 
+
+A counter, starting at 1, is appended for each transaction record created ensuring that the individual transaction records have unique references derived from the original transaction reference. This makes sure that each transaction record is unique through its modified reference ensuring traceability and management while preserving the integrity of the original transaction's reference.
+
+To track your transaction, call the [Get Transaction](/misc/get-transaction) endpoint and provide the transaction `id` or `reference` to track a specific transaction, or leave it blank to view all transactions in your Blnk Ledger.
+
+**See also → [View transaction records](/ledger/tutorial/view-transactions)**
+
+### See also
+
+<CardGroup>
+	<Card title="Managing multiple sources" icon="book-open-cover" href="/ledger/tutorial/multiple-sources">
+        Send funds to multiple destinations
+    </Card>
+    <Card title="How internal ledgers work" icon="book-open-cover" href="/ledger/guide/internal-ledgers">
+        Why some balances have the "@" prefix
+    </Card>
+	<Card title="Handling concurrency" icon="book-open-cover" href="/ledger/tutorial/queuing-transactions">
+		How Blnk queues transactions
+    </Card>
+    <Card title="Managing notifications" icon="book-open-cover" href="/ledger/guide/notifications">
+	    Set up how you receive notifications
+    </Card>
+</CardGroup>
+
+### Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
