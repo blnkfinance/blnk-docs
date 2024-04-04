@@ -34,7 +34,7 @@ This guide contains everything you need to know about using "Search."
 		```json POST
 		{
 		  "q": "NGN",
-		  "filter": "balance > 1000",
+		  "filter": "balance>1000",
 		  "sort": "-created_at",
 		  "page": 1,
 		  "per_page": 10
@@ -45,7 +45,7 @@ This guide contains everything you need to know about using "Search."
 		| --- | --- | --- | --- | ---
 		| `q` | The search query, looking for matches in your data | Yes | `string` | `q=NGN` searches for balances in "NGN"
 		| `filter` | Narrows down the results based on specific conditions | No | `string` | `balance>1000` filters results to only include those with balances greater than 1000
-		| `sort` | Specifies the order of the search results | No | `string` | `sort=-created_at` orders results by the `created_at` field in descending order.
+		| `sort` | Specifies the order of the search results | No | `string` | `sort=-created_at` orders results by the `created_at` field in descending order. Omit "-" to display in ascending order.
 		| `page` | Selects the page number of the search results | No | `int64` | `page=1` fetches the first page of the results.
 		| `per_page` | Specifies the number of results per page | No | `int64` | `per_page=10` limits the number of results to 10 per page.
 	</Step>
@@ -94,6 +94,123 @@ This guide contains everything you need to know about using "Search."
 	</Step>
 </Steps>
 
+### Understanding search query
+
+**Structure and terminology**
+
+A query `clause` consists of a `field` followed by an `operator` and then a `value`.
+
+| Terms | |  | |  | |  | |  | | Example
+| --- | --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| clause | | | |  | |  | |  | |  `"q": "NGN"`
+| field | | | |  | |  | |  | | `"q"`
+| operator | | | |  | |  | |  | |  `:` or `=`
+| value | |  | |  | |  | |  | | "`NGN`"
+
+When using `GET`, you use `=` as the operator; you also combine multiple query clauses together by using `&`. 
+
+For example, `GET /search/transactions?q=NGN&filter=status:applied` matches transaction records where `NGN` is found and also has an `APPLIED` status. 
+
+With the `POST` method, you use `:` as the operator; the same search query now looks like this:
+
+```json POST
+{
+	"q": "NGN",
+	"filter": "status=applied"
+}
+```
+####
+
+**Value types and operators**
+
+To do more with the `value` part of your search query, you can use `:`, `=`, `<` or `>` to further specify your search conditions. For example: 
+
+| Query clause | Meaning
+| --- | ---
+| `"filter":"status=applied"` | Filters results down to documents with `status` fields containing `APPLIED` as its value.
+| `"filter":"created_at<2024-02-24` | Filters results to documents created before Feb 2, 2024.
+
+Every `value` includes a type that defines the kind of operations you can use. For example, while you can use `>` for values containing `amount` or `created_at`, you cannot use it for values containing `status`.
+
+####
+
+**Quotes**
+
+You must always use quotation marks around string values in your query. You can omit them for numerical values.
+
+- `"q": "NGN"` means quotes are required because "NGN" is a string value.
+- `"per_page": 50` doesn't need quotes because it is a numerical value.
+
+### Supported operators
+
+You can expand your search query by using to include several variations of your data in the `value`. The following table lists the supported operators that you can use to do this:
+
+| Operators | Name | Description | Example
+| --- | --- | --- | ---
+| `=` | Equal to |Exact match. Finds a document where a field matches the specified value | `"filter": "status=applied"` 
+| `>` | Greater than | Used to find documents where a field's value is greater than the specified value. | `"filter": "balance>1000"`
+| `<` | Less than | Used to find documents where a field's value is less than the specified value. | `"filter": "balance<1000"`
+| `>=` | Greater than or equal to | Used to find documents where a field's value is the exact match of or greater than the specified value. | `"filter": "balance>=1000"`
+| `<=` | Less than or equal to | Used to find documents where a field's value is the exact match of or less than the specified value. | `"filter": "balance<=1000"`
+| AND | Logical AND | Used to combine multiple conditions that must all be true. | `"filter": "status=applied AND balance>1000"`
+| OR | Logical OR | Used to combine multiple conditions where at least one must be true. | `"filter": "status=applied OR status=queued"`
+| NOT | Logical NOT | Used to exclude documents that match a certain condition. | `"filter": "NOT(status=applied)"`
+| IN | | Used to find documents where a field's value matches one of the specified list of values | `"filter": "status IN (applied, queued)"`
+| NOT IN | | Used to exclude documents where a field's value matches one of the specified list of values | `"filter": "status NOT IN (queued, rejected)"`
+| LIKE | Pattern matching | Used to find documents where a field's value contains the specified field's value | `"filter": "name LIKE %John%"` returns all documents where the substring, "John", is found anywhere within it's `name` field.
+| BETWEEN | | Used to find documents where a field's value is between two specified values. | `"filter": "balance BETWEEN 1000 AND 50000"`
+
+### Supported parameters for each collection
+
+The parameters you can specify in the `value` part of your [query clause](#understanding-search-query) are determined byt the collection you are searching in. 
+
+There are three data collections in the current version of the Blnk Ledger — ledgers, balances, and transactions.
+
+**For ledgers**
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| name | | | | | | | | | `name LIKE %Wallets%`
+| ledger_id | | | | | | | | | `ledger_id = ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
+| created_at | | | | | | | | | `created_at < 2024-20-01`
+
+####
+
+**For balances**
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| name | | | | | | | | | `name LIKE %Wallets%`
+| balance_id | | | | | | | | | `balance_id = bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| balance | | | | | | | | | `balance BETWEEN 100 AND 100000 `
+| credit_balance | | | | | | | | | `credit_balance > 100000 `
+| debit_balance | | | | | | | | | `debit_balance > 2000000 `
+| currency | | | | | | | | | `currency IN (NGN, USD, EUR)`
+| precision | | | | | | | | | `precision = 100 `
+| ledger_id | | | | | | | | | `ledger_id = ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
+| created_at | | | | | | | | | `created_at < 2024-20-01`
+
+####
+
+**For transactions**
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| id | | | | | | | | | `id = txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d`
+| source | | | | | | | | | `source = bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| destination | | | | | | | | | `destination = bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| reference | | | | | | | | | `reference = ref_001adcfgf`
+| amount | | | | | | | | | `amount BETWEEN 2000 AND 100000 `
+| currency | | | | | | | | | `currency IN (NGN, USD, EUR)`
+| description | | | | | | | | | `description LIKE %Fees% `
+| status | | | | | | | | | `status IN (applied, queued)`
+| created_at | | | | | | | | | `created_at < 2024-20-01`
+| scheduled_for | | | | | | | | | `scheduled_for > 2024-20-01`
+| allow_over_draft | | | | | | | | | `NOT (allow_over_draft = true)`
+| inflight | | | | | | | | | `inflight = true`
+
+****
+
 ### Sections remaining to write
 
 - Understanding search query
@@ -113,20 +230,10 @@ This guide contains everything you need to know about using "Search."
 	- View all balances with in a particular ledger with an overdraft
 	- View applied transactions between date A and B for a particular balance.
 	- View all transactions that's happened in the past 7 days
-- Query fields
+- Supported query fields for each collection
 	- for ledgers
 	- for balances
 	- for transactions
 - Things to consider
 	- Processing time
 	- Data freshness
-
-### Testing
-
-Lorem ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum ipsum 
-####
-
-**Lorem ipsum**
-
-I wish it doesn't work like this
-####
