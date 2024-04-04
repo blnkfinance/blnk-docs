@@ -1,4 +1,93 @@
 ---
 title: Search your Blnk data
-description:
+description: Look up anything in your Blnk Ledger
 ---
+You can use "Search" to retrieve any data — ledgers, balances, and transactions — from your Blnk Ledger in a fully customizable manner. With "Search", you can efficiently display data in your application, easily track balances and transactions, filter specific information needed from your ledger for investigation, etc.
+
+This guide contains everything you need to know about using "Search."
+
+### Getting started
+
+"Search" supports both `GET` and `POST` HTTP methods offering you flexibility in conducting searches based on the complexity of the query.
+
+- Use `GET` for simple searches with URL parameters.
+- Use `POST` for complex queries, sending parameters in the request body.
+
+<Steps>
+	<Step title="Call the 'Search' endpoint URL">
+		Here is the endpoint: `/search/:collection`.
+		
+		`:collection` refers to the collection of data you want to search. There are 3 data collections in the Blnk Ledger:
+		
+		1. Ledgers
+		2. Balances
+		3. Transactions
+	</Step>
+	<Step title="Provide your search parameters">
+		Replace the `:collection` placeholder with your search query. See `GET` and `POST` examples of a payload searching the balances data collection:
+		
+		```http GET
+		GET https://api.blnkserver.xyz/search/transactions?q=NGN&filter=balance>1000&sort=-created_at&page=1&per_page=10
+		```
+		```json POST
+		{
+		  "q": "NGN",
+		  "filter": "balance > 1000",
+		  "sort": "-created_at",
+		  "page": 1,
+		  "per_page": 10
+		}
+		```
+		
+		| Parameter | Description | Required? | Type | Example
+		| --- | --- | --- | --- | ---
+		| `q` | The search query, looking for matches in your data | Yes | `string` | `q=NGN` searches for balances in "NGN"
+		| `filter` | Narrows down the results based on specific conditions | No | `string` | `balance>1000` filters results to only include those with balances greater than 1000
+		| `sort` | Specifies the order of the search results | No | `string` | `sort=-created_at` orders results by the `created_at` field in descending order.
+		| `page` | Selects the page number of the search results | No | `int64` | `page=1` fetches the first page of the results.
+		| `per_page` | Specifies the number of results per page | No | `int64' | `per_page=10` limits the number of results to 10 per page.
+	</Step>
+	<Step title="You're good to go!">
+		Blnk processes your search query and the results are presented you in the following response format.
+		
+		```json response
+		{
+		  "found": 2,
+		  "hits": [
+		    {
+			    "document":{
+				    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+				    "balance": 3000,
+				    "credit_balance": 5000,
+				    "debit_balance": 2000,
+				    "currency": "NGN",
+				    "precision": 100,
+				    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+				    "created_at": "2024-02-20 05:28:03 UTC",
+				}
+			},
+			{
+			    "document":{
+				    "balance_id": "bln_06756vf-86fe-457d-be43-daa3f97fhg57",
+				    "balance": 40000,
+				    "credit_balance": 45000,
+				    "debit_balance": 5000,
+				    "currency": "NGN",
+				    "precision": 100,
+				    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+				    "created_at": "2024-01-13 13:30:03 UTC",
+				}
+			}
+		  ]
+		}
+		```
+		
+		| Parameter | Description | Type
+		| --- | --- | ---
+		| `found` | Indicates the total number of documents found | `int64`
+		| `hits` | Contains an array of individual search results. Each object represents a document that matches the search query | `array`
+		| `document` | Represents a single piece of data that matches the search query | `object`
+		
+		<Note>The parameters inside the `document` object will match the same parameters that make up the respective data collection you specified.</Note>
+	</Step>
+</Steps>

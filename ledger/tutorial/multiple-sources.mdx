@@ -6,29 +6,31 @@ description: Learn how to process transactions with multiple sources
 
 Blnk provides a powerful tool that lets you process similar transactions from multiple sources to a single destination, providing your application with more customization and efficiency. 
 
-This enhances transaction transparency and traceability within your application by offering you and your team enhanced control over financial operations. By consolidating multiple sources into one single transaction, you can monitor and manage transactions more effectively, contextualize your transaction, and facilitate easier tracking and reconciliation.
+This provides enhanced flexibility and control over complex money flows within your application. By consolidating multiple sources into one single transaction, you can monitor and manage transactions more effectively, contextualize your transaction, and facilitate easier tracking and reconciliation.
 
 **See also → [Managing multiple destinations](/ledger/tutorial/multiple-destinations).**
 ### How it works
 
-Say a customer wants to receive 30000 from 3 people. Person A sends 10%, Person B sends 20000, and Person C sends the rest.
+Say a customer wants to receive NGN 30,000 from 3 people. Person A sends 10%, Person B sends NGN 20,000, and Person C sends the rest.
 
 Here's a sample overview of their balance information:
 
 | User | Balance ID | Expectation
 | --- | --- | --- |
-| Recipient | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | Will receive a total of 30000
-| Person A | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | Will send 10% of 30000
-| Person B | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | Will send 20000
+| Recipient | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | Will receive a total of NGN 30,000
+| Person A | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | Will send 10% of NGN 30,000
+| Person B | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | Will send NGN 20,000
 | Person C | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | Will send the remaining amount left
 
 <Steps>
 	<Step title="Define your transaction parameters">
 		Define the total amount to be sent, the source balances you are sending from, and the destination balance you are sending to.
 		
-		- **Amount**: Total amount to be received by the recipient (30000).
-		- **Sources:** Balance IDs of all the balances the amount is sourced from.
-		- **Destination:** Balance ID of the recipient.
+		| Transaction parameters | Description
+		| --- | ---
+		| Amount| Total amount to be received by the recipient (NGN 30,000).
+		|Sources| Balance IDs of all the balances the amount is sourced from.
+		|Destination| Balance ID of the recipient.
 		
 		<Note>
 			When sending from multiple sources, you can only send to one destination.
@@ -63,14 +65,16 @@ Here's a sample overview of their balance information:
 		}
 		```
 		
-		- `amount`: Total amount of money to be received **(float).**
-		- `reference`: Unique transaction reference **(string).**
-		- `currency`: Short code for your asset class **(string)**. **See also → [Defining asset classes](/ledger/guide/asset-classes).**
-		- `sources`: Contains information about the sources from where the money is being sent from. Each object within this array represents a source and includes two required fields:
-			- `identifier`: Sender's balance ID **(string).**
-			- `distribution`: Specific amount being drawn from the respective source **(string).**
-			- `narration`: Short description of why the transaction is being initiated **(string).** It is optional.
-		- `destination`: Recipient's balance ID **(string)**.
+		| Parameter | Description | Required | Type
+		| --- | --- | --- | ---
+		|`amount`| Total amount of money to be received. | Yes | `float`
+		|`reference`| Unique transaction reference. | Yes | `string`
+		| `currency`| Short code for your asset class. **See also → [Defining asset classes](/ledger/guide/asset-classes).** |Yes|`string`
+		| `sources`| Contains information about the sources from where the money is being sent from. Each object within this array represents a source and has 2 required fields — `identifier` and `distribution`. | Yes
+		|`identifier`| Sender's balance ID | Yes | `string`
+		| `distribution`|Specific amount being drawn from the respective source. | Yes | `string`
+		|`narration`| Short description of why the transaction is being initiated. | No | `string`
+		| `destination`| Recipient's balance ID. | Yes | `string`
 		
 		<Note>When sending from multiple sources, you do not need to include the `source` parameter in your payload. Use the `sources` array to group the participating balances in your payload.</Note>
 	</Step>
@@ -97,7 +101,7 @@ There are three ways you can specify how the amount should be distributed among 
 
 | Distribution type | Description | Example
 | --- | --- | --- |
-| Specific amount | Provide the specific amount of money to be sent | `"distribution": "20000"` - Means 20000 from the total amount should be sent
+| Specific amount | Provide the specific amount of money to be sent | `"distribution": "20000"` - Means NGN 20,000 from the total amount should be sent
 | Percentage | Calculates a percentage of the total amount to be sent | `"distribution": "10%"` - Means 10% of the total amount should be sent
 | "left" | Calculates the remaining amount not assigned to a source | `"distribution": "left"` - Means the remaining amount left after others have been deducted should be sent
 
