@@ -2,13 +2,13 @@
 title: Search your Blnk data
 description: Look up anything in your Blnk Ledger
 ---
-### Overview
+## Overview
 
 You can use "Search" to retrieve any data — ledgers, balances, and transactions — from your Blnk Ledger in a fully customizable manner. With "Search", you can efficiently display data in your application, easily track balances and transactions, filter specific information needed from your ledger for investigation, etc.
 
 This guide contains everything you need to know about using "Search."
 
-### Getting started
+## Getting started
 
 "Search" supports both `GET` and `POST` HTTP methods offering you flexibility in conducting searches based on the complexity of the query.
 
@@ -94,9 +94,9 @@ This guide contains everything you need to know about using "Search."
 	</Step>
 </Steps>
 
-### Understanding search query
+## Understanding search query
 
-**Structure and terminology**
+#### Structure and terminology
 
 A query `clause` consists of a `field` followed by an `operator` and then a `value`.
 
@@ -119,9 +119,8 @@ With the `POST` method, you use `:` as the operator; the same search query now l
 	"filter": "status=applied"
 }
 ```
-####
 
-**Value types and operators**
+#### Value types and operators
 
 To do more with the `value` part of your search query, you can use `:`, `=`, `<` or `>` to further specify your search conditions. For example: 
 
@@ -132,16 +131,14 @@ To do more with the `value` part of your search query, you can use `:`, `=`, `<`
 
 Every `value` includes a type that defines the kind of operations you can use. For example, while you can use `>` for values containing `amount` or `created_at`, you cannot use it for values containing `status`.
 
-####
-
-**Quotes**
+#### Quotes
 
 You must always use quotation marks around string values in your query. You can omit them for numerical values.
 
 - `"q": "NGN"` means quotes are required because "NGN" is a string value.
 - `"per_page": 50` doesn't need quotes because it is a numerical value.
 
-### Supported operators
+## Supported operators
 
 You can expand your search query by using to include several variations of your data in the `value`. The following table lists the supported operators that you can use to do this:
 
@@ -160,13 +157,13 @@ You can expand your search query by using to include several variations of your 
 | LIKE | Pattern matching | Used to find documents where a field's value contains the specified field's value | `"filter": "name LIKE %John%"` returns all documents where the substring, "John", is found anywhere within it's `name` field.
 | BETWEEN | | Used to find documents where a field's value is between two specified values. | `"filter": "balance BETWEEN 1000 AND 50000"`
 
-### Supported parameters for each collection
+## Supported parameters for each collection
 
 The parameters you can specify in the `value` part of your [query clause](#understanding-search-query) are determined byt the collection you are searching in. 
 
 There are three data collections in the current version of the Blnk Ledger — ledgers, balances, and transactions.
 
-**For ledgers**
+#### For ledgers
 
 | Parameters | | | | | | | | | Sample usage
 | --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
@@ -174,13 +171,10 @@ There are three data collections in the current version of the Blnk Ledger — l
 | ledger_id | | | | | | | | | `ledger_id = ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
 | created_at | | | | | | | | | `created_at < 2024-20-01`
 
-####
-
-**For balances**
+#### For balances
 
 | Parameters | | | | | | | | | Sample usage
 | --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
-| name | | | | | | | | | `name LIKE %Wallets%`
 | balance_id | | | | | | | | | `balance_id = bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
 | balance | | | | | | | | | `balance BETWEEN 100 AND 100000 `
 | credit_balance | | | | | | | | | `credit_balance > 100000 `
@@ -190,9 +184,7 @@ There are three data collections in the current version of the Blnk Ledger — l
 | ledger_id | | | | | | | | | `ledger_id = ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
 | created_at | | | | | | | | | `created_at < 2024-20-01`
 
-####
-
-**For transactions**
+#### For transactions
 
 | Parameters | | | | | | | | | Sample usage
 | --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
@@ -209,31 +201,185 @@ There are three data collections in the current version of the Blnk Ledger — l
 | allow_over_draft | | | | | | | | | `NOT (allow_over_draft = true)`
 | inflight | | | | | | | | | `inflight = true`
 
-****
+## Things to consider
+#### Processing time
 
-### Sections remaining to write
+The time it takes to process a search query may vary depending on the kind and complexity of your search query. For workflows where you need to display values in real-time like balances or a specific transaction details, used the `GET by id` endpoints specific to the collection you are searching for.
 
-- Understanding search query
-	- Query structure
-	- Search fields
-	- Quotes for strings. No quotes for integers
-	- Search syntax
-- Supported operations
-- Examples
-	- Transaction lookup
-	- Balance lookup
-	- View ALL transactions belonging to a balance
-	- View all balances in a ledger
-	- View all balances with a particular asset class
-	- Filter transactions above 10000 in a balance
-	- View all balances with balance above 500000
-	- View all balances with in a particular ledger with an overdraft
-	- View applied transactions between date A and B for a particular balance.
-	- View all transactions that's happened in the past 7 days
-- Supported query fields for each collection
-	- for ledgers
-	- for balances
-	- for transactions
-- Things to consider
-	- Processing time
-	- Data freshness
+#### Data freshness
+
+It is advisable not to use read-after-write flows (for example, searching immediately after a transaction request has been made) because the data may not be available immediately to search. Under normal conditions, data is searchable within seconds, but propagation of new or updated data could be delayed due to unforeseen circumstances.
+
+## Common examples
+#### Transaction lookup
+
+Search for the details of a particular transaction.
+
+```http request
+{
+	POST /search/transactions 
+	Content-Type: application/json
+	
+	"q": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d"
+}
+```
+
+#### Balance lookup
+
+Search for the details of a particular balance.
+
+```http request
+{
+	POST /search/balances 
+	Content-Type: application/json
+	
+	"q": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746"
+}
+```
+
+#### View all transactions belonging to a balance
+
+Search for all transactions that a particular balance has been a part of either as a source or destination. If `source`, it is a debit; if `destination`, it is a credit.
+
+<Tip>Adding `-` in front of the specified value sorts the results in descending order, i.e., from latest to earliest. To sort it in ascending order, omit the `-`.</Tip>
+
+The sample query below sorts the result in descending order and paginates the results, displaying 30 records per page.
+
+```http request
+{
+	POST /search/transactions 
+	Content-Type: application/json
+	
+	"q": "NGN",
+	"filter": "source=bln_ebcd230f-6265-4d4a-a4ca-45974c47f746 OR destination=bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+	"sort": "-created_at",
+	"page": 1,
+	"per_page": 30
+}
+```
+
+#### View all balances in a ledger
+
+Search for all balances grouped in a particular ledger.
+
+Include the `ledger_id` as the primary search query to provide all balance records that exactly matches the specified value.
+
+```http request
+{
+	POST /search/balances 
+	Content-Type: application/json
+	
+	"q": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc"
+}
+```
+
+#### View all balances with a specific asset class
+
+Search for all balances with a specific asset class (e.g., NGN). 
+
+```http request
+{
+	POST /search/balances 
+	Content-Type: application/json
+	
+	"q": "NGN"
+}
+```
+
+#### View all balances with total balance above NGN 400,000
+
+Search for all balances with their total balance above NGN 400,000. 
+
+- Input the asset class (NGN) as the primary search query, `q`. This matches all balance records that contain "NGN" in their details.
+- Filter by total balance, `balance`. This filters the search results to only balances with over NGN 400,000. 
+<Warning>
+	All balances are converted into their smallest unit using your [balance precision value](/ledger/tutorial/precision). 
+	
+	Make sure to convert the balance specified value with your precision before adding it to your query to get the correct results. 
+</Warning>
+
+```http request
+{
+	POST /search/balances 
+	Content-Type: application/json
+	
+	"q": "NGN",
+	"filter": "balance>40000000"
+}
+```
+
+#### View all balances with an overdraft within a specified ledger
+
+Search for all balances with an overdraft (i.e. a negative balance value).
+
+Using the `ledger_id` as the primary query would match all balance records containing the specified value. A negative is any number that is less than 0. You can filter these balance records by looking for balances whose values are less than 0.
+
+```http request
+{
+	POST /search/balances 
+	Content-Type: application/json
+	
+	"q": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+	"filter": "balance<0"
+}
+```
+
+#### View credit transactions below NGN 100,000 in a specified balance
+
+Search for transactions where a specified balance received amounts less than NGN 100,000.
+
+<Tip>
+	Use `per_page` to introduce pagination into your results, while `page` helps you navigate them. 
+	
+	This is good for large results because it returns them faster when it is fetched in groups (pages) compared to when it tries to fetch them all at once.
+</Tip>
+
+```http request
+{
+	POST /search/transactions 
+	Content-Type: application/json
+	
+	"q": "NGN",
+	"filter": "status=applied AND amount<10000000 AND destination=bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+	"sort": "-created_at",
+	"page": 1,
+	"per_page": 50,
+}
+```
+
+#### View all `APPLIED` transactions between two dates in a specified balance
+
+View all transactions with `"status": "APPLIED"` between February 2 and March 28, 2024 in a specified balance.
+
+```http request
+{
+	POST /search/identities 
+	Content-Type: application/json
+	
+	"q": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+	"filter": "status=applied AND (created_at BETWEEN 2024-02-02 AND 2024-03-28)"
+}
+```
+
+## See also
+
+<CardGroup>
+	<Card title="How internal ledgers work" icon="book-open-cover" href="/ledger/guide/internal-ledgers">
+        Learn more about `@World`
+    </Card>
+    <Card title="Set up your balance precision" icon="book-open-cover" href="/ledger/tutorial/precision">
+        Optimize your balances with precision
+    </Card>
+	<Card title="Handling concurrency" icon="book-open-cover" href="/ledger/tutorial/queuing-transactions">
+		How Blnk queues transactions
+    </Card>
+    <Card title="Managing notifications" icon="book-open-cover" href="/intro/notifications">
+	    Set up how you receive notifications
+    </Card>
+</CardGroup>
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
