@@ -2,53 +2,145 @@
 title: Welcome to Blnk
 description: An open-source ledger for the financial internet
 ---
-### Overview
+## Introduction
 
-Welcome to Blnk — an open-source ledger designed for the modern developer. It enables developers to build and manage complex financial transaction records and money movement.
+Everyday, the world processes billions of transactions, thanks to the power of the internet. 
 
-Every financial application is made up of different transactions happening concurrently moving from one location to another. Some transactions will interact with external parties like cards, payouts, deposits, etc. Others will interact within your application like moving money between user accounts or to/fro your organization accounts. 
+Engineering teams, across the world, work tirelessly to ensure 99.999% uptime and reliability on all financial services offered by their respective organizations. Beneath these metrics and KPIs is a very complex network of operations from sending and accepting payments, money movement, money storage, identity management, and compliance to name a few. Each of these operations present different models and processes that developers have to cater for while building financial applications.
 
-Blnk gives you, the developer, a starting point to improve how you build, operate and perfectly manage money movement and storage in a reliable, scaleable and secure way.
+For any financial application, developers need to guarantee that the data collected in the midst of this complexity is accurately stored and managed in a way that's useful for internal operations and relevant external parties. To do this, they typically build a ledger — a log of all transaction records and financial data within their application. But most ledgers today only provide basic tools for accurate accounting.
 
-### Who is Blnk for?
+![Example of a basic ledger](/images/sample-basic-ledgers.png)
 
-This documentation is intended for developers, software engineers and technical product managers who are building and operating any kind of financial application or software.
+However, the real world and the network of systems we operate in is constantly changing. And it is still the developer's responsibility to guarantee that, as the application scales, the ledger is able to keep up with the constant flux of the real world. This is near impossible and difficult to do without deep financial engineering experience.
 
-While it is assumed that you have a basic understanding of financial industry and accounting concepts, this doc does its best to explain them as you read. [Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) if you have any questions about getting started.
+**Hence, the Blnk Ledger.** We designed a comprehensive open-source ledger that keeps this flux manageable and structured for you and your team. It provides you with basic and advanced tools that lets you set up how money is stored and moved within your application.
 
-### Features overview
+The Blnk Ledger models all money movement and storage with common accounting patterns to ensure accurate records of every transaction in your application. Moreover, its deployment instantly simplifies complex money movement workflows and further guarantees easy transaction tracking and monitoring regardless of the level of complexity.
 
-Here's a closer look at what Blnk provides you:
+## How Blnk is designed
 
-1. **Ledger management:** Create and manage detailed ledgers best suited to your use case to provide a clear and accurate record of balances and financial transactions in your application. This enables you to easily maintain your financial records in alignment with fundamental accounting principles.
+Any transaction activity can be grouped into three main phases — money out (debit from a source), money in (credit to a destination), and money storage. Blnk represents all activity in your application with a common structure that can be easily read and analyzed.
 
-2. **Internal ledger management:** Set up your organization's chart of accounts separate from other accounts, and easily track all transactions moving in and out of the accounts directly owned by your organization. 
-   
-   A chart of accounts is a list of financial balances grouped into categories such as revenue, expenses, assets, liabilities, etc and used for recording transactions that the organization is directly involved in. 
+![Anatomy of a transaction](/images/transaction-anatomy.png)
 
-3. **Balances and overdrafts:** Create and manage balances in one or multiple assets depending on your use case. Blnk also supports overdraft configurations giving you the flexibility to manage flow of funds more effectively.
+This is how we approached it:
 
-4. **Balance monitoring:** Get access to a digital eye over all balances making sure they're within the expected thresholds — fully configurable by you. Efficient monitoring can help you identify fraudulent activities or suspicious transactions early, enabling timely transactions.
+1. **Blnk is designed on top of the Double Entry Accounting Principle**, and models the behaviour of all transactions with it. It states that every credit entry must have a corresponding debit entry. In practice, in Blnk, every transaction record is designed to always have a source and destination; the source holds the debit entry while the destination holds the credit entry.
 
-5. **Transaction processing:** Implement excellent transaction processing capabilities with Blnk. Get access to advanced features such as transaction queuing and scheduling to ensure timely processing and helps to manage flow of funds more effectively.
+2. **Blnk groups these transaction records** through the concept of ledgers and balances to ensure accurate computation of balance amounts, quick filtering of records, precise bookkeeping of your organization's chart of accounts and your users' wallets & accounts, etc.
 
-6. **Advanced configuration and observability:** Customize Blnk to meet your unique needs with its advanced configuration options. With support for error alerts, tracing with OpenTelemetry (OTel), monitoring and maintaining your financial systems has never been easier.
+This approach abstracts the individual differences between the underlying systems (settlement accounts, external balances, users' wallets and accounts, etc.) in your application and provides mathematical evidence that they all work correctly.
 
-7. **Notifications and webhooks:** Stay informed of important events with Blnk's notification system, and use webhooks to connect Blnk with other apps (e.g., Slack) and automate workflows important to your application.
+#### Blnk as a database framework
 
-### Need help?
+Blnk guarantees an accurate data representation of all financial activities in your application. As a database, it uses the concept of folders and files to store transaction records. 
 
-Are you stuck or confused? Is there something in this doc that you don't understand? Have a problem you can't solve? 
+![An illustrated diagram of how the Blnk Ledger works using the traditional file manager as an example. Ledgers are the folders; you click a ledger to see a list of all the balances grouped in it; and you click on a Balance to see the transaction records tied to the balance.](/images/blnk-ledger-overview.png)
 
-Join the Blnk community on our [Slack server](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions in a relevant channel.
+As stated earlier, every transaction recorded in Blnk must have a defined source and destination. These locations are referred to as **Balances**. In any application, you can have an infinite number of balances depending on your use case, and the more balances you have to manage, the higher the risk of chaos.
 
-### See also
+To manage this, you need a "file manager." Traditionally, file managers allow you create folders to group similar files together for easy navigation or reference. Blnk uses **Ledgers** as folder to manage and store your Balances. This allows Blnk to scale as your application scales with no limit to how much data it helps you manage and store.
+
+#### Modelling with the double-entry principle
+
+The Double Entry principle enables Blnk to guarantee that all transactions in your application are fully accounted for. This give us a tangible proof of correctness when computing our balances or fetching transaction records. If you don't know what Double Entry means, here's an introductory guide: [An Engineer's Guide to the Double-Entry principle with Blnk](/ledger/guide/double-entry-101).
+
+Blnk uses the double-entry concept in a more innovative context. Instead of just representing cash flow in and out, we use it to represent other activities and behaviours that may not involve physical movement of money — currency conversion, inter-wallet transfers, billing, etc. We use the same concept to link these systems with our Ledger and ensure consistency and accuracy across our application
+
+#### Handling complexity
+
+Blnk efficiently handles the complexity that comes with managing disconnected data sources or accounts within your financial application. Instead of separately monitoring money movement between your users' balances, internal settlement accounts, and third-party balances, Blnk models all of them as balances with connected workflows moving money in one single system.
+
+We track individual transactions through their entire lifecycle, from initiation at their source to delivery at their respective destination. Blnk guarantees detailed transaction tracing at any scale — small, medium or large.
+
+#### Flexibility and control
+
+The Blnk Ledger is use case-agnostic. Developers can architect their ledgers and balances in any design they choose based on the unique needs of their application, and what kind of data they want to track and monitor. If you don't know how to do this, here's [a guide on designing ledger architecture](/ledger/guide/ledger-architecture).
+
+Additionally, Blnk is equipped with advanced features to help you efficiently implement complex transaction and money movement workflows with less code.
+
+#### Connected money movement workflows
+
+Consider a user sending USD from a NGN balance in an application. This requires moving money between internal accounts, debiting the sender's account, reconciling money movement with third-party balances, etc. This workflow spans multiple internal systems with different actions happening at different times.
+
+You can model this workflow with Blnk executing and representing all actions within your ledger.
+
+![A simplified view of money movement for global payout](/images/global-payout-money-map.png)
+
+#### Immutability
+
+The Blnk Ledger is an immutable log for all financial activities in your application. Recorded transactions cannot be deleted or modified. This ensures that we can trace and audit any transaction at any point in time. It also means you can trust and explain any issues with your ledger.
+
+## Fewer problems, more reliable reporting
+
+Gaining full insights and control over your financial data and the behaviours of different systems in your financial application presents unparalleled benefits to you and the rest of the team. Moreover, as the mechanisms for money movement and storage inevitably evolve, Blnk guarantees to always be up to date with global best practices.
+
+#### Accounts reconciliation
+
+Being able to track the source and destination of any transaction from a single record drastically improves the process of reconciling your accounts. With the Blnk Ledger, you can correctly determine if the right balances were involved in the transaction, and easily adjust errors where needed to balance your books.
+
+#### Compliance with anti-fraud regulations
+
+Blnk's adherence to regulatory standards and best practices helps organizations comply with anti-fraud regulations more effectively. By maintaining accurate and auditable records of financial transactions, organizations can demonstrate compliance with regulatory requirements and mitigate the risk of regulatory fines or penalties associated with fraudulent activities.
+
+#### Real-time risk management insights
+
+With the Blnk Ledger, teams can gain real-time insights into their risk exposure across various financial activities in their application. By analyzing transaction data in-depth, developers can proactively identify and mitigate potential risks, safeguarding the organization's financial stability and reputation.
+
+#### Real-time monitoring & alerts
+
+Blnk enables real-time monitoring of transactional activities, allowing developers to set up automated alerts for suspicious behavior. Deviations from normal transaction patterns, such as unexpected large transactions or unusual account activity, can trigger immediate alerts, enabling swift action to investigate and mitigate potential fraud.
+
+#### Fraud pattern analysis
+
+Blnk's rich transactional data can be leveraged for advanced fraud pattern analysis using machine learning algorithms. By analyzing historical transactional data, organizations can identify common fraud patterns, detect anomalies, and proactively implement measures to prevent fraudulent activities before they occur.
+
+#### Self-regulating financial ecosystems
+
+Through Blnk's immutable ledger, organizations can create self-regulating financial ecosystems where systems automatically enforce predefined rules and regulations. This self-regulating mechanism reduces reliance on external human oversight and ensures correctness and compliance in your application.
+
+## A ledger that scales with you
+
+#### Seamless scaleability
+
+Whether you are a solo developer, startup or a large-scale company, the Blnk Ledger scales effortlessly to accommodate the growing needs of any application, regardless of its size. From handling a few transactions per day to processing millions of transactions per second, Blnk guarantees uninterrupted performance, providing a reliable foundation for business growth.
+
+#### Modular by design
+
+Blnk allows developers to tailor the ledger infrastructure to their unique use cases and workflows. Whether managing multiple business units, diverse financial products, or complex transactional processes, Blnk offers customizable modules that can be easily integrated and scaled to meet increased business needs.
+
+#### Accelerated time-to-market
+
+Blnk's modular architecture and developer docs enable engineering teams to accelerate the development and deployment of new financial products and services. By providing pre-built components and reusable modules, Blnk reduces development time and complexity, allowing product teams to bring new, innovative solutions to market faster and gain a competitive edge.
+
+#### Costs much less to use Blnk
+
+It's more than 90% cheaper to use Blnk than to invest in outrageously expensive infrastructure investments or software licensing fees. With our open-source model and robust developer documentation, engineering teams can immediately get started with the BlnkLedger without incurring hefty upfront costs in time and resources, making it accessible to anyone who wants to build a financial application.
+
+#### A community that supports itself
+
+The Blnk Ledger is open-source, and will remain so forever. We foster collaboration and innovation within the broader financial ecosystem by developer resources, and community support. Whether partnering with fintech startups, financial institutions, or technology providers, organizations can leverage Blnk to create symbiotic relationships and drive collective growth and innovation.
+
+## Getting started
 
 <CardGroup>
-	<Card title="Deploy Blnk" icon="book-open-cover" href="/intro/run-blnk-server">
-        Run your Blnk server
+	<Card title="Blnk installation" icon="book-open-cover" href="/ledger/tutorial/run-blnk-server">
+        Install Blnk and try it out
     </Card>
-    <Card title="The Blnk ledger" icon="book-open-cover" href="/ledger/overview">
-        Learn how ledgers work
+    <Card title="Getting started with Blnk" icon="book-open-cover" href="/ledger/tutorial/create-a-ledger">
+        Create your first ledger & balance
+    </Card>
+	<Card title="Tailoring Blnk for your use case" icon="book-open-cover" href="/ledger/guide/ledger-architecture">
+		How to architect your Blnk Ledger
+    </Card>
+    <Card title="New at financial applications?" icon="book-open-cover" href="/guide/double-entry-101">
+	    Read our guide to getting started
     </Card>
 </CardGroup>
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
