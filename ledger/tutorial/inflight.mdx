@@ -1,0 +1,161 @@
+---
+title: Introducing Inflight
+description:
+---
+## Background
+
+When you record transactions on Blnk, there are three main statuses — queued, applied, and rejected.
+
+First, you have a default `QUEUED` status immediately your "record transaction" request is sent; then a final `APPLIED` status when it has been applied to the participating balances. 
+
+>When a transaction has been applied to a balance, it means the transaction amount has reflected in the balances computed. For instance, if a balance received funds, `APPLIED` means the transaction amount has been added to its total balance.
+
+![How transaction recording works represented by a NGN50 transaction from a source to a destination](/images/how-transaction-recording-works.png)
+
+A transaction status is only updated to `REJECTED` if all of the conditions required for a transaction has not been met.
+
+The conditions are:
+
+1. The participating balances (`source` and `destination`) must have the same asset class (`currency`) as specified in the transaction request.
+2. The `source` must have enough funds to process the transaction. 
+3. Overdraft must be enabled if the transaction has to happen but the `source` has insufficient funds.
+
+## Transaction recording workflows
+
+It is crucial to make sure that your transaction records reflect exactly what's going on in the outside world, i.e., if you record that a certain balance has sent money to an account, it needs to have actually happened for the record to be true. 
+
+To do this, you need to implement workflows that ensure your Blnk Ledger accurately mirrors what happens in real life.
+
+There are two main ways to implement this workflow:
+
+1. Forward logging workflow
+2. Reverse logging workflow
+
+#### Forward logging workflow
+
+You record the transaction first in your Blnk Ledger before it happens in real life. This workflow is best advised when recording transactions between balances in your Blnk Ledger or transactions to an external balance.
+
+![A visual representation of how forward logging workflow works](/images/forward-logging-workflow.png)
+
+This is how to approach it:
+
+1. When a transaction is initiated, [record it](/ledger/tutorial/record-a-transaction) first in your Blnk Ledger. This makes sure that your ledger serves as the full source of truth for every transaction activity that goes in your application.
+
+2. Blnk sends a `transaction.applied` webhook when the transactions has been applied to the balances. [Set up your application to listen for this webhook event](/intro/notifications). This also means all conditions for a successful transaction to take place have been met.
+
+3. If it is a transaction between balances managed by your application, you don't have to do anything. 
+   
+4. If it is a transaction to an external balance, immediately trigger a payout with your payment partners as soon as you receive the `transaction.applied` webhook event.
+	- If you receive a `successful` response from your partners, you are good to go; you don't have to do anything else. 
+	- If you receive a `failed` response from your partners meaning they were unable to process it, you can [refund the transaction](/ledger/tutorial/refund-transactions) on your Blnk Ledger.
+
+#### Reverse logging workflow
+
+Here, the transaction happens first in real life before you record it in your Blnk Ledger. This workflow is best advised when recording transactions sent from an external balance.
+
+![A visual representation of how reverse logging workflow works](/images/reverse-logging-workflow.png)
+
+This is how to approach it:
+
+1. When an external balance initiates a transaction with a balance managed by your application (or vice versa), your partners notify you via a webhook that you've sent/received some funds. 
+
+2. Once confirmed, identify which specific balance the transaction is intended for, and immediately initiate a transaction record on your Blnk Ledger providing the specified `balance_id` as the source or destination depending on the type of transaction.
+
+3. Blnk sends a `transaction.applied` webhook to notify you that the balance now reflects the transaction.
+
+## What is Inflight?
+
+Inflight, `inflight`, is a transaction parameter that instructs Blnk, in a forward logging workflow, to hold on applying a transaction until it has actually happened in real life.
+
+This is very useful for transactions that may take a while to complete. It also makes sure that funds are not available for a balance to spend until the transaction has actually happened, and you no longer have to always initiate a refund when your partners return a failed response.
+
+![How Inflight works](/images/how-inflight-works.png)
+
+<Note>
+	Inflight only works when the `source` is a balance managed by your application.
+</Note>
+
+## Applying `inflight` to transactions
+
+<Steps>
+	<Step title="Initiate a transaction">
+		Send a request to the [Record Transaction](/ledger/tutorial/record-a-transaction) endpoint and input the required fields. Include `"inflight": true` to enable Inflight for the transaction.
+		
+		```json request
+		{
+		    "amount": 750000,
+		    "reference": "ref_001adcfgf",
+		    "currency": "NGN",
+		    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+		    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+		    "description": "For fees",
+		    "inflight": true
+		}
+		```
+		
+		To disable Inflight, remove the `inflight` field from your request payload.
+	</Step>
+	<Step title="Transaction is added to queue for processing">
+		The transaction is immediately [added to a queue](/ledger/guide/queuing-transactions) for processing with its status set to `QUEUED`. 
+		
+		Once it is ready to be processed, the status is updated to `INFLIGHT` and a `transaction.inflight` webhook event is sent to notify you. The transaction record is held in `INFLIGHT` until you instruct Blnk with the next steps.
+		
+		<Note>
+			When a transaction is `INFLIGHT`, the amount is not applied to the participating balances.
+		</Note>
+	</Step>
+	<Step title="Instruct Blnk what to do next">
+		Once the transaction has happened in real life, call the [Inflight](#) endpoint URL. Provide the `id` of the transaction and the real-life status of the transaction. 
+		
+		```json request
+		{
+			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+			"inflight_status": true
+		}
+		```
+		
+		| Field | Description | Required? | Type
+		| --- | --- | --- | ---
+		| `id` | Unique ID of the transaction. | Yes | String
+		|`inflight_status` | Status of the transaction in real life. `true` means it was successful and `false` means it failed. | Yes | Boolean
+		
+		![Transaction recording with inflight applied](/images/transaction-recording-with-inflight.png)
+		
+		If successful, Blnk commits the transaction — the transaction status is updated to `APPLIED`, the balances are updated and a `transaction.applied` webhook event is sent to you.
+		
+		If failed, Blnk rolls back the transaction — the transaction status is updated to `REJECTED`, the transaction amount is returned to the source, and a `transaction.rejected` webhook event is sent to you.
+	</Step>
+</Steps>
+
+#### Use cases
+
+Inflight is best used when a balance in your Blnk Ledger is the `source` and your application has little control over how the transaction actually happens in real life. This means transactions between balances in your Blnk Ledger do not need to have `inflight` enabled.
+
+Useful applications for `inflight` include:
+
+- Sending funds to an external balance (bank account or wallet).
+- Making an online payment with a card.
+- Making an in-person payment with a physical card.
+
+## See also
+
+<CardGroup>
+	<Card title="How internal ledgers work" icon="book-open-cover" href="/ledger/guide/internal-ledgers">
+        Learn more about internal ledgers
+    </Card>
+    <Card title="Set up your balance precision" icon="book-open-cover" href="/ledger/tutorial/precision">
+        Optimize your balances with precision
+    </Card>
+	<Card title="Handling concurrency" icon="book-open-cover" href="/ledger/tutorial/queuing-transactions">
+		How Blnk queues transactions
+    </Card>
+    <Card title="Managing notifications" icon="book-open-cover" href="/intro/notifications">
+	    Set up how you receive notifications
+    </Card>
+</CardGroup>
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
