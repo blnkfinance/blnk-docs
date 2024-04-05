@@ -28,14 +28,14 @@ To do this, you need to implement workflows that ensure your Blnk Ledger accurat
 
 There are two main ways to implement this workflow:
 
-1. Forward logging workflow
-2. Reverse logging workflow
+1. Payout workflow
+2. Pay-in workflow
 
-#### Forward logging workflow
+#### Payout workflow
 
 You record the transaction first in your Blnk Ledger before it happens in real life. This workflow is best advised when recording transactions between balances in your Blnk Ledger or transactions to an external balance.
 
-![A visual representation of how forward logging workflow works](/images/forward-logging-workflow.png)
+![A visual representation of how forward logging workflow works](/images/payout-workflow.png)
 
 This is how to approach it:
 
@@ -49,31 +49,58 @@ This is how to approach it:
 	- If you receive a `successful` response from your partners, you are good to go; you don't have to do anything else. 
 	- If you receive a `failed` response from your partners meaning they were unable to process it, you can [refund the transaction](/ledger/tutorial/refund-transactions) on your Blnk Ledger.
 
-#### Reverse logging workflow
+#### Pay-in workflow
 
-Here, the transaction happens first in real life before you record it in your Blnk Ledger. This workflow is best advised when recording transactions sent from an external balance.
+Here, the transaction happens first in real life before you record it in your Blnk Ledger. 
 
-![A visual representation of how reverse logging workflow works](/images/reverse-logging-workflow.png)
+![A visual representation of how reverse logging workflow works](/images/pay-in-workflow.png)
 
 This is how to approach it:
 
-1. When an external balance initiates a transaction with a balance managed by your application (or vice versa), your partners notify you via a webhook that you've sent/received some funds. 
+1. When an external balance initiates a transaction with a balance managed by your application, your partners notify you via a webhook that you've received some funds. 
 
-2. Once confirmed, identify which specific balance the transaction is intended for, and immediately initiate a transaction record on your Blnk Ledger providing the specified `balance_id` as the source or destination depending on the type of transaction.
+2. Once confirmed, identify which specific balance the transaction is intended for, and immediately initiate a transaction record on your Blnk Ledger providing the specified `balance_id` as the destination.
 
 3. Blnk sends a `transaction.applied` webhook to notify you that the balance now reflects the transaction.
 
 ## What is Inflight?
 
-Inflight, `inflight`, is a transaction parameter that instructs Blnk, in a forward logging workflow, to hold on applying a transaction until it has actually happened in real life.
+Inflight, `inflight`, is a transaction parameter that instructs Blnk, in a payout workflow, to hold on applying a transaction until it has actually happened in real life.
 
 This is very useful for transactions that may take a while to complete. It also makes sure that funds are not available for a balance to spend until the transaction has actually happened, and you no longer have to always initiate a refund when your partners return a failed response.
 
 ![How Inflight works](/images/how-inflight-works.png)
 
-<Note>
-	Inflight only works when the `source` is a balance managed by your application.
-</Note>
+## How Inflight transactions works
+
+When you enable `inflight` on your transactions, the workflow becomes slightly different from the default way a transaction is recorded. 
+
+In this section, you'll learn the step-by-step process of how Blnk works when you enable `inflight` on a transaction.
+
+#### Before real-life processing
+
+When you record a new transaction, it's added to the transaction queue by default. Once it is ready for processing, the transaction status is updated to `INFLIGHT` and two new sub-balances are created within the balances specified in the source and destination fields.
+
+- `inflight_credit_balance`: Total amount of money waiting to be credited.
+- `inflight_debit_balance`: Total amount of money waiting to be debited.
+
+While the transaction is in `INFLIGHT`, the amount is debited from the source's `inflight_debit_balance` and credited into the destination's `inflight_credit_balance`. The balances of the `source` and `destination` remain untouched.
+
+![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
+
+Why inflight balances? The transaction has not been applied, so the balances of the `source` and `destination` cannot be affected yet. Inflight balances exist to help you keep track of the amounts yet to be debited or credited to a balance.
+
+In the example above, NGN 50 is being sent. Because `inflight` is enabled, the amount was debited from the source's `inflight_debit_balance` instead of the `source` itself, and credited to the destination's `inflight_credit_balance` instead of the `destination` itself. 
+
+#### After real-life processing
+
+Once the transaction has been processed in the real world, Blnk expects one of two instructions — commit or void.
+
+- `Commit`: Instructs Blnk to continue with the transaction and apply it to the balances. This debits the `source` and credits the source's `inflight_debit_balance`; and debits the destination's `inflight_credit_balance` and credits the `destination`.
+- `Void`: Instructs Blnk to stop and reject the transaction. This refunds the transaction between both inflight balances, and nothing else needs to be done.
+
+![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
+
 
 ## Applying `inflight` to transactions
 
@@ -110,20 +137,20 @@ This is very useful for transactions that may take a while to complete. It also 
 		```json request
 		{
 			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-			"inflight_status": true
+			"inflight_status": "commit",
+			"expiry_date": "2024-02-03 12:38:19",
 		}
 		```
 		
 		| Field | Description | Required? | Type
 		| --- | --- | --- | ---
 		| `id` | Unique ID of the transaction. | Yes | String
-		|`inflight_status` | Status of the transaction in real life. `true` means it was successful and `false` means it failed. | Yes | Boolean
+		|`inflight_status` | Status of the transaction in real life. `commit` means it was successful and the transaction should be applied in your ledger. `void` means it failed and the transaction should be rejected. | Yes | String
+		| `expiry_date` | Defines when the inflight status should expire. If it expires, the transaction is automatically voided. | No | String  
 		
-		![Transaction recording with inflight applied](/images/transaction-recording-with-inflight.png)
+		If successful, Blnk commits the transaction — the transaction status is updated to `APPLIED`, and a `transaction.applied` webhook event is sent to you.
 		
-		If successful, Blnk commits the transaction — the transaction status is updated to `APPLIED`, the balances are updated and a `transaction.applied` webhook event is sent to you.
-		
-		If failed, Blnk rolls back the transaction — the transaction status is updated to `REJECTED`, the transaction amount is returned to the source, and a `transaction.rejected` webhook event is sent to you.
+		If failed, Blnk voids the transaction — the transaction status is updated to `REJECTED`, and a `transaction.rejected` webhook event is sent to you.
 	</Step>
 </Steps>
 
