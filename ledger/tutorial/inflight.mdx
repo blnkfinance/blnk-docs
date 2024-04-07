@@ -116,9 +116,12 @@ Once the conditions are met, Blnk expects one of two instructions — commit or 
 		    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
 		    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
 		    "description": "For fees",
-		    "inflight": true
+		    "inflight": true,
+		    "expiry_date": "2024-02-03 12:38:19"
 		}
 		```
+		
+		>`expiry_date` defines when this transaction should expire if it hasn't be committed or voided yet.
 		
 		To disable Inflight, remove the `inflight` field from your request payload.
 	</Step>
@@ -132,27 +135,35 @@ Once the conditions are met, Blnk expects one of two instructions — commit or 
 		</Note>
 	</Step>
 	<Step title="Instruct Blnk what to do next">
-		Once the condition is met, call the [Inflight](#) endpoint URL. Provide the `id` of the transaction and the real-life status of the transaction. 
+		Once the condition is met, call the [Inflight](/misc/update-inflight-transaction) endpoint URL. Provide the `id` of the transaction and the real-life status of the transaction. 
 		
 		```json request
 		{
 			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-			"inflight_status": "commit",
-			"expiry_date": "2024-02-03 12:38:19",
+			"inflight_status": "commit"
 		}
 		```
 		
 		| Field | Description | Required? | Type
 		| --- | --- | --- | ---
 		| `id` | Unique ID of the transaction. | Yes | String
-		|`inflight_status` | Instruction to Blnk depending on if the condition has been met. `commit` means it was successful and the transaction should be applied in your ledger. `void` means it failed and the transaction should be rejected. | Yes | String
-		| `expiry_date` | Defines when the inflight status should expire. If it expires, the transaction is automatically voided. | No | String  
+		|`inflight_status` | Instruction to Blnk depending on if the condition has been met. Send `commit` if it was successful and the transaction will be applied in your ledger OR `void` if it failed and the transaction should be rejected. | Yes | String
 		
 		If successful, Blnk commits the transaction — the transaction status is updated to `APPLIED`, and a `transaction.applied` webhook event is sent to you.
 		
 		If failed, Blnk voids the transaction — the transaction status is updated to `REJECTED`, and a `transaction.rejected` webhook event is sent to you.
 	</Step>
 </Steps>
+
+#### Inflight statuses
+
+There are three total inflight statuses. Please note, an inflight status is different from a transaction status. An `inflight_status` field represents the instruction given to Blnk to apply to the transaction.
+
+- `commit`: This means the inflight conditions have been met and the transaction should be applied to its balances.
+
+- `void`: This means the inflight conditions were not met and the transaction should not be applied to its balances.
+
+- `expired`: This means the transaction stayed in the `INFLIGHT` status past the specified expiry date. The `inflight_status` is saved as "expired" and the transaction is discarded.
 
 #### Use cases
 
