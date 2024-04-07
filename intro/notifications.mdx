@@ -2,28 +2,52 @@
 title: Handling notifications
 description: Learn how to configure and manage notifications for transaction events in Blnk.
 ---
+## Overview
 
-Blnk's notification system is designed to keep you informed about crucial transaction events in real-time. This documentation covers how Blnk leverages webhook notifications to alert you about transaction statuses such as queued and applied, as well as how to handle error events through Slack notifications. Follow this guide to configure notifications in your Blnk environment effectively.
+Blnk uses webhooks to send you real-time notifications about crucial transaction events happening in your ledger. 
 
-## Notification Events
+In this guide, you'll learn how Blnk sends notifications and how to handle error notifications through Slack. 
 
-Blnk sends webhook notifications for two main transaction events:
+## Supported events
 
-1. **Transaction Queued**: This event is triggered when a transaction is successfully queued in the system. It indicates that the transaction is awaiting processing.
-2. **Transaction Applied**: This event occurs when a transaction has been processed and applied to the balance. It signifies the completion of the transaction's lifecycle.
+Blnk sends webhook notifications for three main events in your Blnk Ledger.
 
-Each notification payload consists of two fields:
+1. **`transaction.applied`:** This event is sent when a transaction has been processed and applied to the participating balances. It signifies the completion of a transaction's lifecycle. **See also →** [Record a transaction](/ledger/tutorial/record-a-transaction).
 
-- **event**: Indicates the type of event (`transaction.queued` or `transaction.applied`).
-- **data**: Contains the transaction payload, detailing the transaction information.
+2. **`transaction.inflight`:** This event is sent when a transaction's status has been updated to `INFLIGHT` and is waiting for a certain condition to be met, as defined by your application. **See also →** [Introducing Inflight](/ledger/tutorial/inflight).
 
-## Error Notifications
+3. **`balance.monitor`:** This event is sent when a balance monitor has been triggered and the monitoring conditions set have been met. **See also →** [Balance monitoring](/ledger/tutorial/balance-monitoring).
 
-In addition to transaction events, Blnk provides the capability to send error notifications to a specified Slack webhook. This feature is particularly useful for monitoring and quickly addressing issues that may arise during transaction processing.
+Each notification payload contains two main fields:
 
-## Configuring Notifications
+| Field | Description | Type
+| --- | --- | ---
+| `event` | Indicates the type of event, e.g., `transaction.applied`. | String
+| `data` | Contains the transaction or balance monitoring payload, detailing the relevant information. | Object
 
-Notifications in Blnk can be configured through the `blnk.json` configuration file. This file allows you to specify your preferences for receiving webhook notifications and Slack error notifications. Below is an example configuration that demonstrates how to set up both notification types:
+#### Handling error notifications
+
+In addition to transaction events, Blnk also allows you send error notifications to Slack via a specified webhook provided by your Slack workspace. This is very useful for monitoring and quickly addressing issues that may arise during transaction processing.
+
+To learn how to get your Slack webhook URL, go to: [Slack API: Sending messages using incoming webhooks](https://api.slack.com/messaging/webhooks).
+
+## Configuring notifications in Blnk
+
+To set up how you receive notifications from Blnk, you need to update your `blnk.json` configuration file. This file allows you to specify the webhook URLs that Blnk sends notifications to — both for your application and Slack.
+
+>If you do not have a `blnk.json` file, please create a new `json` file — it contains essential settings for running your Blnk server.
+>
+>Next, copy & paste [the configuration JSON](/intro/config) into it. **See also → [Run Blnk server](/intro/run-blnk-server).** 
+
+Update the `notification` object as follows:
+
+- `slack`:
+	- `webhook_url`: The webhook URL provided by your Slack workspace.
+- `webhook`:
+	- `url`: Your application's webhook URL where Blnk sends transaction event notifications to.
+	- `headers`: Optional headers that you may need to include in the notification request to authenticate the message. This can include authentication tokens or content type specifications.
+
+Below is an example of a notifications configuration:
 
 ```json
 {
@@ -35,52 +59,32 @@ Notifications in Blnk can be configured through the `blnk.json` configuration fi
       "url": "http://server:5001/webhooks",
       "headers": {
         "Content-Type": "application/json",
-        "Authorization": "Bearer your_auth_token"
+        "Authorization": "Bearer <your_auth_token>"
       }
     }
   }
 }
 ```
 
-### Slack Configuration
+## See also
 
-- **webhook_url**: The full URL of your Slack webhook. This URL is used by Blnk to send error notifications directly to your Slack channel.
-
-### Webhook Configuration
-
-- **url**: The endpoint URL where Blnk will send transaction event notifications.
-- **headers**: Optional headers that you may need to include in the notification request. This can include authentication tokens or content type specifications.
-
-
-## Quick start
 <CardGroup>
-
-    <Card title="Create Ledger" icon="square-code" href="/misc/create-ledger">
-        Create a new ledger
+	<Card title="Getting started" icon="book-open-cover" href="/ledger/tutorial/create-a-ledger">
+        Dive into the Blnk Ledger
     </Card>
-
-    <Card
-        title="Get Ledger"
-        icon="square-code"
-        href="/misc/create-ledger"
-    >
-        Fetch ledger details easily
+    <Card title="Managing notifications" icon="book-open-cover" href="/intro/notifications">
+	    Set up how you receive notifications
     </Card>
-
-    <Card
-        title="Create Balance"
-        icon="square-code"
-        href="/misc/create-balance"
-    >
-        Create multi currency balances
+    <Card title="Enable secure mode" icon="sliders" href="/intro/secure-blnk-server">
+        Secure your Blnk server
     </Card>
-
-    <Card
-        title="Record Transaction"
-        icon="square-code"
-        href="/misc/record-transaction"
-    >
-       Start processing transactions
+    <Card title="Load testing with k6" icon="sliders`" href="/intro/load-testing">
+        Set up a load test for your server
     </Card>
-
 </CardGroup>
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
