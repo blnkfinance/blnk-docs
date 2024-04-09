@@ -1,0 +1,32 @@
+---
+title: Blnk v0.6.0 (Latest)
+description: Advanced control over transactions
+---
+
+Release date: Apr 8, 2024
+## Multiple sources & destinations
+
+<Frame caption="Simplified flow of how multiple sources work">
+	<img src="/images/multiple-sources.png" />
+</Frame>
+	
+You can now process transactions from multiple sources to one destination or from one source to multiple destinations. Multiple sources/destinations help you link similar transactions into one single request payload and making the process a lot more efficient for you. 
+	
+Go to [Multiple sources](/ledger/tutorial/multiple-sources) to learn how to record your first multi-source transaction on Blnk.
+
+## Introducing inflight
+
+`inflight` is a transaction parameter that lets you instruct Blnk to hold the transaction amount in a holding balance until a condition set by your application has been met. When you initiate an inflight transaction, its status stays in `INFLIGHT` until you instruct Blnk to either continue or void the transaction.
+
+Here are some ways we believe Inflight is useful:
+
+- **For managing KYC limits:** When an account crosses its KYC limits determined by your application, you can hold all deposits with inflight until the user's KYC is updated.
+- **For escrow:** Inflight allows you to easily implement escrow features in your application, allowing your users see the amount being held (but not available to them to spend).
+- **For card payouts:** Hold amounts in an inflight balance until the card is authorized by the payment processor for successful payment.  
+- **For external payouts:** Hold amount in an inflight balance while your payout is being processed by your provider; only release it when the transaction is successful or failed.
+
+## New & improved
+1. We now apply the `precision` value for a ledger balance to the amounts of all transactions that the ledger balance is a part of. This makes sure that your total balance is correctly computed and no amount is lost to approximation.
+2. Implemented "optimistic locking" as a concurrency control mechanism. This allows multiple transactions to proceed concurrently without locking resources. **See also → [Managing concurrency](/ledger/guide/queuing-transactions).**
+3. You can now process transactions from a ledger balance even if they do not have sufficient funds. With Overdraft, you can compute a negative balance (representing that more funds have been paid out than paid in on the ledger balance).
+4. General bug and performance improvements
