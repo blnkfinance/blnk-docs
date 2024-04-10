@@ -1,0 +1,180 @@
+---
+title: Getting started
+description: Look up anything in your Blnk Ledger
+---
+
+## Overview
+
+You can use Search to retrieve any data — ledgers, ledger balances, and transactions — from your Blnk Ledger. Blnk uses [Typesense](https://typesense.org) to handle fetching data from your ledger allowing you to efficiently display data in your application, easily track balances and transactions, and filter specific information needed from your ledger for investigation.
+
+In this guide, you'll learn the basics of sending search queries to Blnk and how we return responses.
+
+To learn more about Typesense, visit their website: [https://typesense.org](https://typesense.org).
+
+## Using Search
+
+<Steps>
+    <Step title="Call the Search endpoint URL">
+        Here is the endpoint: `/search/:collection`
+
+        :collection refers to the collection of data you want to query. There are currently only 3 collections in Blnk:
+
+        1. Ledgers (`/search/ledgers`).
+        2. Ledger balances (`/search/balances`).
+        3. Transactions (`/search/transactions`).
+    </Step>
+    <Step title="Input your search query">
+        Send a request payload containing your search query. 
+        
+        Consider the following example, a POST request to `/search/balances`:
+
+        ```json request
+        {
+            "q": "NGN",
+            "filter_by": "balance:>1000",
+            "sort_by": "created_at:desc",
+            "page": 2,
+            "per_page": 50
+        }
+        ```
+
+        | Field | Description | Required | Example
+        | --- | --- | :---: | ---
+        | `q` | The query text to search for in the collection. | Yes | `NGN` returns all ledger balances containing "NGN".
+        | `filter_by` | Filter conditions for refining your results. | No | `balance:>1000` returns all ledger balances with their `balance` value greater than "1000."
+        | `sort_by` | Sorting conditions that will be used to order your results. | No | `created_at:desc` orders the results in by the "created_at" field in descending order.
+        | `page` | The page number of your results. | No | `2` returns the second page of the results.
+        | `per_page` | The number of results per page. | No | `50` returns only 50 results on one page; to see the rest (if any), you'll need to move to the next page.
+    </Step>
+    <Step title="Blnk returns a JSON response of your results">
+        Blnk processes your query and the results are presented you in the following response format.
+
+        ```json response
+        {
+            "found": 1,
+            "out_of": 1,
+            "page": 1,
+            "request_params": {
+                "q": "NGN",
+                "filter_by": "balance:>1000",
+                "sort_by": "created_at:desc",
+                "page": 2,
+                "per_page": 50
+            },
+            "search_time_ms": 1,
+            "hits": [
+                {
+                    "document": {
+                        "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+                        "balance": 0,
+                        "credit_balance": 0,
+                        "debit_balance": 0,
+                        "currency": "NGN",
+                        "precision": 1,
+                        "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+                        "created_at": "2024-02-20 05:28:03 UTC",
+                        "meta_data": null
+                    }
+                }
+            ]
+        }
+        ```
+
+        | Field | Description
+        | --- | ---
+        | `found` | Number of documents that match your search query and filtering conditions.
+        | `out_of` | Number of documents that match only your search query.
+        | `page` | The page being displayed to you.
+        | `request_params` | Your request payload.
+        | `search_time_ms` | Time it took for the search query to execute, usually in ms.
+        | `hits` | Contains an array of your search results.
+        | `document` | Represents the actual search result item.
+    </Step>
+</Steps>
+
+## Understanding search query
+#### Structure and terminology
+
+A query `clause` consists of a `field` followed by an `operator` and then a `value`.
+
+| Terms | |  | |  | |  | |  | | Example
+| --- | --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| clause | | | |  | |  | |  | |  `"q": "NGN"`
+| field | | | |  | |  | |  | | `"q"`
+| operator | | | |  | |  | |  | |  `:`
+| value | |  | |  | |  | |  | | "`NGN`"
+
+#### Quotes
+
+You must always use quotation marks around string values in your query. You can omit them for numerical values.
+
+- `"q": "NGN"` means quotes are required because "NGN" is a string value.
+- `"per_page": 50` doesn't need quotes because it is a numerical value.
+
+## Supported parameters for each collection
+
+The parameters you can specify in the `value` part of your [query clause](#understanding-search-query) are determined by the collection you are searching in. 
+
+There are three data collections in the current version of the Blnk Ledger — ledgers, ledger balances, and transactions.
+
+#### For ledgers
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| name | | | | | | | | | `name:World`
+| ledger_id | | | | | | | | | `ledger_id:=ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
+| created_at | | | | | | | | | `created_at:<2024-20-01`
+
+#### For balances
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| balance_id | | | | | | | | | `balance_id:=bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| balance | | | | | | | | | `balance:[100..100000]`
+| credit_balance | | | | | | | | | `credit_balance:>100000`
+| debit_balance | | | | | | | | | `debit_balance:=2000000`
+| currency | | | | | | | | | `currency:[NGN, USD, EUR]`
+| precision | | | | | | | | | `precision:=100`
+| ledger_id | | | | | | | | | `ledger_id:=ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc`
+| created_at | | | | | | | | | `created_at:<2024-20-01`
+
+#### For transactions
+
+| Parameters | | | | | | | | | Sample usage
+| --- | --- | ---| ---| ---| ---| ---| ---| ---| ---
+| id | | | | | | | | | `id:=txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d`
+| source | | | | | | | | | `source:=bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| destination | | | | | | | | | `destination:=bln_0be360ca-86fe-457d-be43-daa3f966d8f0`
+| reference | | | | | | | | | `reference:=ref_001adcfgf`
+| amount | | | | | | | | | `amount:[2000..100000]`
+| currency | | | | | | | | | `currency:[NGN, USD, EUR]`
+| status | | | | | | | | | `status:[applied, queued]`
+| created_at | | | | | | | | | `created_at:<2024-20-01`
+| scheduled_for | | | | | | | | | `scheduled_for:>2024-20-01`
+| allow_over_draft | | | | | | | | | `allow_over_draft:!=true`
+| inflight | | | | | | | | | `inflight:=true`
+
+## Things to consider
+#### Processing time
+
+The time it takes to process a search query may vary depending on the kind and complexity of your search query. For workflows where you need to display values in real-time like balances or a specific transaction details, used the `GET by id` endpoints specific to the collection you are searching for.
+
+#### Data freshness
+
+It is advisable not to use read-after-write flows (for example, searching immediately after a transaction request has been made) because the data may not be available immediately to search. Under normal conditions, data is searchable within seconds, but propagation of new or updated data could be delayed due to unforeseen circumstances.
+
+## See also
+
+There's a lot more you can do with each of the parameters in your request payload to get the results you want. 
+
+- [Query parameters](query-parameters)
+- [Filter parameters](filter-parameters)
+- [Sorting parameters](sorting-parameters)
+- [Pagination parameters](pagination-parameters)
+- [Common examples](common-examples)
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Slack community](https://join.slack.com/t/blnk-ledger/shared_invite/zt-2fwdivkvm-zHW4F8lwtVsbIaPg~dyx9w) and share your questions/thoughts with other developers building financial applications like you.
