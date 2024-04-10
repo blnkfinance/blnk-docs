@@ -1,36 +1,40 @@
 ---
-title: Balance precision
+title: Understanding precision
 description: ""
 ---
 ## Overview
 
 While transaction amounts are accepted as float, `float`, balances are stored as integers, `int64`, in Blnk. To compute your balance, transaction amounts have to be stored as integers. This makes sure that your computed balance is accurate and precise.
 
-Balance precision allows Blnk to convert your transaction amounts into the lowest unit possible for your asset class (or currency), e.g. converting Naira to kobo. This guide shows you how balance precision works and best practices for applying it in your application.
+Precision allows Blnk to convert your transaction amounts into the lowest unit possible for your asset class (or currency), e.g. converting Naira to kobo. This guide shows you how precision works and best practices for applying it in your application.
 
 <Tip>The lowest unit for an asset class is a value that has no decimal point regardless of what amount is passed.</Tip>
 
-## Why balance precision?
+## Why use precision?
 
-Balance precision is crucial because computers are not great at storing and managing floating points as best as Blnk needs it to. **Read more → [Floating Point Math](https://0.30000000000000004.com/)**
+Precision is crucial because computers are not great at storing and managing floating points as best as Blnk needs it to. **Read more → [Floating Point Math](https://0.30000000000000004.com/)**
 
-For instance, if a customer sends 1000.50 to a vendor, Blnk accepts the amount value as 1000.50 (float), retrieves the defined balance precision (e.g. 100), and applies it to the amount. This converts our amount from 1000.50 to 100050.
+For instance, if a customer sends 1000.50 to a vendor, Blnk accepts the amount value as 1000.50 (float), retrieves the defined precision (e.g. 100), and applies it to the amount. This converts our amount from 1000.50 to 100050.
 
-This way all amounts is accounted for when computing the balance, and we can accurately store amounts without dealing with the technical issues of managing floating points.
+This ensures that all amounts are accounted for when computing the balances, and we can accurately store amounts without dealing with the technical issues of managing floating points.
 
-## Applying balance precision
+## Applying precision to your transactions
 
-To set a balance precision, the `precision` field must be passed during the creation of the balance. **See also → [How to create a balance](/ledger/tutorial/create-a-balance).**
+To set a precision value, the `precision` field must be passed while [recording a transaction](record-a-transaction). If it is not passed, the default value is `1`.
 
-```json request
-		{
-		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-		    "currency": "NGN",
-		    "precision": 100
-		}
+```json sample request
+{
+    "amount": 750.23,
+    "reference": "ref_001adcfgf",
+    "currency": "NGN",
+    "precision": 100,
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For fees"
+}
 ```
 
-When creating a balance with a particular asset class (e.g., NGN), determine the lowest possible amount and choose a precision value that ensures that the amount is converted to the lowest unit possible.
+When recording a transaction with a particular asset class (e.g., NGN), determine the lowest possible amount and choose a precision value that ensures that the amount is converted to the lowest unit possible.
 
 | Sample asset class | Lowest possible amount | Suggested precision value | Lowest unit to be stored
 | --- | --- | --- | ---
@@ -42,101 +46,62 @@ When creating a balance with a particular asset class (e.g., NGN), determine the
 <Tip>Most national currencies have 0.01 as their lowest possible amount. This makes 100 the best suggested precision value for them.</Tip>
 
 ```json response
-		{
-		    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
-		    "balance": 0,
-		    "credit_balance": 0,
-		    "debit_balance": 0,
-		    "currency": "NGN",
-		    "precision": 100,
-		    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-		    "identity_id": "",
-		    "created_at": "2024-02-20T05:33:01.311600208Z",
-		    "meta_data": null
-		}
-		```
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "amount": 750.23,
+    "precise_amount": 75023,
+    "currency": "NGN",
+    "description": "For fees",
+    "status": "QUEUED",
+    "created_at": "2024-02-20 05:28:03 UTC"
+}
+```
 
-Once a balance is configured with `precision`, all transaction amounts on that balance are converted and recorded using the precision value.
+Once a transaction is recorded with `precision`, its `precise_amount` is stored by default as the amount in your ledger and used to compute the balances of the source and destination.
 
 >When retrieving transaction amounts or balances to display in your application, you can always convert the lowest unit back to its primary asset class by dividing with the `precision`. 
 >
 >For instance, to display the amount above in your application:
 >
 >- Retrieve the amount using the [Get Transaction](/misc/get-transaction) endpoint.
->- Retrieve the defined balance precision and apply it to the amount through division. This converts it from 100050 to 1000.50 to display in your app.
+>- Divide the amount by the applied `precision`. This converts it from 75023 to 750.23 to display in your app.
 
 ## Important to note
 
-It is very crucial to maintain consistency in how balance precision is applied in your application. Consider the following when using balance precision:
+It is very crucial to maintain consistency in how precision is applied in your application. Consider the following when using balance precision:
 
-1. **Balances with the same asset class must have the same balance precision:** An asset class is defined by its `currency` attribute. If you set `precision` for one balance, then all balances with the same asset class must have the same value. 
+1. **Transactions with the same asset class must have the same precision applied to its amounts:** An asset class is defined by its `currency` attribute. If you set `precision` for one NGN transaction, then all transactions with the same asset class must have the same value. 
 
-2. **Ensure your balance precision value converts all amounts to the lowest unit possible**: For instance, while `"precision": 100` converts most national currencies in the world to their lowest unit, it is not the same for crypto assets. Bitcoin can have up to `100000000` as their precision value.
-
-The default value set by Blnk is `"precision": 1` on all balances created without balance precision. This is best for asset classes that do not have decimal points in their amounts, e.g., loyalty points.
+2. **Ensure your precision value converts all amounts to the lowest unit possible**: For instance, while `"precision": 100` converts most national currencies in the world to their lowest unit, it is not the same for crypto assets. Bitcoin can have up to `100000000` as their precision value.
 
 ## Best practices
 
-1. **Define a standard:** Establish a clear policy on how balance precision is applied for different asset classes (`currency`) within your system.
+1. **Define a standard:** Establish a clear policy on how precision is applied for different asset classes (`currency`) within your system.
 
-2. **Consistency:** Always apply the same balance precision across all balances with the same asset class.
+2. **Consistency:** Always apply the same precision across all transactions with the same asset class.
 
-3. **Review and audit:** Regularly review and audit your Blnk Ledger to ensure that multipliers are applied consistently and correctly.
+3. **Review and audit:** Regularly review and audit your Blnk Ledger to ensure that precision is applied consistently and correctly.
 
 ## 🚨 Warning
 
-Do not perform transactions between balances with different asset classes and/or balance precisions. This can complicate your financial operations, and will definitely lead to errors in balance calculations.
+Do not perform transactions between balances with asset classes of different `precision` values, e.g., you can record transactions from an NGN balance to a USD balance (they have the same precision value). Learn how → [Applying rates to your transactions](rates).
 
-<Accordion icon="lightbulb" title="Handling transactions between 2 different asset classes">
-	Consider a scenario where you want to move money from a NGN balance (`bal_ngn`) to a USD balance (`bal_usd`). The following [Record Transaction](/misc/record-transaction) request is wrong and leads to inaccurate records.
-	
-	```json request
-	{
-	    "amount": 5000,
-	    "reference": "ref_001adcfgf",
-	    "currency": "NGN",
-	    "source": "bal_ngn",
-	    "destination": "bal_usd"
-	}
-	```
-	
-	The best way to do this is to create 2 new balances, `@GlobalNGN` and `@GlobalUSD` and post two transaction records:
-	
-	- Move money from `bal_ngn` to `@GlobalNGN`. `@GlobalNGN` is also a NGN balance and it receives the Naira you intend to send to the USD balance.
-	  
-	```json request
-		{
-		    "amount": 5000,
-		    "reference": "ref_001adcfgf",
-		    "currency": "NGN",
-		    "source": "bal_ngn",
-		    "destination": "@GlobalNGN"
-		}
-	```
-	- Move money from `@GlobalUSD` to `bal_usd`. `@GlobalUSD` is a USD balance and it sends the dollar equivalent of the Naira you want to send from the NGN balance.
-	
-    ```json request
-		{
-		    "amount": 5000,
-		    "reference": "ref_001adcfgf",
-		    "currency": "USD",
-		    "source": "@GlobalUSD",
-		    "destination": "bal_usd"
-		}
-	```
-	
-	<Tip>You have full control and flexibility over how you want to name your balances. To learn more about naming balances with the "@" prefix, see → [How internal ledgers work](/ledgers/guide/internal-ledgers).</Tip>
-</Accordion>
+However, it is not advisable to record transactions from an NGN balance to a BTC balance because they have different precision values. 
 
-To ensure the integrity and accuracy of your financial data, choose a consistent approach for applying balance precision across your application.
+This can complicate your financial operations, cause inconsistencies in your ledger and will definitely lead to errors in balance calculations.
 
 #### Why consistency matters
 
-1. **Accuracy:** Consistent use of balance precision ensures that all transaction amounts and balances are accurately represented in your Blnk Ledger, preventing calculation errors, where applicable.
+To ensure the integrity and accuracy of your financial data, choose a consistent approach for applying balance precision across your application.
 
-2. **Comparability:** Transactions and balances with the same balance precision are directly comparable, simplifying financial analysis and reporting.
+1. **Accuracy:** Consistent use of precision ensures that all transaction amounts and balances are accurately represented in your Blnk Ledger, preventing calculation errors, where applicable.
 
-3. **Integrity:** Maintaining a uniform approach to balance precision preserves the integrity of your Blnk Ledger, making it more reliable and trustworthy for other financial operations.
+2. **Comparability:** Transactions and balances with the same precision are directly comparable, simplifying financial analysis and reporting.
+
+3. **Integrity:** Maintaining a uniform approach to precision preserves the integrity of your Blnk Ledger, making it more reliable and trustworthy for other financial operations.
 
 ## See also
 
