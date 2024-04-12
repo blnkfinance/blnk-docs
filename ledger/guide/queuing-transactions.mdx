@@ -23,25 +23,11 @@ Blnk's architecture incorporates queuing and optimistic locking to manage concur
 
 This diagram illustrates Blnk's layered architecture where transactions enter through the API layer and are then routed to the appropriate service based on the details of the transaction. 
 
-Note the following from the sample diagram above:
-
-1. Blnk groups similar transactions into one queue to sequentially process them.
-2. Blnk equally distributes the remaining transactions between the two available queue partitions to ensure that they're processed in time.
-3. Due to having more than one queue partition, Blnk simultaneously processes up to 3 transactions at once without risking conflict.
-
 Queuing transactions act as a buffer to manage the flow of transactions to ensure sequential processing for similar operations. The database layer, equipped with optimistic locking, is where the final check for version consistency occurs, ensuring that only transactions based on the current state of the data are applied.
 
 ## Queuing transactions
 
-To guarantee efficiency in transaction processing, we employed queue partitioning. 
-
->For instance, imagine passing 100 tennis balls in a bowl with one hole; the balls will be forced to go through the hole one after the other. If it takes 1 second for 1 ball to pass through, it'd take 1 minute, 40 seconds to pass all of the balls through the hole.
->
->Imagine if the same bowl had five holes, it means 5 balls can go through at the same time. If the balls were split equally betweeen the holes, it'd take only 20 seconds to pass all of the balls through the hole.
->
->What changed? The balls still went through one after the other, but there were other options available if one hole was in use. 
-
-The same logic applies to transaction queuing. With queuing, Blnk can easily process multiple transactions at the same time. If one partition is busy processing one transaction, Blnk simply assigns the next transaction to another partition, if it is free for processing.
+To guarantee efficiency in transaction processing, Blnk employs queue partitioning. With queuing, Blnk can easily process multiple transactions at the same time. If one partition is busy processing one transaction, Blnk simply assigns the next transaction to another partition, if it is free for processing.
 
 This way, all transactions are adequately processed and no record is missing or left pending.
 
