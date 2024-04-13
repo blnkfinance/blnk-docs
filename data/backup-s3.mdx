@@ -1,83 +1,120 @@
 ---
 title: Backup to Amazon S3
 ---
-Safeguarding your financial data on a Blnk server involves not only local backups but also utilizing cloud storage solutions like Amazon S3 for off-site storage. This guide provides detailed instructions on setting up backups to Amazon S3, including configuration steps, scheduling, and verification processes.
+
+## Overview
+
+Safeguarding your financial data on a Blnk server involves not only local backups but also utilizing cloud storage solutions like Amazon S3 for off-site storage. 
+
+This guide provides detailed instructions on setting up backups to Amazon S3, including configuration steps, scheduling, and verification processes.
 
 ## Prerequisites
-- Docker 20.10.11 or later
-- Compose 1.29.2 or later
-- AWS account with S3 access
-- Basic understanding of cron jobs (for Linux/macOS) or Task Scheduler (for Windows)
-- Familiarity with command-line interfaces and shell scripting
+
+- Docker 20.10.11 or later;
+- Compose 1.29.2 or later;
+- AWS account with S3 access;
+- Basic understanding of cron jobs (for Linux/macOS) or Task Scheduler (for Windows);
+- Familiarity with command-line interfaces and shell scripting.
 
 ## Configuring Amazon S3 Access
 
 Before setting up the backup process, you need to configure your Blnk server to access your Amazon S3 bucket.
 
-### Step 1: Create an IAM User and Policy
+<Steps>
+  <Step title="Create an IAM user and policy">
+    1. **Log in** to your AWS Management Console and navigate to the IAM (Identity and Access Management) service.
+    2. **Create a new IAM user** with programmatic access. This will generate an access key ID and secret access key, which you'll use to configure the Blnk server.
+    3. **Attach a policy** to the IAM user that grants necessary permissions to write to the S3 bucket. You can use the AmazonS3FullAccess policy or create a custom policy with more restricted access.
+  </Step>
+  <Step title="Configure S3 bucket">
+    1. **Create an S3 bucket** in your AWS account if you haven't already. Note the bucket name and region.
+    2. **Set up bucket policies** or access control lists (ACLs) as necessary to allow the IAM user to write backups to the bucket.
+  </Step>
+  <Step title="Update Blnk configuration">
+    Modify your `blnk.json` configuration file to include the AWS access key ID, secret access key, bucket name, and region. This enables the Blnk server to authenticate with AWS S3 and store backups in your bucket.
 
-1. **Log in** to your AWS Management Console and navigate to the IAM (Identity and Access Management) service.
-2. **Create a new IAM user** with programmatic access. This will generate an access key ID and secret access key, which you'll use to configure the Blnk server.
-3. **Attach a policy** to the IAM user that grants necessary permissions to write to the S3 bucket. You can use the AmazonS3FullAccess policy or create a custom policy with more restricted access.
+    ```json
+    {
+      ...
+      "aws_access_key_id": "YOUR_ACCESS_KEY_ID",
+      "aws_secret_access_key": "YOUR_SECRET_ACCESS_KEY",
+      "s3_bucket_name": "YOUR_BUCKET_NAME",
+      "s3_region": "YOUR_BUCKET_REGION",
+      ...
+    }
+    ```
+  </Step>
+</Steps>
 
-### Step 2: Configure S3 Bucket
-
-1. **Create an S3 bucket** in your AWS account if you haven't already. Note the bucket name and region.
-2. **Set up bucket policies** or access control lists (ACLs) as necessary to allow the IAM user to write backups to the bucket.
-
-### Step 3: Update Blnk Configuration
-
-Modify your `blnk.json` configuration file to include the AWS access key ID, secret access key, bucket name, and region. This enables the Blnk server to authenticate with AWS S3 and store backups in your bucket.
-
-```json
-{
-  ...
-  "aws_access_key_id": "YOUR_ACCESS_KEY_ID",
-  "aws_secret_access_key": "YOUR_SECRET_ACCESS_KEY",
-  "s3_bucket_name": "YOUR_BUCKET_NAME",
-  "s3_region": "YOUR_BUCKET_REGION",
-  ...
-}
-```
-
-## Automating S3 Backups
+## Automating S3 backups
 
 After configuring access to Amazon S3, the next step is to automate the backup process.
 
-### Create a Backup Script
+<Steps>
+  <Step title="Create a backup script">
+    Create a script named `backup_to_s3.sh` that triggers the Blnk server to back up to S3 using the `/backup-s3` route.
 
-Create a script named `backup_to_s3.sh` that triggers the Blnk server to back up to S3 using the `/backup-s3` route.
+    ```bash
+    #!/bin/bash
+    curl -X POST http://yourdomain.com:5001/backup-s3
+    ```
 
-```bash
-#!/bin/bash
-curl -X POST http://yourdomain.com:5001/backup-s3
-```
+    Make sure to replace `http://yourdomain.com:5001` with your actual Blnk server domain and port.
+  </Step>
+  <Step title="Schedule the backup with Cron">
+    Use cron (Linux/macOS) or Task Scheduler (Windows) to schedule your backup script. For example, to run the backup daily at 2 AM:
 
-Make sure to replace `http://yourdomain.com:5001` with your actual Blnk server domain and port.
+    ```cron
+    0 2 * * * /path/to/backup_to_s3.sh
+    ```
+  </Step>
+</Steps>
 
-### Schedule the Backup
-
-Use cron (Linux/macOS) or Task Scheduler (Windows) to schedule your backup script. For example, to run the backup daily at 2 AM:
-
-```cron
-0 2 * * * /path/to/backup_to_s3.sh
-```
-
-## Backup Storage Best Practices
+## Best practices for backup storage to Amazon S3
 
 - **Encryption**: Enable server-side encryption (SSE) for your S3 bucket to protect your backups at rest.
 - **Versioning**: Turn on versioning for your S3 bucket to keep multiple versions of your backups, providing additional protection against accidental deletion or overwriting.
-- **Lifecycle Policies**: Implement lifecycle policies to automatically transition older backups to more cost-effective storage classes and purge outdated backups.
+- **Lifecycle policies**: Implement lifecycle policies to automatically transition older backups to more cost-effective storage classes and purge outdated backups.
 
 ## Restoring from an S3 Backup
 
 To restore your Blnk database from a backup stored in S3:
 
-1. **Download the Backup File**: Use the AWS CLI, S3 console, or an S3 client to download the desired backup file from your S3 bucket.
-2. **Restore the Database**: Follow the same steps as local restoration, using the `pg_restore` command with the path to the downloaded backup file.
+<Steps>
+  <Step title="Download the backup file">
+    Use the AWS CLI, S3 console, or an S3 client to download the desired backup file from your S3 bucket.
+  </Step>
+  <Step title="Restore the database">
+    Follow the same steps as local restoration, using the `pg_restore` command with the path to the downloaded backup file.
 
-```bash
-pg_restore -d yourdatabase /path/to/downloaded_backup_file
-```
+    ```bash
+    pg_restore -d yourdatabase /path/to/downloaded_backup_file
+    ```
+  </Step>
+  <Step title="Verify the restoration">
+    Ensure the Blnk application functions correctly and all data is intact post-restoration.
+  </Step>
+</Steps>
 
-3. **Verify the Restoration**: Ensure the Blnk application functions correctly and all data is intact post-restoration.
+## See also
+
+<CardGroup>
+  <Card title="Transaction hashing" icon="book-open-cover" href="hash">
+	  How Blnk ensures immutability
+  </Card>
+	<Card title="Backup to Disk" icon="book-open-cover" href="backup-disk">
+    Create a local backup for Blnk
+  </Card>
+  <Card title="Handling concurrency" icon="book-open-cover" href="/ledger/guide/queuing-transactions">
+	  Learn how Blnk processes transactions
+  </Card>
+  <Card title="Post a transactions" icon="book-open-cover" href="/ledger/tutorial/record-a-transaction">
+	  Learn how to initiate a transaction
+  </Card>
+</CardGroup>
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Discord server](https://discord.gg/7WNv94zPpx) and share your questions/thoughts with other developers building financial applications like you.
