@@ -1,27 +1,88 @@
 ---
-title: 'Get Started'
-description: ''
+title: 'Run Blnk Server'
 ---
+Learn how to deploy the Blnk server efficiently. This guide assumes you have a basic understanding of Docker and Compose, essential tools for deploying containerized applications.
 
-Blnk provides account management capabilities, enabling the creation and management of external accounts seamlessly. This feature is essential for fintech products that offer account number issuance to their customers.
+<Info>
+    **Prerequisite**
+    - Docker 20.10.11 or later
+    - Compose 1.29.2 or later
+</Info>
 
+## Deployment Steps
 
-## Creating and Managing Accounts
+### Step 1: Clone Blnk to Your Local Server or Computer
 
-Accounts in Blnk can be easily created and managed. They can be tied to a balance, allowing transactions recorded on an account to reflect on the associated balance. This Connection enhances the transparency and consistency of financial records.
+Start by cloning the Blnk repository to your local environment. This will create a copy of the latest Blnk source code on your machine.
 
-```json request
+```bash
+git clone https://github.com/jerry-enebeli/Blnk && cd Blnk
+```
+
+### Step 2: Create a Configuration File
+
+Next, you'll need to create a configuration file named `blnk.json`. This file contains essential settings for running your Blnk server.
+
+```bash
+touch blnk.json
+```
+
+### Step 3: Configure Your Blnk Server
+
+Open the `blnk.json` file you just created and copy the following JSON configuration into it. Make sure to adjust the settings according to your environment and needs, such as the `time_zone`, database credentials (`data_source`), and any other specific configurations you require.
+
+```json
 {
-    "bank_name": "Blnk bank",
-    "number": "30888888832",
-    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
-    "balance_id": "bln_c1750613-b4b0-4cde-9793-459165a8715f"
+  "project_name": "Blnk",
+  "time_zone": "UTC",
+  "data_source": {
+    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
+  },
+  "redis": {
+    "dns": "redis:6379"
+  },
+  "account_number_generation": {
+    "enable_auto_generation": true,
+    "http_service": {
+      "url": "http://localhost:5001/mocked-account",
+      "headers": {
+        "Authorization": "Bearer some_auth_token"
+      }
+    }
+  },
+  "server": {
+    "domain": "blnk.io",
+    "ssl": false,
+    "ssl_email": "jerryenebeli@gmail.com",
+    "port": "5001"
+  },
+  "notification": {
+    "slack": {
+      "webhook_url": "https://hooks.slack.com"
+    },
+    "webhook": {
+      "url": "http://server:5001/webhooks",
+      "headers": {}
+    }
+  }
 }
 ```
 
-## Account-Balance Linkage
-Accounts in Blnk can be directly tied to specific balances. This linkage ensures that transactions recorded on an account are accurately reflected in the associated balance, providing a comprehensive view of financial activities.
+### Step 4: Start Your Blnk Server with Docker Compose
 
+With your configuration file in place, you're now ready to start the Blnk server using Docker Compose. This will pull the necessary Docker images, create containers, and start the services defined in your Docker Compose file.
+
+```bash
+docker compose up
+```
+
+After executing the command, Docker Compose will handle the deployment of the Blnk server. Once the process is complete, the Blnk server should be running and accessible at `http://localhost:5001`.
+
+## Next Steps
+
+With your Blnk server running, you're now ready to explore its features and start integrating it into your financial applications. Consider diving into the Blnk documentation to learn more about creating ledgers, managing transactions, and leveraging the full capabilities of your new open-source ledger system.
+
+---
 ## Quick start
 <CardGroup>
 
@@ -50,7 +111,7 @@ Accounts in Blnk can be directly tied to specific balances. This linkage ensures
         icon="square-code"
         href="/misc/record-transaction"
     >
-       Start processing transactions
+        Start processing transactions
     </Card>
 
 </CardGroup>
