@@ -51,6 +51,20 @@ Once the conditions are met, Blnk expects one of two instructions — commit or 
 
 ![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
+#### Calculating balances when Inflight is applied
+
+When a transaction is inflight, the balances of the source and destination are not updated until you have committed the transaction. 
+
+Blnk records the amount being held in inflight in Inflight balances. Each ledger balance is assigned an `inflight_credit_balance` and an `inflight_debit_balance`. 
+
+It is important to make sure the amount being held in inflight is available in the ledger balance. If not, any commit instruction will be rejected. 
+
+The best way to do this, within your application, is to prevent your user from having access to the amount being held in inflight. To do this:
+
+- `balance` - Total balance of the ledger balance.
+- `inflight_credit_balance` - Total amount waiting to be added to your balance.
+- `inflight_debit_balance` - Total amount waiting to be deducted from your balance.
+- `available_balance` - Total amount accessible by your user (`balance` - `inflight_debit_balance`). This is computed by you in your application
 
 ## Applying `inflight` to transactions
 
@@ -67,7 +81,7 @@ Once the conditions are met, Blnk expects one of two instructions — commit or 
 		    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
 		    "description": "For fees",
 		    "inflight": true,
-		    "expiry_date": "2024-02-03 12:38:19"
+		    "inflight_expiry_date": "2024-02-03 12:38:19"
 		}
 		```
 		
@@ -106,8 +120,7 @@ Once the conditions are met, Blnk expects one of two instructions — commit or 
 
 		```json request
 		{
-			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-			"inflight_status": "commit",
+			"status": "commit",
 			"amount": 1000
 		}
 		```
