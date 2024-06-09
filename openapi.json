@@ -402,7 +402,7 @@
         "deprecated": false
       }
     },
-    "/transactions/inflight/{txID}/{status}": {
+    "/transactions/inflight/{txID}": {
       "put": {
         "summary": "Update Inflight Transaction",
         "operationId": "UpdateInflightTransaction",
@@ -417,19 +417,31 @@
               "type": "string",
               "example": "txn_d0440bb5-e2c2-4937-bb4c-e91b50b7df22"
             }
-          },
-          {
-            "name": "status",
-            "in": "path",
-            "description": "",
-            "required": true,
-            "style": "simple",
-            "schema": {
-              "type": "string",
-              "example": "commit"
-            }
           }
         ],
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/UpdateInflightTransactionRequest"
+                  },
+                  {
+                    "example": {
+                      "status": "void"
+                    }
+                  }
+                ]
+              },
+              "example": {
+                "status": "void"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -465,7 +477,10 @@
                     {
                       "example": {
                         "amount": 74000,
-                        "id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+                        "rate": 0,
+                        "precision": 0,
+                        "transaction_id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+                        "parent_transaction": "txn_5cc1e86b-47be-4aba-a400-48e7b9edfedd",
                         "allow_overdraft": false,
                         "infligt": false,
                         "source": "bln_8ab15e8f-da33-428f-b3f8-ab3d1c1dda09",
@@ -473,18 +488,21 @@
                         "reference": "reference",
                         "currency": "NGN",
                         "description": "",
-                        "status": "APPLIED",
-                        "hash": "",
-                        "group_ids": null,
+                        "status": "VOID",
+                        "hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
                         "created_at": "2024-04-07T08:20:06.494307542Z",
-                        "scheduled_for": "0001-01-01T00:00:00Z"
+                        "scheduled_for": "0001-01-01T00:00:00Z",
+                        "inflight_expiry_date": "0001-01-01T00:00:00Z"
                       }
                     }
                   ]
                 },
                 "example": {
                   "amount": 74000,
-                  "id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+                  "rate": 0,
+                  "precision": 0,
+                  "transaction_id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+                  "parent_transaction": "txn_5cc1e86b-47be-4aba-a400-48e7b9edfedd",
                   "allow_overdraft": false,
                   "infligt": false,
                   "source": "bln_8ab15e8f-da33-428f-b3f8-ab3d1c1dda09",
@@ -492,11 +510,11 @@
                   "reference": "reference",
                   "currency": "NGN",
                   "description": "",
-                  "status": "APPLIED",
-                  "hash": "",
-                  "group_ids": null,
+                  "status": "VOID",
+                  "hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
                   "created_at": "2024-04-07T08:20:06.494307542Z",
-                  "scheduled_for": "0001-01-01T00:00:00Z"
+                  "scheduled_for": "0001-01-01T00:00:00Z",
+                  "inflight_expiry_date": "0001-01-01T00:00:00Z"
                 }
               }
             }
@@ -2414,11 +2432,27 @@
           "scheduled_for": "0001-01-01T00:00:00Z"
         }
       },
+      "UpdateInflightTransactionRequest": {
+        "title": "UpdateInflightTransactionRequest",
+        "required": ["status"],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "status": "void"
+        }
+      },
       "UpdateInflightTransaction": {
         "title": "UpdateInflightTransaction",
         "required": [
           "amount",
-          "id",
+          "rate",
+          "precision",
+          "transaction_id",
+          "parent_transaction",
           "allow_overdraft",
           "infligt",
           "source",
@@ -2428,7 +2462,6 @@
           "description",
           "status",
           "hash",
-          "group_ids",
           "created_at",
           "scheduled_for"
         ],
@@ -2438,7 +2471,18 @@
             "type": "integer",
             "format": "int32"
           },
-          "id": {
+          "rate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "precision": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "transaction_id": {
+            "type": "string"
+          },
+          "parent_transaction": {
             "type": "string"
           },
           "allow_overdraft": {
@@ -2468,20 +2512,22 @@
           "hash": {
             "type": "string"
           },
-          "group_ids": {
-            "type": "string",
-            "nullable": true
-          },
           "created_at": {
             "type": "string"
           },
           "scheduled_for": {
             "type": "string"
+          },
+          "inflight_expiry_date": {
+            "type": "string"
           }
         },
         "example": {
           "amount": 74000,
-          "id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+          "rate": 0,
+          "precision": 0,
+          "transaction_id": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
+          "parent_transaction": "txn_bd9ab37f-e353-450d-8210-1958bd50254a",
           "allow_overdraft": false,
           "infligt": false,
           "source": "bln_8ab15e8f-da33-428f-b3f8-ab3d1c1dda09",
@@ -2490,10 +2536,10 @@
           "currency": "NGN",
           "description": "",
           "status": "APPLIED",
-          "hash": "",
-          "group_ids": null,
+          "hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
           "created_at": "2024-04-07T08:20:06.494307542Z",
-          "scheduled_for": "0001-01-01T00:00:00Z"
+          "scheduled_for": "0001-01-01T00:00:00Z",
+          "inflight_expiry_date": "0001-01-01T00:00:00Z"
         }
       },
       "ScheduleTransactionRequest": {

@@ -75,6 +75,7 @@ The best way to do this, within your application, is to prevent your user from h
 		```json request
 		{
 		    "amount": 750000,
+			"precision": 100,
 		    "reference": "ref_001adcfgf",
 		    "currency": "USD",
 		    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
@@ -85,27 +86,34 @@ The best way to do this, within your application, is to prevent your user from h
 		}
 		```
 		
-		>`expiry_date` defines when this transaction should expire if it hasn't be committed or voided yet.
+		>`inflight_expiry_date` defines when this transaction should expire if it hasn't be committed or voided yet.
 		
 		To disable Inflight, remove the `inflight` field from your request payload.
 	</Step>
 	<Step title="Transaction is added to queue for processing">
 		The transaction is immediately [added to a queue](/ledger/guide/queuing-transactions) for processing with its status initially set to `QUEUED`. 
 		
-		Once it is ready to be processed, the status is updated to `INFLIGHT` and a `transaction.inflight` webhook event is sent to notify you. The transaction record is held in `INFLIGHT` until you instruct Blnk with the next steps. To check for the current transaction status, you can search by `reference` or `id` and you'll see the following:
+		Once it is ready to be processed, the status is updated to `INFLIGHT` and a `transaction.inflight` webhook event is sent to notify you. The transaction record is held in `INFLIGHT` until you instruct Blnk with the next steps. To check for the current transaction status, you can search by `reference` or `transaction_id` and you'll see the following:
 
 		```json response
 		{
-			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+			"transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
 			"source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
 			"destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
 			"reference": "ref_001adcfgf",
+			"parent_transaction": "",
 			"amount": 750,
 			"precise_amount": 75000,
+			"rate": 0,
+    		"precision": 0,
 			"currency": "USD",
 			"description": "For fees",
+			"hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
+    		"allow_overdraft": false,
 			"status": "INFLIGHT",
-			"created_at": "2024-02-20 05:28:03 UTC"
+			"created_at": "2024-02-20 05:28:03 UTC",
+			"scheduled_for": "0001-01-01T00:00:00Z",
+    		"inflight_expiry_date": "0001-01-01T00:00:00Z"
 		}
 		```
 		
@@ -114,19 +122,17 @@ The best way to do this, within your application, is to prevent your user from h
 		</Note>
 	</Step>
 	<Step title="Instruct Blnk what to do next">
-		Once the condition is met, call the [Inflight](/misc/update-inflight-transaction) endpoint URL. Provide the `id` of the transaction and instruct what you want Blnk to do with the transaction. 
+		Once the condition is met, call the [Inflight](/misc/update-inflight-transaction) endpoint URL and instruct what you want Blnk to do with the transaction. 
 		
 		```json request
 		{
-			"id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-			"inflight_status": "commit"
+			"status": "commit"
 		}
 		```
 		
 		| Field | Description | Required? | Type
 		| --- | --- | --- | ---
-		| `id` | Unique ID of the transaction. | Yes | String
-		|`inflight_status` | Instruction to Blnk depending on if the condition has been met. Send `commit` if you want Blnk to apply the transaction to the balances OR `void` if it should be discarded. | Yes | String
+		|`status` | Instruction to Blnk depending on if the condition has been met. Send `commit` if you want Blnk to apply the transaction to the balances OR `void` if it should be discarded. | Yes | String
 	</Step>
 	<Step title="✅ — If asked to 'commit':">
 		Blnk creates a new transaction record with the details of the `INFLIGHT` transaction and applies it to the balances. The source's `inflight_debit_balance` and destination's `inflight_credit_balance` are reset, and the money moves from the source to the destination.
@@ -152,7 +158,7 @@ The best way to do this, within your application, is to prevent your user from h
 
 #### Inflight statuses
 
-There are three total inflight statuses you can send in the payload. Please note, an inflight status is different from a transaction status. An `inflight_status` field represents the instruction given to Blnk to apply to the transaction.
+There are three total inflight statuses you can send in the payload. Please note, an inflight status is different from a transaction status. A `status` field represents the instruction given to Blnk to apply to the transaction.
 
 - `commit`: This means the inflight conditions have been met and the transaction should be applied to its balances.
 
