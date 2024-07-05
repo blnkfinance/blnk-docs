@@ -27,10 +27,13 @@ In this guide, we'll use a simple structure:
     **Developer Note:** The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
 </Tip>
 
+#### See also
+- [Create a ledger](../tutorial/create-a-ledger)
+- [Ledger architecture](../guide/ledger-architecture)
+
 <Steps>
     <Step title="Creating a USD Ledger">
-        **Request:**
-        ```javascript
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -53,8 +56,8 @@ In this guide, we'll use a simple structure:
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "ledger_id": "ldg_5dff0196-11f6-4674-87a2-cf3e39bd20d2",
                 "name": "Customer USD Ledger",
@@ -65,13 +68,12 @@ In this guide, we'll use a simple structure:
             }
         ```
         <Tip>
-            **Developer Note:** Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+            **Note:** Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
         </Tip>
     </Step>
     <Step title="Creating a EUR Ledger">
         It is the same process as the USD ledger creation. Only change the `name` of the ledger and adjust the `meta_data` as needed.
-        **Request:**
-        ```javascript
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -94,8 +96,8 @@ In this guide, we'll use a simple structure:
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "ledger_id": "ldg_4b53fb9a-bec7-423b-bfc5-106c6241131f",
                 "name": "Customer EUR Ledger",
@@ -112,10 +114,13 @@ In this guide, we'll use a simple structure:
 
 Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In our example, we'll create wallets for a customer named Jerry, who will have both a USD and EUR wallet.
 
+#### See also
+- [Create a balance](../tutorial/create-a-balance)
+- [Balance monitoring](../tutorial/balance-monitoring)
+
 <Steps>
     <Step title="Creating a USD Wallet for Customer A">
-        **Request:**
-        ```javascript
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -139,8 +144,8 @@ Blnk uses the concept of ledger balances to manage accounts/balances in a ledger
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "balance": 0,
                 "version": 0,
@@ -164,14 +169,13 @@ Blnk uses the concept of ledger balances to manage accounts/balances in a ledger
             }
         ```
         <Tip>
-            **Developer Note:** The `balance_id` is important. Always store this in your database and associate it with the customer. You'll use this `id` for all future transactions involving this wallet.
+            **Note:** The `balance_id` is important. Always store this in your database and associate it with the customer. You'll use this `id` for all future transactions involving this wallet.
         </Tip>
     </Step>
     <Step title="Creating a EUR Wallet for Customer A">
         It is the same process as the USD wallet creation. Only change the ledger_id to the EUR ledger ID and set the currency to "EUR".
 
-        **Request:**
-        ```javascript
+        ```javascript NodeJS
             // ... (similar to USD wallet creation)
             body: JSON.stringify({
             "ledger_id": "ldg_4b53fb9a-bec7-423b-bfc5-106c6241131f",
@@ -183,8 +187,8 @@ Blnk uses the concept of ledger balances to manage accounts/balances in a ledger
             })
             // ...
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "balance": 0,
                 "version": 0,
@@ -214,12 +218,20 @@ Blnk uses the concept of ledger balances to manage accounts/balances in a ledger
 
 Once ledgers are created and balances/wallets have been set up for your customers, the next step is to start recording transactions.
 
-In this example, we'll cover funding our wallets with actual cash received from the outside world or other apps (banks/wallets etc). This section introduces key concepts in Blnk like [General Ledgers](../tutorial/internal-balances), [Overdrafts](../tutorial/overdrafts), and [`meta_data`](../tutorial/record-a-transaction).
+In this example, we'll cover funding our wallets with actual cash received from the outside world or other apps (banks/wallets etc). This section introduces key concepts in Blnk like:
+
+- [General Ledgers](../tutorial/internal-balances)
+- [Overdrafts](../tutorial/overdrafts)
+- [`meta_data`](../tutorial/record-a-transaction).
+
+#### See also
+- [Record a transaction](../tutorial/record-a-transaction)
+- [Understanding precision](../tutorial/precision)
 
 <Steps>
     <Step title="Funding Customer A's USD Wallet with $200.00">
-        **Request:**
-        ```javascript
+
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -250,8 +262,8 @@ In this example, we'll cover funding our wallets with actual cash received from 
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "precise_amount": 20000,
                 "amount": 200,
@@ -286,13 +298,13 @@ In this example, we'll cover funding our wallets with actual cash received from 
         |`allow_overdraft` | Since we're tracking the general ledger balances (in this case, `@World`), we're essentially moving 200.00 USD from the `@World` balance to Customer A's USD balance. But since in our application the `@World` balance is empty initially, we want to force an overdraft so the transaction goes through. If overdraft is not true, the transaction will be rejected with insufficient funds because the `@World` general ledger balance is empty at the beginning. Setting overdraft to true enables us to debit past the balance. |
         |`meta_data` | This field allows you to store additional information about the transaction. It's crucial for reconciliation and auditing purposes. |
         <Tip>
-            **Developer Note:** Always use the precision field to avoid floating-point arithmetic issues. For USD and EUR, a precision of 100 (representing cents) is typically used.
+            **Note:** Always use the precision field to avoid floating-point arithmetic issues. For USD and EUR, a precision of 100 (representing cents) is typically used.
         </Tip>
     </Step>
     <Step title="Funding Customer A's EUR Wallet with 3500.50 EUR">
         The process is similar to funding the USD wallet. Here's the key part of the request body.
 
-        ```javascript
+        ```javascript NodeJS
             body: JSON.stringify({
                 "amount": 3500.5,
                 "precision": 100,
@@ -309,7 +321,7 @@ In this example, we'll cover funding our wallets with actual cash received from 
             })
         ```
         <Tip>
-            **Developer Note:** The principles explained for the USD transaction apply here as well. Always ensure you're using the correct precision and currency for each transaction.
+            **Note:** The principles explained for the USD transaction apply here as well. Always ensure you're using the correct precision and currency for each transaction.
         </Tip>
     </Step>
 </Steps>
@@ -318,10 +330,14 @@ In this example, we'll cover funding our wallets with actual cash received from 
 
 Once the ledgers are created and balances/wallets have been set up for your customers, and the wallets have been funded, you can record transactions that move money out of the wallets.
 
+#### See also
+- [Multiple sources](../tutorial/multiple-sources)
+- [Multiple destinations](../tutorial/multiple-destinations)
+
 <Steps>
     <Step title="Transferring $70.32 from Customer A's USD Wallet">
-        **Request:**
-        ```javascript
+
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -347,8 +363,8 @@ Once the ledgers are created and balances/wallets have been set up for your cust
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "precise_amount": 7031,
                 "amount": 70.32,
@@ -378,9 +394,9 @@ Once the ledgers are created and balances/wallets have been set up for your cust
         |`destination` | We're transferring to the outside world, so we use "@World". |
         |`allow_overdraft` | This is set to false because we don't want to allow the customer's balance to go negative. |
         <Tip>
-            **Developer Note:** Always check the balance after a transaction to ensure it's updated correctly. Here's how you might do that.
+            **Note:** Always check the balance after a transaction to ensure it's updated correctly. Here's how you might do that.
 
-            ```javascript
+            ```javascript NodeJS
                 const checkBalance = (balanceId) => {
                 const options = {
                     method: 'GET',
@@ -402,7 +418,7 @@ Once the ledgers are created and balances/wallets have been set up for your cust
             ```
         </Tip>
         **Balance after the transaction:**
-        ```json
+        ```json Response
             {
                 "balance": 12969,
                 "version": 3,
@@ -429,7 +445,7 @@ Once the ledgers are created and balances/wallets have been set up for your cust
     <Step title="Transferring 1470.49 EUR from Customer A's EUR Wallet">
         The process is similar to the USD transfer. Here's the key part of the request body:
 
-        ```javascript
+        ```javascript NodeJS
             body: JSON.stringify({
             "amount": 1470.49,
             "precision": 100,
@@ -441,7 +457,7 @@ Once the ledgers are created and balances/wallets have been set up for your cust
             })
         ```
         <Tip>
-            **Developer Note:** Always ensure you're using the correct `balance_id` for the source wallet and the correct currency for each transaction.
+            **Note:** Always ensure you're using the correct `balance_id` for the source wallet and the correct currency for each transaction.
         </Tip>
     </Step>
 </Steps>
@@ -450,9 +466,12 @@ Once the ledgers are created and balances/wallets have been set up for your cust
 
 Blnk supports moving money between balances of different currencies. This feature is crucial for applications dealing with multiple currencies.
 
+#### See also
+- [Applying rates](../tutorial/applying-rates)
+
 ### Converting $100 USD to EUR (at a rate of 1 USD = 0.92 EUR)
-        **Request:**
-        ```javascript
+
+        ```javascript NodeJS
             const request = require('request');
 
             const options = {
@@ -483,8 +502,8 @@ Blnk supports moving money between balances of different currencies. This featur
             console.log(response.body);
             });
         ```
-        **Response:**
-        ```json
+
+        ```json Response
             {
                 "precise_amount": 10000,
                 "amount": 100,
@@ -524,7 +543,7 @@ Blnk supports moving money between balances of different currencies. This featur
         After this transaction, you should check both the USD and EUR balances
 
         **USD Balance after the transaction:**
-        ```json
+        ```json Response
             {
                 "balance": 2969,
                 "version": 4,
@@ -545,7 +564,7 @@ Blnk supports moving money between balances of different currencies. This featur
             }
         ```
         **EUR Balance after the transaction:**
-        ```json
+        ```json Response
             {
                 "balance": 212201,
                 "version": 4,
@@ -568,23 +587,6 @@ Blnk supports moving money between balances of different currencies. This featur
         <Note>
             Note that the USD balance has decreased by 10000 cents (100 USD), and the EUR balance has increased by 9200 cents (92 EUR), which matches our conversion rate.
         </Note>
-
-## See also
-
-<CardGroup>
-	<Card title="Setting up internal balances" icon="book-open-cover" href="/ledger/tutorial/internal-balances">
-     Learn how to set up internal balances
-  </Card>
-  <Card title="Understanding precision" icon="book-open-cover" href="/ledger/tutorial/precision">
-     Improve the correctness of your ledger
-  </Card>
-	<Card title="Applying rates" icon="book-open-cover" href="/ledger/tutorial/applying-rates">
-		How to apply rates to your transactions
-  </Card>
-  <Card title="Record a transaction" icon="book-open-cover" href="../tutorial/record-a-transaction">
-	  How to record and manage transactions
-  </Card>
-</CardGroup>
 
 ## Need help?
 
