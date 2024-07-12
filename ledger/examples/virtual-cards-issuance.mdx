@@ -24,10 +24,10 @@ In this guide, we'll use a simple structure:
 - **USD Ledger:** Contains all USD virtual cards (wallets)
 
 <Tip>
-    **Developer Note:** The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
+    The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
 </Tip>
 
-#### See also
+**See also:**
 - [Create a ledger](../tutorial/create-a-ledger)
 - [Ledger architecture](../guide/ledger-architecture)
 
@@ -67,19 +67,19 @@ console.log(response.body);
     }
 }
 ```
-<Tip>
-    **Note:** Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
-</Tip>
+<Warning>
+    Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+</Warning>
 
 ## 2. Balance (Wallet) Creation
 
 Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In this example, we'll create virtual cards for a customer named Jerry. Each card will be represented as a balance in the ledger.
 
-<Tip>
+<Warning>
     Assume that card details (e.g., card number, expiry date, CVV) are generated and provided by your card issuing partner. Store these details securely and ensure they are masked or encrypted when stored or displayed.
-</Tip>
+</Warning>
 
-#### See also
+**See also:**
 - [Create a balance](../tutorial/create-a-balance)
 - [Balance monitoring](../tutorial/balance-monitoring)
 
@@ -140,15 +140,15 @@ console.log(response.body);
     }
 }
 ```
-<Tip>
-    **Note:** The card's state and details are stored in the meta_data field. Always update this metadata as the state of the card changes.
-</Tip>
+<Note>
+    The card's state and details are stored in the meta_data field. Always update this metadata as the state of the card changes.
+</Note>
 
 ## 3. Authorizing Transactions
 
 When a transaction is initiated using the virtual card, it must first be authorized. We use the Inflight feature for this purpose.
 
-#### See also
+**See also:**
 - [Record a transaction](../tutorial/record-a-transaction)
 - [Understanding precision](../tutorial/precision)
 - [Applying inflight](../tutorial/inflight)
@@ -164,7 +164,7 @@ headers: {
     'Content-Type': 'application/json'
 },
 body: JSON.stringify({
-    "amount": 10000,  // Representing $100.00 with precision
+    "amount": 100,  
     "precision": 100,
     "reference": "trx-001",
     "description": "Authorization for purchase",
@@ -188,8 +188,12 @@ console.log(response.body);
 ```json Response
 {
     "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
-    "amount": 10000,
+    "amount": 100,
     "precision": 100,
+    "precise_amount": 10000,
+    "reference": "trx-001",
+    "description": "Authorization for purchase",
+    "currency": "USD",
     "status": "INFLIGHT",
     "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
     "destination": "@Merchant",
@@ -231,9 +235,13 @@ console.log(response.body);
 ```json Response
 {
     "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
-    "amount": 10000,
+    "amount": 100,
     "precision": 100,
-    "status": "COMMITTED",
+    "precise_amount": 10000,
+    "reference": "trx-001",
+    "description": "Authorization for purchase",
+    "currency": "USD",
+    "status": "APPLIED",
     "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
     "destination": "@Merchant",
     "created_at": "2024-07-05T08:21:04.001458635Z",
@@ -274,8 +282,12 @@ console.log(response.body);
 ```json Response
 {
     "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
-    "amount": 10000,
+    "amount": 100,
     "precision": 100,
+    "precise_amount": 10000,
+    "reference": "trx-001",
+    "description": "Authorization for purchase",
+    "currency": "USD",
     "status": "VOIDED",
     "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
     "destination": "@Merchant",

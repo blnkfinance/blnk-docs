@@ -25,10 +25,10 @@ In this guide, we'll use a simple structure:
 - **EUR Ledger:** Contains all EUR wallets
 
 <Tip>
-    **Developer Note:** The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
+    The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
 </Tip>
 
-#### See also
+**See also:**
 - [Create a ledger](../tutorial/create-a-ledger)
 - [Ledger architecture](../guide/ledger-architecture)
 
@@ -68,9 +68,9 @@ In this guide, we'll use a simple structure:
                 }
             }
         ```
-        <Tip>
-            **Note:** Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
-        </Tip>
+        <Note>
+          Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+        </Note>
     </Step>
     <Step title="Creating a EUR Ledger">
         It is the same process as the USD ledger creation. Only change the `name` of the ledger and adjust the `meta_data` as needed.
@@ -115,7 +115,7 @@ In this guide, we'll use a simple structure:
 
 Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In our example, we'll create wallets for a customer named Jerry, who will have both a USD and EUR wallet.
 
-#### See also
+**See also:**
 - [Create a balance](../tutorial/create-a-balance)
 - [Balance monitoring](../tutorial/balance-monitoring)
 
@@ -168,9 +168,9 @@ Blnk uses the concept of ledger balances to manage accounts/balances in a ledger
                 }
             }
         ```
-        <Tip>
-            **Note:** The `balance_id` is important. Always store this in your database and associate it with the customer. You'll use this `id` for all future transactions involving this wallet.
-        </Tip>
+        <Warning>
+            The `balance_id` is important. Always store this in your database and associate it with the customer. You'll use this `id` for all future transactions involving this wallet.
+        </Warning>
     </Step>
     <Step title="Creating a EUR Wallet for Customer A">
         It is the same process as the USD wallet creation. Only change the ledger_id to the EUR ledger ID and set the currency to "EUR".
@@ -223,7 +223,7 @@ In this example, we'll cover funding our wallets with actual cash received from 
 - [Overdrafts](../tutorial/overdrafts)
 - [`meta_data`](../tutorial/record-a-transaction).
 
-#### See also
+**See also:**
 - [Record a transaction](../tutorial/record-a-transaction)
 - [Understanding precision](../tutorial/precision)
 
@@ -296,9 +296,9 @@ In this example, we'll cover funding our wallets with actual cash received from 
         |`destination` | In this example, the destination is Customer A's USD wallet, which we pass using the `balance_id` obtained when the balance was created: `bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a.` |
         |`allow_overdraft` | Since we're tracking the general ledger balances (in this case, `@World`), we're essentially moving 200.00 USD from the `@World` balance to Customer A's USD balance. But since in our application the `@World` balance is empty initially, we want to force an overdraft so the transaction goes through. If overdraft is not true, the transaction will be rejected with insufficient funds because the `@World` general ledger balance is empty at the beginning. Setting overdraft to true enables us to debit past the balance. |
         |`meta_data` | This field allows you to store additional information about the transaction. It's crucial for reconciliation and auditing purposes. |
-        <Tip>
-            **Note:** Always use the precision field to avoid floating-point arithmetic issues. For USD and EUR, a precision of 100 (representing cents) is typically used.
-        </Tip>
+        <Tips>
+            Always use the precision field to avoid floating-point arithmetic issues. For USD and EUR, a precision of 100 (representing cents) is typically used.
+        </Tips>
     </Step>
     <Step title="Funding Customer A's EUR Wallet with 3500.50 EUR">
         The process is similar to funding the USD wallet. Here's the key part of the request body.
@@ -319,9 +319,9 @@ In this example, we'll cover funding our wallets with actual cash received from 
                 }
             })
         ```
-        <Tip>
-            **Note:** The principles explained for the USD transaction apply here as well. Always ensure you're using the correct precision and currency for each transaction.
-        </Tip>
+        <Note>
+            The principles explained for the USD transaction apply here as well. Always ensure you're using the correct precision and currency for each transaction.
+        </Note>
     </Step>
 </Steps>
 
@@ -329,7 +329,7 @@ In this example, we'll cover funding our wallets with actual cash received from 
 
 Once the ledgers are created and balances/wallets have been set up for your customers, and the wallets have been funded, you can record transactions that move money out of the wallets.
 
-#### See also
+**See also:**
 - [Multiple sources](../tutorial/multiple-sources)
 - [Multiple destinations](../tutorial/multiple-destinations)
 
@@ -392,9 +392,9 @@ Once the ledgers are created and balances/wallets have been set up for your cust
         |`source` | This time, we're transferring from the customer's wallet, so we use the `balance_id` of their USD wallet. |
         |`destination` | We're transferring to the outside world, so we use "@World". |
         |`allow_overdraft` | This is set to false because we don't want to allow the customer's balance to go negative. |
-        <Tip>
-            **Note:** Always check the balance after a transaction to ensure it's updated correctly. Here's how you might do that.
-        </Tip>
+        <Warning>
+            Always check the balance after a transaction to ensure it's updated correctly. Here's how you might do that.
+        </Warning>
 
         ```javascript NodeJS
             const checkBalance = (balanceId) => {
@@ -456,9 +456,9 @@ Once the ledgers are created and balances/wallets have been set up for your cust
             "destination": "@world"
             })
         ```
-        <Tip>
-            **Note:** Always ensure you're using the correct `balance_id` for the source wallet and the correct currency for each transaction.
-        </Tip>
+        <Warning>
+            Always ensure you're using the correct `balance_id` for the source wallet and the correct currency for each transaction.
+        </Warning>
     </Step>
 </Steps>
 
@@ -466,7 +466,7 @@ Once the ledgers are created and balances/wallets have been set up for your cust
 
 Blnk supports moving money between balances of different currencies. This feature is crucial for applications dealing with multiple currencies.
 
-#### See also
+**See also:**
 - [Applying rates](../tutorial/applying-rates)
 
 ### Converting $100 USD to EUR (at a rate of 1 USD = 0.92 EUR)
@@ -537,9 +537,9 @@ Blnk supports moving money between balances of different currencies. This featur
         |`destination` | The `balance_id` of the EUR wallet. |
         | `rate` | The conversion rate from USD to EUR. In this case, 1 USD = 0.92 EUR. |
         |`meta_data` | It's crucial to store information about the rate used and its source for auditing purposes. |
-        <Tip>
+        <Warning>
             Always store the conversion rate and its source in the meta_data. This is crucial for auditing and reconciliation.
-        </Tip>
+        </Warning>
         After this transaction, you should check both the USD and EUR balances
 
         **USD Balance after the transaction:**
