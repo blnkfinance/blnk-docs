@@ -1,0 +1,379 @@
+---
+title: Savings Application
+---
+
+## Overview
+
+A savings application empowers users to effectively manage and grow their savings through automated and manual contributions. This guide will assist you in building a comprehensive savings platform using the Blnk Ledger. 
+
+We'll learn about:
+
+- Defining and creating your ledger structure
+- Account creation
+- Funding accounts
+- Scheduled transactions for savings
+- Calculating & crediting interest
+- Best Practices (with Inflight)
+
+## 1. Ledger Structure
+
+In this example, we'll use Blnk ledger to build a detailed savings app with interest. Each user will have their own savings account, and we'll use the scheduling feature to apply interest regularly.
+
+In this guide, we'll use the following structure:
+
+- **Savings Ledger**: Contains all savings accounts for users.
+
+<Tip>
+  The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by types of transactions (e.g., real estate, freelance work), or use a combination of both.
+</Tip>
+
+**See also**
+
+- [Create a ledger](../tutorial/create-a-ledger)
+- [Ledger architecture](../guide/ledger-architecture)
+
+### Creating a Savings Ledger
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'localhost:5001/ledgers',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'YOUR_AUTH_TOKEN_HERE'
+  },
+  body: JSON.stringify({
+    "name": "Savings Ledger",
+    "meta_data": {
+      "description": "Ledger for managing savings accounts"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "ledger_id": "ldg_savings12345678-90ab-cdef-1234-567890abcdef",
+    "name": "Savings Ledger",
+    "created_at": "2024-07-05T08:06:26.84333909Z",
+    "meta_data": {
+        "description": "Ledger for managing savings accounts"
+    }
+}
+```
+
+<Warning>
+  Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+</Warning>
+
+## 2. Balance (Savings Account) Creation
+
+Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In this example, we'll create savings accounts for Alice.
+
+**See also**
+
+- [Create a balance](../tutorial/create-a-balance)
+- [Balance monitoring](../tutorial/balance-monitoring)
+
+### Creating a savings account for User Alice
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'localhost:5001/balances',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "currency": "USD",
+    "meta_data": {
+      "account_type": "Escrow",
+      "customer_name": "Alice Johnson",
+      "customer_id": "alice-5678",
+      "account_opened_date": "2024-01-01",
+      "account_status": "active"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 1,
+    "ledger_id": "ldg_savings12345678-90ab-cdef-1234-567890abcdef",
+    "identity_id": "",
+    "balance_id": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "account_type": "Savings",
+        "customer_name": "Alice Johnson",
+        "customer_id": "alice-5678",
+        "interest_rate": "2.5%",
+        "account_opened_date": "2024-01-01",
+        "account_status": "active"
+    }
+}
+```
+
+<Warning>
+  The `balance_id` is crucial. Always store this in your database and associate it with the customer. You'll use this ID for all future transactions involving this loyalty point account.
+</Warning>
+
+## 3. Funding Accounts
+
+Customers can fund their savings accounts. We'll use the [Inflight feature](../tutorial/inflight) to manage funding transactions.
+
+**See also**
+
+- [Record a transaction](../tutorial/record-a-transaction)
+- [Understanding precision](../tutorial/precision)
+- [Applying inflight](../tutorial/inflight)
+
+### Funding Alice's escrow account
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'localhost:5001/transactions',
+  headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "amount": 1000,
+    "precision": 100,
+    "reference": "funding-001",
+    "description": "Funding savings account",
+    "currency": "USD",
+    "source": "@bank-account",
+    "destination": "bln_alice5678-90ab-cdef-1234-567890abcdef",  // Alice's savings account balance_id
+    "inflight": true,
+    "meta_data": {
+      "transaction_type": "deposit",
+      "customer_name": "Alice Johnson",
+      "customer_id": "alice-5678",
+      "transaction_date": "2024-07-05",
+      "payment_verified": false
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_funding001-2345-6789-abcd-ef0123456789",
+    "amount": 1000,
+    "precision": 100,
+    "precise_amount": 100000,
+    "reference": "funding-001",
+    "description": "Funding savings account",
+    "currency": "USD",
+    "status": "INFLIGHT",
+    "source": "@bank-account",
+    "destination": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "transaction_type": "deposit",
+        "customer_name": "Alice Johnson",
+        "customer_id": "alice-5678",
+        "transaction_date": "2024-07-05",
+        "payment_verified": false
+    }
+}
+```
+
+<Warning>
+  The transaction should be committed after the payment has been verified from the external payment partner.
+</Warning>
+
+## 4. Scheduled Transactions for Savings
+
+We'll use the `scheduled_for` transaction feature to schedule regular deposits into the savings accounts.
+
+### Scheduling a monthly deposit for Alice
+
+To schedule a monthly deposit, you can use a recurring task scheduler like cron in combination with the Blnk API. Below is an example of how you can achieve this using Node.js and the `node-cron` package.
+
+<Steps>
+  <Step title="Install the required package">
+    ```bash
+    npm install node-cron request
+    ```
+  </Step>
+  <Step title="Create a script to handle scheduled deposits">
+    ```javascript NodeJS
+    const request = require('request');
+    const cron = require('node-cron');
+
+    // Function to schedule monthly deposit
+    function scheduleMonthlyDeposit(customerId, balanceId, amount, dayOfMonth) {
+      cron.schedule(`0 0 ${dayOfMonth} * *`, () => {
+        const options = {
+          method: 'POST',
+          url: 'http://localhost:5001/transactions',
+          headers: {
+            'X-Blnk-Key': 'blnk-api',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            "amount": amount
+            "precision": 100,
+            "reference": `monthly-deposit-${customerId}`,
+            "description": "Monthly deposit",
+            "currency": "USD",
+            "source": "@bank-account",
+            "destination": balanceId,
+            "scheduled_for": new Date().toISOString(),
+            "meta_data": {
+              "transaction_type": "deposit",
+              "customer_id": customerId
+            }
+          })
+        };
+
+        request(options, (error, response) => {
+          if (error) throw new Error(error);
+          console.log(`Scheduled deposit for customer ${customerId}:`, response.body);
+        });
+      });
+    }
+
+    // Schedule deposits for Alice and Bob
+    scheduleMonthlyDeposit("alice-5678", "bln_alice5678-90ab-cdef-1234-567890abcdef", 200, 1);
+    scheduleMonthlyDeposit("bob-9101", "bln_bob9101-90ab-cdef-1234-567890abcdef", 150, 1);
+    ```
+  </Step>
+  <Step title="Run the script">
+  This script schedules a monthly deposit for Alice and Bob on the 1st day of every month. You can adjust the dayOfMonth parameter to change the day when the deposit should be made.
+
+  ```shell
+  node your_script_name.js
+  ```
+  </Step>
+</Steps>
+
+## 5. Calculating & Crediting Interest
+
+We'll calculate interest periodically and credit it to the savings accounts.
+
+### Example: Crediting Monthly Interest
+
+You can set up a similar cron job for calculating and crediting interest. Below is an example script for crediting monthly interest.
+
+<Steps>
+  <Step title="Create a script to handle interest calculation and crediting">
+    ```
+    const request = require('request');
+    const cron = require('node-cron');
+
+    // Function to calculate and credit interest
+    function creditMonthlyInterest(balanceId, interestRate) {
+      cron.schedule('0 0 1 * *', () => {  // Runs on the 1st day of every month
+        // Fetch the current balance
+        request({
+          method: 'GET',
+          url: `http://localhost:5001/balances/${balanceId}`,
+          headers: {
+            'X-Blnk-Key': 'blnk-api',
+            'Content-Type': 'application/json'
+          }
+        }, (error, response, body) => {
+          if (error) throw new Error(error);
+
+          const balance = JSON.parse(body).balance;
+          const interest = (balance * interestRate) / 100;
+
+          // Credit the interest to the account
+          const options = {
+            method: 'POST',
+            url: 'http://localhost:5001/transactions',
+            headers: {
+              'X-Blnk-Key': 'blnk-api',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              "amount": interest,
+              "precision": 100,
+              "reference": `interest-credit-${balanceId}`,
+              "description": "Monthly interest credit",
+              "currency": "USD",
+              "source": "@interest-pool",
+              "destination": balanceId,
+              "meta_data": {
+                "transaction_type": "interest",
+                "balance_id": balanceId
+              }
+            })
+          };
+
+          request(options, (error, response) => {
+            if (error) throw new Error(error);
+            console.log(`Credited interest to balance ${balanceId}:`, response.body);
+          });
+        });
+      });
+    }
+
+    // Credit interest for Alice
+    creditMonthlyInterest("bln_alice5678-90ab-cdef-1234-567890abcdef", 2.5);
+    ```
+  </Step>
+  <Step title="Running the script">
+    ```shell
+    node your_interest_script_name.js
+    ```
+
+    This script calculates and credits monthly interest to Alice on the 1st day of every month.
+  </Step>
+</Steps>
+
+## Best Practices (with Inflight)
+
+1. **Balance Checks**: Ensure the source balance has enough funds to complete the transaction. Prevent the source balance from having a balance lower than the amount in its `inflight_debit_balance`.
+2. **Available Balance Calculation:** In your application, calculate the available balance to prevent users from accessing funds that are held in Inflight transactions. This can be done as follows:
+```javascript
+const availableBalance = balance - inflight_debit_balance;
+```
+3. **Error Handling**: Implement robust error handling in your Inflight process. If a commit or void operation fails, you may need to retry or escalate to manual intervention.
+4. **Customer Communication**: Implement a system to notify customers about the status of their transactions, especially when they're held in inflight.
+5. **Reconciliation**: Regularly reconcile your internal records with Blnk's transaction logs to ensure accuracy. Pay special attention to Inflight transactions. Blnk v1 will support reconciliation features built into the ledger, which can aid in this process.
+6. **Webhook Authentication**: In a production environment, implement a mechanism to verify that webhooks are genuinely from your payment provider. This helps in maintaining the integrity and security of your transaction processing.
+7. **Idempotency**: Ensure your webhook handler is idempotent. Providers may send the same webhook multiple times, so your system should handle duplicate notifications gracefully.
+8. **Monitoring**: Set up monitoring and alerting for your webhook endpoint and inflight transactions. This can help you quickly identify and respond to any issues in the payment verification process.
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Discord server](https://discord.gg/7WNv94zPpx) and share your questions/thoughts with other developers building financial applications like you.
