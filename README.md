@@ -1,4 +1,4 @@
-![Blnk logo](https://res.cloudinary.com/dmxizylxw/image/upload/v1719884842/blnk-github-logo_twgk1x.png)
+<img width="252" alt="image" src="https://github.com/user-attachments/assets/30a99a13-a838-4b80-ad42-0c196b1a74f2">![Blnk logo](https://res.cloudinary.com/dmxizylxw/image/upload/v1719884842/blnk-github-logo_twgk1x.png)
 
 ## Introduction
 
@@ -6,7 +6,7 @@ This is the official developer documentation for the [open-source Blnk Ledger](h
 
 ## Quick Links
 - [Visit the Blnk Website](https://blnkfinance.com)
-- [Read our developer documentation](https://docs.blnkledger.com)
+- [Read our developer documentation](https://docs.blnkfinance.com)
 
 ## Open-source fintech ledger for the internet
 
