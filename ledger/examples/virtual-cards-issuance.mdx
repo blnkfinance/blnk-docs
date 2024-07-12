@@ -1,0 +1,315 @@
+---
+title: Virtual card issuance
+---
+
+## Overview
+
+Cards are a common online payment method today, but it is very easy to get lost in the behind-the-scenes processes when building a card issuance feature into your fintech product. In this example, you'll learn how to implement a virtual card issuance service and all of its transaction workflows with the Blnk Ledger.
+
+We'll learn about:
+
+- Defining and creating your ledger structure
+- Balance (virtual card) creation
+- Authorizing transactions
+- Approving transactions
+- Declining transactions
+- Best Practices
+
+## 1. Ledger Structure
+
+The entry point of the Blnk ledger system is ledger folders. These folders serve as a way to group and manage assets, accounts, and balances that fit your product or organization's structure.
+
+In this guide, we'll use a simple structure:
+
+- **USD Ledger:** Contains all USD virtual cards (wallets)
+
+<Tip>
+    **Developer Note:** The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by users instead of currencies, or use a combination of both.
+</Tip>
+
+#### See also
+- [Create a ledger](../tutorial/create-a-ledger)
+- [Ledger architecture](../guide/ledger-architecture)
+
+### Creating a USD Ledger
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+method: 'POST',
+url: 'localhost:5001/ledgers',
+headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'YOUR_AUTH_TOKEN_HERE'
+},
+body: JSON.stringify({
+    "name": "Customer USD Ledger",
+    "meta_data": {
+    "project_name": "VirtualCard App"
+    }
+})
+};
+
+request(options, (error, response) => {
+if (error) throw new Error(error);
+console.log(response.body);
+});
+```
+
+```json Response
+{
+    "ledger_id": "ldg_5dff0196-11f6-4674-87a2-cf3e39bd20d2",
+    "name": "Customer USD Ledger",
+    "created_at": "2024-07-05T08:06:26.84333909Z",
+    "meta_data": {
+        "project_name": "VirtualCard App"
+    }
+}
+```
+<Tip>
+    **Note:** Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+</Tip>
+
+## 2. Balance (Wallet) Creation
+
+Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In this example, we'll create virtual cards for a customer named Jerry. Each card will be represented as a balance in the ledger.
+
+<Tip>
+    Assume that card details (e.g., card number, expiry date, CVV) are generated and provided by your card issuing partner. Store these details securely and ensure they are masked or encrypted when stored or displayed.
+</Tip>
+
+#### See also
+- [Create a balance](../tutorial/create-a-balance)
+- [Balance monitoring](../tutorial/balance-monitoring)
+
+### Creating a USD virtal card for Jerry
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+method: 'POST',
+url: 'localhost:5001/balances',
+headers: {
+    'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+    "ledger_id": "ldg_5dff0196-11f6-4674-87a2-cf3e39bd20d2",
+    "currency": "USD",
+    "meta_data": {
+    "customer_name": "Jerry",
+    "customer_internal_id": "1234",
+    "card_state": "ACTIVE",
+    "card_number": "411111XXXXXX1111",  // Masked for security
+    "card_expiry": "12/26",
+    "card_cvv": "XXX"  // Masked for security
+    }
+})
+};
+
+request(options, (error, response) => {
+if (error) throw new Error(error);
+console.log(response.body);
+});
+```
+
+```json Response
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 0,
+    "ledger_id": "ldg_5dff0196-11f6-4674-87a2-cf3e39bd20d2",
+    "identity_id": "",
+    "balance_id": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "customer_internal_id": "1234",
+        "customer_name": "Jerry",
+        "card_state": "ACTIVE",
+        "card_number": "411111XXXXXX1111",  // Masked for security
+        "card_expiry": "12/26",
+        "card_cvv": "XXX"  // Masked for security
+    }
+}
+```
+<Tip>
+    **Note:** The card's state and details are stored in the meta_data field. Always update this metadata as the state of the card changes.
+</Tip>
+
+## 3. Authorizing Transactions
+
+When a transaction is initiated using the virtual card, it must first be authorized. We use the Inflight feature for this purpose.
+
+#### See also
+- [Record a transaction](../tutorial/record-a-transaction)
+- [Understanding precision](../tutorial/precision)
+- [Applying inflight](../tutorial/inflight)
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+method: 'POST',
+url: 'localhost:5001/transactions',
+headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+    "amount": 10000,  // Representing $100.00 with precision
+    "precision": 100,
+    "reference": "trx-001",
+    "description": "Authorization for purchase",
+    "currency": "USD",
+    "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",  // Jerry's virtual card balance_id
+    "destination": "@Merchant",
+    "inflight": true,
+    "meta_data": {
+    "merchant_name": "Store ABC",
+    "customer_name": "Jerry"
+    }
+})
+};
+
+request(options, (error, response) => {
+if (error) throw new Error(error);
+console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
+    "amount": 10000,
+    "precision": 100,
+    "status": "INFLIGHT",
+    "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
+    "destination": "@Merchant",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "merchant_name": "Store ABC",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+## 4. Approving Transactions
+
+After the authorization, if the transaction is verified, it can be approved and committed.
+
+### Approving a transaction
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+method: 'POST',
+url: `localhost:5001/transactions/inflight/txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a`,
+headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+    "status": "commit"
+})
+};
+
+request(options, (error, response) => {
+if (error) throw new Error(error);
+console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
+    "amount": 10000,
+    "precision": 100,
+    "status": "COMMITTED",
+    "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
+    "destination": "@Merchant",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "merchant_name": "Store ABC",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+## 5. Declining Transactions
+
+If the transaction cannot be verified, it should be declined.
+
+### Declining a transaction
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+method: 'POST',
+url: `localhost:5001/transactions/inflight/txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a`,
+headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+    "status": "void"
+})
+};
+
+request(options, (error, response) => {
+if (error) throw new Error(error);
+console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_30b149f0-4d7c-42e0-bf62-24f2cd33812a",
+    "amount": 10000,
+    "precision": 100,
+    "status": "VOIDED",
+    "source": "bln_7a8b9c8d-6b4c-4d9f-9d7a-7a4b8c9d8e7f",
+    "destination": "@Merchant",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "merchant_name": "Store ABC",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+<Note>
+    Use the `inflight` status to handle transaction authorizations, approvals, and declines. Always ensure that sensitive card details are securely managed and stored.
+</Note>
+
+## Best Practices
+
+1. **Available Balance Calculation:** In your application, calculate the available balance to prevent users from accessing funds that are held in Inflight transactions. This can be done as follows:
+```javascript
+const availableBalance = balance - inflight_debit_balance;
+```
+2. **Error Handling**: Implement robust error handling in your Inflight process. If a commit or void operation fails, you may need to retry or escalate to manual intervention.
+3. **Customer Communication**: Implement a system to notify customers about the status of their transactions, especially when they are held in Inflight. Clear communication can enhance customer trust and satisfaction.
+4. **Reconciliation**: Regularly reconcile your internal records with Blnk's transaction logs to ensure accuracy. Pay special attention to Inflight transactions. Blnk v1 will support reconciliation features built into the ledger, which can aid in this process.
+5. **Webhook Authentication**: In a production environment, implement a mechanism to verify that webhooks are genuinely from your payment provider. This helps in maintaining the integrity and security of your transaction processing.
+6. **Idempotency**: Ensure your webhook handler is idempotent. Providers may send the same webhook multiple times, so your system should handle duplicate notifications gracefully. This prevents double-processing of transactions.
+7. **Monitoring**: Set up monitoring and alerting for your webhook endpoint and Inflight transactions. This can help you quickly identify and respond to any issues in the payment verification process.
+8. **Data Security**: Always ensure that sensitive card details are securely managed and stored. Mask or encrypt card numbers, CVVs, and other sensitive information when storing or displaying them.
+9. **Transaction State Management**: Use metadata to manage the state of virtual cards and transactions effectively. For example, track the card state (e.g., `ACTIVE`, `BLOCKED`) and transaction verification status (e.g., `VERIFIED`, `DECLINED`) in the metadata.
+10. **Compliance**: Ensure that your virtual card issuance and transaction processing comply with relevant regulations and standards, such as PCI-DSS for handling card data securely.
+11. **Testing**: Thoroughly test your virtual card issuance and transaction processing flows, including Inflight handling, to identify and resolve any issues before going live.
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Discord server](https://discord.gg/7WNv94zPpx) and share your questions/thoughts with other developers building financial applications like you.
