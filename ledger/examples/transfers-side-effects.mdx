@@ -1,0 +1,490 @@
+---
+title: Transfers with side effects
+---
+## 1. Managing side effects with Refund
+
+When dealing with financial transactions, it's crucial to handle scenarios where things don't go as planned. One common situation is when a payment verification from a provider is not successful after funds have been moved. 
+
+In such cases, we need to reverse the transaction using Blnk's refund endpoint.
+
+First, let's perform the initial transfer:
+
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/transactions',
+  headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "amount": 150.00,
+    "precision": 100,
+    "reference": "ref-0-07",
+    "description": "Payment to ExternalProvider",
+    "currency": "USD",
+    "source": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "destination": "@external-provider",
+    "meta_data": {
+      "provider_reference": "ext-pay-123456",
+      "customer_id": "1234"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+```json Response
+{
+    "precise_amount": 15000,
+    "amount": 150.00,
+    "rate": 0,
+    "precision": 100,
+    "transaction_id": "txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o",
+    "parent_transaction": "",
+    "source": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "destination": "@external-provider",
+    "reference": "ref-0-07",
+    "currency": "USD",
+    "description": "Payment to ExternalProvider",
+    "status": "QUEUED",
+    "hash": "3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q",
+    "allow_overdraft": false,
+    "inflight": false,
+    "created_at": "2024-07-05T09:15:30.123456789Z",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z",
+    "meta_data": {
+        "provider_reference": "ext-pay-123456",
+        "customer_id": "1234"
+    }
+}
+```
+
+### Handling Webhooks and Automating Refunds
+
+In a real-world scenario, you would typically set up a webhook to receive notifications from your payment provider about the status of transactions. Let's set up a simple Express.js server to handle the webhook and automate the refund process:
+
+```javascript NodeJS
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Webhook endpoint
+app.post('/payment-webhook', (req, res) => {
+  const { status, providerReference, amount, currency } = req.body;
+
+  console.log(`Received webhook: Status ${status} for payment ${providerReference}`);
+
+  if (status === 'FAILED') {
+    console.log(`Payment ${providerReference} failed. Initiating refund process.`);
+    initiateRefund(providerReference, amount, currency);
+  }
+
+  res.sendStatus(200);
+});
+
+// Function to find the original transaction ID based on provider reference
+function findTransactionId(providerReference) {
+  // In a real-world scenario, you would query your blnk here
+  // For this example, we'll return a mock transaction ID
+  return "txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o";
+}
+
+// Function to initiate the refund
+function initiateRefund(providerReference, amount, currency) {
+  const transactionId = findTransactionId(providerReference);
+
+  const options = {
+    method: 'POST',
+    url: 'http://localhost:5001/refund-transaction/{transactionID}',
+    headers: {
+      'X-Blnk-Key': 'blnk-api',
+      'Content-Type': 'application/json'
+    }
+  };
+
+  request(options, (error, response) => {
+    if (error) {
+      console.error('Error processing refund:', error);
+    } else {
+      console.log('Refund processed successfully:', response.body);
+      // Here you might want to update your internal database, notify the customer, etc.
+    }
+  });
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+```
+
+Now, let's break down this example:
+
+1. We set up an Express.js server with a `/payment-webhook` endpoint to receive notifications from the payment provider.
+2. When a webhook is received, we check the status of the payment. If it's 'FAILED', we initiate the refund process.
+3. The `findTransactionId` function is a placeholder for where you would typically query your database to find the original Blnk transaction ID based on the provider's reference. In a real-world scenario, you would store this mapping when initiating the original transaction.
+4. The `initiateRefund` function calls the Blnk refund endpoint, similar to our previous example.
+
+To test this setup, you can use a tool like cURL to simulate a webhook from your payment provider:
+
+```shell cURL
+curl -X POST <http://localhost:3000/payment-webhook> \\
+     -H "Content-Type: application/json" \\
+     -d '{"status": "FAILED", "providerReference": "ext-pay-123456", "amount": 150.00, "currency": "USD"}'
+```
+
+This cURL command simulates a failed payment notification from your provider.
+
+```
+Received webhook: Status FAILED for payment ext-pay-123456
+Payment ext-pay-123456 failed. Initiating refund process.
+Refund processed successfully: {"refund_id":"rfd_1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p","transaction_id":"txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o","status":"APPLIED","amount":150.00,"currency":"USD","reason":"Payment verification failed","created_at":"2024-07-05T10:30:15.123456789Z","meta_data":{"failed_verification_code":"VERIF-001","provider_reference":"ext-pay-123456"}}
+```
+
+### Best practices for managing side effects and webhook handling
+
+1. **Immediate Action**: Process refunds as soon as you receive notification of a failed verification to ensure good customer experience.
+2. **Detailed Logging**: Always include detailed information in the `meta_data` field. This aids in troubleshooting and auditing.
+3. **Balance Verification**: Always verify the balance after processing a refund to ensure the transaction was successful.
+4. **Error Handling**: Implement robust error handling in your refund process. If a refund fails, you may need to retry or escalate to manual intervention.
+5. **Customer Communication**: Implement a system to notify customers about the failed transaction and subsequent refund.
+6. **Reconciliation**: Regularly reconcile your internal records with Blnk's transaction and refund logs to ensure accuracy.
+7. **Verify Webhook Authenticity**: In a production environment, implement a mechanism to verify that the webhook is genuinely from your payment provider. This often involves checking a signature or secret key.
+8. **Idempotency**: Ensure your webhook handler is idempotent. Providers may send the same webhook multiple times, so your system should handle duplicate notifications gracefully.
+9. **Asynchronous Processing**: For high-volume systems, consider processing webhooks asynchronously. You can acknowledge receipt immediately and process the webhook contents in a background job.
+10. **Monitoring**: Set up monitoring and alerting for your webhook endpoint. This can help you quickly identify and respond to any issues in the payment verification and refund process.
+
+When you run this command, you should see output in your server logs similar to:
+
+## 2. Managing side effects with Inflight
+
+### Example: Using Inflight for a payment requiring additional information
+
+Let's consider a scenario where we need to transfer $750.00 from Customer A's USD wallet to an external payment provider, but the payment requires additional verification before being finalized. We'll use the Inflight feature to manage this process.
+
+First, let's initiate the transaction with the Inflight flag:
+
+```javascript NodeJS
+const axios = require('axios');
+
+async function createInflightTransaction() {
+  try {
+    const response = await axios.post('http://localhost:5001/transactions', {
+      amount: 750.00,
+      precision: 100,
+      reference: "ref_001adcfgf",
+      description: "Payment to ExternalProvider (Pending Verification)",
+      currency: "USD",
+      source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+      destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+      inflight: true,
+      inflight_expiry_date: "2024-02-03T12:38:19Z",
+      meta_data: {
+        provider_reference: "ext-pay-123456",
+        customer_id: "1234",
+        verification_status: "PENDING"
+      }
+    }, {
+      headers: {
+        'X-Blnk-Key': 'your-blnk-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Inflight transaction created:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating inflight transaction:', error.response.data);
+    throw error;
+  }
+}
+
+createInflightTransaction();
+```
+```json Expected response
+{
+    "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "parent_transaction": "",
+    "amount": 750.00,
+    "precise_amount": 75000,
+    "rate": 0,
+    "precision": 100,
+    "currency": "USD",
+    "description": "Payment to ExternalProvider (Pending Verification)",
+    "status": "INFLIGHT",
+    "hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
+    "allow_overdraft": false,
+    "inflight": true,
+    "created_at": "2024-02-20T05:28:03Z",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "2024-02-03T12:38:19Z",
+    "meta_data": {
+        "provider_reference": "ext-pay-123456",
+        "customer_id": "1234",
+        "verification_status": "PENDING"
+    }
+}
+```
+
+### Handling webhooks and automating inflight transaction resolution
+
+Let's set up a simple Express.js server to handle webhooks and automate the Inflight transaction resolution process:
+
+```javascript NodeJS
+const express = require('express');
+const bodyParser = require('body-parser');
+const axios = require('axios');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Webhook endpoint
+app.post('/payment-webhook', async (req, res) => {
+  const { status, providerReference, amount, currency } = req.body;
+
+  console.log(`Received webhook: Status ${status} for payment ${providerReference}`);
+
+  try {
+    if (status === 'VERIFIED') {
+      console.log(`Payment ${providerReference} verified. Committing transaction.`);
+      await commitInflightTransaction(providerReference);
+    } else if (status === 'REJECTED') {
+      console.log(`Payment ${providerReference} rejected. Voiding inflight transaction.`);
+      await voidInflightTransaction(providerReference);
+    }
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).send('Error processing webhook');
+  }
+});
+
+async function findTransactionId(providerReference) {
+  // In a real-world scenario, you would query your database here
+  // This is a placeholder implementation
+  return "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d";
+}
+
+async function commitInflightTransaction(providerReference) {
+  const transactionId = await findTransactionId(providerReference);
+
+  try {
+    const response = await axios.post(`http://localhost:5001/transactions/${transactionId}/inflight`, {
+      status: "commit",
+      meta_data: {
+        verification_status: "VERIFIED",
+        provider_reference: providerReference
+      }
+    }, {
+      headers: {
+        'X-Blnk-Key': 'your-blnk-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Transaction committed successfully:', response.data);
+    // Here you might want to update your internal database, notify the customer, etc.
+  } catch (error) {
+    console.error('Error committing transaction:', error.response.data);
+    throw error;
+  }
+}
+
+async function voidInflightTransaction(providerReference) {
+  const transactionId = await findTransactionId(providerReference);
+
+  try {
+    const response = await axios.post(`http://localhost:5001/transactions/${transactionId}/inflight`, {
+      status: "void",
+      meta_data: {
+        verification_status: "REJECTED",
+        provider_reference: providerReference
+      }
+    }, {
+      headers: {
+        'X-Blnk-Key': 'your-blnk-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Transaction voided successfully:', response.data);
+    // Here you might want to update your internal database, notify the customer, etc.
+  } catch (error) {
+    console.error('Error voiding transaction:', error.response.data);
+    throw error;
+  }
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+```
+
+This example demonstrates:
+
+1. Setting up a webhook endpoint to receive notifications from your payment provider.
+2. Processing the webhook based on the payment status (VERIFIED or REJECTED).
+3. Committing or voiding the Inflight transaction accordingly.
+4. Error handling and logging.
+
+### Using expiry dates with inflight transactions
+
+Expiration dates are crucial for managing Inflight transactions effectively. They ensure that transactions don't remain in a pending state indefinitely, which could potentially lock funds unnecessarily.
+
+### Example: Setting and handling expiration
+
+```javascript NodeJS
+const axios = require('axios');
+
+async function createInflightTransactionWithExpiry() {
+  const expiryDate = new Date();
+  expiryDate.setHours(expiryDate.getHours() + 24); // Set expiry to 24 hours from now
+
+  try {
+    const response = await axios.post('http://localhost:5001/transactions', {
+      amount: 750.00,
+      precision: 100,
+      reference: "ref_001adcfgf",
+      description: "Payment to ExternalProvider (Pending Verification)",
+      currency: "USD",
+      source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+      destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+      inflight: true,
+      inflight_expiry_date: expiryDate.toISOString(),
+      meta_data: {
+        provider_reference: "ext-pay-123456",
+        customer_id: "1234",
+        verification_status: "PENDING"
+      }
+    }, {
+      headers: {
+        'X-Blnk-Key': 'your-blnk-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Inflight transaction created with expiry:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating inflight transaction:', error.response.data);
+    throw error;
+  }
+}
+
+createInflightTransactionWithExpiry();
+```
+
+<Note>
+    Blnk automatically voids the transaction once the expiration date is met and the transaction has not been committed fully.
+</Note>
+
+### Implementing partial commits for inflight transactions
+
+Partial commits allow you to finalize a portion of an Inflight transaction while keeping the remainder in the Inflight state. This is particularly useful for scenarios where a transaction may be processed in parts.
+
+### Example: Partial commit of an inflight transaction
+
+```javascript NodeJS
+async function partialCommitInflightTransaction(transactionId, amountToCommit) {
+  try {
+    const response = await axios.post(`http://localhost:5001/transactions/${transactionId}/inflight`, {
+      status: "commit",
+      amount: amountToCommit
+    }, {
+      headers: {
+        'X-Blnk-Key': 'your-blnk-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Partial commit successful:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in partial commit:', error.response.data);
+    throw error;
+  }
+}
+
+// Usage example
+async function handlePartialPaymentVerification(transactionId, verifiedAmount) {
+  try {
+    await partialCommitInflightTransaction(transactionId, verifiedAmount);
+    console.log(`Partially committed ${verifiedAmount} for transaction ${transactionId}`);
+
+    // You might want to update your internal records here
+    await updateInternalRecords(transactionId, verifiedAmount);
+
+    // Check if there's any remaining amount to be verified
+    const remainingAmount = await checkRemainingInflightAmount(transactionId);
+    if (remainingAmount > 0) {
+      console.log(`Remaining inflight amount for ${transactionId}: ${remainingAmount}`);
+    } else {
+      console.log(`Transaction ${transactionId} fully committed`);
+    }
+  } catch (error) {
+    console.error('Error handling partial payment verification:', error);
+  }
+}
+
+async function updateInternalRecords(transactionId, committedAmount) {
+  // Implement your logic to update internal records
+  console.log(`Updating internal records for ${transactionId} with committed amount ${committedAmount}`);
+}
+
+async function checkRemainingInflightAmount(transactionId) {
+  // This would typically involve querying Blnk's API or your database
+  // For demonstration, we'll return a mock value
+  return 250.00; // Assuming 500 out of 750 was committed
+}
+
+// Example usage
+handlePartialPaymentVerification('txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d', 500.00);
+```
+
+In this example:
+
+1. We defined a `partialCommitInflightTransaction` function that commits only a portion of the Inflight transaction.
+2. The `handlePartialPaymentVerification` function demonstrates how you might use partial commits in your payment flow:
+    - It commits the verified amount.
+    - Updates internal records.
+    - Checks if there's any remaining amount still in the Inflight state.
+3. The `checkRemainingInflightAmount` function (which you would implement to query Blnk's API or your database) helps track the progress of partial commits.
+
+By using partial commits, you can handle complex scenarios where funds are released incrementally, such as:
+
+- Multi-stage payment processes.
+- Partial fulfillment of orders.
+- Gradual release of funds based on milestone completions in a project.
+
+### Best practices for managing side effects with Inflight
+
+1. **Balance Checks**: Ensure the source balance has enough funds to complete the transaction. Prevent the source balance from having a balance lower than the amount in its inflight_debit_balance.
+2. **Available Balance Calculation**: This prevents users from accessing funds that are held in Inflight transactions. In your application, calculate the available balance as:
+    
+    ```jsx
+    const availableBalance = balance - inflight_debit_balance;
+    ```
+    
+    
+3. **Error Handling**: Implement robust error handling in your Inflight process. If a commit or void operation fails, you may need to retry or escalate to manual intervention.
+4. **Customer Communication**: Implement a system to notify customers about the status of their transactions, especially when they're held in Inflight.
+5. **Reconciliation**: Regularly reconcile your internal records with Blnk's transaction logs to ensure accuracy, paying special attention to Inflight transactions.(Blnk v1 will support reconcillation features built into the ledger).
+6. **Webhook Authentication**: In a production environment, implement a mechanism to verify that the webhook is genuinely from your payment provider.
+7. **Idempotency**: Ensure your webhook handler is idempotent. Providers may send the same webhook multiple times, so your system should handle duplicate notifications gracefully.
+8. **Monitoring**: Set up monitoring and alerting for your webhook endpoint and Inflight transactions. This can help you quickly identify and respond to any issues in the payment verification process.
+
+## Need help?
+
+Are you stuck? Do you have a question that isn't answered in this doc? Have you run into a problem you can't solve? Want to file a bug report?
+
+[Join our Discord server](https://discord.gg/7WNv94zPpx) and share your questions/thoughts with other developers building financial applications like you.
