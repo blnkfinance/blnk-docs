@@ -1,4 +1,4 @@
-<img width="252" alt="image" src="https://github.com/user-attachments/assets/30a99a13-a838-4b80-ad42-0c196b1a74f2">![Blnk logo](https://res.cloudinary.com/dmxizylxw/image/upload/v1719884842/blnk-github-logo_twgk1x.png)
+![Blnk logo](https://res.cloudinary.com/dmxizylxw/image/upload/v1719884842/blnk-github-logo_twgk1x.png)
 
 ## Introduction
 
