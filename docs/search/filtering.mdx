@@ -1,0 +1,60 @@
+---
+title: "Filtering parameters"
+sidebarTitle: "Filtering parameters"
+description: "Learn how to use filters to streamline your search results."
+icon: "filter"
+"og:title": "Filtering parameters in Search - Blnk" 
+"og:description": "Unlock the power of Blnk Search! Filter ledger data with matching, negation, filtering numbers & dates, and combining conditions. Find what you need, fast!"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Filters allow you to refine your search results based on specific values or ranges in your data. In this guide, you'll learn how to use filters to find what you want in your ledger.
+
+Filters are reprented by the `filter_by` field in your request payload. This field can be matched against one or more values. For example:
+
+- `"status:applied"` returns documents where the status is "applied."
+- `"status:[applied, inflight]"` returns documents where the status is "applied" or "inflight."
+
+## 1. Exact vs non-exact filtering
+
+To match a field's value verbatim, use the `:=` exact match operator, e.g., `status:=applied` returns documents where the status is exactly "applied".
+
+Using the non-exact match operator, `:`, will do a word-level partial match, returning documents where the field has the word within it, e.g., `account_name:John` will match records with `account_name` equal to `John`, `John Smith`, `Smith John`.
+
+## 2. Negation
+
+Not equal to / negation is supported by the `:!=` operator, e.g., `currency:!=USD`. This will return records where the `currency` field is not equal to "USD". 
+
+You can also negate multiple values, e.g., `currency:!=[USD, EUR]`.
+
+To exclude results that contain strings, use the `:!` operator, e.g., `account_name:!John` will exclude all records with `account_name` containing "John" from the search results.
+
+## 3. Filtering numbers and dates
+
+To filter records with numeric values or dates, you can use the simple comparison operators `>`, `>=`, `<`, `<=`, and `=`. To filter between a min and max value, use the range operator, `[min..max]`
+
+| Operator | Meaning | Examples |
+| :---: | --- | ---
+| `>` | Greater than | `balance:>500000`
+| `>=` | Greater than or equal to | `balance:>=500000`
+| `<` | Less than or equal to | `balance:<500000`
+| `<=` | Less than or equal to | `balance:<=500000` 
+| `=` | Equal to | `balance:=500000`
+| `[min..max]` | Between min and max | `balance:[200..500000]` filters docs where `balance` value is between 200 and 500000.
+
+You can also filter multiple values, e.g., `balance:[200..500000, 0]` returns docs where the value is between 200 and 500000 or exactly equal to 0.
+
+The same syntax works for date fields as well such as `created_at` or `scheduled_for`, e.g., `created_at:>2024-04-21` returns docs with dates later than than 21 April, 2024. 
+
+Note, when filtering by date, input the values in the same format it was stored in your ledger (YYYY-MM-DD).
+
+## 4. Multiple conditions
+
+You can combine more than one filter condition in your query using the `&&` and `||` operators. `&&` means all conditions must be true, while `||` means that at least one condition must be true.
+
+For example, to filter all USD transactions with the `APPLIED` and `INFLIGHT` statuses, our filter will look like this: `currency:=USD && status:[applied, inflight]`. 
+
+To use `||`, e.g., all balances with `balance` less than 500000 or `credit_balance` above 100000, we'll have: `balance:<500000 || credit_balance:>100000`.
+
+<NeedHelp />
