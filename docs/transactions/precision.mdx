@@ -1,8 +1,121 @@
 ---
-title: " "
+title: "Transaction precision"
 sidebarTitle: "Precision"
-description: " "
+description: "Learn how to ensure correctness when recording amounts with floating points in your Blnk Ledger"
 icon: "bullseye"
-"og:title": " "
-"og:description": " "
+"og:title": "Transaction precision"
+"og:description": "Learn how to ensure correctness when recording amounts with floating points in your Blnk Ledger"
 ---
+
+In Blnk, balances are stored as integers, while transaction amounts are accepted as float. To correctly compute your balance, transaction amounts have to be stored as integers as well. This ensures that your ledger is accurate.
+
+## What is precision?
+
+Blnk uses precision to convert your transaction amounts into the lowest unit possible for their asset class, e.g. converting Dollar to cents. 
+
+**Let's dive in ✨**
+
+What we'll cover …
+
+1. [Why use precision](#1-why-use-precision)
+2. [Applying precision](#2-applying-precision)
+3. [Best practices](#3-best-practices)
+
+## 1. Why use precision
+
+Precision is crucial because computers are not great at storing and managing floating points as best as Blnk needs it to. Learn more: [Floating Point Math](https://0.30000000000000004.com/).
+
+For instance, if a customer sends 1000.50 to a vendor, Blnk accepts the amount value as 1000.50 (float), retrieves the defined precision (e.g. 100), and applies it to the amount. This converts our amount from 1000.50 to 100050.
+
+This ensures that all amounts are accounted for when computing the balances, and we can accurately store amounts without dealing with the technical issues of managing floating points.
+
+## 2. Applying precision
+
+To set precision on your transaction, the `precision` field must be passed while recording a transaction. The default value, if not passed, is set to 1.
+
+Consider the following sample request:
+
+```json Request
+{
+    "amount": 750.23,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "precision": 100,
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For fees",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+
+### Determining your precision value
+
+When recording a transaction with a particular asset class (e.g., USD), determine the lowest possible amount and choose a precision value that ensures that the amount is converted to the lowest unit possible.
+
+| Sample asset class | Lowest possible amount | Suggested precision value | Lowest unit to be stored
+| --- | --- | --- | ---
+| GBP | 0.01 | 100 | 1
+| USD | 0.01 | 100 | 1
+| BTC | 0.00000001 | 100000000 | 1
+| ETH | 0.0000000000000000001 | 1000000000000000000 | 1
+
+<Tip>
+    We created an open source repository of all 151 fiat currencies and their respective precision values. See here: [blnk-assets](https://github.com/blnkfinance/blnk-assets)
+</Tip>
+
+Here's the response from our request earlier:
+
+```json Response
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "amount": 750.23,
+    "precision": 100,
+    "precise_amount": 75023,
+    "currency": "USD",
+    "description": "For fees",
+    "status": "QUEUED",
+    "created_at": "2024-02-20 05:28:03 UTC",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+
+<Info>
+    We save the provided `amount` in float and calculate the `precise_amount` using the provided precision value (`amount` * `precision`). We use the `precise_amount` to compute your ledger balances.
+</Info>
+
+<Tip>
+    When retrieving balances to display in your application, you can always convert back to the primary asset class by dividing with the `precision` value.
+</Tip>
+
+## 3. Best practices
+
+1. **Consistency:** It is very crucial to maintain consistency in how precision is applied in your application. 
+    - Transactions with the same `currency` should have the same precision applied to its amounts across your application. 
+    - Ensure that your precision value converts the target amount to the lowest unit possible. For example, while "100" converts most fiat currencies to their lowest unit, crypto currencies like Bitcoin can have up to "100000000" as their precision value.
+
+2. **Review and audit:** Regularly review and audit you ledger to ensure that precision is applied consistently and correctly.
+
+3. **Ensure correctness:** When performing transactions between balances of two different asset classes, e.g., USD and GBP, make sure they have the same precision values.
+
+    <Warning>   
+        It is not advisable to record transactions between balances with two currencies of different precision values, e.g., transactions between a USD balance and a BTC balance.
+
+        This can complicate your financial operations, cause inconsistencies in your ledger, and lead to errors in computing your balances.
+    </Warning>
+
+### Why consistency matters
+
+1. **Accuracy:** Consistent use of precision ensures that all transaction amounts and balances are accurately represented in your Blnk Ledger, preventing calculation errors, where applicable.
+
+2. **Comparability:** Transactions and balances with the same precision are directly comparable, simplifying financial analysis and reporting.
+
+3. **Integrity:** Maintaining a uniform approach to precision preserves the integrity of your Blnk Ledger, making it more reliable and trustworthy for other financial operations.
