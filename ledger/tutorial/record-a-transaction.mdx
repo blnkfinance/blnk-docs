@@ -59,7 +59,7 @@ Blnk ensures idempotency through the use of a unique `reference` for every trans
 ## Record a transaction
 
 Send a request to the [Record Transaction](/misc/record-transaction) endpoint and input the required fields. 
-
+<CodeGroup>
 ```json request
 {
     "amount": 750,
@@ -75,7 +75,17 @@ Send a request to the [Record Transaction](/misc/record-transaction) endpoint an
     }
 }
 ```
-
+```Go Golang
+newTransaction, _ := newBlnk.Transactions.RecordTransaction(context.Background(), transactions.RecordTransactionRequest{
+  Amount:         blnk.Int64(1000),
+  Reference:      blnk.String("ref-0-1"),
+  Currency:       blnk.String("USD"),
+  Source:         blnk.String("@world"),
+  Destination:    newBalance.BalanceId,
+  AllowOverDraft: blnk.Bool(true),
+})
+```
+</CodeGroup>
 Passing detailed data with the `meta_data` object is encouraged; it provides you with 360-degree insights about each transaction record. Examples of data you can pass include `sender_name`, `account_number`, `bank_name`, `receiver_name`, `payment_id`, `ip_address`, `location`, `payment_method`, etc.
 
 ```json response
