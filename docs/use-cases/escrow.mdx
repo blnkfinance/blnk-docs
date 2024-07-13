@@ -1,0 +1,437 @@
+---
+title: "Escrow application"
+sidebarTitle: "Escrow application"
+description: "Build an escrow application with the Blnk Ledger"
+icon: "timer"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+An escrow application provides a secure way for buyers and sellers to complete transactions, ensuring that both parties fulfill their obligations before the funds are released. 
+
+This guide will walk you through the implementation of an escrow service using the Blnk Ledger. You will learn how to set up and manage escrow accounts, monitor transaction statuses, and handle the release or return of funds based on predefined conditions.
+
+We'll learn about:
+
+1. [Defining and creating your ledger structure](#1-ledger-structure)
+2. [Account creation](#2-balance-escrow-account-creation)
+3. [Funding escrow accounts](#3-funding-escrow-accounts)
+4. [Releasing funds](#4-releasing-funds)
+5. [Refunding funds](#5-refunding-funds)
+6. [Best Practices (with Inflight)](#best-practices-with-inflight)
+
+## 1. Ledger structure
+
+The entry point of the Blnk ledger system is ledger folders. These folders serve as a way to group and manage assets, accounts, and balances that fit your product or organization's structure.
+
+In this guide, we'll use the following structure:
+
+- **Escrow Ledger**: Contains all escrow accounts for users.
+
+<Tip>
+  The ledger structure is flexible and can be customized based on your specific needs. For instance, you could group by types of transactions (e.g., real estate, freelance work), or use a combination of both.
+</Tip>
+
+**See also:**
+
+- [Create a ledger](../home/install)
+- [Ledger architecture](../ledgers/architecture)
+
+### Creating an Escrow Ledger
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/ledgers',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'YOUR_AUTH_TOKEN_HERE'
+  },
+  body: JSON.stringify({
+    "name": "Escrow Ledger",
+    "meta_data": {
+      "description": "Ledger for managing escrow accounts"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "name": "Escrow Ledger",
+    "created_at": "2024-07-05T08:06:26.84333909Z",
+    "meta_data": {
+        "description": "Ledger for managing escrow accounts"
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+  Always store the `ledger_id` in your database. You'll need it for future operations related to this ledger.
+</Warning>
+
+## 2. Balance (escrow account) creation
+
+Blnk uses the concept of ledger balances to manage accounts/balances in a ledger. In this example, we'll create escrow accounts for two users in an escrow transaction — Alice (the sender) and Bob (the recipient). T
+
+**See also:**
+
+- [Create a balance](../home/install)
+- [Balance monitoring](../balances/balance-monitoring)
+
+### Creating an escrow account for User Alice
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/balances',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "currency": "USD",
+    "meta_data": {
+      "account_type": "Escrow",
+      "customer_name": "Alice Johnson",
+      "customer_id": "alice-5678",
+      "account_opened_date": "2024-01-01",
+      "account_status": "active"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 2,
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "identity_id": "",
+    "balance_id": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "account_type": "Escrow",
+        "customer_name": "Alice Johnson",
+        "customer_id": "alice-5678",
+        "account_opened_date": "2024-01-01",
+        "account_status": "active"
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+  The `balance_id` is crucial. Always store this in your database and associate it with the customer. You'll use this ID for all future transactions involving this loyalty point account.
+</Warning>
+
+### Creating an escrow account for User Bob
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/balances',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "currency": "USD",
+    "meta_data": {
+      "account_type": "Escrow",
+      "customer_name": "Bob Smith",
+      "customer_id": "bob-9101",
+      "account_opened_date": "2024-02-15",
+      "account_status": "active"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 2,
+    "ledger_id": "ldg_escrow12345678-90ab-cdef-1234-567890abcdef",
+    "identity_id": "",
+    "balance_id": "bln_bob9101-90ab-cdef-1234-567890abcdef",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "account_type": "Escrow",
+        "customer_name": "Bob Smith",
+        "customer_id": "bob-9101",
+        "account_opened_date": "2024-02-15",
+        "account_status": "active"
+    }
+}
+```
+</CodeGroup>
+
+## 3. Funding escrow accounts
+
+Customers can fund their escrow accounts. We'll use the [Inflight feature](../transactions/inflight) to manage funding transactions.
+
+**See also:**
+
+- [Record a transaction](../home/install)
+- [Understanding precision](../transactions/precision)
+- [Applying inflight](../transactions/inflight)
+
+### Funding Alice's escrow account
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/transactions',
+  headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "amount": 1000,  
+    "precision": 100,
+    "reference": "funding-001",
+    "description": "Funding escrow account",
+    "currency": "USD",
+    "source": "@bank-account",
+    "destination": "bln_alice5678-90ab-cdef-1234-567890abcdef",  // Alice's escrow account balance_id
+    "inflight": true,
+    "meta_data": {
+      "transaction_type": "deposit",
+      "customer_name": "Alice Johnson",
+      "customer_id": "alice-5678",
+      "transaction_date": "2024-07-05",
+      "payment_verified": false
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_funding001-2345-6789-abcd-ef0123456789",
+    "amount": 1000,
+    "precision": 100,
+    "precise_amount":100000,
+    "reference": "funding-001",
+    "description": "Funding escrow account",
+    "currency": "USD",
+    "status": "INFLIGHT",
+    "source": "@bank-account",
+    "destination": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "transaction_type": "deposit",
+        "customer_name": "Alice Johnson",
+        "customer_id": "alice-5678",
+        "transaction_date": "2024-07-05",
+        "payment_verified": false
+    }
+}
+```
+</CodeGroup>
+
+## 4. Releasing Funds
+
+Once the conditions of the escrow are met, the funds can be released to the appropriate party.
+
+### Releasing funds from Alice to Bob
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/transactions',
+  headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "amount": 1000,  
+    "precision": 100,
+    "reference": "release-001",
+    "description": "Releasing escrow funds",
+    "currency": "USD",
+    "source": "bln_alice5678-90ab-cdef-1234-567890abcdef",  // Alice's escrow account balance_id
+    "destination": "bln_bob9101-90ab-cdef-1234-567890abcdef",  // Bob's escrow account balance_id
+    "meta_data": {
+      "transaction_type": "release",
+      "customer_name": "Alice Johnson",
+      "recipient_name": "Bob Smith",
+      "transaction_date": "2024-07-05"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_release001-2345-6789-abcd-ef0123456789",
+    "amount": 1000,
+    "precision": 100,
+    "precise_amount": 100000
+    "reference": "release-001",
+    "description": "Releasing escrow funds",
+    "currency": "USD",
+    "status": "QUEUED",
+    "source": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "destination": "bln_bob9101-90ab-cdef-1234-567890abcdef",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "transaction_type": "release",
+        "customer_name": "Alice Johnson",
+        "recipient_name": "Bob Smith",
+        "transaction_date": "2024-07-05"
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+  Ensure that all conditions of the escrow are met before releasing funds. This might involve manual checks or automated verification depending on your application's requirements.
+</Warning>
+
+## 5. Refunding funds
+
+If the conditions of the escrow are not met, the funds can be refunded to the original depositor.
+
+### Refunding funds back to Alice
+
+<CodeGroup>
+```javascript NodeJS
+const request = require('request');
+
+const options = {
+  method: 'POST',
+  url: 'http://localhost:5001/transactions',
+  headers: {
+    'X-Blnk-Key': 'blnk-api',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "amount": 1000,
+    "precision": 100,
+    "reference": "refund-001",
+    "description": "Refunding escrow funds",
+    "currency": "USD",
+    "source": "bln_alice5678-90ab-cdef-1234-567890abcdef",  // Alice's escrow account balance_id
+    "destination": "@bank-account",
+    "meta_data": {
+      "transaction_type": "refund",
+      "customer_name": "Alice Johnson",
+      "transaction_date": "2024-07-05"
+    }
+  })
+};
+
+request(options, (error, response) => {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+```
+
+```json Response
+{
+    "transaction_id": "txn_refund001-2345-6789-abcd-ef0123456789",
+    "amount": 1000,
+    "precision": 100,
+    "precise_amount": 100000,
+    "reference": "refund-001",
+    "description": "Refunding escrow funds",
+    "currency": "USD",
+    "status": "QUEUED",
+    "source": "bln_alice5678-90ab-cdef-1234-567890abcdef",
+    "destination": "@bank-account",
+    "created_at": "2024-07-05T08:21:04.001458635Z",
+    "meta_data": {
+        "transaction_type": "refund",
+        "customer_name": "Alice Johnson",
+        "transaction_date": "2024-07-05"
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+  Ensure that all conditions of the escrow are checked before processing a refund. This might involve manual checks or automated verification depending on your application's requirements.
+</Warning>
+
+## See also
+
+<Card title="Managing side effects with Inflight" icon="book-open-cover" href="transfers">
+  A deep-dive guide into how to implement Inflight in your application.
+</Card>
+
+## Best Practices (with Inflight)
+
+1. **Balance Checks**: Ensure the source balance has enough funds to complete the transaction. Prevent the source balance from having a balance lower than the amount in its `inflight_debit_balance`.
+2. **Available Balance Calculation:** In your application, calculate the available balance to prevent users from accessing funds that are held in Inflight transactions. This can be done as follows:
+    ```javascript
+    const availableBalance = balance - inflight_debit_balance;
+    ```
+3. **Error Handling**: Implement robust error handling in your Inflight process. If a commit or void operation fails, you may need to retry or escalate to manual intervention.
+4. **Customer Communication**: Implement a system to notify customers about the status of their transactions, especially when they're held in inflight.
+5. **Reconciliation**: Regularly reconcile your internal records with Blnk's transaction logs to ensure accuracy. Pay special attention to Inflight transactions. Blnk v1 will support reconciliation features built into the ledger, which can aid in this process.
+6. **Webhook Authentication**: In a production environment, implement a mechanism to verify that webhooks are genuinely from your payment provider. This helps in maintaining the integrity and security of your transaction processing.
+7. **Idempotency**: Ensure your webhook handler is idempotent. Providers may send the same webhook multiple times, so your system should handle duplicate notifications gracefully.
+8. **Monitoring**: Set up monitoring and alerting for your webhook endpoint and inflight transactions. This can help you quickly identify and respond to any issues in the payment verification process.
+
+<NeedHelp />
