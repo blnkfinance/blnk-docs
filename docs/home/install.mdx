@@ -7,6 +7,8 @@ icon: "rocket-launch"
 "og:description": "Discover Blnk, the open-source financial backend for developers. Accurately record transactions and scale your fintech product reliably with Blnk."
 ---
 
+import NeedHelp from "/snippets/need-help.mdx";
+
 This is your guide to getting started with Blnk. If you are new to Blnk or [open-source fintech developer tools](https://blnkfinance.com), this is where you should start.
 
 ## What is Blnk?
@@ -109,7 +111,13 @@ When you install Blnk, an internal ledger called [the General Ledger](../ledgers
 
 However, to create, store and represent balances for accounts/wallets owned by the users in your application, it is required to create ledgers to group them in.
 
-To create a ledger, call the ["create-ledger endpoint"](/misc/create-ledger) with the following request body:
+To create a ledger, call the create-ledger endpoint:
+
+```
+POST http://YOUR_URL/ledgers
+```
+
+With the following request body:
 
 <CodeGroup>
 ```json Request
@@ -152,7 +160,13 @@ To create a ledger, call the ["create-ledger endpoint"](/misc/create-ledger) wit
 
 Ledger balances (or balances for short) are used to represent store of value in a fintech application, e.g., wallet, account, card balance, etc. They represent the source or destination of a transaction record.
 
-To create a balance, call the ["create-balance endpoint"](/misc/create-balance) with the following request body:
+To create a balance, call the create-balance endpoint:
+
+```
+POST http://YOUR_URL/balances
+```
+
+With the following request body:
 
 <CodeGroup>
 ```json Request
@@ -217,7 +231,13 @@ To create a balance, call the ["create-balance endpoint"](/misc/create-balance) 
 
 Transactions represent all financial activities happening in your application. Blnk uses the [double entry principle](../guides/double-entry) to record transactions, i.e., to successfully record a transaction, there must be a source and a destination.
 
-To record a transaction, call the ["record-transaction endpoint"](/misc/record-transaction) with the following request body:
+To record a transaction, call the record-transaction endpoint: 
+
+```
+POST http://YOUR_URL/transactions
+```
+
+With the following request body:
 
 <CodeGroup>
 ```json Request
@@ -278,3 +298,39 @@ To record a transaction, call the ["record-transaction endpoint"](/misc/record-t
         |`created_at`| Date and time of the transaction record. | `string`
     </Tab>
 </Tabs>
+
+<Tip>
+  Passing detailed data with the `meta_data` object is encouraged; it provides you with 360-degree insights about each transaction record. Examples of data you can pass include `sender_name`, `account_number`, `bank_name`, `receiver_name`, `payment_id`, `ip_address`, `location`, `payment_method`, etc.
+</Tip>
+
+<CardGroup>
+  <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="../transactions/precision"></Card>
+  <Card title="Transaction types" iconType="duotone" icon="arrow-progress" href="../transactions/types"></Card>
+</CardGroup>
+
+### Transaction properties
+
+1. **Immutability:** All transactions in Blnk are immutable. Once they have been recorded, they cannot be altered or tampered with. This ensures the accuracy and unchangeability of the transaction record. See also: [Transaction hashing](../advanced/transaction-hashing)
+
+2. **Idempotency:** All transactions in Blnk are idempotent. This ensures that performing the same operation multiple times results in the same outcome as doing it once. This property is crucial for maintaining consistent outcomes regardless of how many times a transaction is repeated, especially in scenarios where network errors or other issues might cause transaction failures.
+
+<Info>
+  Blnk ensures idempotency through the use of a unique `reference` for every transaction. This is why it is required for you to provide one when recording a transaction.  
+</Info>
+
+### Notifications
+
+Notifications are sent via webhook events to let you know the updated status of a transaction:
+
+1. **`transaction.applied`:** This event is sent when a transaction has been processed and applied to the participating balances. It signifies the completion of a transaction's lifecycle.
+
+2. **`transaction.inflight`:** This event is sent when a transaction's status has been updated to `INFLIGHT` and is waiting for a certain condition to be met, as defined by your application. See also: [Inflight transactions](../transactions/inflight)
+
+3. **`transaction.rejected`:** This event is sent when a transaction is rejected because all of the conditions required to process it wasn't met.
+
+<CardGroup>
+  <Card title="Set up notifications" iconType="duotone" icon="bell" href="../advanced/notifications"></Card>
+  <Card title="About transaction statuses" iconType="duotone" icon="tag" href="../transactions/statuses"></Card>
+</CardGroup>
+
+<NeedHelp />
