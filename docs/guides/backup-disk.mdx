@@ -1,0 +1,110 @@
+---
+title: "Backup to Disk"
+sidebarTitle: "Backup to Disk"
+description: "Learn how to backup your Blnk data to a local disk."
+icon: "floppy-disk"
+"og:title": "Backup to Disk - Blnk"
+"og:description": "Back up your Blnk server’s PostgreSQL database. Follow this guide for setup, verification, best practices for storage, and restoration steps to ensure data safety."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Ensuring the safety and integrity of your financial data on a Blnk server is crucial. This enhanced guide covers the process of backing up your PostgreSQL database, including setup instructions, verification, storage best practices, and restoration steps.
+
+## Before you start
+
+Before initiating your first backup, ensure your Blnk server environment is correctly configured. This includes setting up the backup directory with appropriate permissions, ensuring your Blnk server has access to this directory, and updating the Blnk configuration file to recognize the backup directory.
+
+Here are the prerequisites:
+
+- Docker 20.10.11 or later
+- Compose 1.29.2 or later
+- Basic understanding of cron jobs (for Linux/macOS) or Task Scheduler (for Windows)
+- Familiarity with command-line interfaces and shell scripting
+
+## Configuring the backup directory
+
+<Steps>
+  <Step title="Create a backup directory">
+    Choose a secure location on your server to store the backup files. For example, `/var/backups/blnk`.
+
+    ```bash bash
+    mkdir -p /var/backups/blnk
+    ```
+  </Step>
+  <Step title="Set permissions">
+    Adjust the directory permissions to ensure that the Blnk server can write to this directory.
+
+    ```bash bash
+    chown youruser:yourgroup /var/backups/blnk
+    chmod 700 /var/backups/blnk
+    ```
+
+    >Replace `youruser:yourgroup` with the user and group that your Blnk server runs as. This step is crucial for preventing unauthorized access to your backup files.
+  </Step>
+  <Step title="Update the Blnk configuration file">
+    Modify your `blnk.json` configuration file to include the path to the backup directory. This tells the Blnk server where to save the backup files.
+
+    Open your `blnk.json` file in a text editor and add the `backup_dir` key with the path to your backup directory:
+
+    ```json blnk.json
+    {
+      ...
+      "backup_dir": "/var/backups/blnk",
+      ...
+    }
+    ```
+
+    Save the changes to your configuration file. This step ensures that when the Blnk server initiates a backup, it correctly locates the directory to store the backup files.
+  </Step>
+</Steps>
+
+## Automating backups
+
+Automating the backup process ensures your data is regularly backed up without manual intervention.
+
+<Steps>
+  <Step title="Create a backup script">
+    Create a script named `backup.sh` that triggers the Blnk server to back up to disk using the `/backup` route.
+
+    ```bash backup.sh
+    #!/bin/bash
+    curl -X POST http://yourdomain.com:5001/backup
+    ```
+  </Step>
+  <Step title="Schedule the backup with Cron">
+    Use cron (Linux/macOS) or Task Scheduler (Windows) to schedule your backup script. For example, to run the backup daily at 2 AM:
+
+    ```bash cron
+    0 2 * * * /path/to/backup_blnk.sh
+    ```
+  </Step>
+</Steps>
+
+## Best practices for backup storage to disk
+
+- **Off-site Storage**: Regularly copy your backups to an off-site location or cloud storage to protect against local disasters.
+- **Encryption**: Encrypt your backup files to protect sensitive data from unauthorized access.
+- **Retention Policy**: Implement a retention policy to manage the lifecycle of your backups, ensuring that you keep only what's necessary and avoid unnecessary storage costs.
+
+## Restoring from a Backup
+
+In the event of data loss or corruption, having a reliable backup is crucial. Here's how to restore your Blnk database from a backup file:
+
+<Steps>
+  <Step title="Locate your backup file">
+    Identify the most recent or appropriate backup file for your restoration needs.
+  </Step>
+  <Step title="Restore the database">
+    Use the PostgreSQL `pg_restore` command or a similar tool provided by Blnk to restore your database from the backup file.
+
+    ```bash bash
+    pg_restore -d yourdatabase /path/to/yourbackupfile
+    ```
+  </Step>
+  <Step title="Verify the restoration">
+    Ensure that the restoration process was successful and that your Blnk application is functioning correctly.
+  </Step>
+</Steps>
+
+<NeedHelp />
