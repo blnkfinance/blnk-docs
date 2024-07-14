@@ -117,7 +117,7 @@ Call the **record-transaction** endpoint: Include the `inflight` parameter in th
 </CodeGroup>
 
 <Warning>
-    Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time. Remove it from your body if you want your transaction to wait indefinitely until it is committed or voided.
+    Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time.
 </Warning>
 
 ### Committing an inflight transaction
@@ -125,7 +125,7 @@ Call the **record-transaction** endpoint: Include the `inflight` parameter in th
 If the transaction meets the set conditions, instruct Blnk to commit with the **update-inflight** endpoint:
 
 ```
-PUT http://YOUR_URL/inflight/{transaction_id}
+PUT http://YOUR_BLNK_INSTANCE_URL/inflight/{transaction_id}
 ```
 
 ```json Request
@@ -157,7 +157,7 @@ You can also choose to commit in bits, i.e., you can instruct Blnk to release th
 If the transaction doesn't meet the set conditions, instruct Blnk to void with the **update-inflight** endpoint:
 
 ```
-PUT http://YOUR_URL/inflight/{transaction_id}
+PUT http://YOUR_BLNK_INSTANCE_URL/inflight/{transaction_id}
 ```
 
 ```json Request
@@ -169,7 +169,7 @@ PUT http://YOUR_URL/inflight/{transaction_id}
 Blnk creates a new transaction record with the details from the original inflight transaction. However, this time, the status will be `VOID`; it is not applied to any of the balances, and the source and destination `inflight_balances` are reset.
 
 <Warning>
-    You cannot void in bits.
+    You cannot void in bits. When you void a transaction, it means that the inflight transaction didn't meet the set conditions.
 </Warning>
 
 ## 3. Inflight statuses
@@ -181,7 +181,7 @@ Blnk creates a new transaction record with the details from the original infligh
 3. `EXPIRED`: This means the transaction stayed in the `INFLIGHT` status past the specified expiry date. If an inflight transaction expires, a new transaction record is created with its status saved as `EXPIRED` and the transaction is discarded.
 
 <Warning>
-    All transactions in Blnk are uni-directional. Once a transaction has been applied, committed or voided, you cannot roll back the status to its previous status. 
+    All transactions in Blnk are immutable. Once a transaction has been applied, committed or voided, you cannot roll back the status to its previous status. 
     
     This is important to protect the correctness and accuracy of the transaction and your ledger as a whole.
 </Warning>
