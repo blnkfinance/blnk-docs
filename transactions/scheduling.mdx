@@ -1,0 +1,66 @@
+---
+title: "Scheduling transactions"
+sidebarTitle: "Scheduling transactions"
+description: "Learn how to a schedule a transaction for a later date in your Blnk Ledger."
+icon: "calendar-check"
+"og:title": "Scheduling transactions - Blnk"
+"og:description": "Learn how to a schedule a transaction for a later date in your Blnk Ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Blnk supports scheduling a transaction for a later specified date. This can be useful for both one-time or recurring transactions that need to automatically happen at a certain date in the future.
+
+<Note>
+    All dates and times in Blnk are stored in the UTC timezone.
+</Note>
+
+## 1. Scheduling a transaction
+
+To schedule a transaction, include the `scheduled_for` field in your request body when calling the **record-transaction** endpoint.
+
+```
+POST http://YOUR_URL/transactions
+```
+
+<CodeGroup>
+```json Request
+{
+    "amount": 100000,
+    "precision": 100,
+    "reference": "ref",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "@fees",
+    "scheduled_for": "2024-02-20 05:28:03",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+
+```json Response
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "reference": "ref",
+    "amount": 100000,
+    "precision": 100,
+    "precise_amount": 10000000,
+    "currency": "USD",
+    "status": "QUEUED",
+    "created_at": "2024-02-20 05:28:03 UTC",
+    "scheduled_for": "2024-10-08T19:48:00",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+</CodeGroup>
+
+Blnk accepts and adds the transaction to its queue. Once the scheduled time is reached, the transaction gets applied and you receive a notification via the `transaction.applied` webhook event.
+
+<NeedHelp />

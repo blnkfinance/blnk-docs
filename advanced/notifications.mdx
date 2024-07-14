@@ -1,0 +1,76 @@
+---
+title: "Handling notifications"
+sidebarTitle: "Notifications"
+description: "Configure real-time alerts for transaction events and handle error notifications through Slack. Stay updated with critical information."
+icon: "bell"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Blnk uses webhooks to send you real-time notifications about crucial transaction events happening in your ledger. 
+
+In this guide, you'll learn how Blnk sends notifications and how to handle error notifications through Slack. 
+
+## Supported events
+
+Blnk sends webhook notifications for four main events in your Blnk Ledger.
+
+1. **`transaction.applied`:** This event is sent when a transaction has been processed and applied to the participating balances. It signifies the completion of a transaction's lifecycle.
+
+2. **`transaction.inflight`:** This event is sent when a transaction's status has been updated to `INFLIGHT` and is waiting for a certain condition to be met, as defined by your application. See also: [ Inflight](../transactions/inflight).
+
+3. **`transaction.rejected`:** This event is sent when a transaction is rejected because all of the conditions required to process it wasn't met. 
+
+4. **`balance.monitor`:** This event is sent when a balance monitor has been triggered and the monitoring conditions set have been met. See also: [Balance monitoring](../balances/balance-monitoring).
+
+Each notification payload contains two main fields:
+
+| Field | Description | Type
+| :--- | :--- | :---
+| `event` | Indicates the type of event, e.g., `transaction.applied`. | String
+| `data` | Contains the transaction or balance monitoring payload, detailing the relevant information. | Object
+
+### Handling error notifications
+
+In addition to transaction events, Blnk also allows you send error notifications to Slack via a specified webhook provided by your Slack workspace. This is very useful for monitoring and quickly addressing issues that may arise during transaction processing.
+
+To learn how to get your Slack webhook URL, go to: [Slack API: Sending messages using incoming webhooks](https://api.slack.com/messaging/webhooks).
+
+## Configuring notifications in Blnk
+
+To set up how you receive notifications from Blnk, you need to update your `blnk.json` configuration file. This file allows you to specify the webhook URLs that Blnk sends notifications to — both for your application and Slack.
+
+<Warning>
+    If you do not have a `blnk.json` file, please create a new `json` file — it contains essential settings for running your Blnk server.
+
+    Next, copy & paste [the configuration JSON](configuration) into it.
+</Warning>
+
+Update the `notification` object as follows:
+
+- `slack`:
+	- `webhook_url`: The webhook URL provided by your Slack workspace.
+- `webhook`:
+	- `url`: Your application's webhook URL where Blnk sends transaction event notifications to.
+	- `headers`: Optional headers that you may need to include in the notification request to authenticate the message. This can include authentication tokens or content type specifications.
+
+Below is an example of a notifications configuration:
+
+```json blnk.json
+{
+  "notification": {
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+    },
+    "webhook": {
+      "url": "http://server:5001/webhooks",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <your_auth_token>"
+      }
+    }
+  }
+}
+```
+
+<NeedHelp />

@@ -1,0 +1,157 @@
+---
+title: "Money Movement Maps"
+sidebarTitle: "Money movement map"
+description: "Creating a money movement map for your fintech application."
+icon: "map"
+"og:title": "Money movement maps - Blnk"
+"og:description": "Learn how to model and visualize the flow of funds within your fintech application."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Money movement map is a group of all <Tooltip tip="How money moves between balances from initiation to its final destination.">transaction journeys</Tooltip> in your system. 
+
+It is crucial to have clarity on how the flow of funds behave within your application, because it helps you define how to set up your ledger and track a <Tooltip tip="Any action that triggers a transaction in your system">transaction activity</Tooltip> through its entire journey.
+
+**Let's dive in ✨**
+
+What we'll cover …
+
+1. [Defining your use case](#1-defining-your-use-case)
+2. [Transaction journeys](#2-transaction-journeys)
+3. [Applying your money movement map](#3-applying-your-money-movement-map)
+
+## 1. Defining your use case
+
+To draw an accurate money movement map, you need to define your product's use cases and priorities. Consider 2 fintechs:
+
+| Fintech | Services | Priorities |
+| --- | --- | --- |
+| A | Wallets | Only wants to track how its wallets are performing. |
+| B | Wallets | Wants the same thing as fintech A, but also wants to track every external account that their users transact with. |
+
+## 2. Transaction journeys
+
+A transaction journey refers to all the nodes money flows through when a transaction is initiated in your system. For a wallet, you can have at least 2 journeys:
+
+- Wallet funding
+- Wallet withdrawal
+
+### Wallet funding for fintech A
+
+Case scenario: When a user funds their wallet, they pay a processing fee.
+
+```mermaid
+flowchart LR
+    id0(((Start)))
+    id1(((End)))
+    id2([@World])
+    id3([User balance])
+    id4([@Fees])
+    id0 --- id2
+    id2 -- User receives funds --> id3
+    id2 -- User pays processing fee --> id4
+    id3 --- id1
+    id4 --- id1
+```
+
+<Info>
+    Balances with an "@" prefix are called [internal balances](../balances/internal-balances). They refer to balances owned by the organization. They are automatically grouped in the [General Ledger](general-ledger).
+</Info>
+
+In the flowchart above, `@World` represents all external accounts (card, other bank accounts, etc.) interacting with your user's balance. 
+
+### Wallet funding for fintech B
+
+Case scenario: Fintech B wants to track every external account that has funded the wallet.
+
+```mermaid
+flowchart LR
+    id0(((Start)))
+    id1(((End)))
+    id2([external-account])
+    id3([User balance])
+    id4([@Fees])
+    id0 --- id2
+    id2 -- User receives funds --> id3
+    id3 -- Processing fee is debited --> id4
+    id4 --- id1
+```
+
+Unlike fintech A that groups them all into a single balance, in this case, a separate balance is created for each unique external account that has funded the wallet. This allows fintech B to have deeper insights into which external account interacts often with the user's balance.
+
+### Wallet withdrawal for fintech A
+
+Case scenario: When a user withdraws from their wallet, they pay a processing fee.
+
+```mermaid
+flowchart LR
+    id0(((Start)))
+    id1(((End)))
+    id2([@World])
+    id3([User balance])
+    id4([@Fees])
+    id0 --- id3
+    id3 -- User sends money out --> id2
+    id3 -- User pays processing fee --> id4
+    id2 --- id1
+    id4 --- id1
+```
+
+### Wallet withdrawal for fintech B
+
+Case scenario: Fintech B wants to track every external account that has withdrawn from the wallet.
+
+```mermaid
+flowchart LR
+    id0(((Start)))
+    id1(((End)))
+    id2([external-account])
+    id3([User balance])
+    id4([@Fees])
+    id0 --- id3
+    id3 -- User sends money out --> id2
+    id3 -- Processing fee is debited --> id4
+    id4 --- id1
+    id2 --- id1
+```
+
+## 3. Applying your money movement map
+
+With your transaction journeys clearly defined, you can use this information to set up your Blnk Ledger.
+
+### Setting up fintech A ledger
+
+Fintech A only needs to create one ledger to group all of his users' balances. `@World` and `@Fees` are automatically added to the [General Ledger](general-ledger).
+
+| Ledgers | Ledger balances |
+| :--- | :--- |
+| General ledger | @Fees | 
+| Customer wallets ledger | user-a-balance |
+| | user-b-balance |
+| | user-c-balance |
+| | user-d-balance |
+
+### Setting up fintech B ledger
+
+Fintech B needs to create a ledger for each user. The ledger groups the user's balance managed by the fintech and all external balances that has funded/withdrawn from the user's balance. 
+
+| Ledgers | Ledger balances |
+| :--- | :--- |
+| General ledger | @Fees | 
+| User A ledger | user-balance |
+|  | external-account |
+|  | external-account |
+|  | external-account |
+| User B ledger | user-balance |
+|  | external-account |
+|  | external-account |
+|  | external-account |
+|  | external-account |
+|  | external-account |
+
+<Tip>
+    Review your money movement map periodically to find out ways to improve how money is moved and tracked in your application.
+</Tip>
+
+<NeedHelp />

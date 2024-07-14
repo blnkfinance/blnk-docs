@@ -1,0 +1,336 @@
+---
+title: "Welcome to Blnk"
+sidebarTitle: "Start here"
+description: "The open-source financial backend for building fintech products at scale."
+icon: "rocket-launch"
+"og:title": "Open-source Financial Ledger for Developers - Blnk"
+"og:description": "Discover Blnk, the open-source financial backend for developers. Accurately record transactions and scale your fintech product reliably with Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+This is your guide to getting started with Blnk. If you are new to Blnk or [open-source fintech developer tools](https://blnkfinance.com), this is where you should start.
+
+## What is Blnk?
+
+Blnk offers an open-source financial ledger database for building and scaling fintech products. With Blnk, you can:
+
+- Accurately record transactions in your system.
+- Correctly [manage complex flow of funds](../ledgers/money-movement-map) and transaction data.
+- Reliably manage the size of your transactions as your product scales.
+
+**Let's get started ✨**
+
+What we'll cover …
+
+1. [Install Blnk on your machine](#1-install-blnk-on-your-machine)
+2. [Install the Blnk CLI](#2-install-the-blnk-cli)
+3. [Launch Blnk](#3-launch-blnk)
+4. [Create your first ledger](#4-create-your-first-ledger)
+5. [Create your first balance](#5-create-your-first-balance)
+6. [Record your first transaction](#6-record-first-transaction)
+
+## 1. Install Blnk on your machine
+
+To install Blnk, make sure you have Docker and Compose installed and running on your machine.
+
+To get started with Blnk, first clone the repository into your machine:
+
+```bash bash
+git clone https://github.com/blnkfinance/blnk && cd blnk
+```
+
+Next, create a configuration file, `blnk.json`:
+
+```bash bash
+touch blnk.json
+```
+
+Then copy and save the following configuration:
+
+```json blnk.json
+{
+  "project_name": "Blnk",
+  "data_source": {
+    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
+  },
+  "redis": {
+    "dns": "redis:6379"
+  },
+  "server": {
+    "domain": "blnk.io",
+    "ssl": false,
+    "ssl_email": "jerryenebeli@gmail.com",
+    "port": "5001"
+  },
+  "notification": {
+    "slack": {
+      "webhook_url": "https://hooks.slack.com"
+    }
+  }
+}
+```
+
+## 2. Install the Blnk CLI
+
+To use the Blnk CLI, you need to first have Node.js and npm downloaded on your machine. 
+
+To install the CLI, install the npm package:
+
+```bash bash
+npm i -g blnk-cli
+```
+
+Next, confirm your installation:
+
+```bash bash
+blnk --version
+```
+
+This command should display the installed version of the CLI.
+
+[Read our full guide on how to use the Blnk CLI](../advanced/blnk-cli)
+
+## 3. Launch Blnk
+
+Start your Blnk server with Docker compose:
+
+```bash bash
+docker compose up
+```
+
+If successful, you should see the following:
+
+![Screenshot of a Blnk instance running on a local machine](/images/new/blnk-running-on-local-machine.png)
+
+## 4. Create your first ledger
+
+Everything in Blnk begins with a ledger. Ledgers are used to group and manage how we arrange our [ledger balances](#5-create-your-first-balance) in our application.
+
+When you install Blnk, an internal ledger called [the General Ledger](../ledgers/general-ledger) is created for you. This is a ledger meant for grouping all of the balances directly owned by your organization, e.g., Revenue, etc.
+
+However, to create, store and represent balances for accounts/wallets owned by the users in your application, it is required to create ledgers to group them in.
+
+To create a ledger, call the **create-ledger** endpoint:
+
+```
+POST http://YOUR_URL/ledgers
+```
+
+With the following request body:
+
+<CodeGroup>
+```json Request
+{
+    "name": "Customer Savings Account",
+    "meta_data": {
+        "project_owner": "YOUR_APP_NAME"
+    }
+}
+```
+```json Response
+{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "name": "Customer Savings Account",
+    "created_at": "2024-02-20 05:28:03 UTC",
+    "meta_data":{
+        "project_owner": "YOUR_APP_NAME"
+    }
+}
+```
+</CodeGroup>
+
+<Tabs>
+    <Tab title="Request">
+        | Field | Description | Required | Type
+		| --- | --- | --- | ---
+		| `name` | A name that best describes the function of the ledger | Yes | `string`
+		| `meta_data` | Custom data associated with the ledger being created | No | `object`
+    </Tab>
+    <Tab title="Response">
+        | Field | Description | Type
+		| --- | --- | --- 
+		| `ledger_id` | Unique identification number for your ledger | `string`
+		| `name` | The name of your ledger | `string`
+		| `created_at` | Date and time of when it was created | `string`
+    </Tab>
+</Tabs>
+
+## 5. Create your first balance
+
+Ledger balances (or balances for short) are used to represent store of value in a fintech application, e.g., wallet, account, card balance, etc. They represent the source or destination of a transaction record.
+
+To create a balance, call the **create-balance** endpoint:
+
+```
+POST http://YOUR_URL/balances
+```
+
+With the following request body:
+
+<CodeGroup>
+```json Request
+{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "currency": "USD",
+    "meta_data": {
+        "first_name": "Alice",
+        "last_name": "Hart",
+        "account_number": "1234567890"
+    }
+}
+```
+```json Response
+{
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "indicator": "",
+    "currency": "NGN",
+    "created_at": "2024-02-20T05:33:01.311600208Z",
+    "meta_data": {
+        "first_name": "Alice",
+        "last_name": "Hart",
+        "account_number": "1234567890"
+    }
+}
+```
+</CodeGroup>
+
+<Tabs>
+    <Tab title="Request">
+        | Field | Description | Required | Type
+		| --- | --- | --- | ---
+		| `ledger_id` | The unique id of the ledger that this balance belongs to. | Yes | `string`
+		| `currency` | The currency in which transactions recorded in this balance will be recorded. | Yes | `string`
+		| `meta_data` | Custom data associated with the balance being created | No | `object`
+    </Tab>
+    <Tab title="Response">
+        | Field | Description | Type
+		| --- | --- | ---
+		| `balance_id` | The unique id of the balance you created. | `string`
+		| `balance` | Sum of `credit_balance` and `debit_balance`. | `int64`
+		| `inflight_balance` | Sum of `inflight_credit_balance` and `inflight_debit_balance`. | `int64`
+		| `credit_balance` | Sum of all credit transaction amounts in the balance. | `int64`
+		| `inflight_credit_balance` | Total amount waiting to be added to your balance. | `int64`
+		| `debit_balance` | Sum of all debit transaction amounts in the balance. | `int64`
+		| `inflight_debit_balance` | Total amount waiting to be deducted from your balance. | `int64`
+		| `created_at` | Date and time of creation. | `string`
+    </Tab>
+</Tabs>
+
+## 6. Record your first transaction
+
+Transactions represent all financial activities happening in your application. Blnk uses the [double entry principle](../guides/double-entry) to record transactions, i.e., to successfully record a transaction, there must be a source and a destination.
+
+To record a transaction, call the **record-transaction** endpoint: 
+
+```
+POST http://YOUR_URL/transactions
+```
+
+With the following request body:
+
+<CodeGroup>
+```json Request
+{
+    "amount": 750,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "precision": 100,
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Sent from app",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+```json Response
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "amount": 750,
+    "precision": 100,
+    "precise_amount": 75000,
+    "currency": "USD",
+    "description": "Sent from app",
+    "status": "QUEUED",
+    "created_at": "2024-02-20 05:28:03 UTC"
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+</CodeGroup>
+
+<Tabs>
+    <Tab title="Request">
+        | Field | Description | Required | Type
+        | --- | --- | --- | ---
+        | `amount` | The transaction amount.| Yes | `float`
+        | `reference` | Transaction reference | Yes | `string`
+        | `currency` | Short code for your asset class. See also: [Asset classes](../balances/asset-classes) | Yes | `string`
+        | `precision` | Converts the transaction amount to the lowest unit possible. See also: [Precision](../transactions/precision) | No | `int64`
+        | `source`| Sender's balance ID | Yes | `string`
+        | `destination`| Recipient's balance ID. | Yes | `string`
+        | `description`| Description or narration of the transaction. | No | `string`
+        | `meta_data` | Custom data associated with the transaction | No | `object`
+    </Tab>
+    <Tab title="Response">
+        | Field | Description | Type
+        | --- | --- | --- 
+        |`id`| Unique id for the transaction. This is generated by Blnk. | `string`
+        | `precise_amount` | The transaction amount recorded after the `precision` value has been applied. See also: [Precision](../transactions/precision) | `integer`
+        | `status`| Current state of your transaction record. See also: [Transaction statuses](../transactions/statuses) | `string`
+        |`created_at`| Date and time of the transaction record. | `string`
+    </Tab>
+</Tabs>
+
+<Tip>
+  Passing detailed data with the `meta_data` object is encouraged; it provides you with 360-degree insights about each transaction record. Examples of data you can pass include `sender_name`, `account_number`, `bank_name`, `receiver_name`, `payment_id`, `ip_address`, `location`, `payment_method`, etc.
+</Tip>
+
+<CardGroup>
+  <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="../transactions/precision"></Card>
+  <Card title="Transaction types" iconType="duotone" icon="arrow-progress" href="../transactions/types"></Card>
+</CardGroup>
+
+### Transaction properties
+
+1. **Immutability:** All transactions in Blnk are immutable. Once they have been recorded, they cannot be altered or tampered with. This ensures the accuracy and unchangeability of the transaction record. See also: [Transaction hashing](../advanced/transaction-hashing)
+
+2. **Idempotency:** All transactions in Blnk are idempotent. This ensures that performing the same operation multiple times results in the same outcome as doing it once. This property is crucial for maintaining consistent outcomes regardless of how many times a transaction is repeated, especially in scenarios where network errors or other issues might cause transaction failures.
+  
+  <Info>
+    Blnk ensures idempotency through the use of a unique `reference` for every transaction. This is why it is required for you to provide one when recording a transaction.  
+  </Info>
+
+### Notifications
+
+Notifications are sent via webhook events to let you know the updated status of a transaction:
+
+1. **`transaction.applied`:** This event is sent when a transaction has been processed and applied to the participating balances. It signifies the completion of a transaction's lifecycle.
+
+2. **`transaction.inflight`:** This event is sent when a transaction's status has been updated to `INFLIGHT` and is waiting for a certain condition to be met, as defined by your application. See also: [Inflight transactions](../transactions/inflight)
+
+3. **`transaction.rejected`:** This event is sent when a transaction is rejected because all of the conditions required to process it wasn't met.
+
+<CardGroup>
+  <Card title="Set up notifications" iconType="duotone" icon="bell" href="../advanced/notifications"></Card>
+  <Card title="About transaction statuses" iconType="duotone" icon="tag" href="../transactions/statuses"></Card>
+</CardGroup>
+
+<NeedHelp />

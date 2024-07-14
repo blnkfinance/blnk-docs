@@ -1,0 +1,109 @@
+---
+title: "Internal balances"
+sidebarTitle: "Internal balances"
+description: "Learn how to create and manage internal balances."
+icon: "wallet"
+"og:title": "Managgin internal balances - Blnk" 
+"og:description": "Learn how to manage internal balances with Blnk’s open-source ledger. Understand the process of creating and using internal balances for efficient transaction tracking in your application."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+In your application, there are scenarios when your balances interact with your organization accounts or external balances. As a principle, it is crucial for you to have an organized way of tracking these interactions in your ledger.
+
+This is why Blnk creates the [General Ledger](../ledgers/general-ledger). The main difference between the general ledger and other ledgers is that it is meant to group balances owned by your internal business operations. We refer to these balances as "Internal balances."
+
+<Note>
+    The General Ledger is created by default when you deploy your Blnk server.
+</Note>
+
+**Let's dive in ✨**
+
+What we'll cover …
+
+1. [What are internal balances?](#1-what-are-internal-balances)
+2. [Creating an internal balance](#2-creating-an-internal-balance)
+3. [Naming conventions](#3-naming-conventions)
+4. [Representing external accounts](#4-representing-external-accounts)
+
+## 1. What are internal balances?
+
+An internal balance is a ledger balance owned by your organization, e.g., revenue, fees, loans, etc. You can use an internal balance to track interactions between your own accounts as an organization and your customers accounts managed by your application. 
+
+For instance, you own an online e-commerce app that assigns a wallet to every signed up user. Two things happen:
+
+1. Every time a user pays for something on your app with their wallet, their balance is debited and you earn revenue. 
+2. Every time a user funds their wallet, a fee is debited from the user's wallet and paid somewhere (the e-commerce startup or the payment processor).
+
+There are two destinations that have not been defined — revenue and fees. These have to be represented as balances held and managed by the organization. 
+
+To do this, you need to create these balances in the General Ledger and provide them as the destination in your transaction record request to complete the transaction workflow.
+
+## 2. Creating an internal balance
+
+Blnk makes this simple by automating the creation and identity of balances in the General Ledger. When a transaction is recorded and a balance is referenced using the "@" prefix, Blnk checks to see if it exists in the General Ledger.
+
+If the specified balance doesn't exist, it is automatically created, and the transaction is processed accordingly.
+
+Continuing our earlier example, we can represent revenue with `@Revenue` and fees with `@Fees`. A transaction request from the user's wallet when they pay for something on the app would look like this:
+
+```json Request
+{
+    "amount": 750000,
+    "reference": "ref_1298122819291982",
+    "currency": "USD",
+    "precision": 100,
+    "source": "bal_91283-8102dj1-1209212-129109",
+    "destination": "@Revenue"
+}
+```
+
+<Warning>
+    When you post a transaction to a new internal balance, the balance is created with the same asset class specified in the transaction, e.g., in the example above, `@Revenue` is a USD internal balance.
+</Warning>
+
+## 3. Naming conventions
+
+When choosing names for your internal balances, it's important to use consistent and descriptive naming schemes. This ensures easy recall and reduces the risk of errors when posting transactions. 
+
+Here are some things to note when naming your internal balances:
+
+1. Always use the @ prefix to automatically add it to the General Ledger.
+2. Use names that clearly describe the balance's purpose, e.g., `@Revenue`, `@Fees`, `@World`, etc.
+3. You can use the same name for balances that perform the same function, but for different asset classes, i.e., you can have two balances named `@Revenue` but one is in EUR, while the other is in USD.
+    <Tip>
+        For better readability, it's advisable to have the indicator suffixed by the currency, e.g. `@RevenueUSD` and `@RevenueEUR`.
+    </Tip>
+4. Use camel case (`@OnlineRevenue`) or underscores (`@online_revenue`) to separate words for better readability. Avoid including spaces to prevent formatting issues.
+5. Keep it short to facilitate easier referencing.
+
+## 4. Representing external accounts
+
+When balances interact with external balances like other bank accounts, wallets, cards, etc. that are outside of your system, it is still required that the corresponding entry is recorded in your ledger.
+
+To do this, create a new internal balance called `"@World"` and use it to represent all interactions with the outside world. You can also choose to name it however you want, as long as it represents all interactions with the outside world in your ledger.
+
+<Info>
+    Depending on the design of your ledger architecture, how you represent external accounts may differ. See our guides on [Money Movement Maps](../ledgers/money-movement-map) and [Ledger Architecture](../ledgers/architecture).
+</Info>
+
+See the table below for a simplified example of how `@World` works.
+
+<Note>
+    You can also have multiple `@World` balances for different asset classes (NGN, USD, etc).
+</Note>
+
+| Scenarios | Source | Destination 
+| :--- | :--- | :---
+| Sending funds to an external bank account | `bal_customer` | @World
+| Receiving money from an external bank account | @World | `bal_customer`
+| Making online payment with virtual card | `bal_customer` | @World
+| Received a refund of an online payment | @World | `bal_customer`
+
+When using the `@World` balance in a transaction, it is encouraged to enable [overdrafts](../transactions/overdrafts). This allows you to be able to record transactions on `@World` even when its balance is less than 0. 
+
+<Info>
+    A negative balance on `@World` simply means your application has received more money than it has sent out, and vice versa.
+</Info>
+
+<NeedHelp />
