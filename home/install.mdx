@@ -1,10 +1,10 @@
 ---
 title: "Welcome to Blnk"
 sidebarTitle: "Start here"
-description: "The open-source financial backend for building fintech products at scale."
+description: "The open-source backend for building fintech products at scale."
 icon: "rocket-launch"
 "og:title": "Open-source Financial Ledger for Developers - Blnk"
-"og:description": "Discover Blnk, the open-source financial backend for building fintech. Accurately record transactions and scale your fintech product reliably with Blnk."
+"og:description": "Discover Blnk, the open-source backend for building fintech. Accurately record transactions and scale your fintech product reliably with Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
@@ -32,7 +32,7 @@ Blnk offers an open-source financial ledger database for building and scaling fi
 
 ## 1. Install Blnk on your machine
 
-To install Blnk, make sure you have Docker and Compose installed and running on your machine.
+To install Blnk, make sure you have [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) installed and running on your machine.
 
 To get started with Blnk, first clone the repository into your machine:
 
@@ -77,7 +77,7 @@ Then copy and save the following configuration:
 
 ## 2. Install the Blnk CLI
 
-To use the Blnk CLI, you need to first have [Node.js](https://nodejs.org) and npm downloaded on your machine. 
+To use the Blnk CLI, you need to first have [Node.js](https://nodejs.org) and [npm](https://www.npmjs.com/package/blnk-cli) downloaded on your machine. 
 
 To install the CLI, install the npm package:
 
@@ -172,7 +172,7 @@ To view your ledgers, use the following command in your terminal:
 
 ## 5. Create your first balance
 
-Ledger balances (or balances for short) are used to represent store of value in a fintech application, e.g., wallet, account, card balance, etc. They represent the source or destination of a transaction record.
+Ledger balances (or balances for short) are used to represent store of value in a fintech application, e.g., [wallet](../use-cases/multicurrency), [account](../use-cases/savings), [card balance](../use-cases/virtual-cards), etc. They represent the source or destination of a transaction record.
 
 To create a balance, call the **create-balance** endpoint:
 
@@ -231,12 +231,12 @@ With the following request body:
         | Field | Description | Type
 		| --- | --- | ---
 		| `balance_id` | The unique id of the balance you created. | `string`
-		| `balance` | Sum of `credit_balance` and `debit_balance`. | `int64`
-		| `inflight_balance` | Sum of `inflight_credit_balance` and `inflight_debit_balance`. | `int64`
-		| `credit_balance` | Sum of all credit transaction amounts in the balance. | `int64`
-		| `inflight_credit_balance` | Total amount waiting to be added to your balance. | `int64`
 		| `debit_balance` | Sum of all debit transaction amounts in the balance. | `int64`
-		| `inflight_debit_balance` | Total amount waiting to be deducted from your balance. | `int64`
+    | `credit_balance` | Sum of all credit transaction amounts in the balance. | `int64`
+		| `balance` | `credit_balance` - `debit_balance`. | `int64`
+		| `inflight_debit_balance` | Total amount awaiting to be deducted from your balance. | `int64`
+		| `inflight_credit_balance` | Total amount awaiting to be added to your balance. | `int64`
+		| `inflight_balance` | `inflight_credit_balance` - `inflight_debit_balance`. | `int64`
 		| `created_at` | Date and time of creation. | `string`
     </Tab>
 </Tabs>
@@ -303,9 +303,9 @@ With the following request body:
         | Field | Description | Required | Type
         | --- | --- | --- | ---
         | `amount` | The transaction amount.| Yes | `float`
-        | `reference` | Transaction reference | Yes | `string`
+        | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
         | `currency` | Short code for your asset class. See also: [Asset classes](../balances/asset-classes) | Yes | `string`
-        | `precision` | Converts the transaction amount to the lowest unit possible. See also: [Precision](../transactions/precision) | No | `int64`
+        | `precision` | Precision for the currency/asset passed. See also: [Precision](../transactions/precision) | No | `int64`
         | `source`| Sender's balance ID | Yes | `string`
         | `destination`| Recipient's balance ID. | Yes | `string`
         | `description`| Description or narration of the transaction. | No | `string`
@@ -313,7 +313,15 @@ With the following request body:
     </Tab>
     <Tab title="Response">
         | Field | Description | Type
-        | --- | --- | --- 
+        | --- | --- | --- |
+        | `amount` | The transaction amount.| Yes | `float`
+        | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
+        | `currency` | Short code for your asset class. See also: [Asset classes](../balances/asset-classes) | Yes | `string`
+        | `precision` | Precision for the currency/asset passed. See also: [Precision](../transactions/precision) | No | `int64`
+        | `source`| Sender's balance ID | Yes | `string`
+        | `destination`| Recipient's balance ID. | Yes | `string`
+        | `description`| Description or narration of the transaction. | No | `string`
+        | `meta_data` | Custom data associated with the transaction | No | `object`
         |`id`| Unique id for the transaction. This is generated by Blnk. | `string`
         | `precise_amount` | The transaction amount recorded after the `precision` value has been applied. See also: [Precision](../transactions/precision) | `integer`
         | `status`| Current state of your transaction record. See also: [Transaction statuses](../transactions/statuses) | `string`
