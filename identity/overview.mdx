@@ -1,0 +1,144 @@
+---
+title: "Introducing Identity"
+sidebarTitle: "Guide"
+description: "The open-source backend for building fintech products at scale."
+icon: "bolt"
+"og:title": "Identity management - Blnk"
+"og:description": "Discover Blnk, the open-source backend for building fintech. Accurately record transactions and scale your fintech product reliably with Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Identity allows you to attach your balance to an identity, ensuring every transaction activity is traceable, structured and owned by an entity. Whether it's individual customers or larger organizations, every transaction can be attributed to a specific entity, enhancing transparency and accountability.
+
+In this guide, we'll learn how to associate a balance with an identity, and ensure clear attribution of financial activities. 
+
+## 1. Linking an identity to a balance
+### Create an identity
+
+To link an identity to a balance, the identity (individual or organization) must be created and stored in Blnk. Upon creation, every identity is assigned a unique `identity_id`.
+
+### Create a balance with an identity
+
+When creating a new balance, you can link it to an existing identity by passing the `identity_id` in the balance creation payload. Here's a sample payload to create a balance and link it to an identity:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/balances
+```
+
+```json Request
+{
+    "ledger_id": "ldg_db5eabf0-4152-47cf-8353-d1729a491962",
+    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "currency": "NGN"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `ledger_id` | The unique ID of the ledger where the balance is to be created. |
+| `identity_id` | The unique ID of the identity you want to link to the balance. |
+| `currency` | The currency of the balance. |
+
+Once the balance is created with the above payload, it will be intrinsically linked to the specified identity through the `identity_id`.
+
+This link ensures that all transactions and activities associated with this balance can be traced back to the specified identity, adding an extra layer of transparency to the financial operations in Blnk.
+
+## Identity attributes
+
+| Property | Description | Type |
+| :--- | :--- | :--- |
+| `identity_type` | Distinguishes if the identity is an individual or organization. | string (`individual` or `organization`) |
+| `individual` | Contains details if the identity type is an individual. | See `individual` attributes below |
+| `organization | Contains details if the identity type is an organization. | See `organization` attributes below |
+| `street` | Street address of the identity. | `string` |
+| `country` | Residential country of the identity. | `string` |
+| `state` | State of residence of the identity. | `string` |
+| `post_code` | Postal code related to the identity. | `string` |
+| `city` | City of residence of the identity. | `string` |
+| `meta_data` | Custom metadata linked to the identity. | `string` | 
+
+### Create identity
+
+<CodeGroup>
+```json Create individual
+{
+    "identity_type": "individual",
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "other_names": "Marie",
+    "gender": "female",
+    "dob": "1985-05-15T00:00:00Z",
+    "email_address": "alice.smith@example.com",
+    "phone_number": "+1234567890",
+    "nationality": "Canadian",
+    "organization_name": "",
+    "category": "customer",
+    "street": "789 Elm St",
+    "country": "Canada",
+    "state": "Ontario",
+    "post_code": "M4B 1B3",
+    "city": "Toronto",
+    "created_at": "2024-07-15T10:00:00Z",
+    "meta_data": {
+        "customer_id": "CUST123456",
+        "membership_level": "Gold",
+        "preferred_language": "English",
+        "verification_data": {
+            "verified_by": "ThirdPartyService",
+            "verification_date": "2024-07-01T10:00:00Z",
+            "verification_status": "verified"
+        }
+    }
+}
+```
+```json Create organization
+{
+    "identity_type": "organization",
+    "first_name": "",
+    "last_name": "",
+    "other_names": "",
+    "gender": "",
+    "dob": "0001-01-01T00:00:00Z",
+    "email_address": "contact@orgexample.com",
+    "phone_number": "+0987654321",
+    "nationality": "",
+    "organization_name": "Example Corp",
+    "category": "business",
+    "street": "456 Corporate Blvd",
+    "country": "USA",
+    "state": "New York",
+    "post_code": "10001",
+    "city": "New York",
+    "created_at": "2024-07-15T10:00:00Z",
+    "meta_data": {
+        "industry": "Technology",
+        "number_of_employees": 500,
+        "founded_year": 2005
+    }
+}
+```
+</CodeGroup>
+
+<Tabs>
+    <Tab title="Individual">
+        | Property | Description | Type |
+        | :--- | :--- | :--- |
+        | `first_name` | First name of the individual | `string` |
+        | `last_name` | Last name of the individual | `string` |
+        | `other_names` | Any other names linked to the individual | `string` |
+        | `gender` | Gender of the individual | `string` |
+        | `DOB` | Date of birth | `date` |
+        | `email_address` | Email ID of the address | `string` |
+        | `phone_number` | Contact number of the individual | `string` |
+        | `nationality` | Nationality of the individual | `string` |
+    </Tab> 
+    <Tab title="Organization">
+        | Property | Description | Type |
+        | :--- | :--- | :--- |
+        | `name` | Name of the organization | `string` |
+        | `category` | Category or type of the organization (e.g., "Bank", "Retail", "Tech") | `string` |
+    </Tab> 
+</Tabs>
+
+<NeedHelp />
