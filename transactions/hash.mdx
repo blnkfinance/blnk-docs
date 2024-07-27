@@ -1,0 +1,66 @@
+---
+title: "Transaction hashing"
+sidebarTitle: "Transaction hashing"
+description: "Learn how Blnk uses transaction hashing for immutability."
+icon: "hashtag"
+"og:title": "Transaction hashing - Blnk"
+"og:description": "How Blnk uses SHA-256 hashing to ensure transaction integrity. Understand hashing, verify transactions, and explore the security benefits it provides."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+In the world of digital transactions, maintaining the integrity and immutability of transaction data is paramount. Blnk leverages `SHA-256` hashing to ensure that every transaction is securely recorded, verifiable, and immutable.
+
+Data hashing is a cryptographic process that converts input data of any size into a fixed-size string of characters, which is typically a digest representing the data. Blnk uses the SHA-256 hashing algorithm for this purpose, ensuring that each transaction is accompanied by a unique hash value that serves as its digital fingerprint.
+
+## How Blnk implements SHA-256 hashing
+
+When a transaction is processed in Blnk, the system generates a SHA-256 hash of the transaction's details, including the amount, source, destination, reference, and any other relevant information. This hash is then stored alongside the transaction record. The SHA-256 algorithm ensures that even the slightest change in the transaction details would result in a completely different hash, thereby safeguarding against unauthorized modifications.
+
+## Verifying transaction integrity
+
+Users can verify the integrity of a transaction by recomputing the SHA-256 hash of the transaction details and comparing it with the hash stored in the Blnk. If the computed hash matches the stored hash, the transaction is confirmed to be intact and unaltered.
+
+## Verifying a transaction hash
+
+Consider a transaction with the following details:
+
+```json Request
+{
+    "amount": 750000,
+    "reference": "ref123",
+    "currency": "USD",
+    "source": "bln_source123",
+    "destination": "bln_dest123"
+}
+```
+
+To verify this transaction, concatenate the above details into a single string (excluding the hash) and compute the SHA-256 hash of this string. Using a SHA-256 hash function in your preferred programming language or a tool, you can generate the hash.
+
+For example, in Python:
+
+```python
+import hashlib
+
+# Concatenate your transaction details
+transaction_details = '750000ref123USDbln_source123bln_dest123'
+
+# Compute the SHA-256 hash
+hash_value = hashlib.sha256(transaction_details.encode()).hexdigest()
+
+print(hash_value)
+```
+
+Compare this `hash_value` with the hash provided by Blnk for the transaction. If they match, the transaction's integrity is verified.
+
+## Benefits of hashing transactions
+
+1. **Immutability**: Once a transaction is recorded with its hash, it cannot be altered without changing the hash. This makes every transaction in Blnk immutable and secure against tampering.
+
+2. **Verification**: Users can independently verify the integrity of their transactions without relying on Blnk's internal systems, enhancing trust and transparency.
+
+3. **Security**: SHA-256 is a cryptographic hash function, which means it is designed to be secure against collision attacks (where two different inputs produce the same output hash) and preimage attacks (finding an input based on its output hash).
+
+4. **Efficiency**: Hashing is a fast computational process, allowing for quick verification of transaction integrity without the need to compare all transaction details line by line.
+
+<NeedHelp />
