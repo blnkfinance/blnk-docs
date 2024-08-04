@@ -1,8 +1,65 @@
 ---
-title: "Welcome to Blnk"
-sidebarTitle: "Get started"
-description: "The open-source backend for building fintech products at scale."
+title: "Get started with Reconciliations"
+sidebarTitle: "Overview"
+description: "Learn how to automate reconciliation and scale your financial operations workflows."
 icon: "copy"
-"og:title": "Open-source Financial Ledger for Developers - Blnk"
-"og:description": "Discover Blnk, the open-source backend for building fintech. Accurately record transactions and scale your fintech product reliably with Blnk."
 ---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Reconciliation is a vital component of financial operations, essential for maintaining precise and reliable financial records. This process involves comparing and matching internal records (your ledger) with external statements (such as payment processor reports and bank statements) to identify and rectify any discrepancies.
+
+For fintech companies, which often handle high transaction volumes, diverse payment methods, and complex financial products, the importance of effective accounts reconciliation cannot be overstated. The primary goal of reconciliation is to ensure that all records accurately represent the company’s financial position at all times.
+
+Regular, meticulous, and effective reconciliation enhances operational efficiency, financial transparency, and stakeholder trust. This includes banking partners, customers, investors, and regulatory bodies, all of whom rely on the accuracy of your financial reporting.
+
+In this guide, you'll learn how to perform reconciliation in 5 steps. 
+
+Let's dive in ✨
+
+1. [External data preparation](#1-external-data-preparation): Import external data from payment processor reports and bank statements, and prepare them for reconciliation.
+2. [Matching rules](#2-matching-rules): Define how transactions should be compared and matched.
+3. [Reconciliation strategies](#3-reconciliation-strategies): Choose what type of reconciliation strategy you want to apply.
+4. [Grouping criteria](#4-grouping-criteria): Choose how transactions should be grouped for more complex reconciliation workflows.
+5. [Run reconciliation](#5-run-reconciliation): Initiate a reconciliation.
+
+## 1. External data preparation
+
+Your external data is any document that holds the records of all transaction activity outside of your system. Learn more: [External Data Preparation](external-data).
+
+First, ensure that your data includes these six fields:
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `amount` | Float | The transaction amount, e.g. 100.50 |
+| `currency` | String | ISO 4217 currency code, e.g. "USD" |
+| `source` | String | Origin of the transaction data, e.g. "Stripe" |
+| `description` | String | Transaction details or narration, e.g., "Monthly subscription" |
+| `reference` | String | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
+| `date` | ISO 8601 | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
+
+Next, upload with the following endpoint:
+
+```curl Request
+curl --location '<https://BLNK_API_URL/v1/reconciliation/upload>' \\
+--header 'Authorization: Bearer YOUR_API_KEY' \\
+--form 'file=@"transactions.json"' \\
+--form 'source="Stripe"'
+```
+
+```json Response
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "status": "success",
+  "record_count": 1000,
+  "source": "Stripe"
+}
+```
+
+## 2. Matching rules
+
+Blnk uses matching rules to understand how you want to compare and reconcile your records. This is the most central aspect of the reconciliation process. 
+
+To set a rule, you need to give it a name, description, and define its criteria. To learn more about matching rules: [Matching Rules](matching-rules)
+
+<NeedHelp />

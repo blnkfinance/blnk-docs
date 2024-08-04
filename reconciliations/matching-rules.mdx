@@ -1,8 +1,58 @@
 ---
-title: "Welcome to Blnk"
+title: "Matching rules"
 sidebarTitle: "Matching rules"
-description: "The open-source backend for building fintech products at scale."
+description: "Learn how to set and manage matching rules for your reconciliation process."
 icon: "code-compare"
-"og:title": "Open-source Financial Ledger for Developers - Blnk"
-"og:description": "Discover Blnk, the open-source backend for building fintech. Accurately record transactions and scale your fintech product reliably with Blnk."
 ---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Reconciliation in fintech is all about comparing and matching records in your systems with records from [external sources](external-data) to ensure accuracy and correctness. At the core of this process is matching rules — clearly defined and systematic guidelines that define how these records should be compared and matched.
+
+Understanding and implementing these rules is crucial for streamlining reconciliation, reducing manual effort, and minimizing errors.
+
+## Importance of matching rules
+
+Matching rules are the backbone of the reconciliation process, providing a structured approach to ensure that financial data is accurate and reliable. They enable organizations to automate the comparison of transactions across various data sources, such as internal ledgers, bank statements, payment processor reports, and more. 
+
+By establishing clear and precise matching criteria, organizations can enhance their financial operations in several ways:
+
+1. **Efficiency**: Automated matching rules significantly reduce the time and effort required for manual reconciliation.
+2. **Accuracy**: Consistent application of matching rules minimizes the risk of human error, leading to more accurate financial records.
+3. **Scalability**: Robust and advanced matching rules allow organizations to handle large volumes of transactions, which is especially critical for fintech companies dealing with high transaction frequencies and complex financial products.
+4. **Compliance**: Accurate reconciliation helps organizations meet regulatory requirements and maintain transparent financial practices.
+
+## Creating a matching rule
+
+To create a matching rule, call the following endpoint:
+
+```
+POST https://BLNK_API_URL/reconciliation/matching-rules
+```
+
+And pass the following request body:
+
+```json Request
+{
+    "name": "Stripe subscription matcher",
+    "description": "Matches Stripe's subcsription payments with internal records"
+    "criteria": [
+        {
+            "field": "amount",
+            "operator": "equals"
+            "allowable_drift": 0.001
+        }
+    ]
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `name` | The name of the rule being created. |
+| `description` | A short narration of what the rule does. |
+| `criteria` | An array of criteria that defines the rule. |
+| `field` | Selected field from the uploaded external data. It can be `amount`, `currency`, `reference`, `description`, or `date`. |
+| `operator` | Defines how the selected field should be compared with internal records. Depending on the field, this can be `equals`, `contains`, `greater_than`, or `less_than`. |
+| `allowable_drift` | Helps to accomodate small variations in transaction amounts between both records. |
+
+<NeedHelp />
