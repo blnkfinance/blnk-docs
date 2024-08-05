@@ -140,4 +140,58 @@ A counter, starting at `1`, is appended for each transaction record created ensu
     Refer to the sample transaction table in Step 3 above to see how it is applied.
 </Tip>
 
+## Multiple sources with inflight
+
+You can initiate inflight transactions from multiple sources to a single destination. To do so, enable inflight in your transaction request. 
+
+```json Request
+{
+    "amount": 30000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "sources": [
+        {
+            "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+            "distribution": "10%",
+            "narration": "Monthly contribution"
+        },
+        {
+            "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+            "distribution": "20000",
+            "narration": "Monthly contribution"
+        },
+        {
+            "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+            "distribution": "left",
+            "narration": "Monthly contribution"
+        }
+    ],
+    "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "inflight": true
+}
+```
+
+<Warning>
+    When you use multiple sources, the transactions are recorded separately in the ledger. However, they are grouped with a parent transaction id. This is the id shown in the response of your initial request.
+</Warning>
+
+### Commit or void inflight transaction
+
+To commit or void all transactions at once, call the **inflight endpoint** and pass the parent transaction id.
+
+```
+PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction}
+```
+
+## Refund transaction with multiple sources
+
+To bulk refund similar initiated with multiple sources, call the **refund transaction endpoint**, and pass the parent transaction id. 
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}
+```
+
+This automatically refunds all of the transactions from the destination to their respective sources. 
+
 <NeedHelp />
