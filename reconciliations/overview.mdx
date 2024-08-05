@@ -125,14 +125,104 @@ This rule allows for a 0.1% difference in amount, a 24-hour date difference, che
 
 ## 3. Reconciliation strategies
 
-Choose the strategy that best fits your financial flows:
+Reconciliation strategies are essential for maintaining accurate financial records and ensuring that all transactions and payments are correctly matched based on your unique financial workflows. Learn more: [Reconciliation Strategies](strategies)
 
 1. **One-to-One**: For simple, direct matches between systems.
-2. **One-to-Many**: When one external transaction represents multiple internal transactions (e.g., batch payments).
-3. **Many-to-One**: When multiple external transactions make up one internal transaction (e.g., installment payments).
+2. **One-to-Many**: When one external transaction represents multiple internal transactions (e.g., batch or split payments).
+3. **Many-to-One**: Used when multiple external transaction records make up one internal transaction records (e.g., installment payments, ACH transfers, etc.).
 
 ## 4. Grouping criteria
 
+Proper grouping criteria ensure that transactions are accurately categorized and matched, enhancing the overall reconciliation process. 
+
+Grouping by parent transaction, currency, status, and description helps maintain the consistency and relevance of transactions being reconciled, providing a robust framework for efficient financial management. Learn more: [Grouping Criteria](grouping-criteria)
+
+```json
+{
+  "grouping_criteria": {
+    "parent_transaction": null,
+    "currency": "USD",
+    "status": "APPLIED",
+    "description": "contains:installment"
+  }
+}
+```
+
+This groups similar transactions by their `parent_transaction`, ensures they're in USD and applied, and checks for "installment" in the description.
+
 ## 5. Run reconciliation
+
+Once you've set your matching rules and determined your reconciliation strategy, you can initiate reconciliation with this endpoint:
+
+```
+POST https://BLNK_API_URL/v1/reconciliation/start
+```
+
+```json Example
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "strategy": "one_to_many",
+  "dry_run": false,
+  "grouping_criteria": {
+    "parent_transaction": null,
+    "currency": "USD",
+    "status": "APPLIED"
+  },
+  "matching_rule_ids": [
+    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+  ],
+  "date_range": {
+    "start": "2023-01-01T00:00:00Z",
+    "end": "2023-03-31T23:59:59Z"
+  },
+  "reconciliation_mode": "strict"
+}
+```
+
+This reconciliation uses:
+
+1. Uses a one-to-many strategy.
+2. Groups transactions by parent, currency, and status.
+3. Applies two different matching rules.
+4. Limits reconciliation to Q1 2023 (Jan 1 - Mar 31).
+5. Uses a strict reconciliation mode (no partial matches allowed).
+
+## Best practices
+
+1. **Iterative Refinement:**  Initially, set up general rules that can capture a wide range of transactions. These rules are less specific and aim to cover as many potential matches as possible. Over time, analyze the results of these broad rules. 
+
+    Identify any patterns or recurring issues and adjust the matching criteria to be more precise. For example, you might start with a rule that matches transactions with a similar amount within a specific date range and then refine it to include additional criteria like matching transaction IDs or descriptions after initial testing.
+
+2. **Custom Fields:** Use metadata or custom fields to include additional matching criteria specific to your business. Metadata provides additional data points attached to transactions, such as customer ID or region. Custom fields are not part of the standard transaction data but are created to capture specific information relevant to the business. 
+
+    For instance, if your business is subscription-based, you might use custom fields to include subscription ID or billing cycle.
+
+3. **Partial Matching:** For complex scenarios, consider implementing a scoring system for partial matches. Partial matches occur when transactions do not match exactly but share several similar attributes. A scoring system assigns scores to different matching criteria (e.g., amount, date, description). 
+
+    If a transaction’s cumulative score exceeds a certain threshold, it is considered a match. For example, a transaction might match 80% of the criteria based on amount and date but differ slightly in description. The scoring system can still identify it as a likely match by assigning higher scores to critical criteria like transaction amount and lower scores to less critical ones like description.
+
+4. **Automated Scheduling:** Set up automated daily or weekly reconciliation jobs using Blnk's API and a task scheduler.
+
+5. **Exception Handling:** Develop a process for manually reviewing and resolving unmatched transactions. Exception handling involves a systematic approach to address transactions that do not match automatically, requiring human intervention to investigate and resolve discrepancies. For example, create a workflow where unmatched transactions are flagged and reviewed by a reconciliation team. 
+
+    Document reasons for mismatches and adjust rules if necessary to prevent future occurrences, ensuring a thorough and accountable reconciliation process.
+
+6. **Performance Optimization**: For large datasets, use date ranges and batching to improve reconciliation speed. Limiting the scope of reconciliation to specific periods reduces the volume of data processed at once. Batching processes transactions in smaller groups or batches rather than all at once, enhancing performance and reducing system load. 
+
+    For instance, reconcile transactions on a daily/weekly basis instead of monthly to manage smaller datasets. Implement a system to batch process transactions in groups of 1,000 rather than attempting to reconcile all transactions simultaneously.
+
+7. **Audit Trails**: Maintain detailed logs of all reconciliation activities for auditing purposes. Audit trails are comprehensive records of all actions taken during the reconciliation process, including changes made, rules applied, and transactions matched. 
+
+    For example, log every reconciliation run, including the date, time, and user who initiated it. Keep records of all matched and unmatched transactions, along with any manual adjustments made during the exception handling process. This ensures transparency and accountability, allowing for thorough review and verification of financial activities.
+
+## Learn more
+
+<CardGroup>
+    <Card title="External data preparation" icon="file-excel" iconType="duotone" href="external-data"></Card>
+    <Card title="Matching rules" icon="code-compare" iconType="duotone" href="matching-rules"></Card>
+    <Card title="Reconciliation strategies" icon="route" iconType="duotone" href="strategies"></Card>
+    <Card title="Grouping criteria" icon="layer-group" iconType="duotone" href="grouping-criteria"></Card>
+</CardGroup>
 
 <NeedHelp />
