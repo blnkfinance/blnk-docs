@@ -1,7 +1,7 @@
 ---
 title: "Get started with Reconciliations"
 sidebarTitle: "Get started"
-description: "Learn how to automate reconciliation and scale your financial operations workflows."
+description: "Learn how to reconcile your Blnk Ledger."
 icon: "circle-play"
 ---
 
@@ -11,17 +11,16 @@ Reconciliation is a vital component of financial operations, essential for maint
 
 Regular, meticulous, and effective reconciliation enhances operational efficiency, financial transparency, and stakeholder trust. This includes banking partners, customers, investors, and regulatory bodies, all of whom rely on the accuracy of your financial reporting.
 
-In this guide, you'll learn how to perform reconciliation in 5 steps. 
+In this guide, you'll learn how to perform reconciliation in 4 steps. 
 
 Let's dive in ✨
 
-1. [External data preparation](#1-external-data-preparation): Import external data from payment processor reports and bank statements, and prepare them for reconciliation.
-2. [Matching rules](#2-matching-rules): Define how transactions should be compared and matched.
-3. [Reconciliation strategies](#3-reconciliation-strategies): Choose what type of reconciliation strategy you want to apply.
-4. [Grouping criteria](#4-grouping-criteria): Choose how transactions should be grouped for more complex reconciliation workflows.
-5. [Run reconciliation](#5-run-reconciliation): Initiate a reconciliation.
+1. [Upload external data](#1-upload-external-data): Import external data from payment processor reports and bank statements, and prepare them for reconciliation.
+2. [Set matching rules](#2-set-matching-rules): Define how transactions should be compared and matched.
+3. [Define reconciliation strategies](#3-define-reconciliation-strategies): Choose what type of reconciliation strategy you want to apply.
+4. [Run reconciliation](#4-run-reconciliation): Initiate a reconciliation.
 
-## 1. External data preparation
+## 1. Upload external data
 
 Your external data is any document that holds the records of all transaction activity outside of your system. Learn more: [External Data Preparation](external-data).
 
@@ -54,7 +53,7 @@ curl --location '<https://BLNK_API_URL/v1/reconciliation/upload>' \\
 }
 ```
 
-## 2. Matching rules
+## 2. Set matching rules
 
 Blnk uses matching rules to understand how you want to compare and reconcile your records. This is the most central aspect of the reconciliation process. 
 
@@ -104,7 +103,7 @@ And pass the following request body:
 
 This rule allows for a 0.1% difference in amount, a 24-hour date difference, checks for "subscription" in the description, and ensures the reference contains "stripe_".
 
-## 3. Reconciliation strategies
+## 3. Define reconciliation strategies
 
 Reconciliation strategies are essential for maintaining accurate financial records and ensuring that all transactions and payments are correctly matched based on your unique financial workflows. Learn more: [Reconciliation Strategies](strategies).
 
@@ -112,26 +111,7 @@ Reconciliation strategies are essential for maintaining accurate financial recor
 2. **One-to-Many**: When one external transaction represents multiple internal transactions (e.g., batch or split payments).
 3. **Many-to-One**: Used when multiple external transaction records make up one internal transaction records (e.g., installment payments, ACH transfers, etc.).
 
-## 4. Grouping criteria
-
-Proper grouping criteria ensure that transactions are accurately categorized and matched, enhancing the overall reconciliation process. 
-
-Grouping by parent transaction, currency, status, and description helps maintain the consistency and relevance of transactions being reconciled, providing a robust framework for efficient financial management. Learn more: [Grouping Criteria](grouping-criteria).
-
-```json
-{
-  "grouping_criteria": {
-    "parent_transaction": null,
-    "currency": "USD",
-    "status": "APPLIED",
-    "description": "installment"
-  }
-}
-```
-
-This groups similar transactions by their `parent_transaction`, ensures they're in USD and applied, and checks for "installment" in the description.
-
-## 5. Run reconciliation
+## 4. Run reconciliation
 
 Once you've set your matching rules and determined your reconciliation strategy, you can initiate reconciliation with this endpoint:
 
@@ -171,13 +151,9 @@ This reconciliation uses:
 
 ## Best practices
 
-1. **Iterative Refinement:**  Initially, set up general rules that can capture a wide range of transactions. These rules are less specific and aim to cover as many potential matches as possible. Over time, analyze the results of these broad rules. 
+1. **Iterative Refinement:**  Initially, set up general rules that can capture a wide range of transactions. Identify any patterns or recurring issues and adjust the matching criteria to be more precise.
 
-    Identify any patterns or recurring issues and adjust the matching criteria to be more precise. For example, you might start with a rule that matches transactions with a similar amount within a specific date range and then refine it to include additional criteria like matching transaction IDs or descriptions after initial testing.
-
-2. **Custom Fields:** Use metadata or custom fields to include additional matching criteria specific to your business. Metadata provides additional data points attached to transactions, such as customer ID or region. Custom fields are not part of the standard transaction data but are created to capture specific information relevant to the business. 
-
-    For instance, if your business is subscription-based, you might use custom fields to include subscription ID or billing cycle.
+2. **Custom Fields:** Use metadata or custom fields to include additional matching criteria specific to your business. Metadata provides additional data points attached to transactions, such as customer ID or region.
 
 3. **Partial Matching:** For complex scenarios, consider implementing a scoring system for partial matches. Partial matches occur when transactions do not match exactly but share several similar attributes. A scoring system assigns scores to different matching criteria (e.g., amount, date, description). 
 
@@ -185,17 +161,11 @@ This reconciliation uses:
 
 4. **Automated Scheduling:** Set up automated daily or weekly reconciliation jobs using Blnk's API and a task scheduler.
 
-5. **Exception Handling:** Develop a process for manually reviewing and resolving unmatched transactions. Exception handling involves a systematic approach to address transactions that do not match automatically, requiring human intervention to investigate and resolve discrepancies. For example, create a workflow where unmatched transactions are flagged and reviewed by a reconciliation team. 
+5. **Exception Handling:** Develop a process for manually reviewing and resolving unmatched transactions. Exception handling involves a systematic approach to address transactions that do not match automatically, requiring human intervention to investigate and resolve discrepancies.
 
-    Document reasons for mismatches and adjust rules if necessary to prevent future occurrences, ensuring a thorough and accountable reconciliation process.
+6. **Performance Optimization**: For large datasets, use date ranges and batching to improve reconciliation speed. Limiting the scope of reconciliation to specific periods reduces the volume of data processed at once. For instance, reconcile transactions on a daily/weekly basis instead of monthly to manage smaller datasets.
 
-6. **Performance Optimization**: For large datasets, use date ranges and batching to improve reconciliation speed. Limiting the scope of reconciliation to specific periods reduces the volume of data processed at once. Batching processes transactions in smaller groups or batches rather than all at once, enhancing performance and reducing system load. 
-
-    For instance, reconcile transactions on a daily/weekly basis instead of monthly to manage smaller datasets. Implement a system to batch process transactions in groups of 1,000 rather than attempting to reconcile all transactions simultaneously.
-
-7. **Audit Trails**: Maintain detailed logs of all reconciliation activities for auditing purposes. Audit trails are comprehensive records of all actions taken during the reconciliation process, including changes made, rules applied, and transactions matched. 
-
-    For example, log every reconciliation run, including the date, time, and user who initiated it. Keep records of all matched and unmatched transactions, along with any manual adjustments made during the exception handling process. This ensures transparency and accountability, allowing for thorough review and verification of financial activities.
+7. **Audit Trails**: Maintain detailed logs of all reconciliation activities for auditing purposes. Audit trails are comprehensive records of all actions taken during the reconciliation process, including changes made, rules applied, and transactions matched.
 
 ## Learn more
 
