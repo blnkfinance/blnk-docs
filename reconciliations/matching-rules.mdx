@@ -43,44 +43,40 @@ And pass the following request body:
 | :--- | :--- |
 | `name` | The name of the rule being created. |
 | `description` | A short narration of what the rule does. |
-| `criteria` | An array of criteria that defines the rule. |
+| `criteria` | An array of criteria that defines the rule. Each criteria is defined by 3 attributes — `field`, `operator`, `allowable_drift`. |
 | `field` | Selected field from the uploaded external data. It can be `amount`, `currency`, `reference`, `description`, or `date`. |
 | `operator` | Defines how the selected field should be compared with internal records. Depending on the field, this can be `equals`, `contains`, `greater_than`, or `less_than`. |
 | `allowable_drift` | Helps to accomodate small variations in transaction amounts between both records. |
 
-### Supported attributes and operators
+### Supported criteria attributes and operators
 
 Matching rules are used to match your internal data and [external data](external-data). Supported fields are:
 
 | Attributes | Supported operators | Description |
 | :--- | :--- | :--- |
-| `amount` | `equals`, `greater_than`, `less_than` | The transaction amount, e.g. 100.50 |
-| `currency` | `equals` | ISO 4217 currency code, e.g. "USD" |
-| `reference` | `equals` | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
-| `description` | `equals`, `contains` | Transaction details or narration, e.g., "Monthly subscription" |
-| `date` | `equals`, `greater_than`, `less_than` | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
+| `amount` | `equals`, `greater_than`, `less_than` | Match by amount, e.g. amount should equals 100.50 |
+| `currency` | `equals` | Match by currency, e.g. currency should equals "USD" |
+| `reference` | `equals` | Match by reference |
+| `description` | `equals`, `contains` | Match by description, e.g., description should contain "installment" |
+| `date` | `equals`, `greater_than`, `less_than` | Match by date and time, e.g., date greater than "2023-04-15T14:30:00Z" means all dates after April 15th 2024. |
 
 ### Handling discrepancies with drifts
 
-In the reconciliation process, minor discrepancies between internal records in your Blnk Ledger and external statements are common. Drifts allow for small tolerances in matching criteria, accommodating these discrepancies and ensuring smoother reconciliation. 
+In the reconciliation process, discrepancies between internal records in your Blnk Ledger and external statements are common. Drifts allow for tolerances in matching criteria, accommodating these discrepancies and ensuring smoother reconciliation. 
 
 There are two main types of drifts:
 
-1. **Amount Drift:** Allows for minor differences in transaction amounts. For example, a percentage drift value of 0.01 permits a 1% difference in the transaction amounts, accommodating small variations.
+1. **Amount Drift:** Allows for differences in transaction amounts. 
 
-    <Tip>
-        **For example,** if your internal record shows a transaction amount of \$100, an amount drift of 0.01 would allow for the external statement to report the amount as anything between \$99 and \$101.
-    </Tip>
+    For example, if your internal record shows a transaction amount of \$100, an amount drift of 1% (0.01) would allow for the external statement to report the amount as anything between \$99 and \$101.
 
     <Frame caption="Amount is matched +/- $22 (1% of the amount)">
       ![Image showing how records are matched using amount drift](/images/recon/amount-drift.png)
     </Frame>
 
-2. **Date Drift:** Allows for minor differences in transaction dates. For example, a time drift value of 3600 seconds permits a 1-hour difference in transaction dates, accommodating minor timing discrepancies.
-
-    <Tip>
-        **For example,** if your Blnk ledger shows a transaction date and time of 2:00 PM, a date drift of 3600 seconds would allow for the external statement to report the date and time as anything between 1:00 PM and 3:00 PM.
-    </Tip>
+2. **Date Drift:** Allows for differences in transaction dates. For example, a time drift value of 3600 seconds permits a 1-hour difference in transaction dates, accommodating timing discrepancies.
+    
+    For example, if your Blnk ledger shows a transaction date and time of 2:00 PM, a date drift of 3600 seconds would allow for the external statement to report the date and time as anything between 1:00 PM and 3:00 PM.
 
     <Frame caption="Date is matched +/- 1 hour.">
       ![Image showing how records are matched using date drift](/images/recon/date-drift.png)
