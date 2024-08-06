@@ -71,7 +71,7 @@ Matching rules are used to match your internal data from your Blnk Ledger and [e
 | :--- | :--- | :--- |
 | `amount` | `equals`, `greater_than`, `less_than` | Match by amount, e.g. external amount should equals internal amount. |
 | `currency` | `equals` | Match by currency, e.g. external currency should equals internal currency. |
-| `reference` | `equals` | external reference should equals internal reference |
+| `reference` | `equals`, `contains` | Match by reference, e.g. external reference should equals internal reference |
 | `description` | `equals`, `contains` | Match by description, e.g., internal description should contain part of or equals external description.  |
 | `date` | `equals`, `greater_than`, `less_than` | Match by date and time, e.g., external transaction date is greater than internal transaction date. |
 
@@ -93,17 +93,38 @@ And pass the following request body:
 
 ```json Request
 {
-    "name": "Subscription matcher",
+    "name": "Default matcher",
     "description": "Amount with 1% drift matcher"
     "criteria": [
         {
             "field": "amount",
             "operator": "equals"
             "allowable_drift": 0.01
+        },
+        {
+            "field": "currency",
+            "operator": "equals"
+        },
+        {
+            "field": "date",
+            "operator": "equals",
+            "allowable_drift": 1800
+        },
+        {
+            "field": "reference",
+            "operator": "contains",
+            "value": "ref_"
         }
     ]
 }
 ```
+
+The above matching rule matches internal and external transaction records with:
+
+- Equal amounts with a 1% drift.
+- The same currency.
+- The same date with a 30 mins drift, i.e. +/- 30 mins.
+- References that contain "ref_"
 
 ## 3. Define reconciliation strategies
 
