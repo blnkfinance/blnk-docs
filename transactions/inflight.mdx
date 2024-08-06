@@ -20,7 +20,8 @@ Here's what we'll cover …
 1. [How inflight works](#1-how-inflight-works)
 2. [Applying inflight](#2-applying-inflight)
 3. [Inflight statuses](#3-inflight-statuses)
-4. [Use cases](#4-use-cases)
+4. [Inflight for multiple sources/destinations](#4-inflight-for-multiple-sources-destinations)
+5. [Use cases](#5-use-cases)
 
 ## 1. How inflight works
 
@@ -213,7 +214,34 @@ View your balances after inflight:
     This is important to protect the correctness and accuracy of the transaction and your ledger as a whole.
 </Warning>
 
-## 4. Use cases
+## 4. Inflight for multiple sources/destinations
+
+Multiple sources in Blnk allow you send from multiple sources to a single destination simultaneously, while multiple destinations allow you to send from one source to multiple destinations.
+
+Learn more: [Multiple Sources](multiple-sources) and [Multiple Destinations](multiple-destinations).
+
+You can initiate inflight transactions to multiple destinations from a single source. To do so, enable inflight in your transaction request. 
+
+```json Request
+{
+    …
+    "inflight": true
+}
+```
+
+<Warning>
+    When you use multiple sources, the transactions are recorded separately in the ledger. However, they are grouped with a parent transaction id. This is the id shown in the response of your initial request.
+</Warning>
+
+### Commit or void inflight transaction
+
+To commit or void all transactions at once, call the **inflight endpoint** and pass the parent transaction id.
+
+```
+PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction}
+```
+
+## 5. Use cases
 
 Useful applications for `inflight` include:
 
