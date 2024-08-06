@@ -13,6 +13,32 @@ External data in reconciliation refers to any and all documents that hold record
     Read [Reconciliation Overview](overview) to learn how to perform reconciliation in your ledger.
 </Note>
 
+## Preparing your data
+
+External data sources have different formats for exporting your data. To prepare your data for reconciliation in Blnk:
+
+1. Download and extract your data from your partners (payment processor, bank, etc.)
+2. Transform the extracted data to the following structure:
+
+    | Field | Type | Description |
+    | :--- | :--- | :--- |
+    | `amount` | Float | The transaction amount, e.g. 100.50 |
+    | `currency` | String | ISO 4217 currency code, e.g. "USD" |
+    | `source` | String | Origin of the transaction data, e.g. "Stripe" |
+    | `description` | String | Transaction details or narration, e.g., "Monthly subscription" |
+    | `reference` | String | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
+    | `date` | ISO 8601 | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
+    
+3. Export and upload your data in CSV or JSON to Blnk using the endpoint below.
+
+### Things to note
+
+Take note of the following when uploading external data to prevent errors or mismatches in your reconciliation:
+
+- Use consistent formatting across all fields. 
+- Ensure that each transaction has a unique `reference` value.
+- Convert your `date` value to the UTC timezone to avoid timezone discrepancies. 
+
 ## Upload your data
 
 <Frame caption="Upload external data from any external data source.">
@@ -27,10 +53,6 @@ curl --location '<https://BLNK_API_URL/v1/reconciliation/upload>' \\
 --form 'file=@"transactions.json"' \\
 --form 'source="Stripe"'
 ```
-
-<Tip>
-  We support both CSV and JSON file types for external data upload.
-</Tip>
 
 ```json Response
 {
@@ -60,27 +82,5 @@ Depending on the type of fintech product/feature, these external data sources ma
 13. **Foreign exchange transaction reports:** Detailed reports of foreign currency transactions for fintechs involved in international trade.
 14. **Mobile payments reports:** Reports from mobile payment services like Venmo, Zelle, and others.
 15. **Escrow account statements:** Statements from escrow accounts used in various types of transactions, particularly in real estate or large purchases.
-
-## Data preparation
-
-Blnk requires your external data in a certain format to perform reconciliation with your ledger. We require the following fields in your uploaded data:
-
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `amount` | Float | The transaction amount, e.g. 100.50 |
-| `currency` | String | ISO 4217 currency code, e.g. "USD" |
-| `source` | String | Origin of the transaction data, e.g. "Stripe" |
-| `description` | String | Transaction details or narration, e.g., "Monthly subscription" |
-| `reference` | String | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
-| `date` | ISO 8601 | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
-
-
-## Things to note
-
-Take note of the following when uploading external data to prevent errors or mismatches in your reconciliation:
-
-- Use consistent formatting across all fields. 
-- Ensure that each transaction has a unique `reference` value.
-- Convert your `date` value to the UTC timezone to avoid timezone discrepancies. 
 
 <NeedHelp />
