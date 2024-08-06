@@ -22,7 +22,7 @@ Let's dive in ✨
 
 ## 1. Upload external data
 
-Your external data is any document that holds the records of all transaction activity outside of your system. Learn more: [External Data Preparation](external-data).
+Your external data is any document that holds the records of all transaction activity outside of your Blnk Ledger. Learn more: [External Data Preparation](external-data).
 
 First, ensure that your data includes these six fields:
 
@@ -65,7 +65,7 @@ To set a rule, you need to give it a name, description, and define its criteria.
 
 ### Supported attributes and operators
 
-Matching rules are used to match your internal data and [external data](external-data). Supported fields are:
+Matching rules are used to match your internal data from your Blnk Ledger and [external data](external-data). Supported fields are:
 
 | Attributes | Supported operators | Description |
 | :--- | :--- | :--- |
@@ -99,21 +99,21 @@ And pass the following request body:
         {
             "field": "amount",
             "operator": "equals"
-            "allowable_drift": 0.001
+            "allowable_drift": 0.01
         }
     ]
 }
 ```
 
-This rule allows for a 0.1% difference in amount, a 24-hour date difference, checks for "subscription" in the description, and ensures the reference contains "stripe_".
+This rule allows for a 1% difference in amount, a 24-hour date difference, checks for "subscription" in the description, and ensures the reference contains "stripe_".
 
 ## 3. Define reconciliation strategies
 
 Reconciliation strategies are essential for maintaining accurate financial records and ensuring that all transactions and payments are correctly matched based on your unique financial workflows. Learn more: [Reconciliation Strategies](strategies).
 
-1. **One-to-One**: For simple, direct matches between systems.
-2. **One-to-Many**: When one external transaction represents multiple internal transactions (e.g., batch or split payments).
-3. **Many-to-One**: Used when multiple external transaction records make up one internal transaction records (e.g., installment payments, ACH transfers, etc.).
+1. **One-to-One**: Used for a direct match between an internal transaction record in your Blnk Ledger and an external transaction record.
+2. **One-to-Many**: Used when one external transaction represents multiple internal transactions (e.g., batch or split payments).
+3. **Many-to-One**: Used when multiple external transaction records make up one internal transaction record (e.g., installment payments, ACH transfers, etc.).
 
 ## 4. Run reconciliation
 
@@ -136,12 +136,7 @@ POST https://BLNK_API_URL/v1/reconciliation/start
   "matching_rule_ids": [
     "rule_890bdbc4-467f-4670-8424-5667e41daf29",
     "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
-  ],
-  "date_range": {
-    "start": "2023-01-01T00:00:00Z",
-    "end": "2023-03-31T23:59:59Z"
-  },
-  "reconciliation_mode": "strict"
+  ]
 }
 ```
 
@@ -150,8 +145,6 @@ This reconciliation uses:
 1. Uses a one-to-many strategy.
 2. Groups transactions by parent, currency, and status.
 3. Applies two different matching rules.
-4. Limits reconciliation to Q1 2023 (Jan 1 - Mar 31).
-5. Uses a strict reconciliation mode (no partial matches allowed).
 
 ## Best practices
 
