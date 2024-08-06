@@ -27,8 +27,8 @@ And pass the following request body:
 
 ```json Request
 {
-    "name": "Stripe subscription matcher",
-    "description": "Matches Stripe's subcsription payments with internal records"
+    "name": "Subscription matcher",
+    "description": "Amount with 1% drift matcher"
     "criteria": [
         {
             "field": "amount",
@@ -44,7 +44,7 @@ And pass the following request body:
 | `name` | The name of the rule being created. |
 | `description` | A short narration of what the rule does. |
 | `criteria` | An array of criteria that defines the rule. Each criteria is defined by 3 attributes — `field`, `operator`, `allowable_drift`. |
-| `field` | Selected field from the uploaded external data. It can be `amount`, `currency`, `reference`, `description`, or `date`. |
+| `field` | Fields to match. It can be `amount`, `currency`, `reference`, `description`, or `date`. |
 | `operator` | Defines how the selected field should be compared with internal records. Depending on the field, this can be `equals`, `contains`, `greater_than`, or `less_than`. |
 | `allowable_drift` | Helps to accomodate small variations in transaction amounts between both records. |
 
@@ -54,15 +54,15 @@ Matching rules are used to match your internal data and [external data](external
 
 | Attributes | Supported operators | Description |
 | :--- | :--- | :--- |
-| `amount` | `equals`, `greater_than`, `less_than` | Match by amount, e.g. amount should equals 100.50 |
-| `currency` | `equals` | Match by currency, e.g. currency should equals "USD" |
-| `reference` | `equals` | Match by reference |
-| `description` | `equals`, `contains` | Match by description, e.g., description should contain "installment" |
-| `date` | `equals`, `greater_than`, `less_than` | Match by date and time, e.g., date greater than "2023-04-15T14:30:00Z" means all dates after April 15th 2024. |
+| `amount` | `equals`, `greater_than`, `less_than` | Match by amount, e.g. external amount should equals internal amount. |
+| `currency` | `equals` | Match by currency, e.g. external currency should equals internal currency. |
+| `reference` | `equals`, `contains` | Match by reference, e.g. external reference should equals internal reference |
+| `description` | `equals`, `contains` | Match by description, e.g., internal description should contain part of or equals external description.  |
+| `date` | `equals`, `greater_than`, `less_than` | Match by date and time, e.g., external transaction date is greater than internal transaction date. |
 
 ### Handling discrepancies with drifts
 
-In the reconciliation process, discrepancies between internal records in your Blnk Ledger and external statements are common. Drifts allow for tolerances in matching criteria, accommodating these discrepancies and ensuring smoother reconciliation. 
+In the reconciliation process, discrepancies between internal records in your Blnk Ledger and external statements can occur. Drifts allow for tolerances in matching criteria, accommodating these discrepancies and ensuring smoother reconciliation. 
 
 There are two main types of drifts:
 
