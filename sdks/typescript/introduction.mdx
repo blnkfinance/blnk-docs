@@ -1,0 +1,165 @@
+---
+title: "Getting started with the TypeScript SDK"
+sidebarTitle: "Getting started"
+icon: "node-js"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import Issues from "/snippets/sdk-issues.mdx";
+
+Welcome to the Blnk SDK for TypeScript Developer Guide. In this guide, you'll learn how to install Blnk and work with our Blnk TypeScript SDK. To view the open-source file, see the following: [Blnk TypeScript SDK](https://github.com/blnkfinance/blnk-ts/).
+
+You'll also find examples of running different fintech use cases with our TypeScript SDK. 
+
+## Prerequisites
+
+Ensure that you have the following installed on your machine.
+
+1. [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) for running Blnk locally on your machine.
+2. [Node.js (v14.0.0 or later)](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs) and [npm](https://www.npmjs.com/) for installing the Blnk Typescript SDK.
+
+## 1. Installation & Configuration
+
+Once you're good to go with the prerequisites, you can set up your Blnk server and SDK in 5 steps:
+
+<Steps titleSize="h3">
+    <Step title="Clone the Blnk repository">
+        Run the following command in your terminal to clone Blnk to your local machine:
+        ```bash bash
+        git clone https://github.com/blnkfinance/blnk && cd blnk
+        ```
+    </Step>
+    <Step title="Install the Blnk Typescript SDK">
+        In your `blnk` project folder, install Blnk Typescript SDK.
+        ```bash bash
+        npm install @blnkfinance/blnk-typescript --save
+        ```
+    </Step>
+    <Step title="Set up your Blnk configuration">
+        Create a `blnk.json` file in your `blnk` project folder, paste the following configuration settings, and save.
+        ```json blnk.json
+        {
+            "project_name": "Blnk",
+            "data_source": {
+                "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
+            },
+            "redis": {
+                "dns": "redis:6379"
+            },
+            "server": {
+                "domain": "blnk.io",
+                "ssl": false,
+                "ssl_email": "jerryenebeli@gmail.com",
+                "port": "5001"
+            },
+            "notification": {
+                "slack": {
+                "webhook_url": "https://hooks.slack.com"
+                }
+            }
+        }
+        ```
+        This configuration sets up the required connections to PostgreSQL and Redis, specifies your server details, and allows Slack notifications if needed.
+    </Step>
+    <Step title="Launch Blnk">
+        Launch the Blnk server with the following command:
+        ```bash bash
+        docker compose up
+        ```
+        Once running, your server will be accessible at http://localhost:5001.
+    </Step>
+    <Step title="Install Blnk CLI">
+        The Blnk CLI helps you to quickly test and manage your Blnk backend directly from your command line. You can also use it to perform create actions or view your data tables. To install and use the Blnk CLI, see the following in: [Installing the Blnk CLI](/blnk-cli/install).
+
+        To confirm that the CLI has been installed, run the following command:
+        ```bash bash
+        blnk --version
+        ```
+    </Step>
+</Steps>
+
+## 2. Create your first ledger
+
+A ledger is a folder for grouping balances together in your Blnk server. To learn more, see the following: [Introduction to Ledgers](/ledgers/introduction)
+
+To create a ledger using the TypeScript SDK:
+
+```javascript Create ledger
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+const blnk = await BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
+const { Ledgers } = blnk;
+
+const newLedger = await Ledgers.create({
+    name: "Customer Savings Account",
+    meta_data: {
+        project_owner: "YOUR_APP_NAME"
+    }
+});
+console.log("Ledger Created:", newLedger);
+```
+
+You can confirm that the ledger has been created with the Blnk CLI:
+```bash bash
+blnk ledgers list
+```
+
+## 3. Create your first balance
+
+A balance is used to represent a store of value in your Blnk server, e.g., wallet or account. To learn more, see the following: [Introduction to Balances](/balances/introduction)
+
+To create a balance using the TypeScript SDK:
+
+```javascript Create balance
+const { LedgerBalances } = blnk;
+
+const newBalance = await LedgerBalances.create({
+    ledger_id: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    currency: "USD",
+    meta_data: {
+        first_name: "Alice",
+        last_name: "Hart",
+        account_number: "1234567890"
+    }
+});
+console.log("Balance Created:", newBalance);
+```
+
+You can confirm that the balance has been created with the Blnk CLI:
+```bash bash
+blnk balances list
+```
+
+## 4. Record your first transaction
+
+Transaction records represent all financial activities (money in and money out) happening within your Blnk ledger. All transactions are immutable (cannot be modified or deleted) and idempotent (producing the same result no matter how many times an operation is performed).
+
+To record a transaction using the TypeScript SDK:
+
+```javascript Create transaction
+const { Transactions } = blnk;
+
+const newTransaction = await Transactions.create({
+    amount: 750,
+    reference: "ref_001adcfgf",
+    currency: "USD",
+    precision: 100,
+    source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    description: "Sent from app",
+    meta_data: {
+        sender_name: "John Doe",
+        sender_account: "00000000000"
+    }
+});
+console.log("Transaction Recorded:", newTransaction);
+```
+
+You can confirm that the transaction has been created with the Blnk CLI:
+```bash bash
+blnk transactions list
+```
+
+<NeedHelp />
+
+<Issues />

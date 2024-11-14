@@ -1,0 +1,759 @@
+---
+title: "SDK Code Examples"
+sidebarTitle: "Code examples"
+icon: "code"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import Issues from "/snippets/sdk-issues.mdx";
+
+## Introduction
+
+In this examples guide, you'll learn how to implement common real life fintech use-cases with the Blnk TypeScript SDK. 
+
+Click on a use-case item to view its sample SDK code. Each example is also linked with a detailed documentation of how it works.
+
+To view the full list of examples, see the following: [Blnk TypeScript SDK Code Examples](https://github.com/blnkfinance/blnk-ts/tree/main/examples)
+
+<Accordion title="Multicurrency wallets">
+<Tip>To view a detailed explanation of this implementation, see the following: [Multicurrency wallets](/use-cases/multicurrency)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {GenerateRandomNumbersWithPrefix, sleep, BASE_URL} = require(`../util`);
+
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+    logger: console,
+    timeout: 5000,
+  });
+  const {Ledgers, Transactions, LedgerBalances} = blnk;
+  //create a USD ledger
+  const usdLedger = await Ledgers.create({
+    name: `Customer USD Ledger`,
+    meta_data: {
+      project_name: `SendWorld App`,
+    },
+  });
+
+  if (usdLedger.data === null) {
+    throw new Error(usdLedger.message);
+  }
+  console.log(usdLedger, Transactions, LedgerBalances);
+
+  const eurLedger = await Ledgers.create({
+    name: `Customer USD Ledger`,
+    meta_data: {
+      project_name: `SendWorld App`,
+    },
+  });
+  console.log(`Euro Ledger`, JSON.stringify(eurLedger, null, 2));
+
+  const usdBalance = await LedgerBalances.create({
+    ledger_id: usdLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      customer_name: `Jerry`,
+      customer_internal_id: `1234`,
+    },
+  });
+  console.log(`USD Balance`, JSON.stringify(usdBalance, null, 2));
+
+  const eurBalance = await LedgerBalances.create({
+    ledger_id: usdLedger.data.ledger_id,
+    currency: `EUR`,
+    meta_data: {
+      customer_name: `Jerry`,
+      customer_internal_id: `1234`,
+    },
+  });
+  console.log(`EUR Balance`, JSON.stringify(eurBalance, null, 2));
+
+  const usdTransaction = await Transactions.create({
+    amount: 200,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ref`, 4),
+    description: `payment for service rendered`,
+    currency: `USD`,
+    source: `@World`,
+    destination: usdBalance.data.balance_id,
+    allow_overdraft: true,
+    meta_data: {
+      sender_name: `Future Design LLC`,
+      sender_internal_id: `123333`,
+    },
+  });
+
+  console.log(`USD Funding`, JSON.stringify(usdTransaction, null, 2));
+
+  const eurTransaction = await Transactions.create({
+    amount: 3500.5,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ref`, 4),
+    description: `invoice A fulfilled`,
+    currency: `EUR`,
+    source: `@World`,
+    destination: eurBalance.data.balance_id,
+    allow_overdraft: true,
+    meta_data: {
+      sender_name: `Nlnk Bank`,
+      sender_internal_id: `563825`,
+    },
+  });
+
+  await sleep(4);
+  console.log(`Eur Funding`, JSON.stringify(eurTransaction, null, 2));
+
+  //moving money out of wallets
+  const usdDebit = await Transactions.create({
+    amount: 200,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ref`, 4),
+    description: `payment for service rendered`,
+    currency: `USD`,
+    destination: `@World`,
+    source: usdBalance.data.balance_id,
+    meta_data: {
+      sender_name: `Future Design LLC`,
+      sender_internal_id: `123333`,
+    },
+  });
+  console.log(`usd debit`, usdDebit);
+
+  const eurDebit = await Transactions.create({
+    amount: 1470.49,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ref`, 4),
+    description: `payment for service rendered`,
+    currency: `EUR`,
+    destination: `@World`,
+    source: eurBalance.data.balance_id,
+    meta_data: {
+      sender_name: `Future Design LLC`,
+      sender_internal_id: `123333`,
+    },
+  });
+  console.log(`eur debit`, eurDebit);
+
+  await sleep(4);
+  //check balance
+  const usdBalanceView = await LedgerBalances.get(usdBalance.data.balance_id);
+  const eurBalanceView = await LedgerBalances.get(eurBalance.data.balance_id);
+  console.log(`usd balance after debit`, usdBalanceView);
+  console.log(`eur balance after debit`, eurBalanceView);
+
+  //moving money between multicurrency wallets
+  const usdToEur = await Transactions.create({
+    amount: 200,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ref`, 4),
+    description: `payment for service rendered`,
+    currency: `USD`,
+    destination: eurBalance.data.balance_id,
+    source: usdBalance.data.balance_id,
+    rate: 0.92,
+    meta_data: {
+      sender_name: `Future Design LLC`,
+      sender_internal_id: `123333`,
+    },
+  });
+  console.log(`usd to eur wallet`, usdToEur);
+}
+
+main();
+```
+</Accordion>
+
+<Accordion title="Escrow application">
+<Tip>To view a detailed explanation of this implementation, see the following: [Escrow application](/use-cases/escrow)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {BASE_URL, GenerateRandomNumbersWithPrefix} = require(`../util`);
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+    logger: console,
+  });
+  const {Ledgers, LedgerBalances, Transactions} = blnk;
+  const escrowLedger = await Ledgers.create({
+    name: `Escrow Ledger`,
+    meta_data: {
+      description: `Ledger for managing escrow accounts`,
+    },
+  });
+
+  if (escrowLedger.data === null || escrowLedger.status !== 201) {
+    throw new Error(escrowLedger.message);
+  }
+
+  const escrowBalance1 = await LedgerBalances.create({
+    ledger_id: escrowLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      account_type: `Escrow`,
+      customer_name: `Alice Johnson`,
+      customer_id: `alice-5678`,
+      account_opened_date: `2024-01-01`,
+      account_status: `active`,
+    },
+  });
+
+  if (escrowBalance1.data === null || escrowBalance1.status !== 201) {
+    throw new Error(escrowBalance1.message);
+  }
+
+  const escrowBalance2 = await LedgerBalances.create({
+    ledger_id: escrowLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      account_type: `Escrow`,
+      customer_name: `Bob Smith`,
+      customer_id: `bob-9701`,
+      account_opened_date: `2024-01-01`,
+      account_status: `active`,
+    },
+  });
+
+  if (escrowBalance2.data === null || escrowBalance2.status !== 201) {
+    throw new Error(escrowBalance2.message);
+  }
+
+  const fundAlice = await Transactions.create({
+    source: `@bank-account`,
+    destination: escrowBalance1.data.balance_id,
+    amount: 1000,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
+    description: `Funding escrow account`,
+    currency: `USD`,
+    inflight: true,
+    meta_data: {
+      transaction_type: `deposit`,
+      customer_name: `Alice Johnson`,
+      customer_id: `alice-5678`,
+      transaction_date: `2024-07-05`,
+      payment_verified: false,
+    },
+  });
+
+  if (fundAlice.data === null || fundAlice.status !== 201) {
+    throw new Error(fundAlice.message);
+  }
+
+  //release funds from alice to bob
+  const releaseFunds = await Transactions.create({
+    amount: 1000,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
+    description: `Releasing escrow funds`,
+    currency: `USD`,
+    source: escrowBalance1.data.balance_id, // Alice's escrow account balance_id
+    destination: escrowBalance2.data.balance_id, // Bob's escrow account balance_id
+    meta_data: {
+      transaction_type: `release`,
+      customer_name: `Alice Johnson`,
+      recipient_name: `Bob Smith`,
+      transaction_date: `2024-07-05`,
+    },
+  });
+
+  if (releaseFunds.data === null || releaseFunds.status !== 201) {
+    throw new Error(releaseFunds.message);
+  }
+
+  //refunding Alice
+  const refund = await Transactions.create({
+    amount: 1000,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
+    description: `Releasing escrow funds`,
+    currency: `USD`,
+    source: escrowBalance1.data.balance_id, // Alice's escrow account balance_id
+    destination: `@bank-account`, // Bob's escrow account balance_id
+    meta_data: {
+      transaction_type: `release`,
+      customer_name: `Alice Johnson`,
+      recipient_name: `Bob Smith`,
+      transaction_date: `2024-07-05`,
+    },
+  });
+
+  if (refund.data === null || refund.status !== 201) {
+    throw new Error(refund.message);
+  }
+}
+
+main();
+```
+</Accordion>
+
+<Accordion title="Loyalty points">
+<Tip>To view a detailed explanation of this implementation, see the following: [Loyalty points](/use-cases/loyalty-points)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {BASE_URL} = require(`../util`);
+
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+    logger: console,
+  });
+  const {Ledgers, LedgerBalances, Transactions} = blnk;
+
+  const customerLedger = await Ledgers.create({
+    name: `Customer Loyalty Points Ledger`,
+    meta_data: {
+      project_name: `RetailStore App`,
+    },
+  });
+
+  console.log(`customer ledger`, customerLedger);
+  if (customerLedger.data === null) {
+    throw new Error(customerLedger.message);
+  }
+
+  //create a balance for the points
+  const pointBalance = await LedgerBalances.create({
+    ledger_id: customerLedger.data.ledger_id,
+    currency: `POINTS`,
+    meta_data: {
+      customer_name: `Alice`,
+      customer_internal_id: `5678`,
+    },
+  });
+
+  if (pointBalance.data === null) {
+    throw new Error(pointBalance.message);
+  }
+  console.log(`Point Balance`, pointBalance);
+
+  const awardPoints = await Transactions.create({
+    amount: 100, // Representing 100 points
+    precision: 1,
+    reference: `purchase-001`,
+    description: `Points for purchase`,
+    currency: `POINTS`,
+    source: `@Store`,
+    destination: pointBalance.data.balance_id, // Alice's loyalty point balance_id
+    inflight: true,
+    meta_data: {
+      customer_name: `Alice`,
+      purchase_id: `purchase-001`,
+    },
+  });
+
+  if (awardPoints.data === null) {
+    throw new Error(awardPoints.message);
+  }
+  console.log(`Points awarded`, awardPoints);
+
+  const redeemPoints = await Transactions.create({
+    amount: 50, // Representing 50 points
+    precision: 1,
+    reference: `redemption-001`,
+    description: `Points redemption`,
+    currency: `POINTS`,
+    source: pointBalance.data.balance_id,
+    destination: `@Store`, // Alice's loyalty point balance_id
+    inflight: true,
+    meta_data: {
+      customer_name: `Alice`,
+      purchase_id: `purchase-001`,
+    },
+  });
+
+  if (redeemPoints.data === null) {
+    throw new Error(redeemPoints.message);
+  }
+}
+
+main();
+```
+</Accordion>
+
+<Accordion title="Expense management">
+<Tip>To view a detailed explanation of this implementation, see the following: [Expense management](/use-cases/expense-management)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {BASE_URL, sleep, GenerateRandomNumbersWithPrefix} = require(`../util`);
+
+async function main() {
+  const blnk = await BlnkInit(``, {
+    baseUrl: BASE_URL,
+  });
+  const {Ledgers, Search, LedgerBalances, Transactions} = blnk;
+
+  const marketLedger = await Ledgers.create({
+    name: `Marketing Department Ledger`,
+    meta_data: {
+      department: `Marketing`,
+    },
+  });
+
+  if (marketLedger.data === null) {
+    throw new Error(marketLedger.message);
+  }
+
+  const hrLedger = await Ledgers.create({
+    name: `Human Resources Department Ledger`,
+    meta_data: {
+      department: `Human Resources`,
+    },
+  });
+
+  if (hrLedger.data === null) {
+    throw new Error(hrLedger.message);
+  }
+
+  //check if there's a ledgers list endpoint in BLNK
+  //implement search class instead
+  const ledgers = await Search.search(
+    {
+      q: `*`,
+      sort_by: `created_at:desc`,
+    },
+    `ledgers`
+  );
+
+  console.log(ledgers);
+
+  //create a balance for marketing account
+  const marketingBalance = await LedgerBalances.create({
+    ledger_id: marketLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      department: `Marketing`,
+      expense_type: `Advertising`,
+    },
+  });
+
+  if (marketingBalance.data === null) {
+    throw new Error(marketingBalance.message);
+  }
+  //create a balance for HR recruitment
+  const hrBalance = await LedgerBalances.create({
+    ledger_id: hrLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      department: `Human Resources`,
+      expense_type: `Recruitment`,
+    },
+  });
+
+  if (hrBalance.data === null) {
+    throw new Error(hrBalance.message);
+  }
+  //credit a transaction on marketing account
+  const marketingTransaction = await Transactions.create({
+    destination: marketingBalance.data.balance_id,
+    source: `@CompanyFunds`,
+    amount: 500,
+    currency: `USD`,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`ad`, 4),
+    description: `Payment for social media ads`,
+    inflight: true,
+    allow_overdraft: true,
+    meta_data: {
+      department: `Marketing`,
+      expense_type: `Advertising`,
+      vendor: `SocialMediaCo`,
+    },
+  });
+  if (marketingTransaction.data === null) {
+    throw new Error(marketingTransaction.message);
+  }
+
+  //credit a transaction on the hr account
+  const hrTransaction = await Transactions.create({
+    destination: `@CompanyFunds`,
+    source: hrBalance.data.balance_id,
+    amount: 1000,
+    currency: `USD`,
+    allow_overdraft: true,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`recruitment-expense`, 4),
+    description: `Payment for recruitment agency`,
+    inflight: true,
+    meta_data: {
+      department: `Human Resources`,
+      expense_type: `Recruitment`,
+      vendor: `JobBoardCo`,
+    },
+  });
+
+  if (hrTransaction.data === null) {
+    throw new Error(hrTransaction.message);
+  }
+
+  await sleep(4);
+  //approving an advertising expense for marketing
+  console.log(`Approving marketing transaction`);
+  const commitMarketingTransaction = await Transactions.updateStatus(
+    marketingTransaction.data.transaction_id,
+    {
+      status: `commit`,
+    }
+  );
+
+  if (
+    commitMarketingTransaction.data === null ||
+    commitMarketingTransaction.status !== 200
+  ) {
+    throw new Error(commitMarketingTransaction.message);
+  }
+
+  //approving a recruitment expense for HR
+  console.log(`Approving HR transaction`);
+  const recruitmentExpenseCommit = await Transactions.updateStatus(
+    hrTransaction.data.transaction_id,
+    {
+      status: `commit`,
+    }
+  );
+
+  if (
+    recruitmentExpenseCommit.data === null ||
+    commitMarketingTransaction.status !== 200
+  ) {
+    throw new Error(recruitmentExpenseCommit.message);
+  }
+}
+
+main();
+```
+</Accordion>
+
+<Accordion title="Savings application">
+<Tip>To view a detailed explanation of this implementation, see the following: [Savings application](/use-cases/savings)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {GenerateRandomNumbersWithPrefix, BASE_URL} = require(`../util`);
+
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+    logger: console,
+  });
+
+  const {Ledgers, LedgerBalances, Transactions} = blnk;
+  const savingsLedger = await Ledgers.create({
+    name: `Savings Ledger`,
+    meta_data: {
+      description: `Ledger for managing savings accounts`,
+    },
+  });
+
+  if (savingsLedger.data === null || savingsLedger.status !== 201) {
+    throw new Error(savingsLedger.message);
+  }
+
+  const aliceSavings = await LedgerBalances.create({
+    ledger_id: savingsLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      account_type: `Escrow`,
+      customer_name: `Alice Johnson`,
+      customer_id: `alice-5678`,
+      account_opened_date: `2024-01-01`,
+      account_status: `active`,
+    },
+  });
+
+  if (aliceSavings.data === null || aliceSavings.status !== 201) {
+    throw new Error(aliceSavings.message);
+  }
+
+  //funding alice savings balance by creating a transaction
+  //first time funding so we enable overdraft
+  const aliceDeposit = await Transactions.create({
+    amount: 1000,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`funding`, 4),
+    description: `Funding savings account`,
+    currency: `USD`,
+    source: `@bank-account`,
+    destination: aliceSavings.data.balance_id, // Alice's savings account balance_id
+    inflight: true,
+    allow_overdraft: true, // Enable overdraft for the first deposit
+    meta_data: {
+      transaction_type: `deposit`,
+      customer_name: `Alice Johnson`,
+      customer_id: `alice-5678`,
+      transaction_date: `2024-07-05`,
+      payment_verified: false,
+    },
+  });
+  if (aliceDeposit.data === null || aliceDeposit.status !== 201) {
+    throw new Error(aliceDeposit.message);
+  }
+}
+
+main().catch(error => {
+  console.error(error);
+});
+```
+</Accordion>
+
+<Accordion title="Virtual cards">
+<Tip>To view a detailed explanation of this implementation, see the following: [Virtual cards](/use-cases/virtual-cards)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {GenerateRandomNumbersWithPrefix, sleep, BASE_URL} = require(`../util`);
+
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+  });
+
+  const {Ledgers, LedgerBalances, Transactions} = blnk;
+  const usdLedger = await Ledgers.create({
+    name: `Customer USD Ledger`,
+    meta_data: {
+      project_name: `VirtualCard App`,
+    },
+  });
+
+  if (usdLedger.data === null) {
+    throw new Error(usdLedger.message);
+  }
+
+  //creating a usd virtual card
+  const usdBalance = await LedgerBalances.create({
+    ledger_id: usdLedger.data.ledger_id,
+    currency: `USD`,
+    meta_data: {
+      customer_name: `Jerry`,
+      customer_internal_id: `1234`,
+      card_state: `ACTIVE`,
+      card_number: `411111XXXXXX1111`, // Masked for security
+      card_expiry: `12/26`,
+      card_cvv: `XXX`, // Masked for security
+    },
+  });
+  if (usdBalance.data === null || usdBalance.status !== 201) {
+    throw new Error(usdBalance.message);
+  }
+
+  //first transaction on this balance, so we put it in @Merchant or @World and allow overdrafts please see `https://docs.blnkfinance.com/transactions/overdrafts` for more info
+  const firstTransaction = await Transactions.create({
+    amount: 1000,
+    precision: 100,
+    reference: GenerateRandomNumbersWithPrefix(`trx`, 4),
+    description: `First transaction on this balance`,
+    currency: `USD`,
+    source: `@World`,
+    destination: `@Merchant`,
+    allow_overdraft: true,
+    meta_data: {
+      merchant_name: `Store ABC`,
+      customer_name: `Jerry`,
+    },
+  });
+
+  if (firstTransaction.data === null || firstTransaction.status !== 201) {
+    throw new Error(firstTransaction.message);
+  }
+
+  //authorizing transactions
+  //record an inflight transaction
+  const reference = GenerateRandomNumbersWithPrefix(`trx`, 4);
+  const inflightTransaction = await Transactions.create({
+    amount: 1000,
+    precision: 100,
+    reference,
+    description: `Authorization for purchase`,
+    currency: `USD`,
+    source: `@Merchant`,
+    destination: usdBalance.data.balance_id, // Jerry's virtual card balance_id
+    inflight: true,
+    meta_data: {
+      merchant_name: `Store ABC`,
+      customer_name: `Jerry`,
+    },
+  });
+
+  if (inflightTransaction.data === null || inflightTransaction.status !== 201) {
+    throw new Error(inflightTransaction.message);
+  }
+
+  ///sleep for 4 seconds to simulate waiting for a webhook or action to commit the transaction, also allows for it to be processed
+  await sleep(4);
+  //after the transaction has been verified you can update it here
+  const x = await Transactions.updateStatus(
+    inflightTransaction.data.transaction_id,
+    {
+      status: `commit`,
+    }
+  );
+
+  if (x.data === null || x.status !== 200) {
+    throw new Error(x.message);
+  }
+
+  //if the transaction failed or was cancelled on your users end, void it
+  await Transactions.updateStatus(inflightTransaction.data.transaction_id, {
+    status: `void`,
+  });
+}
+
+main();
+```
+</Accordion>
+
+<Accordion title="Reconciliation">
+<Tip>To view a detailed explanation of this implementation, see the following: [Reconciliation workflows](/reconciliations/overview)</Tip>
+```javascript index.js
+const {BlnkInit} = require(`@blnkfinance/blnk-typescript`);
+const {BASE_URL} = require(`../util`);
+const path = require(`path`);
+
+async function main() {
+  const blnk = BlnkInit(``, {
+    baseUrl: BASE_URL,
+  });
+  const {Reconciliation} = blnk;
+  const filePath = path.join(__dirname, `..`, `..`, `file.csv`);
+  const reconciliationUpload = await Reconciliation.upload(filePath, `Stripe`);
+
+  if (reconciliationUpload.status !== 200) {
+    throw new Error(reconciliationUpload.message);
+  }
+  //you can save the reconciliation id in your db to use later
+  const matchingRule = await Reconciliation.createMatchingRule({
+    criteria: [
+      {
+        field: `amount`,
+        operator: `equals`,
+        allowable_drift: 0.01,
+      },
+    ],
+    name: `Test Matching Rule`,
+    description: `Test Matching Rule Description`,
+  });
+
+  if (matchingRule.status !== 201) {
+    throw new Error(matchingRule.message);
+  }
+
+  //start the reconciliation
+  const startReconciliation = await Reconciliation.run({
+    dry_run: true,
+    grouping_criteria: `amount`,
+    matching_rule_ids: [matchingRule.data.rule_id],
+    strategy: `many_to_one`,
+    upload_id: reconciliationUpload.data.upload_id,
+  });
+
+  if (startReconciliation.status !== 200) {
+    throw new Error(startReconciliation.message);
+  }
+}
+
+main();
+```
+</Accordion>
+
+<NeedHelp />
+
+<Issues />
