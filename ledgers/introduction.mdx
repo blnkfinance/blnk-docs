@@ -1,0 +1,131 @@
+---
+title: "Overview"
+description: "Learn how ledgers work in Blnk"
+icon: "credit-card"
+"og:title": "About Ledgers • Blnk"
+"og:description": "Learn how to create and use ledgers in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Blnk uses a structured ledger system to organize and group account balances effectively. This system simplifies navigation and improves the clarity and accessibility of financial data.
+
+When setting up Blnk for your application, the first step is to create ledgers. Since balances need to be grouped within a ledger, you cannot create balances without one. Therefore, it’s essential to plan how you want to categorize your balances before you begin. To learn more, see the following: [Ledger architecture](architecture).
+
+## Types of ledgers in Blnk
+
+Blnk includes two types of ledgers — a General Ledger and custom ledgers.
+
+1. **General Ledger:** This built-in ledger is designed to group balances that represent accounts owned by your organization, similar to a Chart of Accounts. Unlike custom ledgers, balances in the General Ledger come with indicators, making it easier to reference them in your code when recording transactions. To learn more about the General Ledger, see the following: [General Ledger](/ledgers/general-ledger).
+
+2. **Custom ledgers:** These are ledgers you create based on the ledger architecture you’ve defined for your application.
+
+<CardGroup>
+  <Card title="Creating balances in the General Ledger" iconType="duotone" icon="abacus" href="../balances/internal-balances"></Card>
+  <Card title="Architecting your ledger" iconType="duotone" icon="sitemap" href="architecture"></Card>
+</CardGroup>
+
+## Creating a ledger
+
+To create a ledger, call the **Create Ledger** endpoint:
+
+<CodeGroup>
+```json JSON
+{
+    "name": "Customer Savings Account",
+    "meta_data": {
+        "project_owner": "YOUR_APP_NAME"
+    }
+}
+``` 
+
+```javascript TypeScript
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+const blnk = await BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
+const { Ledgers } = blnk;
+
+const newLedger = await Ledgers.create({
+    name: "Customer Savings Account",
+    meta_data: {
+        project_owner: "YOUR_APP_NAME"
+    }
+});
+console.log("Ledger Created:", newLedger);
+```
+
+```bash Blnk CLI
+blnk ledgers create
+```
+</CodeGroup>
+
+```json Response
+{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "name": "Customer Savings Account",
+    "created_at": "2024-02-20 05:28:03 UTC",
+    "meta_data":{
+        "project_owner": "YOUR_APP_NAME"
+    }
+}
+```
+
+<Tabs>
+    <Tab title="Request">
+        | Field | Description | Required | Type
+		| --- | --- | --- | ---
+		| `name` | A name that best describes the function of the ledger | Yes | `string`
+		| `meta_data` | Custom data associated with the ledger being created | No | `object`
+    </Tab>
+    <Tab title="Response">
+        | Field | Description | Type
+		| --- | --- | --- 
+		| `ledger_id` | Unique identification number for your ledger | `string`
+		| `name` | The name of your ledger | `string`
+		| `created_at` | Date and time of when it was created | `string`
+    </Tab>
+</Tabs>
+
+## Practical example
+
+Here’s an example with seven accounts to illustrate how to use ledgers in Blnk:
+
+| Account name | Type(s) | 
+| :--- | :--- |
+| Aria Collins | Savings |
+| Luca Sanders | Savings |
+| Ivy Monroe | Checking |
+| Jasper Hale | Checking, Savings |
+| Mia Delgado | Savings |
+| Ezra Donovan | Checking |
+| Ruby Foster | Checking, Savings |
+
+With Blnk’s ledger functionality, you can categorize these accounts by name, type, or other criteria that fit your organizational needs. 
+
+This helps you maintain clean, organized records that are easy to search and manage. As your data scales, this categorization becomes even more valuable, enabling you to conduct deeper analyses, identify patterns, and make more informed decisions.
+
+### Ledger grouping by type
+
+In this approach, accounts are organized by type rather than by individual customer. Two separate ledgers are created— one for “Savings Accounts” and another for “Checking Accounts.” This setup groups accounts by their function, making it easy to reference all accounts within a specific type.
+
+| Savings Account Ledger | Checking Account Ledger |
+| :--- | :--- |
+| - Aria Collins <br/> - Luca Sanders <br/> - Jasper Hale <br/> - Mia Delgado <br/> - Ruby Foster| - Ivy Monroe <br/> - Jasper Hale <br/> - Ezra Donovan <br/> - Ruby Foster |
+
+In this example, there are 5 savings accounts and 4 checking accounts across 7 unique customers. But customers like Jasper Hale and Ruby Foster have both types of accounts, which means they appear in both ledgers.
+
+This type-based grouping provides a clear breakdown of accounts, showing which accounts fall under savings and which under checking. This can be useful for tracking and reference, particularly if you need to analyze account activity or usage patterns based on account type.
+
+### Ledger grouping by name
+
+In this approach, rather than organizing accounts by type (e.g., Savings or Checking), we create a separate ledger for each unique customer. This allows each customer’s accounts to be listed together under their name, making it easy to view all accounts belonging to a single individual.
+
+| **Aria Collins** | **Luca Sanders** | **Ivy Monroe** | **Jasper Hale** | **Mia Delgado** | **Ezra Donovan** | **Ruby Foster** |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| - Savings | - Savings | - Checking | - Checking <br/> - Savings | - Savings | - Checking | - Checking <br/> - Savings |
+
+Each ledger entry is focused on the customer, showing all accounts that the customer holds. For instance, Jasper Hale and Ruby Foster each have both a checking and a savings account, so both account types are listed under their names.
+
+This customer-focused organization makes it easy to see all account types associated with each individual. It can be helpful when managing customer relationships or viewing a comprehensive overview of each customer’s financial engagement in the system.
+
+<NeedHelp />

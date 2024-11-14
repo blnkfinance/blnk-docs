@@ -1,0 +1,106 @@
+---
+title: "Overview"
+description: "Learn how balances work in Blnk"
+icon: "coin"
+"og:title": "About Balances • Blnk"
+"og:description": "Learn how to create and use balances in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Ledger balances (or balances, for short) are used to represent store of value in your Blnk Ledger, i.e., accounts, wallets, card balance, etc. They also represent the source or destination of a transaction record.
+
+All ledger balances in the Blnk Ledger each have 6 main balance attributes:
+
+1. `balance`: This shows the current value held in the ledger balance.
+2. `credit_balance`: This is the total sum of all amounts received by a ledger balance.
+3. `debit_balance`: This is the total sum of all amounts sent by a ledger balance.
+4. `inflight_balance`: This shows the net amount held inflight for a balance.
+5. `inflight_credit_balance`: This is the total sum of all amount waiting to be received by a ledger balance.
+6. `inflight_debit_balance`: This is the total sum of all amount waiting to be deducted from a ledger balance.
+
+<Warning>**Important to note:** Balance amounts are immutable and can only be updated through transactions. You cannot manually set or alter a balance amount directly.</Warning>
+
+## Creating a balance
+
+To create a balance in Blnk, call the **Create Balance** endpoint:
+
+<CodeGroup>
+```json JSON
+{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "currency": "USD",
+    "meta_data": {
+        "first_name": "Alice",
+        "last_name": "Hart",
+        "account_number": "1234567890"
+    }
+}
+```
+
+```javascript TypeScript
+const { LedgerBalances } = blnk;
+
+const newBalance = await LedgerBalances.create({
+    ledger_id: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    currency: "USD",
+    meta_data: {
+        first_name: "Alice",
+        last_name: "Hart",
+        account_number: "1234567890"
+    }
+});
+console.log("Balance Created:", newBalance);
+```
+
+```bash Blnk CLI
+blnk balances create
+? Ledger ID: <ledger-id>
+? Currency: <currency>
+? Metadata (JSON format): <metadata>
+```
+</CodeGroup>
+
+```json Response
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "precision": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "customer_internal_id": "1234",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+<Note>All newly created balances in the Blnk Ledger start from 0. You cannot create a ledger balance with a predefined balance amount.</Note>
+
+## Balance overdrafts
+
+An overdraft occurs when a transaction reduces a ledger balance below zero, resulting in a negative balance. This means that the amount debited exceeds the available funds in the account. While traditionally seen as a deficit, in Blnk, a negative balance is simply another balance state and can be used flexibly, especially depending on the type of financial product.
+
+In Blnk, implementing overdrafts is straightforward. By setting the `allow_overdraft` attribute when initiating a transaction, you can allow a ledger balance to fall below 0. This feature is valuable as it provides insights and reflects the position of a balance, especially useful in certain product contexts, such as lending or line-of-credit services.
+
+### Why negative balances?
+
+In Blnk, a negative balance is simply a balance state and doesn’t necessarily mean there’s a problem. For example, it can simply show borrowed funds, as expected in products like loans or credit, where it reflects the amount owed.
+
+It could also mean that a balance has more debits than credits — this is especially relevant for internal balances like `@World`. To learn more, see the following: [Internal balances](/balances/internal-balances)
+
+Moreover, a negative balance is often temporary and can revert to a positive balance under certain conditions, such as:
+
+1. **Incoming Credits:** When new funds are credited to the account, they reduce or eliminate the negative balance. 
+2. **Scheduled Repayments:** For products like loans, regular repayments or scheduled deposits will move the balance back toward positive territory over time, ultimately making it positive if the full overdraft is repaid.
+
+<NeedHelp />
