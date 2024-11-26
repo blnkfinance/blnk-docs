@@ -1,0 +1,72 @@
+---
+title: "Matching rules"
+description: "Set your matching rules for reconciliation."
+api: "POST /reconciliation/matching-rules"
+noindex: true
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+### Authorization
+Basic authentication header of the form — `Basic <encoded-value>`, where `<encoded-value>` is the base64-encoded string of your `username:password`.
+
+### Body
+<ParamField body="name" type="string" required>
+  Name of the matching rule.
+</ParamField>
+<ParamField body="description" type="string">
+  A brief description of what the matching rule does.
+</ParamField>
+<ParamField body="criteria" type="array" required>
+  An array of criteria that defines the rule. Each criteria is defined by 3 attributes — `field`, `operator`, `allowable_drift`.
+  <Expandable>  
+    <ParamField body="field" type="string" required>
+      Fields to match. It can be `"amount"`, `"currency"`, `"reference"`, `"description"`, or `"date"`.
+    </ParamField>
+    <ParamField body="operator" type="string" required>
+      Defines how the selected field should be compared with internal records. Depending on the field, this can be `"equals"` or `"contains"`.
+
+      - `equals`: The field in the external record must exactly match the corresponding field in your Blnk Ledger.
+      - `contains`: Parts of the external field’s value must be found in your Blnk Ledger.
+    </ParamField>
+    <ParamField body="allowable_drift" type="integer" required>
+      Helps to accomodate small variations in transaction amounts between both records. Only applicable to amount and date fields. 
+
+      - Amount drift: Measured in percentages, e.g., 1% is `"allowable_drift": 0.01`
+      - Date drift: Measured in seconds, e.g., 1 hour is `"allowable_drift": 3600`
+
+      For further details, refer to: [Handling discrepancies with drifts](/reconciliations/matching-rules#handling-discrepancies-with-drifts)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<RequestExample>
+```json
+{
+    "name": "Default matcher",
+    "description": "Amount with 1% drift matcher",
+    "criteria": [
+        {
+            "field": "amount",
+            "operator": "equals",
+            "allowable_drift": 0.01
+        },
+        {
+            "field": "currency",
+            "operator": "equals"
+        },
+        {
+            "field": "date",
+            "operator": "equals",
+            "allowable_drift": 1800
+        },
+        {
+            "field": "reference",
+            "operator": "contains"
+        }
+    ]
+}
+```
+</RequestExample>
+
+<NeedHelp />

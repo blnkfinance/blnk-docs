@@ -1,0 +1,52 @@
+---
+title: "Upload external records"
+description: "How to upload external data for reconciliation."
+api: "POST /reconciliation/upload"
+noindex: true
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+### Authorization
+Basic authentication header of the form — `Basic <encoded-value>`, where `<encoded-value>` is the base64-encoded string of your `username:password`.
+
+### Body
+<ParamField body="file" type="string" required>
+  Uploaded file containing external data.
+  <Tip>We support both CSV and JSON file types for external data upload.</Tip>
+</ParamField>
+<ParamField body="source" type="string" required>
+  Origin of the transaction data, e.g. “Stripe”.
+</ParamField>
+
+### Response
+<ResponseField name="upload_id" type="string" required>
+  Specifies the unique ID for the uploaded file
+</ResponseField>
+<ResponseField name="record_count" type="string" required>
+  Total number of records found in the uploaded file.
+</ResponseField>
+<ResponseField name="source" type="string" required>
+  Origin of the transaction data, e.g. “Stripe”.
+</ResponseField>
+
+<RequestExample>
+```json
+curl --location '<https://localhost:5001/reconciliation/upload>' \\
+--header 'Authorization: Basic <encoded-value>' \\
+--form 'file=@"transactions.json"' \\
+--form 'source="Stripe"'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "record_count": 1000,
+  "source": "Stripe"
+}
+```
+</ResponseExample>
+
+<NeedHelp />

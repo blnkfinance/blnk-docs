@@ -1,0 +1,89 @@
+---
+title: "Update balance monitor"
+description: "Update the details of a balance monitor."
+api: "PUT /balance-monitors/{monitor_id}"
+noindex: true
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+### Authorization
+Basic authentication header of the form — `Basic <encoded-value>`, where `<encoded-value>` is the base64-encoded string of your `username:password`.
+
+### Path
+<ParamField path="monitor_id" type="string" required>
+  The unique id of the balance monitor you want to view. Leave empty to view all balance monitors in your Blnk Ledger.
+</ParamField>
+
+### Body
+<Warning>If a parameter is not included in the request body when updating a balance monitor, it defaults to empty.</Warning>
+
+<ParamField body="balance_id" type="string" required>
+  Specifies the balance id of the ledger balance to be monitored.
+</ParamField>
+<ParamField body="conditions" type="object" required>
+  Defines the criteria for monitoring a specific balance type. 
+  <Expandable>
+    <ParamField body="field" type="string" required>
+      Specifies the balance type to be monitored. Every ledger balance has 6 balance types — `balance`, `inflight_balance`, `credit_balance`, `inflight_credit_balance `, `debit_balance`, and `inflight_debit_balance`.
+    </ParamField>
+    <ParamField body="operator" type="string" required>
+      Defines the comparison operator to apply. Accepted values: **>** (greater than), **\<** (less than), or **=** (equal to).
+    </ParamField>
+    <ParamField body="value" type="integer" required>
+      The threshold amount that triggers the balance monitor.
+    </ParamField>
+  </Expandable>
+</ParamField>
+<ParamField body="call_back_url" type="string" required>
+  Specifies the URL where notifications will be sent when the balance crosses the defined threshold.
+</ParamField>
+<ParamField body="description" type="string">
+  A brief explanation of the purpose of the monitor.
+</ParamField>
+
+### Response
+<Info>All parameters from the request body also mean the same in the corresponding response JSON.</Info>
+
+<ResponseField name="monitor_id" type="string">
+  The unique id of the balance monitor.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  Date and time when the monitor was created.
+</ResponseField>
+
+<RequestExample>
+```json
+curl --request PUT \
+  --url http://localhost:5001/balance-monitors \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "condition": {
+      "field": "debit_balance",
+      "operator": ">",
+      "value": 100000
+    },
+    "call_back_url": "https://api.myapp.com/balancemonitor"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+  "condition": {
+    "field": "debit_balance",
+    "operator": ">",
+    "value": 100000
+  },
+  "call_back_url": "https://api.myapp.com/balancemonitor",
+  "description": "",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
+}
+```
+</ResponseExample>
+
+<NeedHelp />
