@@ -1,0 +1,189 @@
+---
+title: "Blnk Core"
+description: "Latest features, releases, and improvements."
+icon: "webhook"
+mode: "wide"
+"og:title": "Changelog • Blnk Core"
+"og:description": "Stay up to date with latest features, releases, and improvement to Blnk Core."
+---
+
+<Update label="Nov 12, 2024" description="v0.7.4">
+  ## Bug fixes & improvements
+
+  1. `indicator` not returning for [internal balances](/balances/internal-balances) on the `GET /balances` endpoint is now fixed.
+</Update>
+
+<Update label="Oct 11, 2024" description="v0.7.3">
+  ## Bug fixes & improvements
+
+  1. Added comments to the source code and API. 
+</Update>
+
+<Update label="Sep 10, 2024" description="v0.7.2">
+  ## Bug fixes & improvements
+
+  1. Added more tests.
+</Update>
+
+<Update label="Sep 9, 2024" description="v0.7.1">
+  ## Bug fixes & improvements
+
+  1. Improved queuing time by moving reference check to the working layer.
+</Update>
+
+<Update label="Sep 9, 2024" description="v0.7.0">
+  ## Reconciliation
+
+  We’re excited to announce Reconciliation, a powerful new module that helps developers seamlessly compare and reconcile external records with your Blnk Ledger. This feature ensures data consistency, simplifies auditing processes, and reduces errors by automatically flagging mismatches.
+
+  To learn more: [Reconciliation overview](/reconciliations/overview).
+
+  ## Parent transactions
+
+  We added `parent_transaction` for transactions with parent ids, e.g., inflight transactions, multiple sources/destinations, scheduled transactions, etc.
+
+  For example, when an inflight transaction is committed, a new transaction is created in your ledger. This new transaction includes the `parent_transaction` field, which references the original inflight transaction.  
+
+  Other related improvements include:
+  1. Added pagination support for fetching transactions by `parent_transaction`.
+
+  ## Bug fixes & improvements
+
+  1. Add identity and reconciliation collections to Search.
+  2. Added new tools for system monitoring to provide better visibility and faster detection of performance issues.
+  3. Implemented rate-limiting to ensure fair usage and maintain system reliability during high traffic periods.
+  4. Resolved issues with backups to Amazon S3.
+  5. Improved error handling to deliver clearer feedback and make debugging more efficient.
+</Update>
+
+<Update label="Jun 10, 2024" description="v0.6.4">
+  ## Bug fixes & improvements
+  
+  1. Fixed dates not being returned correctly.
+  2. Improved Search
+  3. `created_at` is now set before queuing transactions.
+</Update>
+
+<Update label="Jun 9, 2024" description="v0.6.3">
+  ## Bug fixes & improvements
+
+  - Added `precision` to balance monitor.
+  - Added restart policy to migration.
+
+  ## Changelog
+
+  - Directus service and `.env` parameters added in **docker-compose** by [vebera](https://github.com/vebera).
+</Update>
+
+<Update label="May 3, 2024" description="v0.6.2">
+  ## Rates
+
+  We've introduced Rates, a feature that allows you to record transactions between balances of different currencies. 
+
+  ```json Applying rates {5}
+  {
+    ...
+    "source": "bal_usd",
+    "destination": "bal_gbp",
+    "rate": 0.92
+  }
+  ```
+
+  ## Bug fixes & improvements
+  1. Added `inflight_expiry_date` for specifying when an inflight transaction should expire and be automatically voided.
+  2. Added new balance fields and `operator` field to balance monitors.
+  3. You can now only commit up to the total amount of the original inflight transaction. 
+</Update>
+
+<Update label="Apr 12, 2024" description="v0.6.1">
+  ## Added Search
+
+  Search gives you full control and flexibility over how you fetch your transaction data from your Blnk Ledger. You can use Search to retrieve any data — ledgers, ledger balances, and transactions — from your Blnk Ledger.
+
+  ## Transaction precision
+
+  `precision` is now a transaction parameter. Blnk uses `precision` to convert transaction amounts to the lowest unit possible, e.g., converting naira to kobo, to ensure that your balances are correctly computed. 
+
+  <Tip>The lowest unit for an asset class is a value that has no decimal point regardless of what amount is passed.</Tip>
+
+  ## Partial commits for inflight transactions
+
+  You can now commit transactions in `INFLIGHT` in bits, i.e., you can release the amount being held by your system in batches based on the conditions you've set for the transaction or participating balance. 
+
+  ## Bug fixes & improvements
+  1. Fixed typos in the payloads for `inflight` and `allow_overdraft`.
+  2. General bug and performance improvements.
+</Update>
+
+<Update label="Apr 8, 2024" description="v0.6.0">
+  ## Multiple sources & destinations
+
+  <Frame>
+    <img src="/images/multiple-sources.png" />
+  </Frame>
+
+  You can now process transactions from [multiple sources](/transactions/multiple-sources) to one destination or from one source to [multiple destinations](/transactions/multiple-destinations). Multiple sources/destinations help you link similar transactions into one single request payload and making the process a lot more efficient for you. 
+
+  ## Inflight transactions
+
+  We’ve introduced Inflight Transactions, a feature that allows you to hold a transaction until specific conditions are met.
+
+  ```json Enable inflight {7}
+  {
+    "amount": 12992.12,
+    "reference": "ref_1234",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "@World",
+    "description": "Card payment",
+    "inflight": true
+  }
+  ```
+
+  ## Overdrafts
+
+  With the new Overdrafts feature, you can process transactions even if the ledger balance doesn’t have sufficient funds. When overdraft is enabled, your balance can go negative, signifying that more money has been spent than received.
+
+  ```json Enable overdraft
+  {
+    "allow_overdraft": true
+  }
+  ```
+
+  ## Optimistic locking
+
+  Implemented optimistic locking as part of Blnk's concurrency control mechanism, ensuring that multiple transactions can be seamlessly processed simultaneously at scale. Learn more: [How Blnk handles concurrency](/resources/concurrency).
+
+  ## Bug fixes & improvements
+
+  1. The `precision` value for a ledger balance is now automatically applied to the amounts of all transactions that the balance is part of. This ensures that your balance is correctly computed and no amount is lost to approximation.
+  2. General bug and performance improvement.
+</Update>
+
+<Update label="Mar 25, 2024" description="v0.5.0">
+  ## Welcome to our first release
+
+  Blnk Core is live and available for download. 
+
+  Fintech developers now have access to an open-source ledger database (a reliable source of truth) and fintech backend infrastructure for building their financial products at scale.
+
+  ## Ledgers and ledger balances
+
+  You can now model your customers' accounts, wallets, and all kinds of balances with our ledger and ledger balances features. You can also implement [balance monitoring](/balances/balance-monitoring) or [manage multi-currency wallets](/balances/asset-classes) in one place.
+
+  You can also represent your organization's chart of accounts in your Ledger with our [General Ledger](/ledgers/general-ledger) feature.
+
+  ## Transactions
+
+  You can accurately record and track transactions between balances in your Ledger. Blnk transactions feature also allows you to model and implement complex money movement within your system.
+
+  You can also toggle on [refunds](/transactions/refunds), and [scheduling](/transactions/scheduling).
+
+  ## Identities
+
+  You can create and manage identities for your customers (individuals and organizations) within your Ledger. Learn more: [Identities](/identities/introduction)
+
+  ## Advanced
+
+  1. Added https configuration for running your Blnk server in [secure mode](/advanced/enable-https).
+  2. Added k6 for [load testing](/advanced/load-testing).
+</Update>
