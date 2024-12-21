@@ -45,6 +45,10 @@ Blnk makes this simple by automating the creation and identification of balances
 
 If the specified balance doesn't exist, it is automatically created, and the transaction is processed accordingly.
 
+<Info>
+    Internal balances are created this way to ensure that only General Ledger balances that participate in your [money movement map](/ledgers/money-movement-map) are stored and tracked in your ledger.
+</Info>
+
 Continuing our earlier example, we can represent revenue with `@Revenue` and fees with `@Fees`. A transaction request from the user's wallet when they pay for something on the app would look like this:
 
 ```json Request {7}
@@ -70,40 +74,8 @@ Here are some things to note when naming your internal balances:
 
 1. Always use the @ prefix to automatically add it to the General Ledger.
 2. Use names that clearly describe the balance's purpose, e.g., `@Revenue`, `@Fees`, `@World`, etc.
-3. You can use the same name for balances that perform the same function, but for different asset classes, i.e., you can have two balances named `@Revenue` but one is in EUR, while the other is in USD.
-    <Tip>
-        For better readability, it's advisable to have the indicators suffixed by the currency, e.g. `@RevenueUSD` and `@RevenueEUR`.
-    </Tip>
+3. Avoid using the same name for internal balances that serve the same function but represent different asset classes. For example, instead of naming two balances @Revenue—one in EUR and the other in USD—name them @RevenueUSD and @RevenueEUR for better clarity and easier reference in your integration.
 4. Use camel case (`@OnlineRevenue`) or underscores (`@online_revenue`) to separate words for better readability. Avoid including spaces to prevent formatting issues.
 5. Keep it short to facilitate easier referencing.
-
-## 4. Representing external accounts
-
-When balances interact with external balances like other bank accounts, wallets, cards, etc. that are outside of your system, it is still required that the corresponding entry is recorded in your ledger.
-
-To do this, create a new internal balance called `"@World"` and use it to represent all interactions with the outside world. You can also choose to name it however you want, as long as it represents all interactions with the outside world in your ledger.
-
-<Info>
-    Depending on the design of your ledger architecture, how you represent external accounts might differ. See our guides on [Money Movement Maps](/ledgers/money-movement-map) and [Ledger Architecture](/ledgers/architecture).
-</Info>
-
-See the table below for a simplified example of how `@World` works.
-
-<Note>
-    You can also have multiple `@World` balances for different asset classes (NGN, USD, etc).
-</Note>
-
-| Scenarios | Source | Destination 
-| :--- | :--- | :---
-| Sending funds to an external bank account | `bal_customer` | @World
-| Receiving money from an external bank account | @World | `bal_customer`
-| Making online payment with virtual card | `bal_customer` | @World
-| Received a refund of an online payment | @World | `bal_customer`
-
-When using the `@World` balance in a transaction, it is encouraged to enable [overdrafts](/transactions/overdrafts). This allows you to be able to record transactions on `@World` even when its balance is less than 0. 
-
-<Info>
-    A negative balance on `@World` simply means your application has received more money than it has sent out, and vice versa.
-</Info>
 
 <NeedHelp />
