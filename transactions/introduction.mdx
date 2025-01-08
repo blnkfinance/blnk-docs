@@ -1,0 +1,186 @@
+---
+title: "Overview"
+description: "Learn how recording transactions work in Blnk"
+icon: "messages-dollar"
+"og:title": "About Transactions • Blnk Developer Documentation"
+"og:description": "Learn how to record and track transactions in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Transactions are used to enable money movement between two or more balances. These can be payments, transfers, settlements, internal treasury management, etc. All transactions in Blnk are recorded with the [double entry principle](/resources/double-entry), i.e., there is a source and a corresponding destination for each transaction entry. 
+
+In this guide, you'll learn:
+
+1. [Transaction properties](#transaction-properties)
+2. [How transactions work in Blnk](#how-transactions-work-in-blnk)
+3. [Recording a transaction](#recording-a-transaction)
+
+## Transaction properties
+
+1. **Immutability:** Once recorded, transactions in Blnk cannot be modified or deleted. This fundamental property ensures the integrity and reliability of your transaction history, preventing any unauthorized alterations. See also: [Transaction hashing](/advanced/transaction-hashing)
+
+2. **Idempotency:** Each transaction in Blnk produces the same result whether executed once or multiple times. This is crucial for maintaining data consistency, especially during network failures or system retries.
+  
+    <Warning>
+      Blnk implements idempotency by requiring a unique `reference` for every transaction. This reference serves as a transaction identifier, preventing duplicate processing and ensuring consistent outcomes.
+    </Warning>
+
+## How transactions work in Blnk
+
+<Steps titleSize="h3">
+  <Step title="Queueing transactions">
+    When you [record a transaction](#recording-a-transaction), Blnk places it in a temporary `QUEUED` status as part of its concurrency control mechanism. This queueing step ensures accuracy and maintains transaction idempotency.
+
+    <Note>A queued transaction typically processes within milliseconds, reaching either an `APPLIED` or `REJECTED` status.</Note>
+
+    See following: [How Blnk handles concurrency](/resources/concurrency)
+  </Step>
+  <Step title="Applying transactions">
+    A transaction reaches `APPLIED` status when it has been successfully processed and all participating balances have been updated accordingly.
+
+    <Tip>To verify a successful transaction, look up its unique `reference` or transaction `id` in your ledger.</Tip>
+
+    When a transaction is applied, Blnk automatically sends a transaction.applied webhook notification.
+
+    See also: [Inflight statuses](/transactions/statuses#2-inflight-statuses)
+  </Step>
+  <Step title="Rejecting transactions">
+    A transaction usually enters `REJECTED` status due to insufficient funds, i.e., when the `source` balance lacks sufficient funds and [overdraft](/transactions/overdrafts) is not enabled for the transaction.
+
+    Blnk sends a `transaction.rejected` webhook when the transaction has been rejected.
+  </Step>
+  <Step title="Discarded transactions">
+    When a transaction is discarded, it was queued but never reached a final `APPLIED` or `REJECTED` status. Discarded transactions are removed from the queue and do not appear in the ledger. No webhook notification is sent for discarded transactions.
+    
+    A transaction can be discarded for any of these reasons:
+
+    1. **Duplicate reference:** The transaction's `reference` number matches an existing transaction record in your ledger, violating idempotency requirements. We recommend generating unique references using a combination of:
+        - Timestamp (e.g. UNIX timestamp)
+        - Random string or UUID
+        - Business identifier (like `orderID` or `customerID`)
+    
+    2. **Incorrect attributes:** The transaction request contains invalid or missing required attributes. For example, passing `apply_overdraft` instead of `allow_overdraft`, invalid amounts (like negative values), etc. 
+
+        To avoid this, double-check that all transaction requests match the [API specifications](/reference/create-transaction) before submitting. 
+  </Step>
+</Steps>
+
+## Recording a transaction
+
+To record a transaction, call the **record-transaction** endpoint: 
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/transactions
+```
+
+With the following request body:
+
+<CodeGroup>
+```json Request {9}
+{
+    "amount": 750,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "precision": 100,
+    "source": "@FundingPool",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Fund with starting balance amount",
+    "allow_overdraft": true,
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+```sh Blnk CLI {9}
+blnk transactions create
+? Amount: <amount>
+? Precision: <precision>
+? Reference: <reference>
+? Description: <description>
+? Currency: <currency>
+? Source: <source>
+? Destination: <destination>
+? Allow overdraft: (y)
+? Inflight: (n)
+? Metadata (JSON format): <metadata>
+```
+</CodeGroup>
+
+<Tip>
+If this is your first transaction, the participating balances will start at 0. To ensure the transaction is successful, enable overdrafts as shown above, allowing the source balance to go negative.
+
+Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](/resources/negative-balances).
+</Tip>
+
+```json Response
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "@FundingPool",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "amount": 750,
+    "precision": 100,
+    "precise_amount": 75000,
+    "currency": "USD",
+    "description": "Fund with starting balance amount",
+    "status": "QUEUED",
+    "created_at": "2024-12-21T01:36:46.997063436Z",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+
+<Tabs>
+    <Tab title="Request">
+        | Field | Description | Required | Type
+        | --- | --- | --- | ---
+        | `amount` | The transaction amount.| Yes | `float`
+        | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
+        | `currency` | Short code for your asset class. See also: [Asset classes](/balances/asset-classes) | Yes | `string`
+        | `precision` | Precision for the currency/asset passed. See also: [Precision](/transactions/precision) | No | `int64`
+        | `source`| Sender's balance ID | Yes | `string`
+        | `destination`| Recipient's balance ID. | Yes | `string`
+        | `description`| Description or narration of the transaction. | No | `string`
+        | `meta_data` | Custom data associated with the transaction | No | `object`
+    </Tab>
+    <Tab title="Response">
+        | Field | Description | Type
+        | --- | --- | --- |
+        | `amount` | The transaction amount.| Yes | `float`
+        | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
+        | `currency` | Short code for your asset class. See also: [Asset classes](/balances/asset-classes) | Yes | `string`
+        | `precision` | Precision for the currency/asset passed. See also: [Precision](/transactions/precision) | No | `int64`
+        | `source`| Sender's balance ID | Yes | `string`
+        | `destination`| Recipient's balance ID. | Yes | `string`
+        | `description`| Description or narration of the transaction. | No | `string`
+        | `meta_data` | Custom data associated with the transaction | No | `object`
+        |`id`| Unique id for the transaction. This is generated by Blnk. | `string`
+        | `precise_amount` | The transaction amount recorded after the `precision` value has been applied. See also: [Precision](/transactions/precision) | `integer`
+        | `status`| Current state of your transaction record. See also: [Transaction statuses](/transactions/statuses) | `string`
+        |`created_at`| Date and time of the transaction record. | `string`
+    </Tab>
+</Tabs>
+
+<Tip>
+  Passing detailed data with the `meta_data` object is encouraged; it provides you with 360-degree insights about each transaction record. Examples of data you can pass include `sender_name`, `account_number`, `bank_name`, `receiver_name`, `payment_id`, `ip_address`, `location`, `payment_method`, etc.
+</Tip>
+
+Next, you can view a list of all transactions in your ledger:
+
+```bash bash
+blnk transactions list
+```
+
+## Learn more
+
+<CardGroup>
+  <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="/transactions/precision"></Card>
+  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
+  <Card title="Inflight transaction" iconType="duotone" icon="plane" href="/transactions/inflight"></Card>
+</CardGroup>
+
+<NeedHelp />
