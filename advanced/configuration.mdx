@@ -1,48 +1,472 @@
 ---
 title: "Configuring your Blnk server"
 sidebarTitle: "Configuration file"
-description: "Learn how to configure your Blnk server with the blnk.json file."
+description: "Customise your Blnk server using the blnk.json file."
 icon: "gear"
 "og:title": "Set Up Your Blnk Configuration • Blnk Developer Documentation"
-"og:description": "Learn how to configure your Blnk server with the blnk.json file."
+"og:description": "Learn how to customise your Blnk server with the blnk.json file."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-To successfully [run your Blnk server](/home/install) and start to use Blnk, you need to set your configuration settings to make sure things work properly.
+## Overview
 
-To do this, you need to create a `blnk.json` file in the root directory of the git repository, and copy & paste the JSON below into it.
+Customise your Blnk server with our robust configuration system. This configuration is set via the `blnk.json` file or environment variables with the prefix, `BLNK_`.
 
-<Warning>Remember to change your password before deploying to production.</Warning>
+<Tip>Use environment variables instead of hardcoding values in the configuration file.</Tip>
 
-```json blnk.json
+<br/>
+
+## Configuration Structure
+
+### 1. Server Configuration
+The server configuration module provides a centralized way to define your server's behavior and security settings.. 
+
+```json
 {
-  "project_name": "Blnk",
-  "data_source": {
-    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
-  },
-  "redis": {
-    "dns": "redis:6379"
-  },
   "server": {
-    "port": "5001"
+    "ssl": false,                   // Enable SSL (BLNK_SERVER_SSL)
+    "secure": false,                // Enable secure mode (BLNK_SERVER_SECURE)
+    "secret_key": "",               // Server secret key (BLNK_SERVER_SECRET_KEY)
+    "domain": "",                   // SSL domain (BLNK_SERVER_SSL_DOMAIN)
+    "email": "",                    // SSL email (BLNK_SERVER_SSL_EMAIL)
+    "port": "5001"                  // Server port (BLNK_SERVER_PORT)
   }
 }
-
 ```
 
-- `project_name`: Specifies the name of your Blnk Ledger project.
-- `data_source`:
-	- `dns`: Specifies the DNS or connection string to the database. It includes details such as the username, password, host, port, and database name. In this config file, it connects to a PostgreSQL database named "blnk" with SSL mode disabled.
-- `redis`:
-	- `dns`: Specifies the DNS or connection string to the Redis server. It includes the host and port details. In this config file, it connects to a Redis server running on the default port (6379).
-- `server`:
-	- `domain`: Your domain name to be associated with the server.
-	- `ssl`: Indicates whether SSL is enabled or not.
-	- `ssl_email`: Email address associated with your SSL certificates.
-	- `port`: Specifies the port number on which the server will listen for incoming connections. In this example, it is set to "5001".
-- `notification`:
-	- `slack`: Sends error notifications to Slack.
-		- `webhook_url`: The webhook URL provided by your Slack workspace.
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `ssl` | boolean | Controls SSL/TLS encryption for secure communications. When enabled, the server will require HTTPS connections and handle SSL certificate management. |
+    | `secure` | boolean | Enables enhanced security mode with additional protection mechanisms such as strict HTTP headers, CORS policies, and request validation. |
+    | `secret_key` | string | Used for session encryption, token signing, and other cryptographic operations. Should be a strong, unique value in production. |
+    | `domain` | string | Specifies the domain name for SSL certificate configuration and cookie settings. Required when SSL is enabled. |
+    | `email` | string | Contact email address for SSL certificate registration and notifications. Required for automated SSL certificate management. |
+    | `port` | string | The network port on which the server listens for incoming connections. |
+  </Tab>
+  <Tab title="Security considerations">
+    1. **SSL Configuration:**
+        * Enable SSL in production environments to ensure encrypted data transmission.
+        * Always enable both `ssl` and `secure` in production environments
+        * Always configure with valid certificates in production.
+    2. **Secret Key Management:**
+        * Use a strong, randomly generated secret key in production.
+        * Minimum length of 32 characters recommended.
+    3. **Domain Configuration:**
+        * Properly configure the domain when using SSL to avoid certificate validation issues.
+        * Use fully qualified domain names (FQDN).
+    4. **Port Selection:**
+        * Choose appropriate ports based on your deployment environment and security requirements.
+        * Consider your firewall rules and network policies.
+  </Tab>
+</Tabs>
+
+### 2. Database Configuration
+
+The data source configuration establishes the connection between the Blnk server and your database backend.
+
+```json
+{
+  "data_source": {
+    "dns": ""                       // Required: Database DNS string (BLNK_DATA_SOURCE_DNS)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `dns` | string | The database connection string that specifies the location, credentials, and parameters for connecting to your database. Required for server startup. |
+
+    <Tip>The DNS string typically follows this pattern: `[driver]://[username]:[password]@[host]:[port]/[database]`</Tip>
+  </Tab>
+</Tabs>
+
+### 3. Redis Configuration
+
+The Redis configuration manages the connection to your Redis instance, which is commonly used for caching, session storage, and message queuing.
+
+```json
+{
+  "redis": {
+    "dns": ""                       // Required: Redis DNS string (BLNK_REDIS_DNS)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `dns` | string | The Redis connection string that specifies the host, port, and authentication details for your Redis instance. Required for Redis functionality. |
+
+    <Tip>The DNS string typically follows this pattern: `redis://[[username:]password@]host[:port][/database]`</Tip>
+  </Tab>
+</Tabs>
+
+### 4. Typesense Configuration
+
+The TypeSense configuration manages your connection to the TypeSense search engine, enabling fast and typo-tolerant search functionality in your Blnk server.
+
+```json
+{
+  "typesense": {
+    "dns": ""                         // TypeSense URL (BLNK_TYPESENSE_DNS)
+  },
+  "type_sense_key": ""                // TypeSense API key
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `dns` | string | The URL endpoint for your TypeSense server instance. Specifies the host and port for the TypeSense connection. |
+    | `type_sense_key` | string | The API key used for authenticating requests to your TypeSense instance. Required for secure access to the search engine. |
+  </Tab>
+</Tabs>
+
+### 5. Rate Limiting
+
+The rate limiting configuration helps protect the API from abuse and ensures fair resource allocation.
+
+```json
+{
+  "rate_limit": {
+    "requests_per_second": null,      // RPS limit (BLNK_RATE_LIMIT_RPS)
+    "burst": null,                    // Burst limit (BLNK_RATE_LIMIT_BURST)
+    "cleanup_interval_sec": 10800     // Cleanup interval (BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `requests_per_second` | number/null | Maximum number of requests allowed per second per client. When null, no RPS limit is applied. |
+    | `burst` | number/null | Maximum number of requests allowed to exceed the RPS limit in short bursts. When null, no burst limit is applied. |
+    | `cleanup_interval_sec` | number | Interval in seconds for cleaning up expired rate limit data. Defaults to 3 hours (10800 seconds). |
+  </Tab>
+</Tabs>
+
+### 6. Transaction Configuration
+
+The transaction configuration manages how Blnk processes and handles batched operations, controlling throughput and resource utilization.
+
+```json
+{
+  "transaction": {
+    "batch_size": 100000,                 // Batch size (BLNK_TRANSACTION_BATCH_SIZE)
+    "max_queue_size": 1000,               // Max queue size (BLNK_TRANSACTION_MAX_QUEUE_SIZE)
+    "max_workers": 10,                    // Max workers (BLNK_TRANSACTION_MAX_WORKERS)
+    "lock_duration": 1800,                // Lock duration (BLNK_TRANSACTION_LOCK_DURATION)
+    "index_queue_prefix": "transactions"  // Index queue prefix (BLNK_TRANSACTION_INDEX_QUEUE_PREFIX)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `batch_size` | number/null | Maximum number of items to process in a single transaction batch. |
+    | `max_queue_size` | number/null | Maximum number of transactions that can be queued for processing. |
+    | `max_workers` | number | Maximum number of concurrent workers processing transactions. |
+    | `lock_duration` | number | Duration for which a transaction lock is held. Format: seconds. |
+    | `index_queue_prefix` | string | Prefix used for the transaction queue names in the indexing system. |
+  </Tab>
+  <Tab title="Best Practices">
+    1. **Batch Processing:**
+        * Adjust batch size based on memory availability.
+        * Consider data consistency requirements.
+    2. **Queue Management:**
+        * Set queue size based on expected peak load.
+        * Monitor queue depth and processing latency.
+  </Tab>
+</Tabs>
+
+### 7. Reconciliation Configuration
+
+The reconciliation configuration handles how the reconciliation engine works.
+
+```json
+{
+  "reconciliation": {
+    "default_strategy": "one_to_one",     // Default strategy (BLNK_RECONCILIATION_DEFAULT_STRATEGY)
+    "progress_interval": 100,             // Progress interval (BLNK_RECONCILIATION_PROGRESS_INTERVAL)
+    "max_retries": 3,                     // Max retries (BLNK_RECONCILIATION_MAX_RETRIES)
+    "retry_delay": 5                      // Retry delay (BLNK_RECONCILIATION_RETRY_DELAY)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `default_strategy` | string | Defines the default matching strategy for reconciliation. Options are `one_to_one`, `one_to_many`, `many_to_one`. |
+    | `progress_interval` | number | Number of records to process before emitting a progress update. |
+    | `max_retries` | number | Maximum number of retry attempts for failed reconciliation operations. |
+    | `retry_delay` | string | Time to wait between retry attempts. Format: seconds. |
+  </Tab>
+  <Tab title="Best Practices">
+    1. **Strategy Selection:**
+        * Choose appropriate strategy based on your data structure.
+        * Validate data integrity before reconciliation.
+        * Document matching rules for each strategy.
+    2. **Performance tuning:**
+        * Adjust progress interval for optimal throughput.
+        * Monitor memory usage during reconciliation.
+  </Tab>
+</Tabs>
+
+### 8. Queue Configuration
+
+The queue configuration defines the various queues used throughout the server for processing different types of operations asynchronously.
+
+```json
+{
+  "queue": {
+    "transaction_queue": "new:transaction",             // (BLNK_QUEUE_TRANSACTION)
+    "webhook_queue": "new:webhook",                     // (BLNK_QUEUE_WEBHOOK)
+    "index_queue": "new:index",                         // (BLNK_QUEUE_INDEX)
+    "inflight_expiry_queue": "new:inflight-expiry",     // (BLNK_QUEUE_INFLIGHT_EXPIRY)
+    "number_of_queues": 20                              // (BLNK_QUEUE_NUMBER_OF_QUEUES)
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `transaction_queue` | string | Queue name for processing transaction operations. |
+    | `webhook_queue` | string | Queue name for handling webhook event delivery. |
+    | `index_queue` | string | Queue name for managing search index updates. |
+    | `inflight_expiry_queue` | string | Queue name for tracking and processing in-flight operation timeouts. |
+    | `number_of_queues` | number | Total number of queue workers to maintain across all queue types. |
+  </Tab>
+</Tabs>
+
+### 9. Notification Configuration
+
+The notification configuration manages external integrations for system notifications, including Slack alerts and custom webhooks.
+
+```json
+{
+  "notification": {
+    "slack": {
+      "webhook_url": ""
+    },
+    "webhook": {
+      "url": "",
+      "headers": {},
+      "max_retries": 25             // Maximum number of retry attempts for failed webhooks
+    }
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `slack.webhook_url` | string | Slack webhook URL for sending notifications to specific channels. |
+    | `webhook.url` | string | Endpoint URL where webhook notifications will be sent. |
+    | `webhook.headers` | object | Custom HTTP headers to be included with webhook requests. |
+    | `webhook.max_retries` | number | Maximum number of retry attempts for failed webhook deliveries. |
+  </Tab>
+</Tabs>
+
+### 10. S3 Configuration
+
+The S3 configuration manages connection settings for Amazon S3 storage service for system backups and file storage.
+
+```json
+{
+  "backup_dir": "",                       // Backup directory (BLNK_BACKUP_DIR)
+  "aws_access_key_id": "",
+  "aws_secret_access_key": "",
+  "s3_endpoint": "",
+  "s3_bucket_name": "",
+  "s3_region": ""
+}
+```
+
+<Tabs>
+  <Tab title="Definitions">
+    | **Attribute** | **Type** | **Description** |
+    | :-- | :-- | :-- |
+    | `backup_dir` | string | Directory path where backups will be stored in S3. |
+    | `aws_access_key_id` | string | AWS access key ID for authentication. |
+    | `aws_secret_access_key` | string | AWS secret access key for authentication. |
+    | `s3_endpoint` | string |Custom endpoint URL for S3-compatible services. Leave empty for default AWS S3. |
+    | `s3_bucket_name` | string | Name of the S3 bucket to use for storage. |
+    | `s3_region` | string | AWS region where the S3 bucket is located (e.g., "us-east-1"). |
+  </Tab>
+  <Tab title="Best Practices">
+    1. **Backup Management:**
+        * Structure backup directories by date/type
+        * Implement backup retention policies
+        * Monitor backup sizes and storage costs
+        * Verify backup integrity regularly
+    2. **Region Selection:**
+        * Choose region closest to your application.
+        * Account for region-specific pricing.
+        * Enable cross-region replication if needed
+    3. **Performance:**
+        * Monitor upload/download speeds.
+        * Use appropriate storage classes.
+        * Implement retry logic for operations.
+  </Tab>
+</Tabs>
+
+<br/>
+
+## Default Values & Validation
+
+### Required Fields
+
+* Data Source DNS (`data_source.dns`)
+* Redis DNS (`redis.dns`)
+
+### Automatic Defaults
+
+1. Project name defaults to "Blnk Server"
+2. Server port defaults to "5001"
+3. TypeSense URL defaults to "[http://typesense:8108](http://typesense:8108/)"
+4. Rate limiting:
+    * If RPS is set without burst, burst defaults to 2 * RPS
+    * If burst is set without RPS, RPS defaults to burst / 2
+    * Cleanup interval defaults to 10800 seconds (3 hours)
+5. Telemetry is enabled by default
+
+### Transaction Defaults
+
+* Batch size: 100,000
+* Max queue size: 1,000
+* Max workers: 10
+* Lock duration: 1800 seconds
+* Index queue prefix: "transactions"
+
+### Reconciliation Defaults
+
+* Default strategy: "one_to_one"
+* Progress interval: 100
+* Max retries: 3
+* Retry delay: 5 seconds
+
+### Queue Defaults
+
+* Transaction queue: "new:transaction"
+* Webhook queue: "new:webhook"
+* Index queue: "new:index"
+* Inflight expiry queue: "new:inflight-expiry"
+* Number of queues: 20
+
+<br/>
+
+## Configuration Loading Process
+
+1. Load configuration from JSON file if present.
+2. Override with environment variables.
+3. Validate required fields.
+4. Apply default values.
+5. Trim whitespace from string values.
+6. Setup rate limiting defaults.
+
+<br/>
+
+## Example `blnk.json`
+
+Click the dropdown to view a sample configuration file.
+
+<Accordion title="View example configuration">
+```json blnk.json
+{
+  "server": {
+    "ssl": false,                   // Enable SSL (BLNK_SERVER_SSL)
+    "secure": false,                // Enable secure mode (BLNK_SERVER_SECURE)
+    "secret_key": "",               // Server secret key (BLNK_SERVER_SECRET_KEY)
+    "domain": "",                   // SSL domain (BLNK_SERVER_SSL_DOMAIN)
+    "email": "",                    // SSL email (BLNK_SERVER_SSL_EMAIL)
+    "port": "5001"                  // Server port (BLNK_SERVER_PORT)
+  }
+},
+{
+  "data_source": {
+    "dns": ""                       // Required: Database DNS string (BLNK_DATA_SOURCE_DNS)
+  }
+},
+{
+  "redis": {
+    "dns": ""                       // Required: Redis DNS string (BLNK_REDIS_DNS)
+  }
+},
+{
+  "typesense": {
+    "dns": ""                         // TypeSense URL (BLNK_TYPESENSE_DNS)
+  },
+  "type_sense_key": ""                // TypeSense API key
+},
+{
+  "rate_limit": {
+    "requests_per_second": null,      // RPS limit (BLNK_RATE_LIMIT_RPS)
+    "burst": null,                    // Burst limit (BLNK_RATE_LIMIT_BURST)
+    "cleanup_interval_sec": 10800     // Cleanup interval (BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC)
+  }
+},
+{
+  "transaction": {
+    "batch_size": 100000,                 // Batch size (BLNK_TRANSACTION_BATCH_SIZE)
+    "max_queue_size": 1000,               // Max queue size (BLNK_TRANSACTION_MAX_QUEUE_SIZE)
+    "max_workers": 10,                    // Max workers (BLNK_TRANSACTION_MAX_WORKERS)
+    "lock_duration": 1800,                // Lock duration (BLNK_TRANSACTION_LOCK_DURATION)
+    "index_queue_prefix": "transactions"  // Index queue prefix (BLNK_TRANSACTION_INDEX_QUEUE_PREFIX)
+  }
+}
+{
+  "reconciliation": {
+    "default_strategy": "one_to_one",     // Default strategy (BLNK_RECONCILIATION_DEFAULT_STRATEGY)
+    "progress_interval": 100,             // Progress interval (BLNK_RECONCILIATION_PROGRESS_INTERVAL)
+    "max_retries": 3,                     // Max retries (BLNK_RECONCILIATION_MAX_RETRIES)
+    "retry_delay": 5                      // Retry delay (BLNK_RECONCILIATION_RETRY_DELAY)
+  }
+},
+{
+  "queue": {
+    "transaction_queue": "new:transaction",             // (BLNK_QUEUE_TRANSACTION)
+    "webhook_queue": "new:webhook",                     // (BLNK_QUEUE_WEBHOOK)
+    "index_queue": "new:index",                         // (BLNK_QUEUE_INDEX)
+    "inflight_expiry_queue": "new:inflight-expiry",     // (BLNK_QUEUE_INFLIGHT_EXPIRY)
+    "number_of_queues": 20                              // (BLNK_QUEUE_NUMBER_OF_QUEUES)
+  }
+},
+{
+  "notification": {
+    "slack": {
+      "webhook_url": ""
+    },
+    "webhook": {
+      "url": "",
+      "headers": {},
+      "max_retries": 25             // Maximum number of retry attempts for failed webhooks
+    }
+  }
+},
+{
+  "backup_dir": "",                       // Backup directory (BLNK_BACKUP_DIR)
+  "aws_access_key_id": "",
+  "aws_secret_access_key": "",
+  "s3_endpoint": "",
+  "s3_bucket_name": "",
+  "s3_region": ""
+}
+```
+</Accordion>
 
 <NeedHelp />
