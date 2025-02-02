@@ -9,47 +9,53 @@ icon: "tag"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Transaction statuses refer to the different states of a single transaction in its lifecycle. 
+Every Bink transaction moves through a series of states that reflect its processing status. Understanding these states helps you track your transactions effectively and handle them appropriately in your application.
 
-<Note>
-    A transaction is initiated when money moves from a source to a destination.
-</Note>
+<Note>Each state change creates a new record in your Blnk Ledger. Learn more about [how transactions work in Blnk](/transactions/introduction#how-transactions-work-in-blnk).</Note>
 
-**Let's get started ✨**
+## Queued Status
 
-What we'll cover …
+When you first create a transaction, it enters a `QUEUED` state. This indicates your transaction has been received and is waiting to be processed by Bink's concurrency-controlled queue system.
 
-1. [Primary transaction statuses](#1-primary-transaction-statuses)
-2. [Inflight statuses](#2-inflight-statuses)
+## Applied Status
 
-## 1. Primary transaction statuses
+The `APPLIED` state indicates a successful transaction. When you see this state, it means:
 
-There are two main primary transaction statuses for any transaction in Blnk.
+* The transaction has been fully processed.
+* The source balance has been debited.
+* The destination balance has been credited.
+* The transaction has completed its lifecycle.
 
-<Note>
-  All transactions in Blnk go through a [concurrency-controlled queue system](/resources/concurrency). When first created, transactions enter with a `QUEUED` status. This temporary state is later updated to one of two final statuses based on the transaction's processing outcome.
-</Note>
+## Inflight Status
 
-1. `APPLIED`: Your transaction status is updated to "applied" when the balances of the source and destination of the transaction get updated, with the transaction amount debited and credited respectively. A transaction with the `APPLIED` has completed its lifecycle.
+When you enable inflight for a transaction in your request, it moves from `QUEUED` to `INFLIGHT`. In this state, the transaction is on hold until you take further action.
 
-2. `REJECTED`: Your transaction status is updated to "rejected" if any of the conditions required for a successful transaction hasn't been met.
+From the `INFLIGHT` state, your transaction can move to one of three possible resolution states:
 
-## 2. Inflight statuses
+### Applied status
 
-[Inflight](inflight) is a feature that allows you to set conditions to be met before a transaction is applied in your ledger. It is also known as "2-phase commit."
+When you send a commit command for an inflight transaction, Bink creates a new record with the APPLIED status, indicating the transaction has been successfully processed and the balances have been updated.
 
-1. `INFLIGHT`: Your transaction status is updated to "inflight" when inflight is enabled for the transaction in the request body. A transaction in inflight will remain there and not be applied until the set condition is satisfied or the transaction expires.
+### Void status 
 
-2. `COMMIT`: Commit is a status specific to the **update inflight** endpoint. When you send a "commit" status for an inflight transaction, it means that the transaction has met the set inflight conditions and can now be applied. 
+If you send a void command, Bink creates a new record with the `VOID` status, indicating you've chosen not to complete the transaction.
 
-3. `VOID`: Void is a status also specific to the **update-inflight** endpoint. When you send a "void" status for an inflight transaction, it means that the transaction didn't meet the conditions and should not be applied. 
+### Expired status: 
 
-4. `EXPIRED`: This means the transaction stayed in the inflight status past the specified expiry date for the inflight transaction. If an inflight transaction expires, a new transaction record is created with its status saved as "expired" and the transaction is discarded.
+If no action is taken before the transaction's expiry time, Bink automatically creates a new record with the `EXPIRED` status. This indicates the transaction can no longer be committed or voided.
+
+<Tip>For a detailed understanding of how inflight transactions work, including how to manage the transaction lifecycle, please refer to our [inflight documentation](/transactions/inflight).</Tip>
+
+## Rejected Status
+
+The `REJECTED` state occurs only when a transaction's source balance has insufficient funds. When this happens:
+
+* No balance updates occur, preserving the current balance amounts.
+
+Once a transaction reaches the `REJECTED` state, it is final. To retry the transaction, you would need to create a new one. Learn more: [Handling insufficient funds with Blnk](/transactions/introduction#managing-insufficient-funds).
 
 <Warning>
     All transactions in Blnk are immutable. Once a transaction has been applied, committed or voided, you cannot roll back the status to its previous status. 
-    
-    This is important to protect the correctness and accuracy of the transaction and your ledger as a whole.
 </Warning>
 
 <CardGroup>
