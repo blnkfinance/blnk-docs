@@ -9,243 +9,215 @@ icon: "plane"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Inflight allows you to hold a transaction until a set condition has been met. It is best applied when your system needs to wait for feedback or verification before a transaction is applied, e.g., waiting for a success notification from your payment partners.
+An inflight transaction keeps your transaction on hold until you take further action. When enabled using the `inflight` parameter, transactions follow a specialized workflow that maintains separate balances for pending operations.
 
-While a transaction is inflight, you can also make sure that the funds are not available for the sender to spend until the transaction has been resolved.
+It is best used when you want to wait for feedback or authorization before a transaction is applied in your ledger.
 
-**Let's dig in ✨**
+## Before we start,
 
-Here's what we'll cover …
+Remember that all ledger balances in Blnk have 6 main balance parameters:
 
-1. [How inflight works](#1-how-inflight-works)
-2. [Applying inflight](#2-applying-inflight)
-3. [Inflight statuses](#3-inflight-statuses)
-4. [Inflight for multiple sources/destinations](#4-inflight-for-multiple-sources-destinations)
-5. [Use cases](#5-use-cases)
+1. `balance`: This shows the current value held in the ledger balance.
+2. `credit_balance`: This is the total sum of all amounts received by a ledger balance.
+3. `debit_balance`: This is the total sum of all amounts sent by a ledger balance.
+4. `inflight_balance`: This shows the net amount held inflight for a balance.
+5. `inflight_credit_balance`: This is the total sum of all amount waiting to be received by a ledger balance.
+6. `inflight_debit_balance`: This is the total sum of all amount waiting to be deducted from a ledger balance.
 
-## 1. How inflight works
+## How Inflight works
 
-When you enable `inflight` on a transaction, the workflow becomes a bit different from the default **record-transaction** workflow.
+<Steps titleSize="h3">
+    <Step title="Record transaction with Inflight">
+        ```json Record inflight {9,10}
+        {
+            "amount": 100,
+            "precision": 100,
+            "reference": "ref_001adcfgf",
+            "currency": "USD",
+            "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+            "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+            "description": "For vacation",
+            "inflight": true,
+            "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
+        }
+        ```
+        <Tip>
+            Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time. 
+            
+            Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+        </Tip>
 
-### Before the conditions are met
+        When recording a new transaction with Inflight, the system:
 
-When you record a new transaction with `inflight`, it is added to transaction queue by default. Once it is ready for processing, the transaction status is updated to `INFLIGHT`.
+        1. Initializes the transaction in the `QUEUED` state.
+        2. Processes and moves the transaction to `INFLIGHT`.
+        3. Maintains the original balances while tracking the pending amounts in inflight balance parameters.
+    </Step>
+    <Step title="Balance management">
+        ![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
 
-When the status is `INFLIGHT`, the respective inflight balances of the specified source and destination are updated.
+        Blnk uses three balance parameters for accurate tracking of inflight amounts:
 
-- `inflight_credit_balance`: Total amount of money waiting to be credited.
-- `inflight_debit_balance`: Total amount of money waiting to be debited.
-- `inflight_balance`: (`inflight_credit_balance` - `inflight_debit_balance`).
+        ```
+        inflight_credit_balance: Pending credits awaiting processing
+        inflight_debit_balance:  Pending debits awaiting processing
+        inflight_balance:        Net inflight amount (credit - debit)
+        ```
+        
+        ### Balance tracking example
 
-In `INFLIGHT`, the original balances of the source and destination remain untouched. However, the `inflight_debit_balance` of the source and the `inflight_credit_balance` of the destination are updated with the transaction amount.
+        Consider an inflight transaction where $100 is transferred from balance_A to balance_B:
 
-![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
+        ```
+        Initial State:
+        balance_A: $200 available funds
+        balance_B: $0 available funds
 
-<Info>
-    The inflight balances exist to help you keep track of the amounts yet to debited or credited to a specific balance.
-</Info>
+        Transaction Amount: $100
+        ``` 
 
-### During inflight
+        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+        | :-- | :-- | :-- | :-- | :-- |
+        | `balance_A` | 200 | -100 | 0 | 100 |
+        | `balance_B` | 0 | 100 | 100 | 0 |
 
-While a transaction is inflight, it is important to make sure that the source's original balance is not lower than the amount waiting to be debited to avoid errors when the transaction is committed.
+        In this scenario:
 
-To do this, the source must be prevented from having access to the amount being held in inflight. 
+        * `balance_A` shows a negative inflight balance (-100) because funds are pending outflow.
+        * `balance_B` shows a positive inflight balance (100) because funds are pending inflow.
+        * The main balances remain unchanged until the transaction is committed.
+    </Step>
+    <Step title="Updating Inflight">
+        ![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
-- `balance` - Total balance of the ledger balance.
-- `inflight_debit_balance` - Total amount waiting to be deducted from your balance.
-- `available_balance` - Total amount accessible by the source (`balance` - `inflight_debit_balance`). This is computed by you in your application and presented as the balance of the user during inflight. 
+        To act on an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
 
-### After the conditions are met
+        ```
+        PUT /transactions/inflight/{transaction_id}
+        ```
+        
+        There are two ways to act on an inflight transaction: commit or void.
 
-Once you have gotten feedback from your system, Blnk expects one of two instructions — `commit` or `void`.
+        ### 1. Commit inflight
 
-- `Commit`: Instructs Blnk to continue with the transaction and apply it to the balances. A new transaction is created that applies the transaction to both balances. 
+        ```json Request
+        {
+            "status": "commit"
+        }
+        ```
 
-    <Info>
-        When a transaction is committed, the amount is debited from the source's `balance` to the source's `inflight_balance`, and the destination's `balance` is credited from the destination's `inflight_balance`.
-    </Info>
+        * Indicates transaction conditions are met.
+        * Triggers balance updates, and clears the inflight balances.
+        * Creates new transaction record with `APPLIED` status.
 
-- `Void`: Instructs Blnk to stop and void the transaction. This refunds the transaction between both inflight balances, and nothing else needs to be done.
+        In our example, after commit:
 
-![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
+        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+        | :-- | :-- | :-- | :-- | :-- |
+        | `balance_A` | 100 | 0 | 0 | 0 |
+        | `balance_B` | 100 | 0 | 0 | 0 |
 
-<Note>
-    When you commit or void an inflight transaction, a new transaction record is created with the original inflight "transaction_id" as its `parent_transaction`.
-</Note>
+        ### 2. Partial commits
 
-## 2. Record an inflight transaction 
+        ```json Request
+        {
+            "status": "commit",
+            "amount": 40
+        }
+        ```
 
-### Initiating an inflight transaction
+        * Only the specified amount is applied to the main balances.
+        * The remaining amount is left inflight.
 
-Call the **record-transaction** endpoint: Include the `inflight` parameter in the request body and set it to true:
+        <Note>Partial commit amount must not exceed remaining inflight amount.</Note>
 
-<CodeGroup> 
-```json Request {9-10}
-{
-    "amount": 1871.29,
-    "precision": 100,
-    "reference": "ref_001adcfgf",
-    "currency": "USD",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "description": "For vacation",
-    "inflight": true,
-    "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
-}
-```
+        Our example after a partial commit:
 
-```json Response {15,18}
-{
-    "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "reference": "ref_001adcfgf",
-    "parent_transaction": "",
-    "amount": 1871.29,
-    "precise_amount": 187129,
-    "rate": 0,
-    "precision": 100,
-    "currency": "USD",
-    "description": "For fees",
-    "hash": "032af5e26c8a2c2690f1bb70bdd7c044bbdf9c7f5576fc0f693200baf65a9ee3",
-    "allow_overdraft": false,
-    "status": "INFLIGHT",
-    "created_at": "2024-12-21T01:36:46.997063436Z",
-    "scheduled_for": "0001-01-01T00:00:00Z",
-    "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
-}
-```
-</CodeGroup>
+        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+        | :-- | :-- | :-- | :-- | :-- |
+        | `balance_A` | 160 | -60 | 0 | 60 |
+        | `balance_B` | 40 | 60 | 60 | 0 |
 
-View your transaction in your terminal:
+        ### 3. Void inflight
 
-<Card title="" iconType="regular" icon="rectangle-terminal">
-  ```bash bash
-  blnk view-transactions
-  ```
-</Card>
+        ```json Request
+        {
+            "status": "void"
+        }
+        ```
 
-<Tip>
-    Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time. 
-    
-    Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
-</Tip>
+        * Indicates transaction conditions were not met.
+        * Creates new transaction record with `VOID` status.
+        * Resets inflight balances without affecting actual balances.
 
-### Committing an inflight transaction
+        ### 4. Expired inflight
 
-If the transaction meets the set conditions, instruct Blnk to commit with the **update-inflight** endpoint:
+        An inflight transaction only gets expired when an `inflight_expiry_date` is specified in the request body. 
 
-```
-PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{transaction_id}
-```
+        * Indicates transaction remained `INFLIGHT` past specified expiry date.
+        * Creates new record with `EXPIRED` status.
+        * Discards the transaction and resets the inflight balances.
+    </Step>
+</Steps>
 
-```json Request
-{
-    "status": "commit"
-}
-```
+## Managing insufficient funds
 
-Blnk creates a new transaction record with the details from the original inflight transaction and applies it to the balances.
+When working with inflight transactions, your system must always consider both the actual balance and any pending inflight amounts. This ensures that the `source` always has sufficient funds to complete the inflight transaction when it's committed.
 
-### Partial commits
-
-You can also choose to commit in bits, i.e., you can instruct Blnk to release the held funds in bits. To do this, pass an `amount` field in your request body:
-
-```json Request
-{
-    "status": "commit",
-    "amount": 1000
-}
-```
-
-<Warning>
-    Make sure that the amount being passed is less than or equal to the amount remaining in inflight for that transaction.
-</Warning>
-
-<Check>
-    You can commit as many times as you want as long as the sum of the amount of each commit is less than or equal to the amount being held in inflight for the particular transaction.
-</Check>
-
-View your committed transactions in your terminal:
-
-<Card title="" iconType="regular" icon="rectangle-terminal">
-  ```bash bash
-  blnk view-transactions
-  ```
-</Card>
-
-### Voiding an inflight transaction
-
-If the transaction doesn't meet the set conditions, instruct Blnk to void with the **update-inflight** endpoint:
+To do this, compute an `available_balance` for your customers indicating the amount available for them to spend on new transactions:
 
 ```
-PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{transaction_id}
+available_balance = balance - inflight_debit_balance
 ```
 
-```json Request
-{
-    "status": "void"
-}
-```
+To check for insufficient funds before initiating an inflight transaction:
 
-Blnk creates a new transaction record with the details from the original inflight transaction. However, this time, the status will be `VOID`; it is not applied to any of the balances, and the source and destination `inflight_balances` are reset.
+1. Query the `source` balance, and compute the `available_balance`:
+        ```
+        GET /balances/<source-balance-id>
+        ```
 
-View your balances after inflight:
+2. Compare the new transaction amount against `available_balance`:
+        * **If amount ≤ available_balance:** Proceed with transaction.
+        * **If amount > available_balance:** Handle gracefully in your application by notifying the customer of insufficient funds.
 
-<Card title="" iconType="regular" icon="rectangle-terminal">
-  ```bash bash
-  blnk view-balances
-  ```
-</Card>
+With this approach:
 
-<Warning>
-    You cannot void in bits. When you void a transaction, it means that the inflight transaction didn't meet the set conditions.
-</Warning>
+* You ensure that pending inflight transactions will always be committed when they need to.
+* Customers are prevented from spending funds that are waiting to be deducted from their balance.
 
-## 3. Inflight statuses
 
-1. `INFLIGHT`: Your transaction status is updated to "inflight" when inflight is enabled for the transaction in the request body. A transaction in inflight will remain there and not be applied until the set condition is satisfied or the transaction expires.
-
-2. `COMMIT`: Commit is a status specific to the **update inflight** endpoint. When you send a "commit" status for an inflight transaction, it means that the transaction has met the set inflight conditions and can now be applied. 
-
-3. `VOID`: Void is a status also specific to the **update-inflight** endpoint. When you send a "void" status for an inflight transaction, it means that the transaction didn't meet the conditions and should not be applied. 
-
-4. `EXPIRED`: This means the transaction stayed in the `INFLIGHT` status past the specified expiry date. If an inflight transaction expires, a new transaction record is created with its status saved as `EXPIRED` and the transaction is discarded.
-
-<Warning>
-    All transactions in Blnk are immutable. Once a transaction has been applied, committed or voided, you cannot roll back the status to its previous status. 
-    
-    This is important to protect the correctness and accuracy of the transaction and your ledger as a whole.
-</Warning>
-
-## 4. Inflight for multiple sources/destinations
+## Inflight for multiple sources/destinations
 
 Multiple sources in Blnk allow you send from multiple sources to a single destination simultaneously, while multiple destinations allow you to send from one source to multiple destinations.
 
 Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Destinations](/transactions/multiple-destinations).
 
-You can initiate inflight transactions to multiple destinations from a single source. To do so, enable inflight in your transaction request. 
+<Steps titleSize="h3">
+    <Step title="Initiate inflight">
+        When initiating inflight transactions with multiple sources/destinations, enable the inflight feature in your transaction request. Here's how to structure your request:
 
-```json Request
-{
-    …
-    "inflight": true
-}
-```
+        ```json Request
+        {
+            // ... other transaction details
+            "inflight": true
+        }
+        ```
 
-<Warning>
-    When you use multiple sources, the transactions are recorded separately in the ledger. However, they are grouped with a parent transaction id. This is the id shown in the response of your initial request.
-</Warning>
+        When using multiple sources/destinations, each transaction is recorded separately in the ledger. 
 
-### Commit or void inflight transaction
+        However, these transactions are linked together through a `parent_transaction` attribute, which you'll receive in the response to your transaction request. This `parent_transaction` helps you track and manage related transactions as a single unit.
+    </Step>
+    <Step title="Update Inflight">
+        To commit or void all transactions at once, call the [Update Inflight endpoint](/reference/update-inflight) and pass the `transaction_id` from your response.
 
-To commit or void all transactions at once, call the **inflight endpoint** and pass the parent transaction id.
+        ```
+        PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction}
+        ```
+    </Step>
+</Steps>
 
-```
-PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction}
-```
-
-## 5. Use cases
+## Use cases
 
 Useful applications for `inflight` include:
 
