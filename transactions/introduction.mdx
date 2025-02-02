@@ -144,7 +144,7 @@ Each state is connected to the previous state through a `parent_transaction` att
 
 <Steps titleSize="h3">
   <Step title="Transaction lifecycle">
-    Every transaction begins in a `QUEUED` state. Within milliseconds of being queued, the system processes it and transitions it to one of three possible states:
+    Every transaction begins in a `QUEUED` state. Within milliseconds of being queued, Blnk processes it and transitions it to one of three possible states:
 
     * `INFLIGHT`: If the transaction request includes `"inflight": "true"`.
         * `APPLIED`: If the inflight transaction is committed.
@@ -178,10 +178,10 @@ Each state is connected to the previous state through a `parent_transaction` att
     ```
   </Step>
   <Step title="Record creation and tracking">
-    When a transaction moves to its next state (`INFLIGHT`, `APPLIED`, or `REJECTED`), the system creates a new record that maintains a connection to the original queued transaction. This connection is maintained in two ways:
+    When a transaction moves to its next state (`INFLIGHT`, `APPLIED`, or `REJECTED`), Blnk creates a new record that maintains a connection to the original queued transaction. This connection is maintained in two ways:
 
     1. **Parent-Child Relationship:** The new record's `parent_transaction` field stores the original transaction's `transaction_id`. This creates a clear lineage between related transaction records.
-    2. **Reference Tracking:** To ensure each record remains uniquely identifiable while preserving its relationship to other states, the system:
+    2. **Reference Tracking:** To ensure each record remains uniquely identifiable while preserving its relationship to other states, Blnk:
         * Uses the same base reference as the original transaction.
         * Appends a `_q` suffix to create a unique reference.
 
@@ -208,7 +208,7 @@ Each state is connected to the previous state through a `parent_transaction` att
   <Step title="Tracking transaction status">
     You can track the final state of your transactions using either of these methods:
 
-    1. **Reference Search:** Query transactions using the original reference. The system will return the `INFLIGHT` or `APPLIED` record associated with that reference.
+    1. **Reference Search:** Query transactions using the original reference. Blnk will return the `INFLIGHT` or `APPLIED` record associated with that reference.
         ```json
         {
           "q": "payment_abc",
@@ -238,7 +238,7 @@ You can handle insufficient funds scenarios in two ways: through automatic rejec
 
 ### 1. Automatic rejection
 
-When a transaction is posted where the `source` balance has insufficient funds, Bink automatically handles this scenario to maintain ledger integrity. The system:
+When a transaction is posted where the `source` balance has insufficient funds, Bink automatically handles this scenario to maintain ledger integrity. Blnk:
 
 1. Rejects the transaction.
 2. Records this rejection in your ledger using the same state tracking mechanism we discussed above (i.e. `QUEUED` → `REJECTED`).
