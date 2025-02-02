@@ -9,9 +9,7 @@ icon: "hourglass-half"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Applications can initiate multiple transaction requests at the same time, and the system needs a way to make sure that these transactions are successfully processed without any conflict or oversight. To do this, we implement "concurrency control."
-
-Concurrency control is a fundamental aspect of transaction management in Blnk to ensure high performance and data integrity when processing transactions simultaneously. To manage concurrency, Blnk employs a dual strategy — queuing transactions and optimistic locking.
+When multiple users interact with a financial system simultaneously, ensuring accurate and consistent transaction processing becomes crucial. Blnk handles this challenge through a concurrency control system that combines two key mechanisms: transaction queuing and optimistic locking.
 
 In this guide, you'll learn how these mechanisms work together to streamline transaction processing, prevent data conflicts and maintain system integrity.
 
@@ -29,29 +27,34 @@ Queuing transactions act as a buffer to manage the flow of transactions to ensur
 
 ## Queuing transactions
 
-To guarantee efficiency in transaction processing, Blnk employs queue partitioning. With queuing, Blnk can easily process multiple transactions at the same time. If one partition is busy processing one transaction, Blnk simply assigns the next transaction to another partition, if it is free for processing.
+The queuing system manages transaction flow through partition-based processing. When transactions enter the system, they are routed to specific queue partitions based on their characteristics. Similar transactions affecting the same balance are grouped in a single partition, ensuring sequential processing order.
 
-This way, all transactions are adequately processed and no record is missing or left pending.
+Key aspects of the queuing system:
 
-### Partitioning for similar transactions
+* **Partition Assignment:** Incoming transactions are assigned to available partitions. If one partition is busy, new transactions are routed to other free partitions.
+* **Worker Processing:** Worker processes pull transactions from the queue partitions. The number of simultaneously processed transactions depends on available workers.
+* **Sequential Consistency:** Transactions within the same partition are processed sequentially, maintaining order for related operations.
 
-Blnk's strategy of partitioning also groups similar transactions for the same balance in one queue partition, ensuring that transactions on that balance are processed and stored sequentially. 
+## Idempotency in transaction processing
 
-This approach is crucial for optimizing the transaction processing flow, maintaining data consistency and minimizing conflict risks.
+Blnk's transaction system ensures idempotency through reference value tracking. When multiple instances of the same transaction occur due to network or system errors, the system:
 
-### Idempotency in queued transactions
+1. Identifies duplicate transactions using their `reference` value
+2. Processes only one instance of the transaction
+3. Discards additional duplicate requests
 
-The idempotent nature of transactions in Blnk, combined with queuing, guarantees consistent outcomes for repeated transactions.
-
->For instance, if the same transaction is initiated multiple times due to a network or system error, multiple requests are created in the transaction queue for processing. With idempotency, Blnk identifies that these transactions are the same via their `reference` value and processes only one while discarding the rest. 
-
-This way, a single transaction is not double recorded in your ledger or processed more than once leading to a double debit or credit.
+This mechanism prevents double processing and ensures consistent ledger entries, eliminating the risk of duplicate debits or credits.
 
 ## Optimistic locking for conflict Resolution
 
-In addition to queuing, Blnk also implements optimistic locking as a concurrency control mechanism. It allows multiple transactions to proceed at the same time without locking resources.
+The optimistic locking mechanism complements the queuing system by providing conflict resolution at the data layer. Instead of locking resources preemptively, the system:
 
-Instead, it checks for data conflicts at the time of committing the transaction. If a conflict is detected — indicating that another transaction has modified the data since it was last read — the transaction is rolled back and the operation may be retried again.
+1. Allows transactions to proceed concurrently.
+2. Performs conflict detection at commit time.
+3. Checks if data has been modified since the transaction started.
+4. Rolls back and retries transactions if conflicts are detected.
+
+This approach maximizes throughput while maintaining data consistency. When conflicts occur, indicating that another transaction has modified the data since it was last read, the system initiates a rollback and retry process.
 
 ### How optimistic locking works in Blnk
 
