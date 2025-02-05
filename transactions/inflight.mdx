@@ -26,139 +26,140 @@ Remember that all ledger balances in Blnk have 6 main balance parameters:
 
 ## How Inflight works
 
-<Steps titleSize="h3">
-    <Step title="Record transaction with Inflight">
-        ```json Record inflight {9,10}
-        {
-            "amount": 100,
-            "precision": 100,
-            "reference": "ref_001adcfgf",
-            "currency": "USD",
-            "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-            "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-            "description": "For vacation",
-            "inflight": true,
-            "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
-        }
-        ```
-        <Tip>
-            Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time. 
-            
-            Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
-        </Tip>
+### Record transaction with Inflight
+```json Record inflight {9,10}
+{
+    "amount": 100,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For vacation",
+    "inflight": true,
+    "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
+}
+```
+<Tip>
+    Use the `inflight_expiry_date` to set when you want the transaction to expire if it hasn't been committed or voided yet in that time. 
+    
+    Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</Tip>
 
-        When recording a new transaction with Inflight, the system:
+When recording a new transaction with Inflight, the system:
 
-        1. Initializes the transaction in the `QUEUED` state.
-        2. Processes and moves the transaction to `INFLIGHT`.
-        3. Maintains the original balances while tracking the pending amounts in inflight balance parameters.
-    </Step>
-    <Step title="Balance management">
-        ![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
+1. Initializes the transaction in the `QUEUED` state.
+2. Processes and moves the transaction to `INFLIGHT`.
+3. Maintains the original balances while tracking the pending amounts in inflight balance parameters.
 
-        Blnk uses three balance parameters for accurate tracking of inflight amounts:
+### Balance management
+![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
 
-        ```
-        inflight_credit_balance: Pending credits awaiting processing
-        inflight_debit_balance:  Pending debits awaiting processing
-        inflight_balance:        Net inflight amount (credit - debit)
-        ```
-        
-        ### Balance tracking example
+Blnk uses three balance parameters for accurate tracking of inflight amounts:
 
-        Consider an inflight transaction where $100 is transferred from balance_A to balance_B:
+```
+inflight_credit_balance: Pending credits awaiting processing
+inflight_debit_balance:  Pending debits awaiting processing
+inflight_balance:        Net inflight amount (credit - debit)
+```
 
-        ```
-        Initial State:
-        balance_A: $200 available funds
-        balance_B: $0 available funds
+### Balance tracking example
 
-        Transaction Amount: $100
-        ``` 
+Consider an inflight transaction where $100 is transferred from balance_A to balance_B:
 
-        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
-        | :-- | :-- | :-- | :-- | :-- |
-        | `balance_A` | 200 | -100 | 0 | 100 |
-        | `balance_B` | 0 | 100 | 100 | 0 |
+```
+Initial State:
+balance_A: $200 available funds
+balance_B: $0 available funds
 
-        In this scenario:
+Transaction Amount: $100
+``` 
 
-        * `balance_A` shows a negative inflight balance (-100) because funds are pending outflow.
-        * `balance_B` shows a positive inflight balance (100) because funds are pending inflow.
-        * The main balances remain unchanged until the transaction is committed.
-    </Step>
-    <Step title="Updating Inflight">
-        ![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 200 | -100 | 0 | 100 |
+| `balance_B` | 0 | 100 | 100 | 0 |
 
-        To act on an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
+In this scenario:
 
-        ```
-        PUT /transactions/inflight/{transaction_id}
-        ```
-        
-        There are two ways to act on an inflight transaction: commit or void.
+* `balance_A` shows a negative inflight balance (-100) because funds are pending outflow.
+* `balance_B` shows a positive inflight balance (100) because funds are pending inflow.
+* The main balances remain unchanged until the transaction is committed.
 
-        ### 1. Commit inflight
+### Updating Inflight
+![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
-        ```json Request
-        {
-            "status": "commit"
-        }
-        ```
+To act on an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
 
-        * Indicates transaction conditions are met.
-        * Triggers balance updates, and clears the inflight balances.
-        * Creates new transaction record with `APPLIED` status.
+```
+PUT /transactions/inflight/{transaction_id}
+```
 
-        In our example, after commit:
+There are two ways to act on an inflight transaction: commit or void.
 
-        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
-        | :-- | :-- | :-- | :-- | :-- |
-        | `balance_A` | 100 | 0 | 0 | 0 |
-        | `balance_B` | 100 | 0 | 0 | 0 |
+#### 1. Commit inflight
 
-        ### 2. Partial commits
+```json Request
+{
+    "status": "commit"
+}
+```
 
-        ```json Request
-        {
-            "status": "commit",
-            "amount": 40
-        }
-        ```
+* Indicates transaction conditions are met.
+* Triggers balance updates, and clears the inflight balances.
+* Creates new transaction record with `APPLIED` status.
 
-        * Only the specified amount is applied to the main balances.
-        * The remaining amount is left inflight.
+In our example, after commit:
 
-        <Note>Partial commit amount must not exceed remaining inflight amount.</Note>
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 100 | 0 | 0 | 0 |
+| `balance_B` | 100 | 0 | 0 | 0 |
 
-        Our example after a partial commit:
+#### 2. Partial commits
 
-        | `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
-        | :-- | :-- | :-- | :-- | :-- |
-        | `balance_A` | 160 | -60 | 0 | 60 |
-        | `balance_B` | 40 | 60 | 60 | 0 |
+```json Request
+{
+    "status": "commit",
+    "amount": 40
+}
+```
 
-        ### 3. Void inflight
+* Only the specified amount is applied to the main balances.
+* The remaining amount is left inflight.
 
-        ```json Request
-        {
-            "status": "void"
-        }
-        ```
+<Note>Partial commit amount must not exceed remaining inflight amount.</Note>
 
-        * Indicates transaction conditions were not met.
-        * Creates new transaction record with `VOID` status.
-        * Resets inflight balances without affecting actual balances.
+Our example after a partial commit:
 
-        ### 4. Expired inflight
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 160 | -60 | 0 | 60 |
+| `balance_B` | 40 | 60 | 60 | 0 |
 
-        An inflight transaction only gets expired when an `inflight_expiry_date` is specified in the request body. 
+#### 3. Void inflight
 
-        * Indicates transaction remained `INFLIGHT` past specified expiry date.
-        * Creates new record with `EXPIRED` status.
-        * Discards the transaction and resets the inflight balances.
-    </Step>
-</Steps>
+```json Request
+{
+    "status": "void"
+}
+```
+
+* Indicates transaction conditions were not met.
+* Creates new transaction record with `VOID` status.
+* Resets inflight balances without affecting actual balances.
+
+#### 4. Expired inflight
+
+A transaction will stay inflight indefinitely unless it gets committed, void, or gets expired. To set a time limit on an inflight transaction, include the `inflight_expiry_date` parameter in the request body.
+
+* Indicates transaction remained `INFLIGHT` past specified expiry date.
+* Creates new record with `EXPIRED` status.
+* Discards the transaction and resets the inflight balances.
+
+<Tip>
+    Always format the `inflight_expiry_date` date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</Tip>
 
 ## Managing insufficient funds
 
