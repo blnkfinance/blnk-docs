@@ -2,13 +2,75 @@
 title: "Blnk Core"
 description: "Latest features, releases, and improvements."
 icon: "webhook"
-mode: "wide"
+mode: "center"
 "og:title": "Changelog • Blnk Core"
 "og:description": "Stay up to date with latest features, releases, and improvement to Blnk Core."
 ---
 
-<Update label="Dec 23, 2024" description="v0.7.42">
+<Update label="Feb 7, 2024" description="v0.8.2">
+  ## Direct transaction processing (skip queue)
 
+  Added `skip_queue` option to allow transactions to bypass the queue system and process immediately. When enabled:
+
+  * Transactions act directly on balances without entering the queued state
+  * System maintains data consistency through Redis distributed locks
+  * Optimistic locking at database level ensures transaction integrity
+
+  To implement, add `"skip_queue": true` to your transaction request body when posting a transaction to your ledger.
+
+  ```json {4}
+  {
+    ...
+    "inflight": true,
+    "skip_queue": true
+  }
+  ```
+</Update>
+<Update label="Jan 18, 2024" description="v0.8.1">
+  ## Updates to Transactions
+  
+  The `QUEUED` state is now stored in your Ledger to enhance organisation and traceability in your financial data.
+  
+  When a queued transaction is processed, we maintain a clear link to its origin:
+  
+  * Each queued transaction maintains two connections to its parent:
+      1. Direct link via `parent_transaction` field
+      2. Modified reference with `_q` suffix
+  
+  This ensures:
+
+  * Clear audit trail of transaction flow
+  * Easy tracking of transaction history
+  * Prevention of reference collisions
+  * Ability to trace complete transaction lifecycle
+
+  <Card title="How transactions work in Blnk" href="/transactions/introduction" icon="tag" iconType="duotone">
+    Learn how transactions are recorded in your Ledger and how to work with them
+  </Card>
+  
+  ## Configuration file
+
+  Blnk Finance now provides granular control over transaction and queue behaviors. This allows you to fine-tune system performance and behavior according to your needs.
+
+  <Card title="Configuration file" href="/advanced/configuration" icon="gear" iconType="duotone">
+    Learn how to customise your Blnk server with the blnk.json file.
+  </Card>
+
+  ## Metadata update
+  
+  The metadata update feature allows you to attach and modify additional information to different financial items (ledger, balance, transaction or identities) without altering their core attributes. This provides flexibility for storing custom data, tags, or references.
+
+  ## Bug fixes & improvements
+  
+  1. Enhanced distribution calculations with rounding support
+  2. Improved transaction processing and metadata handling
+  3. Extended configuration file to include transaction and queue configurations
+  4. General bug fixes and improvements
+</Update>
+
+<Update label="Dec 23, 2024" description="v0.7.42">
+  ## Bug fixes & improvements
+  
   1. General bug fixes and improvements.
 </Update>
 

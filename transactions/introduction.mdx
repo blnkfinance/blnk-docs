@@ -1,12 +1,15 @@
 ---
-title: "Overview"
-description: "Learn how recording transactions work in Blnk"
+title: "About transactions"
+sidebarTitle: "Overview"
+description: "Learn how transactions are recorded and processed in Blnk"
 icon: "messages-dollar"
 "og:title": "About Transactions • Blnk Developer Documentation"
 "og:description": "Learn how to record and track transactions in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
 
 Transactions are used to enable money movement between two or more balances. These can be payments, transfers, settlements, internal treasury management, etc. All transactions in Blnk are recorded with the [double entry principle](/resources/double-entry), i.e., there is a source and a corresponding destination for each transaction entry. 
 
@@ -17,6 +20,8 @@ In this guide, you'll learn:
 3. [How transactions work in Blnk](#how-transactions-work-in-blnk)
 4. [Managing insufficient funds](#managing-insufficient-funds)
 
+---
+
 ## Transaction properties
 
 1. **Immutability:** Once recorded, transactions in Blnk cannot be modified or deleted. This fundamental property ensures the integrity and reliability of your transaction history, preventing any unauthorized alterations. See also: [Transaction hashing](/advanced/transaction-hashing)
@@ -26,6 +31,8 @@ In this guide, you'll learn:
     <Warning>
       Blnk implements idempotency by requiring a unique `reference` for every transaction. This reference serves as a transaction identifier, preventing duplicate processing and ensuring consistent outcomes.
     </Warning>
+
+---
 
 ## Recording a transaction
 
@@ -136,6 +143,8 @@ Next, you can view a list of all transactions in your ledger:
 blnk transactions list
 ```
 
+---
+
 ## How transactions work in Blnk
 
 Every transaction goes through multiple states in Blnk, and each state change is recorded as a separate record in the database. This gives you complete traceability, allowing to see the lifecycle of a transaction from initiation to completion. 
@@ -144,7 +153,11 @@ Each state is connected to the previous state through a `parent_transaction` att
 
 <Steps titleSize="h3">
   <Step title="Transaction lifecycle">
-    Every transaction begins in a `QUEUED` state. Within milliseconds of being queued, Blnk processes it and transitions it to one of three possible states:
+    By default, every transaction begins in a `QUEUED` state.
+
+    <Tip>You can choose to skip this `QUEUED` state altogether and directly process your transactions. Learn more: [Skip Transaction Queue](#skip-transaction-queue)</Tip>
+    
+    Within milliseconds of being queued, Blnk processes it and transitions it to one of three possible states:
 
     * `INFLIGHT`: If the transaction request includes `"inflight": "true"`.
         * `APPLIED`: If the inflight transaction is committed.
@@ -232,6 +245,48 @@ Each state is connected to the previous state through a `parent_transaction` att
   </Step>
 </Steps>
 
+---
+
+## Skip transaction queue
+
+The `skip_queue` feature allows you to bypass the default transaction queuing system outlined above and process transactions directly. This is useful for scenarios where you need real-time transaction processing while still maintaining data consistency.
+
+```json {6}
+{
+  "amount": 102.12,
+  "precision": 100,
+  ...
+  "allow_overdraft": true,
+  "skip_queue": true
+}
+```
+
+### How it works
+
+When you enable `skip_queue`, the transaction:
+
+* Bypasses the normal queuing process
+* Executes immediately on the balance
+* Uses distributed locks via Redis to maintain consistency
+* Applies optimistic locking at the database level
+
+### When to use `skip_queue`
+
+Use `skip_queue` for:
+
+* Real-time payment processing in your ledger
+* Interactive user sessions requiring immediate feedback
+* Time-sensitive financial operations
+
+Avoid using for: 
+
+* Complex transactions with multiple steps or dependencies
+* Transactions requiring external service validation
+
+<Tip>Consider rate limiting for high traffic scenarios. Learn how: [`blnk.json` Configuration File](/advanced/configuration#5-rate-limiting)</Tip>
+
+---
+
 ## Managing insufficient funds
 
 You can handle insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
@@ -265,12 +320,14 @@ This allows you to make an informed decision before initiating a transaction:
 
 For a detailed understanding of how insufficient funds can be managed in inflight scenarios, please refer to our [Applying inflight](/transactions/inflight) guide.
 
-## Learn more
+---
 
 <CardGroup>
   <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="/transactions/precision"></Card>
   <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
   <Card title="Applying inflight" iconType="duotone" icon="plane" href="/transactions/inflight"></Card>
 </CardGroup>
+
+---
 
 <NeedHelp />
