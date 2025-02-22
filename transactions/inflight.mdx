@@ -168,14 +168,14 @@ When working with inflight transactions, your system must always consider both t
 To do this, compute an `available_balance` for your customers indicating the amount available for them to spend on new transactions:
 
 ```
-available_balance = balance - inflight_debit_balance
+available_balance = balance - inflight_debit_balance - queued_debit_balance
 ```
 
 To check for insufficient funds before initiating an inflight transaction:
 
 1. Query the `source` balance, and compute the `available_balance`:
         ```
-        GET /balances/<source-balance-id>
+        GET /balances/{balance_id}?with_queued=true
         ```
 
 2. Compare the new transaction amount against `available_balance`:
@@ -186,6 +186,10 @@ With this approach:
 
 * You ensure that pending inflight transactions will always be committed when they need to.
 * Customers are prevented from spending funds that are waiting to be deducted from their balance.
+
+<Card title="Queued balances" iconType="duotone" icon="list-timeline" href="/balances/introduction#queued-balances">
+  Learn how queued balances work
+</Card>
 
 
 ## Inflight for multiple sources/destinations

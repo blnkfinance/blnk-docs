@@ -261,29 +261,9 @@ The `skip_queue` feature allows you to bypass the default transaction queuing sy
 }
 ```
 
-### How it works
-
-When you enable `skip_queue`, the transaction:
-
-* Bypasses the normal queuing process
-* Executes immediately on the balance
-* Uses distributed locks via Redis to maintain consistency
-* Applies optimistic locking at the database level
-
-### When to use `skip_queue`
-
-Use `skip_queue` for:
-
-* Real-time payment processing in your ledger
-* Interactive user sessions requiring immediate feedback
-* Time-sensitive financial operations
-
-Avoid using for: 
-
-* Complex transactions with multiple steps or dependencies
-* Transactions requiring external service validation
-
-<Tip>Consider rate limiting for high traffic scenarios. Learn how: [`blnk.json` Configuration File](/advanced/configuration#5-rate-limiting)</Tip>
+<Card title="Skip transaction queue" iconType="duotone" icon="forward" href="/extras/skip-queue">
+  Learn more about how `skip_queue` works
+</Card>
 
 ---
 
@@ -303,18 +283,25 @@ When a transaction is posted where the `source` balance has insufficient funds, 
 
 ### 2. Proactive balance verification
 
-Instead of waiting for a `transaction.rejected` webhook, you can implement a preemptive balance check in your workflow. Here's how:
+Instead of waiting for a `transaction.rejected` webhook, you can implement a preemptive available balance check in your workflow. Here's how:
 
 First, query the balance of the sender using:
 
 ```
-GET /balances/<source-balance-id>
+GET /balances/{balance_id}?with_queued=true
 ```
 
-This allows you to make an informed decision before initiating a transaction:
+Next, calculate your available balance: 
+```
+available_balance = balance - queued_debit_balance
+```
 
-* If the balance is sufficient, proceed with posting your transaction.
-* If the balance is insufficient, you can gracefully handle this scenario in your application by notifying the customer immediately, avoiding the need for webhook handling.
+* If the available balance is sufficient, proceed with posting your transaction.
+* If the available balance is insufficient, you can gracefully handle this scenario in your application by notifying the customer immediately, avoiding the need for webhook handling.
+
+<Card title="Queued balances" iconType="duotone" icon="list-timeline" href="/balances/introduction#queued-balances">
+  Learn how queued balances work
+</Card>
 
 ### Insufficient funds for inflight transactions
 

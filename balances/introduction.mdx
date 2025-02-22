@@ -86,6 +86,60 @@ blnk balances create
 
 <Note>All newly created balances in the Blnk Ledger start from 0. You cannot create a ledger balance with a predefined balance amount.</Note>
 
+## Queued balances
+
+When transactions are in the queue, the source and destination balances remain unchanged until processing is complete. 
+
+Queued balances help estimate the available or expected balance of a ledger. Unlike [inflight balances](/transactions/inflight), which require certain conditions to be met (commit or void) before being applied, queued balances simply represent the total amount of transactions waiting in the queue, regardless of conditions.
+
+<Tip>
+  Queued balances can also be used to check if a balance has any pending transactions in queue. If the queued balance value is greater than 0, it indicates that there is at least one transaction waiting in the queue.
+</Tip>
+
+To view the queued balances of a ledger balance, call the [Get Balance](/reference/get-balance) endpoint:
+
+```
+GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true
+```
+```json Response {9-10}
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": null,
+    "queued_debit_balance": null,
+    "precision": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "customer_internal_id": "1234",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+### Calculating expected and available balances
+
+1. **Expected balance:** Total amount queuing to be added to a ledger balance
+
+    ```
+    expected_balance = balance + queued_credit_balance
+    ```
+
+2. **Available balance:** Total amount available to be deducted from a ledger balance
+
+    ```
+    available_balance = balance - inflight_debit_balance - queued_debit_balance
+    ```
+
 ## Multi-currency balances
 
 Blnk enables you to create and manage balances in multiple currencies within your ledger. When building multi-currency wallets with Blnk, keep the following in mind:
