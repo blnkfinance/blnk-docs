@@ -1,0 +1,88 @@
+---
+title: "Create metadata"
+description: "Learn how to add metadata information to a ledger component."
+icon: "circle-plus"
+"og:title": "Create Metadata • Blnk Developer Documentation"
+"og:description": "Learn how to add metadata information to a ledger component."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+To add metadata to a ledger component (such as a ledger, balance, transaction, identity, or balance monitor), include the `meta_data` object in the JSON payload when creating or updating the item. 
+
+The `meta_data` object is a flexible key-value store that allows you to attach custom information to the component.
+
+## Basic example
+
+Below is a simple example of how to include metadata when creating a ledger component:
+
+```json
+{
+  ...
+  "meta_data": {
+    "key": "value"
+  }
+}
+```
+
+* **Key:** A unique identifier for the metadata attribute (e.g., "purpose", "external_id").
+* **Value:** The corresponding value for that key (e.g., "payment", "INV-12345").
+
+This basic structure can be expanded to include multiple key-value pairs, depending on the complexity of the information you need to store.
+
+## Expanded example with more fields
+
+For a deposit transaction, you might want to include several pieces of metadata, such as the transaction purpose, the associated invoice, and the account information of the sender:
+
+```json {10-18}
+{
+  "amount": 1029.12,
+  "precision": 100,
+  "currency": "USD",
+  "reference": "ref_00a8f264-6367-4617-abc8-e661431d3b7b",
+  "source": "@Deposit_USD",
+  "destination": "bal_d0cb79eb-cdc4-4a0d-af00-f5aaf15721ae",
+  "allow_overdraft": true,
+  "description": "Payment for services",
+  "meta_data": {
+    "invoice_id": "INV-12345",
+    "initiated_by": "Jason Burke",
+    "timestamp": "2023-10-01T12:00:00Z",
+    "sender_name": "Oakley Stationeries",
+    "sender_bank": "12345678901234",
+    "routing_number": "123456789",
+    "source_country": "United States"
+  }
+}
+```
+
+## Retrieving metadata
+
+Once metadata is attached to a ledger component, it can be retrieved by using the Search API or GET endpoint for the respective ledger component
+
+For example, when fetching a transaction, the response will include the `meta_data` object along with the core transaction details.
+
+```json Response {14-17}
+{
+    "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+    "source": "@FundingPool",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "reference": "ref_001adcfgf",
+    "amount": 750,
+    "precision": 100,
+    "precise_amount": 75000,
+    "currency": "USD",
+    "description": "Fund with starting balance amount",
+    "allow_overdraft": true,
+    "status": "QUEUED",
+    "created_at": "2024-12-21T01:36:46.997063436Z",
+    "meta_data": {
+      "sender_name": "John Doe",
+      "sender_account": "00000000000"
+    }
+}
+```
+
+<NeedHelp />

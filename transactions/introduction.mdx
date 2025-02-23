@@ -251,6 +251,8 @@ Each state is connected to the previous state through a `parent_transaction` att
 
 The `skip_queue` feature allows you to bypass the default transaction queuing system outlined above and process transactions directly. This is useful for scenarios where you need real-time transaction processing while still maintaining data consistency.
 
+To enable this feature, include "skip_queue": true in the request body when calling the [Create Transaction](/reference/create-transaction.mdx) endpoint:
+
 ```json {6}
 {
   "amount": 102.12,
@@ -261,9 +263,29 @@ The `skip_queue` feature allows you to bypass the default transaction queuing sy
 }
 ```
 
-<Card title="Skip transaction queue" iconType="duotone" icon="forward" href="/extras/skip-queue">
-  Learn more about how `skip_queue` works
-</Card>
+### How it works
+
+When you enable `skip_queue`, the transaction:
+
+* Bypasses the normal queuing process
+* Executes immediately on the balance
+* Uses distributed locks via Redis to maintain consistency
+* Applies optimistic locking at the database level
+
+### When to use `skip_queue`
+
+Use `skip_queue` for:
+
+* Real-time payment processing in your ledger
+* Interactive user sessions requiring immediate feedback
+* Time-sensitive financial operations
+
+Avoid using for: 
+
+* Complex transactions with multiple steps or dependencies
+* Transactions requiring external service validation
+
+<Tip>Consider rate limiting for high traffic scenarios. Learn how: [`blnk.json` Configuration File](/advanced/configuration#5-rate-limiting)</Tip>
 
 ---
 
