@@ -1,0 +1,64 @@
+---
+title: "Retrieving Historical Balances"
+sidebarTitle: "Historical balances"
+description: "Retrieve accurate historical balance information"
+icon: "rectangle-history"
+"og:title": "Historical Balances • Blnk Developer Documentation"
+"og:description": "Retrieve accurate historical balance information"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+The [Historical Balances](/reference/historical-balances) endpoint allows users to retrieve the balance for a specific account (identified by :id) at a particular historical point in time, specified by the timestamp parameter.
+
+It leverages Blnk's balance snapshot feature to provide accurate historical data for financial reporting, auditing, or analysis.
+
+```
+GET /balances/{balance_id}/at?timestamp={timestamp}
+```
+
+<Tip>
+  Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</Tip>
+
+```json Example response
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "NGN",
+    "debit_balance": 0,
+    "ledger_id": ""
+  },
+  "timestamp": "2025-02-24T08:55:26Z"
+}
+```
+
+---
+
+## How it works
+
+When querying for a balance at a specific timestamp, Blnk follows these steps to ensure accuracy and reliability:
+
+1. **Identify the most recent snapshot:** The system retrieves the most recent snapshot taken before the requested timestamp. Snapshots are daily records of balances, captured manually by users as described in the Balance Snapshots feature.
+
+2. **Apply intervening transactions:** It then applies all transactions that occurred between the time of the snapshot and the requested timestamp. This reconstructs the balance state by accounting for any credits, debits, or other financial activities that took place during that period.
+
+3. **Return the computed balance:** The final computed balance, reflecting the exact state at the requested timestamp, is returned in the response.
+
+<Card title="Balance snapshots" iconType="duotone" icon="image-polaroid" href="/balances/balance-snapshots">
+  Learn how balance snapshots work
+</Card>
+
+### Key considerations
+
+* **Daily snapshots and reconstruction:** Since snapshots are taken once per day per balance, balances between snapshots are reconstructed using transaction data.
+
+* **Optimal snapshot timing:** Choosing the right time to trigger snapshots is crucial for maintaining consistency and accuracy. Users should initiate snapshots at their preferred end-of-day period, such as midnight or another consistent business closing time.
+
+---
+
+<NeedHelp />
