@@ -1,0 +1,316 @@
+---
+title: "Crypto order exchange"
+sidebarTitle: "Order exchange"
+description: "Implementing a cryptocurrency order exchange system with the Blnk Ledger."
+icon: "arrow-down-arrow-up"
+"og:title": "Use Case: Order Exchange • Blnk Developer Documentation"
+"og:description": "Implementing a cryptocurrency order exchange system with the Blnk Ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+This guide demonstrates how to implement a secure and efficient cryptocurrency order exchange system with the Blnk Ledger. You'll learn how to handle order creation, escrow management, order matching, and atomic settlements.
+
+A cryptocurrency exchange operates in three main phases:
+
+* Order Creation: Users express their intent to trade by creating orders
+* Order Matching: Compatible orders are paired together
+* Settlement: Assets are exchanged atomically between parties
+
+To illustrate this flow, let's work with a practical example where two users want to exchange different cryptocurrencies:
+
+```
+Initial State:
+John has 1 ETH available in his account
+Emily has 10 MATIC available in her account
+
+Order Intent:
+John wants to receive 10 MATIC in exchange for 1 ETH
+Emily wants to receive 1 ETH in exchange for 10 MATIC
+```
+
+## Setting up your ledger
+
+<Note>If you haven't, please [install Blnk](/home/install) to try this example out yourself.</Note>
+
+Before implementing the exchange logic, we need to establish the foundational structure in your Blnk Ledger. Let's set up separate ledgers for each cryptocurrency and create the necessary balances:
+
+1. Create two ledgers to segregate different cryptocurrencies:
+    ```javascript
+    const ethLedger = await Ledgers.create({
+      name: "Customer ETH Ledger"
+    });
+
+    const maticLedger = await Ledgers.create({
+      name: "Customer MATIC Ledger"
+    });
+    ```
+
+2. Create balances for both users in each ledger:
+    ```javascript
+    // Create ETH balances
+    const johnEthBalance = await Balances.create({
+      ledger_id: ethLedger.id,
+      currency: "ETH"
+    });
+
+    const emilyEthBalance = await Balances.create({
+      ledger_id: ethLedger.id,
+      currency: "ETH"
+    });
+
+    // Create MATIC balances
+    const johnMaticBalance = await Balances.create({
+      ledger_id: maticLedger.id,
+      currency: "MATIC"
+    });
+
+    const emilyMaticBalance = await Balances.create({
+      ledger_id: maticLedger.id,
+      currency: "MATIC"
+    });
+    ```
+
+3. Fund the initial balances:
+    <Note>In this example, we'll use a precision of 100 to keep things simple. However, in real-world applications, cryptocurrency precision values can reach as high as 10^18, allowing for transactions to be measured in their smallest possible units.</Note>
+    ```javascript
+    // Fund John's ETH balance
+    await Transactions.create({
+      amount: 1, 
+      currency: "ETH",
+      reference: `ref_${uuidv4()}`,
+      precision: 100,
+      source: "@ETH_FundingPool",
+      destination: johnEthBalance.id,
+      description: "Initial ETH funding",
+      allow_overdraft: true
+    });
+
+    // Fund Emily's MATIC balance
+    await Transactions.create({
+      amount: 10,
+      currency: "MATIC",
+      reference: `ref_${uuidv4()}`,
+      precision: 100,
+      source: "@MATIC_FundingPool",
+      destination: emilyMaticBalance.id,
+      description: "Initial MATIC funding",
+      allow_overdraft: true
+    });
+    ```
+
+## Phase 1: Order Creation
+
+When John or Emily creates an order, we need to:
+
+1. Confirm that they have sufficient funds to successfully place the order.
+    ```javascript
+    async function checkBalance(balanceId: string, amount: number) {
+      const { Balances } = blnk;
+      const balance = await Balances.retrieve(balanceId);
+      const availableBalance = balance.balance - balance.inflight_debit_balance;
+      
+      if (amount > availableBalance) {
+        return { success: false, message: 'insufficient funds' };
+      }
+      return { success: true, availableBalance };
+    }
+    ```
+2. Initialize it via [inflight](/transactions/inflight) on your Ledger and reserve the funds in escrow until a match is found.
+    ```javascript
+    async function createInflightTransaction(balanceId: string, amount: number, currency: string, receiveCurrency: string) {
+      const orderReference = `order_${uuidv4()}`;
+      const { Transactions } = blnk;
+      
+      const inflightTx = await Transactions.inflight.create({
+        amount: amount,
+        currency: `${currency}`,
+        precision: 100,
+        source: balanceId,
+        destination: `@${currency}_Escrow`,
+        description: `Exchange order: ${currency} to ${receiveCurrency}`,
+        reference: orderReference
+      });
+      
+      return { inflightTx, orderReference };
+    }
+    ```
+3. Record in our order book.
+    ```javascript
+    async function recordOrder(orderReference: string, sendCurrency: string, receiveCurrency: string, amount: number) {
+      const orderBook = {
+        reference: orderReference,
+        send_currency: sendCurrency,
+        receive_currency: receiveCurrency,
+        amount: amount,
+        status: 'pending_match',
+        created_at: new Date().toISOString()
+      };
+      
+      // Store in your order book system
+      // This is a placeholder - implement your storage logic here
+      return orderBook;
+    }
+    ```
+4. Bringing it all together.
+    ```javascript
+    async function createExchangeOrder(
+      sourceBalanceId: string,
+      amount: number,
+      sendCurrency: string,
+      receiveCurrency: string
+    ) {
+      // Step 1: Check balance
+      const balanceCheck = await checkBalance(sourceBalanceId, amount);
+      if (!balanceCheck.success) {
+        return balanceCheck;
+      }
+
+      // Step 2: Create inflight transaction
+      const { inflightTx, orderReference } = await createInflightTransaction(
+        sourceBalanceId,
+        amount,
+        sendCurrency,
+        receiveCurrency
+      );
+
+      // Step 3: Record in order book
+      const order = await recordOrder(orderReference, sendCurrency, receiveCurrency, amount);
+
+      return {
+        success: true,
+        orderReference,
+        transaction: inflightTx,
+        order
+      };
+    }
+
+    // Create order for John
+    const johnOrder = await createExchangeOrder(
+      johnEthBalance.id,  // John's ETH balance ID
+      1,               // 1 ETH (with precision 100)
+      'ETH',            // Sending ETH
+      'MATIC'           // Receiving MATIC
+    );
+
+    // Create order for Emily
+    const emilyOrder = await createExchangeOrder(
+      emilyMaticBalance.id,  // Emily's MATIC balance ID
+      10,               // 10 MATIC
+      'MATIC',            // Sending MATIC
+      'ETH'           // Receiving ETH
+    );
+    ```
+
+## Phase 2: Order Matching
+
+When two orders are matched (e.g. John and Emily), we want to link them together with a common matching ID. This helps us track which orders in our Ledger were matched with each other.
+
+```javascript
+async function linkMatchedOrders(transaction1Id: string, transaction2Id: string) {
+    // Generate a unique matching ID with 'match_' prefix
+    const matchingId = `match_${uuidv4()}`;
+
+    // Update the first order's inflight transaction metadata
+    await Transactions.update(transaction1Id, {
+        meta_data: {
+            matching_id: matchingId,
+            matched_with_tx: transaction2Id
+        }
+    });
+
+    // Update the second order's inflight transaction metadata
+    await Transactions.update(transaction2Id, {
+        meta_data: {
+            matching_id: matchingId,
+            matched_with_tx: transaction1Id
+        }
+    });
+
+    return matchingId;
+}
+
+// Example usage when John and Emily's orders are matched:
+const matchingId = await linkMatchedOrders(
+    johnOrder.transaction.transaction_id,    // John's inflight transaction ID
+    emilyOrder.transaction.transaction_id    // Emily's inflight transaction ID
+);
+```
+
+## Phase 3: Settling the Matched Orders
+
+Finally, we need to execute the exchange of assets between the matched orders — John & Emily. Here's how we do it:
+
+1. We need to commit these transactions to move the funds to escrow.
+2. Then we create new transactions to move funds from escrow to the respective recipient balances (John's MATIC balance and Emily's ETH balance).
+
+```javascript
+async function settleMatchedOrders(
+    johnTxId: string,    // John's ETH inflight transaction ID
+    emilyTxId: string    // Emily's MATIC inflight transaction ID
+) {
+    try {
+        // Step 1: Commit both inflight transactions
+        await Transactions.inflight.commit(johnTxId);
+        await Transactions.inflight.commit(emilyTxId);
+
+        // Step 2: Retrieve transaction metadata to get the matching ID
+        const johnTx = await Transactions.retrieve(johnTxId);
+        const matchingId = johnTx.meta_data?.matching_id || `match_${uuidv4()}`; // Fallback if missing
+
+        const settlementReference = `settlement_${uuidv4()}`;
+
+        // Step 3: Move ETH from escrow to Emily
+        const ethTransfer = await Transactions.create({
+            amount: johnTx.amount, // 1 ETH 
+            currency: 'ETH',
+            precision: 100,
+            source: '@ETH_Escrow',
+            destination: emilyEthBalance.id,
+            reference: `${settlementReference}_eth`,
+            meta_data: {
+                matching_id: matchingId,
+                settlement_type: 'exchange'
+            }
+        });
+
+        // Step 4: Move MATIC from escrow to John
+        const maticTransfer = await Transactions.create({
+            amount: emilyTx.amount, // 10 MATIC 
+            currency: 'MATIC',
+            precision: 100,
+            source: '@MATIC_Escrow',
+            destination: johnMaticBalance.id,
+            reference: `${settlementReference}_matic`,
+            meta_data: {
+                matching_id: matchingId,
+                settlement_type: 'exchange'
+            }
+        });
+
+        return { success: true, matchingId, ethTransfer, maticTransfer };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+```
+
+## Best Practices
+
+1. **Balance Validation:** Always verify available balances before creating orders. Remember to consider both actual balances and inflight amounts to prevent over-commitment of funds.
+
+2. **Transaction References:** Always use meaningful reference prefixes ('order_', 'match_', 'settlement_') combined with UUIDs. This makes it easier to track and audit transactions throughout their lifecycle.
+
+3. **Metadata Management:** Keep your metadata consistent across related transactions. The matching ID should flow through all transactions involved in an exchange, creating a clear chain of linked operations.
+
+4. **Error Handling:** Implement comprehensive error handling at each step. If any part of the process fails, you need to be able to identify where the failure occurred and handle it appropriately.
+
+## Additional Considerations
+
+1. **Rate Limiting:** Consider implementing rate limits for order creation to prevent system overload and potential abuse. See [advanced configuration](/advanced/configuration).
+
+2. **Currency Precision:** Different cryptocurrencies might require different precision settings. Ensure to use consistent precision value per currency in your Ledger.
+
+3. **Escrow Management:** Regularly audit escrow accounts to ensure they zero out correctly after settlements. Any remaining balance could indicate failed or incomplete settlements.
+
+<NeedHelp />
