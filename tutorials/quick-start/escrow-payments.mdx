@@ -16,7 +16,7 @@ In this tutorial, we’ll build a basic escrow payment app using Blnk’s inflig
 1. Initiate an escrow transaction.
 2. Verify that all conditions have been met.
 3. Update the transaction based on the conditions.
-4. Handle edge cases like partial payments.
+4. Handle alternative use cases cases like partial fulfilment.
 
 For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript/introduction) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
 
@@ -26,7 +26,7 @@ For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript/introd
 
 Before writing code, it's crucial to design a [money movement map](/ledgers/money-movement-map) that outlines how money moves in your system. This serves as the blueprint for your implementation.
 
-For our escrow payments workflows, here's our map:
+For our escrow payments workflow, here's our map:
 
 ```mermaid
 flowchart LR
@@ -51,8 +51,9 @@ This map shows three key aspects of the escrow fund flow:
 Based on our map, we'll implement the following steps:
 
 1. Initiate a transaction with inflight between the `Buyer Wallet` and the `Seller Wallet`.
-2. Trigger the escrow monitoring service to confirm the state of the escrow payment.
-3. Commit or void the inflight transaction based on the status of escrow payment.
+2. Update the status of our inflight transaction.
+    * Commit if the escrow payment is successful.
+    * Void if the escrow payment failed.
 
 ---
 
@@ -122,9 +123,7 @@ curl -X POST "http://localhost:5001/api/v1/transactions" \
 </CodeGroup>
 
 <Note>
-  When `inflight` is enabled, the transaction remains pending, and neither the source nor destination balances are affected until the specified conditions are met.
-
-  With the [inflight feature](/transactions/inflight), the ledger can keep track of both successful and failed escrow payments on customers' balances.
+  When `inflight` is enabled, the transaction remains pending, ensuring that neither the source nor the destination balance is affected until the specified conditions are met.
 </Note>
 
 ---
@@ -205,7 +204,7 @@ curl --location 'http://localhost:5001/transactions/inflight/<inflight-transacti
 
 ## Path 3: Partial escrow payment
 
-Escrow payments can also be fufilled in bits, i.e., you complete part of the amount per time. This is ideal for use cases like instalments, buy now pay later, etc.
+Escrow payments can also be fulfilled in bits, meaning you can complete part of the total amount over time, e.g., for a \$100 transaction, you can commit \$30, then \$40, then the remaining \$30 later.
 
 <CodeGroup>
 ```javascript TypeScript
@@ -241,7 +240,7 @@ curl --location 'http://localhost:5001/transactions/inflight/<inflight-transacti
 </CodeGroup>
 
 <Tip>
-  You can commit partial amounts, as long as they are less than the original transaction amount. Additionally, you can make multiple partial commits and void the remaining inflight amount if needed.
+  You can also make multiple partial commits and void the remaining inflight amount if needed.
 </Tip>
 
 ---
@@ -250,7 +249,7 @@ curl --location 'http://localhost:5001/transactions/inflight/<inflight-transacti
 
 This tutorial demonstrated how to build a secure escrow payment system using Blnk’s inflight feature, enabling safe transactions for buyers and sellers. The system includes initiating escrows, tracking confirmations, releasing funds upon mutual agreement, and handling cancellations.
 
-With Blnk's flexible architecture, you can easily adapt this escrow system to various business models - from marketplace transactions and freelancer payments to real estate deals and complex business contracts.
+With Blnk's flexible architecture, you can easily adapt this escrow system to various business models, including from marketplace transactions and freelancer payments to real estate deals and complex business contracts.
 
 <Card title="Inflight transactions" icon="plane" iconType="duotone" href="/transactions/inflight">
   Learn everything about inflight (plus best practices)
