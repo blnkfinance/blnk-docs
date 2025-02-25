@@ -11,7 +11,7 @@ import RequestTutorial from "/snippets/request-tutorial.mdx"
 
 ## Overview
 
-In this tutorial, we’ll build a basic escrow payment app using Blnk’s inflight transaction feature. Here's what we'll do:
+In this tutorial, we’ll build a simple escrow payment workflow using Blnk’s inflight transaction feature. Here's what we'll do:
 
 1. Initiate an escrow transaction.
 2. Verify that all conditions have been met.
@@ -42,7 +42,7 @@ This map shows three key aspects of the escrow fund flow:
 
 * `Buyer` initiates transaction to `Seller`.
 * Transaction is held inflight until the escrow conditions are met or not.
-* Transaction is completed, and both balances get updated.
+* Transaction is completed or discarded depending on the inflight status, and the balances get updated.
 
 ---
 
@@ -85,8 +85,8 @@ async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, un
     reference: uniqueReference,
     description: description || "Escrow payment",
     currency: "USD",
-    source: buyerWalletId,
-    destination: sellerWalletId,
+    source: buyerBalanceId,
+    destination: sellerBalanceId,
     inflight: true, // Holds funds in escrow
     meta_data: {
       transaction_type: "escrow",
@@ -109,8 +109,8 @@ curl -X POST "http://localhost:5001/api/v1/transactions" \
     "reference": "escrow_ref_12345",
     "description": "Escrow payment",
     "currency": "USD",
-    "source": "<buyer_wallet_id>",
-    "destination": "<seller_wallet_id>",
+    "source": "<buyer_balance_id>",
+    "destination": "<seller_balance_id>",
     "inflight": true,
     "meta_data": {
       "transaction_type": "escrow",
@@ -234,7 +234,7 @@ curl --location 'http://localhost:5001/transactions/inflight/<inflight-transacti
 --header 'Authorization: Bearer YOUR_API_KEY' \
 --data '{
     "status": "commit",
-    "amount": 24.12
+    "amount": 30
 }'
 ```
 </CodeGroup>
