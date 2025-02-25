@@ -19,6 +19,8 @@ This tutorial will guide you through implementing a simple wallet management sys
 4. Create purpose-specific wallets (e.g. card balances).
 5. Enable transfers between wallets.
 
+For this tutorial, we’ll use the Blnk TypeScript SDK for the implementation. If you prefer, you can also refer to the API documentation for details on the available endpoints.
+
 ---
 
 ## Designing your map
@@ -79,7 +81,7 @@ Based on our map, we'll implement the following steps:
 
 ## Create customer ledger
 
-First, we need to initialise Blnk and create a ledger to organise all our customer wallets.
+First, we need to initialise Blnk and [create a ledger](/ledgers/introduction) to organise all our customer wallets.
 
 ```javascript Initialising Blnk
 const { BlnkInit } = require('@blnkfinance/blnk-typescript');
@@ -111,11 +113,15 @@ async function createCustomerLedger() {
 }
 ```
 
+<Warning>
+  Always save the `ledger_id` in your database. You'll use this ID to create balances for the customer wallets.
+</Warning>
+
 ---
 
 ## Create customer identity
 
-Create your customer profiles with identities:
+Create your customer profiles with [identities](/identities/introduction):
 
 ```javascript Create identity
 async function createCustomerIdentity(customerData) {
@@ -139,11 +145,15 @@ async function createCustomerIdentity(customerData) {
 }
 ```
 
+<Warning>
+  Always save the `identity_id` in your database. You'll use this ID to link balances to this identity or query all balances owned by this identity.
+</Warning>
+
 ---
 
 ## Create main wallet
 
-Create a balance to represent the customer main wallet and link to the customer identity:
+[Create a balance](/balances/introduction) to represent the customer main wallet and link to the customer identity:
 
 ```javascript Create main wallet
 async function createMainWallet(ledgerId, identityId, currency) {
@@ -177,23 +187,22 @@ async function createMainWallet(ledgerId, identityId, currency) {
 Use an [internal balance](/balances/internal-balances) to represent external deposit sources—such as bank accounts, cards, and other funding methods—responsible for funding a customer's wallet:
 
 ```javascript Wallet funding
-async function depositToWallet(walletId, amount, reference, description) {
+async function depositToWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
   
   const deposit = await Transactions.create({
     amount: amount,
     precision: 100,
-    reference: reference,
+    reference: uniqueReference,
     description: description || "Deposit to wallet",
     currency: "USD",
     source: "@WorldUSD",
-    destination: walletId,
+    destination: customerBalanceID,
     allow_overdraft: true, // Enable for the external source
     meta_data: {
       transaction_type: "deposit",
-      channel: "bank_transfer",
-      timestamp: new Date().toISOString()
+      channel: "bank_transfer"
     }
   });
   
@@ -202,33 +211,28 @@ async function depositToWallet(walletId, amount, reference, description) {
 }
 ```
 
-<Tip>
-  Use the [`inflight` parameter](/transactions/inflight) if you need to hold the deposit transaction until verification. This is useful for bank transfers that need to be confirmed.
-</Tip>
-
 ---
 
 ## Withdrawals from the main wallet
 
-Use the same internal balance to represent external withdrawal destinations. You can also use a different internal balance to for withdrawals.
+You can use the same internal balance to represent external withdrawal destinations to ensure it is balanced out, or you can allocate a separate internal balance specifically for withdrawals.
 
 ```javascript Wallet withdrawals
-async function withdrawFromWallet(walletId, amount, reference, description) {
+async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
   
   const withdrawal = await Transactions.create({
     amount: amount,
     precision: 100,
-    reference: reference,
+    reference: uniqueReference,
     description: description || "Withdrawal from wallet",
     currency: "USD",
-    source: walletId,
+    source: customerBalanceID,
     destination: "@WorldUSD",
     meta_data: {
       transaction_type: "withdrawal",
-      channel: "bank_transfer",
-      timestamp: new Date().toISOString()
+      channel: "bank_transfer"
     }
   });
   
@@ -276,30 +280,21 @@ async function createCardWallet(ledgerId, identityId, currency) {
 Record a transaction between both balances to fund your card balance:
 
 ```javascript Card funding
-async function transferToCardWallet(mainWalletId, cardWalletId, amount, reference, description) {
+async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
-  
-  // Check available balance before transfer
-  const balance = await LedgerBalances.retrieve(mainWalletId);
-  const availableBalance = balance.data.balance - balance.data.inflight_debit_balance;
-  
-  if (amount > availableBalance) {
-    throw new Error("Insufficient funds for transfer");
-  }
   
   const transfer = await Transactions.create({
     amount: amount,
     precision: 100,
-    reference: reference,
+    reference: uniqueReference,
     description: description || "Transfer to card wallet",
     currency: "USD",
-    source: mainWalletId,
-    destination: cardWalletId,
+    source: mainBalanceID,
+    destination: cardBalanceID,
     meta_data: {
       transaction_type: "internal_transfer",
-      purpose: "fund_card",
-      timestamp: new Date().toISOString()
+      purpose: "fund_card"
     }
   });
   
