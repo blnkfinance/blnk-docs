@@ -62,6 +62,54 @@ Before starting, ensure you have:
 
 ## Create customer savings balance
 
+Create a balance with the `ledger_id` of your `Customer Savings Ledger` to represent your customer savings wallet:
+
+<CodeGroup>
+```javascript TypeScript
+async function createSavingsWallet(savingsLedgerId, identityId, currency) {
+  const blnk = await getBlnkInstance();
+  const { LedgerBalances } = blnk;
+  
+  const savingsWallet = await LedgerBalances.create({
+    ledger_id: savingsLedgerId,
+    identity_id: identityId,
+    currency: currency,
+    meta_data: {
+      wallet_type: "savings",
+      recurring: true,
+      frequency: "monthly",
+      next_scheduled_savings: ""
+    }
+  });
+  
+  console.log("Savings Wallet created:", savingsWallet.data.balance_id);
+  return savingsWallet.data.balance_id;
+}
+```
+```bash cURL {5-6}
+curl -X POST http://localhost:5001/balances \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "ledger_id": "<customer-savings-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        wallet_type: "savings",
+        recurring: true,
+        frequency: "monthly",
+        next_scheduled_savings: ""
+    }
+}'
+```
+</CodeGroup>
+
+This creates a savings balance with a set of default metadata:
+
+1. This customer balance is subscribed to scheduled deposits.
+2. Schedule frequency is monthly.
+3. The next scheduled savings date can be monitored on the customer balance
+
 ---
 
 ## Initiate scheduled transaction
