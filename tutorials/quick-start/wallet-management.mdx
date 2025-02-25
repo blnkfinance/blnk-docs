@@ -212,13 +212,13 @@ async function createMainWallet(ledgerId, identityId, currency) {
   return mainWallet.data.balance_id;
 }
 ```
-```bash cURL
+```bash cURL {5-6}
 curl --location 'http://localhost:5001/balances' \
 --header 'Content-Type: application/json' \
 --header "Authorization: Bearer YOUR_API_KEY" \
 --data '{
-    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "ledger_id": "<customer-wallets-ledger-id>",
+    "identity_id": "<customer-identity-id>",
     "currency": "USD",
     "meta_data": {
         "wallet_type": "main",
@@ -264,18 +264,18 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
   return deposit.data.transaction_id;
 }
 ```
-```bash cURL
+```bash cURL {7,11}
 curl --location 'http://localhost:5001/transactions' \
 --header 'Content-Type: application/json' \
 --header "Authorization: Bearer YOUR_API_KEY" \
 --data '{
     "amount": 1000,
     "precision": 100,
-    "reference": "DEP-20250225-103000",
+    "reference": "<unique-reference>",
     "description": "Initial deposit",
     "currency": "USD",
     "source": "@WorldUSD",
-    "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "<customer-main-balance-id>",
     "allow_overdraft": true,
     "meta_data": {
         "transaction_type": "deposit",
@@ -319,17 +319,17 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
   return withdrawal.data.transaction_id;
 }
 ```
-```bash cURL
+```bash cURL {7,10}
 curl --location 'http://localhost:5001/transactions' \
 --header 'Content-Type: application/json' \
 --header "Authorization: Bearer YOUR_API_KEY" \
 --data '{
     "amount": 100,
     "precision": 100,
-    "reference": "WDR-20250225-104500",
+    "reference": "<unique-reference>",
     "description": "Wallet withdrawal",
     "currency": "USD",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "source": "<customer-main-balance-id>",
     "destination": "@WorldUSD",
     "meta_data": {
         "transaction_type": "withdrawal",
@@ -376,8 +376,8 @@ curl --location 'http://localhost:5001/balances' \
 --header 'Content-Type: application/json' \
 --header "Authorization: Bearer YOUR_API_KEY" \
 --data '{
-    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "ledger_id": "<customer-wallets-ledger-id>",
+    "identity_id": "<customer-identity-id>",
     "currency": "USD",
     "meta_data": {
         "wallet_type": "card",
@@ -423,18 +423,18 @@ async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, unique
   return transfer.data.transaction_id;
 }
 ```
-```bash cURL
+```bash cURL {7,10-11}
 curl --location 'http://localhost:5001/transactions' \
 --header 'Content-Type: application/json' \
 --header "Authorization: Bearer YOUR_API_KEY" \
 --data '{
     "amount": 200,
     "precision": 100,
-    "reference": "TRF-20250225-110000",
+    "reference": "<unique-reference>",
     "description": "Transfer to card wallet",
     "currency": "USD",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "source": "<customer-main-balance-id>",
+    "destination": "<customer-card-balance-id>",
     "meta_data": {
         "transaction_type": "internal_transfer",
         "purpose": "fund_card"
