@@ -95,7 +95,8 @@ async function getBlnkInstance() {
   return blnkInstance;
 }
 ```
-```javascript Create ledger
+<CodeGroup>
+```javascript TypeScript
 async function createCustomerLedger() {
   const blnk = await getBlnkInstance();
   const { Ledgers } = blnk;
@@ -112,6 +113,19 @@ async function createCustomerLedger() {
   return customerLedger.data.ledger_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/ledgers' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "name": "Customer Wallets Ledger",
+    "meta_data": {
+        "description": "Ledger for managing customer wallets",
+        "application": "Wallet Management System"
+    }
+}'
+```
+</CodeGroup>
 
 <Warning>
   Always save the `ledger_id` in your database. You'll use this ID to create balances for the customer wallets.
@@ -123,7 +137,8 @@ async function createCustomerLedger() {
 
 Create your customer profiles with [identities](/identities/introduction):
 
-```javascript Create identity
+<CodeGroup>
+```javascript TypeScript
 async function createCustomerIdentity(customerData) {
   const blnk = await getBlnkInstance();
   const { Identities } = blnk;
@@ -144,6 +159,23 @@ async function createCustomerIdentity(customerData) {
   return identity.data.identity_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/identities' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "identity_type": "individual",
+    "first_name": "Alice",
+    "last_name": "Johnson",
+    "email_address": "alice@example.com",
+    "phone_number": "+1234567890",
+    "meta_data": {
+        "customer_id": "CUST-001",
+        "registration_date": "2024-02-25T10:30:00Z"
+    }
+}'
+```
+</CodeGroup>
 
 <Warning>
   Always save the `identity_id` in your database. You'll use this ID to link balances to this identity or query all balances owned by this identity.
@@ -155,7 +187,8 @@ async function createCustomerIdentity(customerData) {
 
 [Create a balance](/balances/introduction) to represent the customer main wallet and link to the customer identity:
 
-```javascript Create main wallet
+<CodeGroup>
+```javascript TypeScript
 async function createMainWallet(ledgerId, identityId, currency) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -175,6 +208,22 @@ async function createMainWallet(ledgerId, identityId, currency) {
   return mainWallet.data.balance_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/balances' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "main",
+        "purpose": "general",
+        "status": "active"
+    }
+}'
+```
+</CodeGroup>
 
 <Warning>
   Always store the `balance_id` in your database and associate it with the customer. You'll use this ID for all future transactions involving this wallet.
@@ -186,7 +235,8 @@ async function createMainWallet(ledgerId, identityId, currency) {
 
 Use an [internal balance](/balances/internal-balances) to represent external deposit sources—such as bank accounts, cards, and other funding methods—responsible for funding a customer's wallet:
 
-```javascript Wallet funding
+<CodeGroup>
+```javascript TypeScript
 async function depositToWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
@@ -210,6 +260,27 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
   return deposit.data.transaction_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/transactions' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "amount": 1000,
+    "precision": 100,
+    "reference": "DEP-20250225-103000",
+    "description": "Initial deposit",
+    "currency": "USD",
+    "source": "@External",
+    "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "deposit",
+        "channel": "bank_transfer",
+        "timestamp": "2024-02-25T10:30:00Z"
+    }
+}'
+```
+</CodeGroup>
 
 <Note>
   Setting `allow_overdraft` to `true` enables the transaction to proceed even if the source balance lacks sufficient funds.
@@ -221,7 +292,8 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
 
 You can use the same internal balance to represent external withdrawal destinations to ensure it is balances out your ledger, or you can allocate a separate internal balance specifically for withdrawals.
 
-```javascript Wallet withdrawals
+<CodeGroup>
+```javascript TypeScript
 async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
@@ -244,6 +316,26 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
   return withdrawal.data.transaction_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/transactions' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "amount": 100,
+    "precision": 100,
+    "reference": "WDR-20250225-104500",
+    "description": "Wallet withdrawal",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "@External",
+    "meta_data": {
+        "transaction_type": "withdrawal",
+        "channel": "atm",
+        "timestamp": "2024-02-25T10:45:00Z"
+    }
+}'
+```
+</CodeGroup>
 
 ---
 
@@ -251,7 +343,8 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
 
 To create a card balance and link it to the customer:
 
-```javascript Create card wallet
+<CodeGroup>
+```javascript TypeScript
 async function createCardWallet(ledgerId, identityId, currency) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -276,6 +369,27 @@ async function createCardWallet(ledgerId, identityId, currency) {
   return cardWallet.data.balance_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/balances' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "card",
+        "purpose": "card_payments",
+        "status": "active",
+        "card_details": {
+            "masked_number": "xxxx-xxxx-xxxx-1234",
+            "expiry": "12/25",
+            "type": "virtual"
+        }
+    }
+}'
+```
+</CodeGroup>
 
 ---
 
@@ -283,7 +397,8 @@ async function createCardWallet(ledgerId, identityId, currency) {
 
 Record a transaction between both balances to fund your card balance:
 
-```javascript Card funding
+<CodeGroup>
+```javascript TypeScript
 async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
@@ -306,6 +421,26 @@ async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, unique
   return transfer.data.transaction_id;
 }
 ```
+```bash cURL
+curl --location 'http://localhost:5001/transactions' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "amount": 200,
+    "precision": 100,
+    "reference": "TRF-20250225-110000",
+    "description": "Transfer to card wallet",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "meta_data": {
+        "transaction_type": "internal_transfer",
+        "purpose": "fund_card",
+        "timestamp": "2024-02-25T11:00:00Z"
+    }
+}'
+```
+</CodeGroup>
 
 ---
 
