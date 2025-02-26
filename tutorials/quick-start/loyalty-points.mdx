@@ -1,0 +1,466 @@
+---
+sidebarTitle: "Loyalty points"
+title: "Building a Loyalty Points System"
+description: "Learn how to implement a loyalty points system with Blnk."
+icon: "hundred-points"
+"og:title": "Building a Loyalty Points System with Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to implement a loyalty points management system with Blnk Finance."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+In this tutorial, we will build a simple loyalty points system using the Blnk Ledger. Here's what we'll do:
+
+1. Create and manage multi-asset wallets in your ledger.
+2. Manage a pool of issued loyalty points.
+3. Award points to customers when they make purchases.
+4. Allow customers to redeem their points for discounts on future purchases.
+
+---
+
+## Designing your map
+
+Before writing code, it's crucial to design a [money movement map](/ledgers/money-movement-map) that outlines how money moves in your system. This serves as the blueprint for your implementation.
+
+For our loyalty points system, we have two workflows — awarding points and redeeming points.
+
+1. **Awarding points:**
+    
+    Points are awarded to customers who qualify for the loyalty program. A customer purchase triggers the process: funds from the `Customer Main Wallet` are used for the purchase, contributing to `@RevenueUSD`. 
+    
+    Once the purchase is completed, points are awarded from the `@PointsPool` to the `Customer Points Wallet`.
+
+    * `@RevenueUSD`: An internal balance representing the business' revenue.
+    * `@PointsPool`: An internal balance tracking the total points issued to customers.
+
+    ```mermaid
+    flowchart LR
+        pool([@PointsPool])
+        customerPoints([Customer Points Wallet])
+        customerWallet([Customer Main Wallet])
+        revenue([@RevenueUSD])
+        
+        subgraph purchase [Customer Purchase]
+            customerWallet -- customer purchase --> revenue
+        end
+        subgraph awardPoints [Award Points]
+            pool -- customer purchase --> customerPoints
+        end
+
+        purchase -- completed purchase --> awardPoints
+
+    style purchase fill:#000
+    style awardPoints fill:#000
+    ```
+
+2. **Redeeming points:**
+
+    Customers can redeem points to receive discounts on purchases. When a customer applies points to a transaction, the discount is deducted from the original price. 
+    
+    Once the purchase is completed, the redeemed points are transferred from the `Customer Points Wallet` to `@PointsPool`.
+
+    ```mermaid
+    flowchart LR
+        pointsRevenue([@PointsPool])
+        customerWallet([Customer Main Wallet])
+        revenue([@RevenueUSD])
+        customerPoints([Customer Points Wallet])
+
+        subgraph cash [Customer Purchase]
+            customerWallet -- customer purchase<br/>(discounted) --> revenue
+        end
+        subgraph points [Redeem Points]
+            customerPoints -- pay with points --> pointsRevenue
+        end
+
+        cash -- completed purchase --> points
+
+    style cash fill:#000
+    style points fill:#000
+    ```
+
+<Tip>
+  @PointsPool records all issued points using the `debit_balance` parameter and tracks all redeemed points using the `credit_balance` parameter.
+</Tip>
+
+---
+
+## Set up your implementation
+
+Based on our map, we'll implement the following:
+
+1. Create the main and points balances for the customer.
+2. Initiate a purchase transaction and award points to the customer.
+3. Redeem the points in a second purchase transaction.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+2. An API key for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
+3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+
+---
+
+## Create your ledgers
+
+First, we need to create ledgers to organize our wallets::
+
+<CodeGroup>
+```javascript TypeScript
+async function createLedgers() {
+  const blnk = await getBlnkInstance();
+  const { Ledgers } = blnk;
+  
+  // Create a ledger for customer main wallets (USD)
+  const mainLedger = await Ledgers.create({
+    name: "Customer Main Wallets",
+    meta_data: {
+      description: "Ledger for customer USD wallets"
+    }
+  });
+  
+  // Create a ledger for customer points wallets
+  const pointsLedger = await Ledgers.create({
+    name: "Customer Points Wallets",
+    meta_data: {
+      description: "Ledger for customer loyalty points"
+    }
+  });
+  
+  console.log("Created main wallet ledger:", mainLedger.data.ledger_id);
+  console.log("Created points wallet ledger:", pointsLedger.data.ledger_id);
+  
+  return {
+    mainLedgerId: mainLedger.data.ledger_id,
+    pointsLedgerId: pointsLedger.data.ledger_id
+  };
+}
+```
+```bash cURL
+# Create main wallet ledger
+curl -X POST http://localhost:5001/ledgers \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "name": "Customer Main Wallets",
+    "meta_data": {
+        "description": "Ledger for customer USD wallets"
+    }
+}'
+
+# Create points wallet ledger
+curl -X POST http://localhost:5001/ledgers \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "name": "Customer Points Wallets",
+    "meta_data": {
+        "description": "Ledger for customer loyalty points"
+    }
+}'
+```
+</CodeGroup>
+
+## Create balances for customer funds and loyalty points
+
+Blnk Finance supports tracking of different assets (e.g., USD and POINTS) in your ledger. 
+
+Now, let's create the main wallet and points wallet for the customer:
+
+<CodeGroup>
+```javascript TypeScript
+async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
+  const blnk = await getBlnkInstance();
+  const { LedgerBalances } = blnk;
+  
+  // Create main wallet (USD)
+  const mainWallet = await LedgerBalances.create({
+    ledger_id: mainLedgerId,
+    identity_id: identityId,
+    currency: "USD",
+    meta_data: {
+      wallet_type: "main",
+      status: "active"
+    }
+  });
+  
+  // Create points wallet
+  const pointsWallet = await LedgerBalances.create({
+    ledger_id: pointsLedgerId,
+    identity_id: identityId,
+    currency: "POINTS",
+    meta_data: {
+      wallet_type: "points",
+      status: "active"
+    }
+  });
+  
+  console.log("Created main wallet:", mainWallet.data.balance_id);
+  console.log("Created points wallet:", pointsWallet.data.balance_id);
+  
+  return {
+    mainWalletId: mainWallet.data.balance_id,
+    pointsWalletId: pointsWallet.data.balance_id
+  };
+}
+```
+```bash cURL
+# Create main wallet
+curl -X POST http://localhost:5001/balances \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "ledger_id": "<main-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "main",
+        "status": "active"
+    }
+}'
+
+# Create points wallet
+curl -X POST http://localhost:5001/balances \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "ledger_id": "<points-ledger-id",
+    "identity_id": "<customer-identity-id>",
+    "currency": "POINTS",
+    "meta_data": {
+        "wallet_type": "points",
+        "status": "active"
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Awarding points
+
+When a customer makes a purchase, we need to:
+
+1. Process the payment from the customer's main wallet to the revenue account.
+2. Award loyalty points based on the purchase amount.
+
+<Tip>
+  Ensure your customer main wallet is funded. Learn how: [Wallet Funding →](/tutorials/quick-start/wallet-management#funding-the-main-wallet)
+</Tip>
+
+<CodeGroup>
+```javascript TypeScript
+async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purchaseAmount, pointsToAward) {
+  const blnk = await getBlnkInstance();
+  const { Transactions } = blnk;
+  
+  // Generate a unique reference for this purchase
+  const purchaseReference = `purchase-${Date.now()}`;
+  
+  // Step 1: Process the purchase payment
+  const purchase = await Transactions.create({
+    amount: purchaseAmount,
+    precision: 100,
+    reference: purchaseReference,
+    currency: "USD",
+    source: mainWalletId,
+    destination: "@RevenueUSD",
+    description: "Product purchase",
+    meta_data: {
+      transaction_type: "purchase"
+    }
+  });
+  
+  // Step 2: Award loyalty points
+  const pointsAward = await Transactions.create({
+    amount: pointsToAward,
+    precision: 1,  // Points typically don't have decimal places
+    reference: `points-${purchaseReference}`,
+    currency: "POINTS",
+    source: "@PointsPool",
+    destination: pointsWalletId,
+    description: "Loyalty points award",
+    allow_overdraft: true,  // Points pool can have negative balance
+    meta_data: {
+      purchase_reference: purchaseReference,
+      purchase_amount: purchaseAmount
+    }
+  });
+  
+  console.log("Purchase processed:", purchase.data.transaction_id);
+  console.log("Points awarded:", pointsAward.data.transaction_id);
+  
+  return {
+    purchaseId: purchase.data.transaction_id,
+    pointsAwardId: pointsAward.data.transaction_id
+  };
+}
+```
+```bash cURL
+# Process purchase
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 100,
+    "precision": 100,
+    "reference": "purchase-123456789",
+    "currency": "USD",
+    "source": "<customer-main-balance-id>",
+    "destination": "@RevenueUSD",
+    "description": "Product purchase",
+    "meta_data": {
+        "transaction_type": "purchase"
+    }
+}'
+
+# Award points
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 10,
+    "precision": 1,
+    "reference": "points-purchase-123456789",
+    "currency": "POINTS",
+    "source": "@PointsPool",
+    "destination": "<customer-points-balance-id>",
+    "description": "Loyalty points award",
+    "allow_overdraft": true,
+    "meta_data": {
+        "purchase_reference": "purchase-123456789",
+        "purchase_amount": 100
+    }
+}'
+```
+</CodeGroup>
+
+<Tip>
+  As shown above, you can set custom precision for each currency, like 100 for USD or 1 for POINTS in our example. 
+  
+  For ledger accuracy, ensure the source and destination currencies match when posting transactions.
+</Tip>
+
+---
+
+## Redeeming points
+
+To redeem points for a customer during a purchase:
+
+<CodeGroup>
+```javascript TypeScript
+async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem, discountAmount) {
+  const blnk = await getBlnkInstance();
+  const { Transactions } = blnk;
+  
+  // Generate a unique reference for this redemption
+  const redemptionReference = `redemption-${Date.now()}`;
+  
+  // Step 1: Redeem points
+  const pointsRedemption = await Transactions.create({
+    amount: pointsToRedeem,
+    precision: 1,
+    reference: redemptionReference,
+    currency: "POINTS",
+    source: pointsWalletId,
+    destination: "@RevenuePTS",
+    description: "Points redemption for discount",
+    meta_data: {
+      transaction_type: "redemption",
+      discount_amount: discountAmount
+    }
+  });
+  
+  // Step 2: Process the discounted purchase
+  const discountedAmount = purchaseAmount - discountAmount;
+  
+  const discountedPurchase = await Transactions.create({
+    amount: discountedAmount,
+    precision: 100,
+    reference: `purchase-${redemptionReference}`,
+    currency: "USD",
+    source: mainWalletId,
+    destination: "@RevenueUSD",
+    description: "Discounted purchase with points",
+    meta_data: {
+      redemption_reference: redemptionReference,
+      original_amount: purchaseAmount,
+      discount_amount: discountAmount,
+      points_redeemed: pointsToRedeem
+    }
+  });
+  
+  console.log("Points redeemed:", pointsRedemption.data.transaction_id);
+  console.log("Discounted purchase processed:", discountedPurchase.data.transaction_id);
+  
+  return {
+    redemptionId: pointsRedemption.data.transaction_id,
+    purchaseId: discountedPurchase.data.transaction_id
+  };
+}
+```
+```bash cURL
+# Redeem points
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 50,
+    "precision": 1,
+    "reference": "redemption-123456789",
+    "currency": "POINTS",
+    "source": "points_wallet_id",
+    "destination": "@RevenuePTS",
+    "description": "Points redemption for discount",
+    "meta_data": {
+        "transaction_type": "redemption",
+        "discount_amount": 5
+    }
+}'
+
+# Process discounted purchase
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 95,
+    "precision": 100,
+    "reference": "purchase-redemption-123456789",
+    "currency": "USD",
+    "source": "main_wallet_id",
+    "destination": "@RevenueUSD",
+    "description": "Discounted purchase with points",
+    "meta_data": {
+        "redemption_reference": "redemption-123456789",
+        "original_amount": 100,
+        "discount_amount": 5,
+        "points_redeemed": 50
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Conclusion
+
+You now have a basic loyalty points system built with the Blnk Ledger. This system enables you to award points to customers based on their purchases and allows them to redeem those points for discounts.
+
+The system is flexible and can be extended with additional features like:
+
+* Points expiry management
+* Tiered rewards based on customer spending levels
+* Special promotions with bonus points
+* Point transfers between customers
+
+By leveraging Blnk's transaction system, you can ensure all point movements are accurately tracked and reconciled, providing a reliable foundation for your loyalty program.
+
+---
+
+<RequestTutorial />
