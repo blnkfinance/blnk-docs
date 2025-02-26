@@ -11,7 +11,7 @@ import RequestTutorial from "/snippets/request-tutorial.mdx"
 
 ## Overview
 
-In this tutorial, you'll learn how to implement and track scheduled savings deposit with the Blnk ledger. Here's what we'll do:
+In this tutorial, you'll learn how to implement, monitor, and manage scheduled savings deposits with the Blnk ledger. Here's what we'll do:
 
 1. Create a customer savings wallet balance.
 2. Initiate a scheduled deposit transaction. For one-time funding: [Wallet Funding Tutorial →](/tutorials/quick-start/wallet-management#funding-the-main-wallet).
@@ -54,7 +54,7 @@ Based on our map, we'll implement the following steps:
 Before starting, ensure you have:
 
 1. A running Blnk server instance (e.g. at `http://localhost:5001`).
-2. An API key for Blnk (replace `YOUR_API_KEY` in the code examples) or you can leave it blank.
+2. An API key for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
 3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
 4. A customer savings ledger to organise the customers' savings balances. Learn how: [How to Create a Ledger →](/tutorials/quick-start/wallet-management#create-customer-ledger)
 
@@ -76,8 +76,9 @@ async function createSavingsWallet(savingsLedgerId, identityId, currency) {
     currency: currency,
     meta_data: {
       wallet_type: "savings",
-      recurring: true,
-      frequency: "monthly",
+      schedule_savings: true,
+      savings_frequency: "monthly",
+      savings_amount: 10000,
       next_scheduled_savings: ""
     }
   });
@@ -95,10 +96,11 @@ curl -X POST http://localhost:5001/balances \
     "identity_id": "<customer-identity-id>",
     "currency": "USD",
     "meta_data": {
-        wallet_type: "savings",
-        recurring: true,
-        frequency: "monthly",
-        next_scheduled_savings: ""
+        "wallet_type": "savings",
+        "schedule_savings": true,
+        "savings_frequency": "monthly",
+        "savings_amount": 10000,
+        "next_scheduled_savings": ""
     }
 }'
 ```
@@ -114,17 +116,208 @@ This creates a savings balance with a set of default metadata:
 
 ## Initiate scheduled transaction
 
+Schedule a transaction on the ledger with the `scheduled_for` parameter:
+
+<CodeGroup>
+```javascript TypeScript
+async function createScheduledSavingsTransaction(savingsBalanceId, savingsAmount, uniqueReference, description, scheduledDate) {
+  const blnk = await getBlnkInstance();
+  const { Transactions } = blnk;
+  
+  const scheduledSavings = await Transactions.create({
+    amount: savingsAmount,
+    precision: 100,
+    reference: uniqueReference,
+    description: description || "Scheduled savings deposit",
+    currency: "USD",
+    source: "@WorldUSD",      // Represents external funding source
+    destination: savingsBalanceId, 
+    scheduled_for: scheduledDate,
+    meta_data: {
+      transaction_type: "savings"
+    }
+  });
+  
+  console.log("Savings successfully scheduled:", scheduledSavings.data.transaction_id);
+  return scheduledSavings.data.transaction_id;
+}
+```
+```bash cURL
+curl -X POST "http://localhost:5001/transactions" \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+--data '{
+    "amount": 1000,
+    "precision": 100,
+    "reference": "SAV_0001",
+    "description": "Scheduled savings deposit",
+    "currency": "USD",
+    "source": "@WorldUSD",
+    "destination": "<savings-balance-id>",
+    "scheduled_for": "2025-12-25T02:42:19Z",
+    "meta_data": {
+      "transaction_type": "savings"
+    }
+  }'
+```
+</CodeGroup>
+
+A `SCHEDULED` transaction is created waiting to be applied on the specified scheduled date.
+
 ---
 
 ## Set up new scheduled transaction
+
+To schedule the next savings deposit, verify that `scheduled_savings` is still active on the customer's balance and retrieve its frequency.
+
+<Tip>
+  Blnk sends a webhook when a scheduled transaction gets applied.
+</Tip>
+
+```javascript [expandable]
+import express from 'express';
+const app = express();
+app.use(express.json());
+app.post('/webhooks/transactions', async (req, res) => {
+  const { event, data } = req.body;
+  
+  if (event === 'transaction.applied') {
+    const transaction = data;
+    
+    if (
+      transaction.meta_data?.transaction_type === 'savings'
+    ) {
+      console.log('Scheduled savings completed:', transaction.transaction_id);
+      
+      const blnk = await getBlnkInstance();
+      const { LedgerBalances, Transactions } = blnk;
+      
+      const savingsBalanceId = transaction.destination;
+      const savingsBalance = await LedgerBalances.retrieve(savingsBalanceId);
+      
+      if (
+        savingsBalance.meta_data?.schedule_savings === true
+      ) {
+        const frequency = savingsBalance.meta_data.savings_frequency || "monthly";
+        const amount = savingsBalance.meta_data.savings_amount;
+        
+        const nextScheduledDate = calculateNextScheduledDate(frequency);
+        
+        // 1. Update metadata with the next scheduled date
+        await LedgerBalances.updateMetadata(savingsBalanceId, {
+          "meta_data": {
+            "next_scheduled_savings": nextScheduledDate.toISOString()
+          }
+        });
+        
+        // 2. Create a new scheduled transaction
+        const uniqueReference = `sch-savings-${Date.now()}`;
+        const scheduledSavings = await Transactions.create({
+          amount: amount,
+          precision: 100,
+          reference: uniqueReference,
+          description: "Scheduled savings deposit",
+          currency: "USD",
+          source: "@WorldUSD",
+          destination: savingsBalanceId,
+          scheduled_for: nextScheduledDate.toISOString(),
+          meta_data: {
+            transaction_type: "savings"
+          }
+        });
+        
+        console.log(`Next scheduled deposit created for ${nextScheduledDate.toISOString()}:`, scheduledSavings.data.transaction_id);
+      } else {
+        console.log(`Scheduled savings is no longer active for balance ${savingsBalanceId}`);
+      }
+    }
+  }
+  
+  res.status(200).send('Webhook received');
+});
+
+function calculateNextScheduledDate(frequency) {
+  const now = new Date();
+  const nextDate = new Date(now);
+  
+  switch (frequency) {
+    case 'daily':
+      nextDate.setDate(now.getDate() + 1);
+      break;
+    case 'weekly':
+      nextDate.setDate(now.getDate() + 7);
+      break;
+    case 'biweekly':
+      nextDate.setDate(now.getDate() + 14);
+      break;
+    case 'monthly':
+      nextDate.setMonth(now.getMonth() + 1);
+      break;
+    default:
+      nextDate.setMonth(now.getMonth() + 1);
+  }
+  
+  return nextDate;
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Webhook server listening on port ${PORT}`);
+});
+```
 
 ---
 
 ## Change savings frequency
 
+To change the savings frequency of a balance, use the [Update Metadata](/metadata/update-metadata) endpoint:
+
+<CodeGroup>
+```javascript TypeScript
+async function updateSavingsFrequency(balanceId, newFrequency) {
+  const blnk = await getBlnkInstance();
+  const { LedgerBalances } = blnk;
+  
+  try {
+    const response = await LedgerBalances.updateMetadata(balanceId, {
+      "meta_data": {
+        "savings_frequency": newFrequency
+      }
+    });
+    
+    console.log(`Successfully updated savings frequency to ${newFrequency} for balance ${balanceId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to update savings frequency for balance ${balanceId}:`, error);
+    throw error;
+  }
+}
+```
+```bash cURL
+curl -X POST 'http://localhost:5001/balances/<balance-id>/metadata' \
+--header 'Content-Type: application/json' \
+--header "Authorization: Bearer YOUR_API_KEY" \
+-d '{
+  "meta_data": {
+    "savings_frequency": "daily"
+  }
+}'
+```
+</CodeGroup>
+
 ---
 
 ## Conclusion
+
+In this tutorial, we’ve built a scheduled savings workflow for a wallet app using Blnk. Here’s what we covered:
+
+* Setting up savings ledgers and customer savings accounts
+* Adding scheduled deposits
+* Automatically rescheduling deposits after they’re completed
+* Handling deposit frequencies and customer preferences
+* Using webhooks to detect completed transactions and schedule new deposits.
+
+With these features, your app offers customers an easy, automated way to save regularly without extra effort. The webhook-based architecture ensures that your system remains resilient and responsive to transaction events.
 
 ---
 
