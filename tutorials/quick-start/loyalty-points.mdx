@@ -69,20 +69,20 @@ For our loyalty points system, we have two workflows — awarding points and red
         customerPoints([Customer Points Wallet])
 
         subgraph cash [Customer Purchase]
-            customerWallet -- customer purchase<br/>(discounted) --> revenue
+            customerWallet -- pays with \n discount --> revenue
         end
         subgraph points [Redeem Points]
             customerPoints -- pay with points --> pointsRevenue
         end
 
-        cash -- completed purchase --> points
+        points -- purchase amount\ndiscounted --> cash
 
     style cash fill:#000
     style points fill:#000
     ```
 
 <Tip>
-  @PointsPool records all issued points using the `debit_balance` parameter and tracks all redeemed points using the `credit_balance` parameter.
+  `@PointsPool` records all issued points using the `debit_balance` parameter and tracks all redeemed points using the `credit_balance` parameter.
 </Tip>
 
 ---
@@ -243,7 +243,7 @@ curl -X POST http://localhost:5001/balances \
 
 ---
 
-## Awarding points
+## Awarding points after a purchase
 
 When a customer makes a purchase, we need to:
 
@@ -349,15 +349,29 @@ curl -X POST http://localhost:5001/transactions \
 
 ---
 
-## Redeeming points
+## Redeeming points during a purchase
 
-To redeem points for a customer during a purchase:
+When you make a purchase, you can use your loyalty points to get a discount. In our example, 10 points = 1 USD.
 
-<CodeGroup>
+For example, a customer has 500 points and wants to buy something that costs \$100:
+
+1. They choose to use 200 points from their `Points Wallet`.
+2. Those 200 points convert to \$20 (at the 10 points = \$1 rate)
+3. Their final cost to pay from their `Main Wallet` would be \$80 instead of \$100.
+
+Behind the scenes, here's what we'll do:
+
+1. Take points from the `Customer Points Wallet` to `@PointsPool`.
+2. Convert them to a dollar value discount, and calculates the final cost.
+3. Charge the `Customer Main Wallet` the final discounted cost.
+
 ```javascript TypeScript
-async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem, discountAmount) {
+async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
+
+  // Calculate points conversion to dollar: 10 points = 1 dollar
+  const convertedAmount = pointsToRedeem / 10;
   
   // Generate a unique reference for this redemption
   const redemptionReference = `redemption-${Date.now()}`;
@@ -369,16 +383,16 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
     reference: redemptionReference,
     currency: "POINTS",
     source: pointsWalletId,
-    destination: "@RevenuePTS",
+    destination: "@PointsPool",
     description: "Points redemption for discount",
     meta_data: {
       transaction_type: "redemption",
-      discount_amount: discountAmount
+      convert_to_usd: convertedAmount
     }
   });
   
   // Step 2: Process the discounted purchase
-  const discountedAmount = purchaseAmount - discountAmount;
+  const discountedAmount = purchaseAmount - convertedAmount;
   
   const discountedPurchase = await Transactions.create({
     amount: discountedAmount,
@@ -391,7 +405,6 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
     meta_data: {
       redemption_reference: redemptionReference,
       original_amount: purchaseAmount,
-      discount_amount: discountAmount,
       points_redeemed: pointsToRedeem
     }
   });
@@ -405,46 +418,6 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   };
 }
 ```
-```bash cURL
-# Redeem points
-curl -X POST http://localhost:5001/transactions \
---header 'Content-Type: application/json' \
---header 'Authorization: Bearer YOUR_API_KEY' \
---data '{
-    "amount": 50,
-    "precision": 1,
-    "reference": "redemption-123456789",
-    "currency": "POINTS",
-    "source": "points_wallet_id",
-    "destination": "@RevenuePTS",
-    "description": "Points redemption for discount",
-    "meta_data": {
-        "transaction_type": "redemption",
-        "discount_amount": 5
-    }
-}'
-
-# Process discounted purchase
-curl -X POST http://localhost:5001/transactions \
---header 'Content-Type: application/json' \
---header 'Authorization: Bearer YOUR_API_KEY' \
---data '{
-    "amount": 95,
-    "precision": 100,
-    "reference": "purchase-redemption-123456789",
-    "currency": "USD",
-    "source": "main_wallet_id",
-    "destination": "@RevenueUSD",
-    "description": "Discounted purchase with points",
-    "meta_data": {
-        "redemption_reference": "redemption-123456789",
-        "original_amount": 100,
-        "discount_amount": 5,
-        "points_redeemed": 50
-    }
-}'
-```
-</CodeGroup>
 
 ---
 
