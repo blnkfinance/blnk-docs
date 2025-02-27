@@ -1,0 +1,182 @@
+---
+title: "PII Tokenisation in Blnk"
+sidebarTitle: "PII tokenization"
+description: "Learn how to secure sensitive customer data using PII tokenization."
+icon: "link"
+"og:title": "PII Tokenisation in Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to secure sensitive customer data using PII tokenization."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+PII (Personally Identifiable Information) tokenization allows you to replace sensitive customer data with non-sensitive tokens while maintaining the ability to use the data for business operations. 
+
+By tokenizing PII within your identity records, you can enhance security, reduce compliance scope, and still maintain full functionality within your applications. In this guide, you'll learn how to tokenize and detokenize identity data, and how to manage tokenized fields.
+
+---
+
+## What is PII tokenization?
+
+PII tokenization is a security technique that substitutes sensitive personal data with non-sensitive equivalent tokens. Unlike encryption, which uses a mathematical process to transform data that can be reversed with a key, tokenization replaces sensitive data with random values that have no mathematical relationship to the original data.
+
+Blnk Ledger supports two types of tokenization:
+
+1. **Standard Tokenization:&& Replaces the original value with a completely random token.
+2. **Format-Preserving Tokenization:** Creates a token that maintains the format and structure of the original data.
+
+---
+
+## Tokenizable fields
+
+The following identity fields can be tokenized in Blnk Ledger:
+
+* `first_name`
+* `last_name`
+* `other_names`
+* `email_address`
+* `phone_number`
+* `street`
+* `post_code`
+
+---
+
+## Tokenize a specific field
+
+To tokenize a specific field, use the [Tokenize Field](/reference/tokenize-field) endpoint:
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}/tokenize/{field}
+```
+
+```json Response
+{
+  "message": "Field tokenized successfully"
+}
+```
+
+---
+
+## Tokenize multiple fields
+
+To tokenize multiple fields in an identity at once, use the [Tokenize Identity](/reference/tokenize-identity) endpoint:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}/tokenize
+```
+```json Request
+{
+  "fields": ["first_name", "last_name", "email_address", "phone_number"]
+}
+```
+```json Response
+{
+  "message": "Fields tokenized successfully"
+}
+```
+
+---
+
+## View tokenized fields
+
+To check which fields are currently tokenized for an identity, use the [Get Tokenized Fields](/reference/get-tokenized-fields) endpoint:
+
+```
+GET https://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}/tokenized-fields
+```
+```json Response
+{
+  "tokenized_fields": ["first_name", "last_name", "email_address", "phone_number"]
+}
+```
+
+---
+
+## Detokenize a specific field
+
+To retrieve the original value of a tokenized field, use the [Detokenize Field](/reference/detokenize-field) endpoint:
+
+```
+GET https://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}/detokenize/{field}
+```
+
+```json Response
+{
+  "field": "email_address",
+  "value": "alice.smith@example.com"
+}
+```
+
+---
+
+## Detokenize multiple fields
+
+To retrieve the original values of multiple tokenized fields, use the [Detokenize Identity](/reference/detokenize-identity) endpoint:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}/detokenize
+```
+```json Request
+{
+  "fields": ["first_name", "last_name", "email_address", "phone_number"]
+}
+```
+```json Response
+{
+  "fields" : {
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "email_address": "alice.smith@example.com",
+    "phone_number": "+1234567890"
+  }
+}
+```
+
+---
+
+## Format-preserving tokenization example
+When using format-preserving tokenization, the tokens maintain the same structure as the original data:
+
+Original Email: `alice.smith@example.com`
+
+Tokenized Email: `FPT:utlgv.jtwka@ifvnpgq.dfe:8jygO668erXz6F+2sQbaGh3StrdkiI7++8nthzFzk7lVtPtZqNgscpsUDWav9jYv4J8x`
+
+The tokenized value preserves the email format while securing the actual content. This allows systems that rely on email formatting to continue functioning properly with tokenized data.
+
+---
+
+## Why use PII tokenization?
+
+1. **Enhanced Security:**
+
+    **Reduced risk exposure**: Sensitive data is removed from your systems and replaced with tokens.
+    **Breach protection**: Even if tokens are compromised, they cannot be reversed to obtain the original data without access to the tokenization system.
+
+2. **Simplified Compliance:**
+
+    **Reduced PCI DSS scope**: By tokenizing payment information, you can reduce the scope of compliance requirements.
+    **GDPR and data privacy**: Helps meet data minimization requirements by limiting where actual PII is stored.
+
+3. **Data Usability:**
+
+    **Maintain functionality**: Systems can continue to process tokenized data without modification.
+    **Format preservation**: Tokens can maintain the format of the original data, ensuring compatibility with existing systems.
+
+4. **Audit and Access Control:**
+
+    **Granular permissions**: Control which users and systems can detokenize specific fields.
+    **Comprehensive audit trails**: All tokenization and detokenization events are logged for security monitoring.
+
+---
+
+## Best practices
+
+1. **Only detokenize when necessary:** Keep data in tokenized form whenever possible
+2. **Implement proper access controls:** Restrict detokenization capabilities to authorized users only
+3. **Use format-preserving tokens:** When systems require specific data formats, use format-preserving tokenization
+4. **Regular security reviews:** Periodically review tokenization practices and access patterns
+
+---
+
+<NeedHelp />
