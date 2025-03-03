@@ -1,0 +1,255 @@
+---
+title: "How to Migrate Data to your Blnk Ledger"
+sidebarTitle: "Data migration"
+description: "Learn how to migrate financial data from external systems to your Blnk Ledger."
+icon: "file-import"
+"og:title": "Data Migration • Blnk Developer Documentation"
+"og:description": "Learn how to migrate financial data from external systems to your Blnk Ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.9.0 and later.</Info>
+
+## Overview
+
+This guide explains how to efficiently migrate existing financial data into your Blnk Ledger using the backdating and bulk transaction API features. 
+
+Designed for developers and financial administrators, it ensures accurate historical records and a smooth migration process, whether you’re switching systems or importing historical data.
+
+---
+
+## Key features for migration
+
+### Effective date (backdating)
+
+The `effective_date` feature allows you to record transactions with their original financial date, rather than the current system date. This ensures accurate financial timelines during migration.
+
+* `effective_date`: The actual date the transaction happened financially.
+* `created_at`: The system timestamp when the transaction is recorded (set automatically).
+
+<Tip>
+  **Example:** A payment from January 15, 2024, imported on March 3rd would have `effective_date`: "2024-01-15" and `created_at`: "2025-03-03".
+</Tip>
+
+Learn more: [Backdating Transactions →](/transactions/backdate-transactions).
+
+### Bulk transactions
+
+The Bulk Transaction API allows you to process multiple transactions in one request, with options like atomic, independent, asynchronous, and inflight processing to fit your migration needs:
+
+* **Atomic processing:** 
+    All transactions succeed or fail together. If one fails (e.g., due to invalid data), none is processed, ensuring consistency. Ideal for critical migrations where partial success risks discrepancies.
+
+* **Independent processing:**
+    Each transaction is processed separately. If one fails (e.g., due to formatting errors), others can still succeed. Useful when most data is valid but some issues are expected.
+
+* **Asynchronous processing:**
+    Process large transaction batches in the background to avoid slowdowns, enabling uninterrupted work during migrations of thousands of transactions.
+
+* **Inflight transactions:**
+    Generate transactions for later commit or voiding, allowing review and adjustments—like verifying totals or fixing errors—ideal for testing complex migrations before finalizing.
+
+Learn more: [Bulk Transactions →](/transactions/bulk-transactions).
+
+---
+
+## Migration strategy
+
+### Step 1: Prepare your historical data
+
+1. Sort transactions chronologically by their original `effective_date` values to maintain a clear timeline.
+2. Format your data to match the [Blnk transaction structure](/transactions/overview) for compatibility.
+3. Validate your data (e.g., check for duplicates using unique references).
+4. Divide transactions into manageable batches (recommended: 1,000–5,000 per batch) to simplify processing.
+
+### Step 2: Choose your migration approach
+
+#### Option A: Full historical migration
+
+Import all historical transactions with their original dates to maintain a complete financial history, preserving every detail for accurate reporting.
+
+#### Option B: Balance-forward migration
+
+Import only the current balance as a starting point using a balance adjustment transaction, then add recent transactions with backdating.
+
+>**Important to note:** 
+>
+>In this approach, set the initial balance adjustment’s `effective_date` before all subsequent transactions.
+>
+>This sets the correct starting point without being affected by backdated transactions that follow, while backdated transactions will impact the running balance, ensuring the initial balance adjustment is accurate keeps the overall balance correct.
+
+#### Option C: Hybrid approach
+
+Import summary transactions for older periods and detailed transactions for more recent periods to balance accuracy with efficiency.
+
+### Step 3: Execute the migration
+
+For each batch of transactions:
+
+1. Use the Bulk Transactions API with backdated effective dates to process multiple transactions efficiently.
+2. Process asynchronously for large batches to avoid system delays and handle high volumes smoothly.
+3. Monitor webhook notifications for completion status to stay informed about progress and issues.
+4. Validate balances after each batch to ensure accuracy and catch errors early.
+
+---
+
+## Implementation guide
+
+### Creating bulk backdated transactions
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
+```
+
+<CodeGroup>
+```json Request body {14,24}
+{
+  "atomic": true,
+  "inflight": false,
+  "run_async": true,
+  "transactions": [
+    {
+      "amount": 358.90,
+      "precision": 100,
+      "reference": "migration_2024_001",
+      "description": "Invoice payment - Client A",
+      "currency": "NGN",
+      "source": "@source_account",
+      "destination": "@destination_account",
+      "effective_date": "2024-09-15T10:30:00Z"
+    },
+    {
+      "amount": 1250.00,
+      "precision": 100,
+      "reference": "migration_2024_002",
+      "description": "Supplier payment",
+      "currency": "NGN",
+      "source": "@source_account",
+      "destination": "@vendor_account",
+      "effective_date": "2024-09-18T14:15:00Z"
+    }
+  ]
+}
+```
+```json Response (async)
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "processing",
+  "message": "Bulk transaction processing started"
+}
+```
+</CodeGroup>
+
+<Tip>You can add as many transactions as you want (recommended: 1000 - 5000) in the `transactions` array.</Tip>
+
+### Webhook notification upon successful completion
+
+```json
+{
+  "event": "bulk_transaction.applied",
+  "data": {
+    "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+    "status": "applied",
+    "transaction_count": 1000,
+    "timestamp": "2025-03-02T15:30:45+01:00"
+  }
+}
+```
+
+Learn more: [Bulk Transactions Webhooks →](/transactions/bulk-transactions#webhook-notifications)
+
+---
+
+## Best practices
+
+1. **Phased approach:** 
+
+    Migrate data in chronological phases, starting with the oldest transactions. This ensures proper balance calculations and helps isolate any issues.
+
+2. **Balance validation:**
+
+    After each migration phase, verify account balances against your source system to ensure accuracy. Use the [Historical Balance API](/balances/historical-balances) to check balances at specific points in time, like this:
+
+    ```
+    GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-12-31T23:59:59Z
+    ```
+
+3. **Transaction references:**
+
+    Establish a consistent reference naming convention for migrated transactions, such as:
+
+    * `migration_{year}_{original_reference}`
+    * `migrate_{source_system}_{original_id}`
+
+4. **Error handling:**
+
+    For larger migrations, set `atomic: false` to use independent processing. This prevents one transaction’s failure from stopping the entire batch, keeping the migration running smoothly.
+
+5. **Monitoring progress:** 
+
+    For large migrations:
+
+    * Track progress by monitoring webhook notifications to stay updated on status.
+    * Keep a log of successfully migrated batches for reference.
+    * Maintain a record of any failed transactions for retry, ensuring you can address issues quickly.
+
+6. **Transaction batching strategy:**
+
+    Group transactions logically:
+
+    * By date range (e.g., monthly batches)
+    * By account
+    * By transaction type (e.g., payments, transfers, fees)
+
+---
+
+## Common migration scenarios
+
+### Scenario 1
+
+**When:** A complete financial history is required for regulatory compliance or auditing.
+
+**Approach:**
+
+* Import all historical transactions with their original effective dates to maintain a complete record.
+* Process transactions in chronological order to ensure accurate financial timelines.
+* Use asynchronous (async) processing for large volumes to handle the data efficiently without system delays.
+
+### Scenario 2
+
+**When:** Migrating at the end of a financial period and needing to ensure correct month-end reporting.
+
+**Approach:**
+
+* Prioritize transactions from the current reporting period to focus on recent, critical data.
+* Use the `effective_date` to ensure correct attribution to the financial period, maintaining accurate reporting.
+* Validate month-end balances after migration to confirm accuracy and resolve any discrepancies.
+
+### Scenario 3
+
+**When:** Switching systems during an active financial year.
+
+**Approach:**
+
+* Migrate year-to-date (YTD) transactions with their original effective dates to capture ongoing activity.
+* Use inflight transactions for any pending or in-progress transactions, allowing you to review or adjust them before finalizing.
+* Verify running balances before finalizing the migration to ensure all data is accurate and consistent.
+
+---
+
+## Limitations & considerations
+
+1. **Future dates:** The `effective_date` must not exceed the current date. For future entries, use [scheduled transactions](/transactions/scheduling) instead. 
+
+2. **Performance:** Large migration batches should use asynchronous processing to avoid timeouts and ensure smooth processing.
+
+3. **Order dependency:** When using `atomic: true`, transactions are processed in the order provided, so ensure the sequence is correct for dependencies.
+
+4. **Account preparation:** Ensure all required [balances](/balances/introduction) (accounts or wallets) exist in Blnk before starting the migration to avoid errors.
+
+5. **Currency consistency:** Verify that the [currencies](/balances/asset-classes) used in each transactions are consistent to prevent issues during processing.
+
+---
+
+<NeedHelp />
