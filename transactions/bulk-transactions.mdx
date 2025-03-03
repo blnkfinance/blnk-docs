@@ -1,0 +1,320 @@
+---
+title: "Bulk Transactions"
+sidebarTitle: "Bulk transactions"
+description: "Learn how to handle bulk transactions in Blnk"
+icon: "layer-group"
+"og:title": "Bulk Transactions • Blnk Developer Documentation"
+"og:description": "Learn how to handle bulk transactions in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+The Bulk Transaction API enables you to process multiple transactions within a single request. It offers two processing options: **atomic processing**, where all transactions either succeed or fail as a unit, and **independent processing**, where each transaction is handled separately. 
+
+Additionally, the API supports asynchronous processing to efficiently manage large batches of transactions.
+
+---
+
+## Creating bulk transactions
+
+To process multiple transactions in a single request, call the [Bulk Transactions](/reference/bulk-transactions) endpoint.
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
+```
+
+### Request body
+
+```json 
+{
+  "atomic": true | false,
+  "inflight": true | false,
+  "run_async": true | false,
+  "transactions": [
+    {
+      "amount": 358.90,
+      "precision": 100,
+      "reference": "unique_reference_1",
+      "description": "Transaction description",
+      "currency": "NGN",
+      "source": "@source_account",
+      "allow_overdraft": true,
+      "destination": "@destination_account"
+    },
+    // Additional transactions...
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+| :-- | :-- | :-- | :-- |
+| `atomic` | Boolean | Yes | When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. |
+| `inflight` | Boolean | Yes | When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are processed immediately. |
+| `run_async` | Boolean | No | When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response. |
+| `transactions` | Array | Yes | Array of transaction objects. |
+
+### Synchronous response
+
+When `run_async` is false:
+
+```json
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied | inflight",
+  "transaction_count": 4
+}
+```
+
+### Asynchronous response
+
+When `run_async` is true:
+
+```json
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "processing",
+  "message": "Bulk transaction processing started"
+}
+```
+
+### Commit or void bulk inflight
+
+To commit or void all transactions in a batch:
+
+```
+PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{batch_id}
+```
+```json Request body
+{
+  "status": "commit | void"
+}
+```
+
+---
+
+## Webhook notifications
+
+When using `run_async: true`, the API sends webhook notifications upon completion or failure.
+
+### Webhook structure
+
+The webhooks follow this structure:
+
+```json 
+{
+  "event": "bulk_transaction.applied | bulk_transaction.inflight | bulk_transaction.failed",
+  "data": {
+    "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+    "status": "applied|inflight|failed",
+    "transaction_count": 4,       // Only included for success cases
+    "error": "error message",     // Only included for failure cases
+    "timestamp": "2025-03-02T15:30:45+01:00"
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Successful webhook">
+  ```json
+  {
+    "event": "bulk_transaction.applied",
+    "data": {
+      "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+      "status": "applied",
+      "transaction_count": 4,
+      "timestamp": "2025-03-02T15:30:45+01:00"
+    }
+  }
+  ```
+  </Tab>
+  <Tab title="Failure webhook">
+  ```json
+  {
+    "event": "bulk_transaction.failed",
+    "data": {
+      "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
+      "status": "failed",
+      "error": "failed to queue transaction 2 (Reference: ref_967yg16hhh4q0t0dnsczvud9, Source: bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66, Destination: bln_68be0aed-383c-4d27-87db-fb0650093686, Amount: 313333369.18): failed to apply transaction to balances: insufficient funds in source balance. All transactions in this batch have been refunded.",
+      "timestamp": "2025-03-02T19:30:22.43597+01:00"
+    }
+  }
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## Usage examples
+
+### Synchronous processing
+
+Process multiple transactions atomically (all or nothing):
+
+```json Request
+{
+  "atomic": true,
+  "inflight": false,
+  "transactions": [
+    {
+      "amount": 100.00,
+      "precision": 100,
+      "reference": "tx_001",
+      "description": "First transaction",
+      "currency": "NGN",
+      "source": "@account1",
+      "destination": "@account2"
+    },
+    {
+      "amount": 50.00,
+      "precision": 100,
+      "reference": "tx_002",
+      "description": "Second transaction",
+      "currency": "NGN",
+      "source": "@account2",
+      "destination": "@account3"
+    }
+  ]
+}
+```
+
+### Asynchronous processing
+
+Process a large batch of transactions in the background:
+
+```json
+{
+  "atomic": true,
+  "inflight": false,
+  "run_async": true,
+  "transactions": [
+    {
+      "amount": 100.00,
+      "precision": 100,
+      "reference": "tx_001",
+      "description": "First transaction",
+      "currency": "NGN",
+      "source": "@account1",
+      "destination": "@account2"
+    },
+    // Many more transactions...
+    {
+      "amount": 75.00,
+      "precision": 100,
+      "reference": "tx_999",
+      "description": "Last transaction",
+      "currency": "NGN",
+      "source": "@account5",
+      "destination": "@account6"
+    }
+  ]
+}
+```
+
+### Inflight transactions
+
+<Steps>
+  <Step title="Create inflight transactions" titleSize="h4">
+  ```json
+  {
+    "atomic": true,
+    "inflight": true,
+    "transactions": [
+      {
+        "amount": 100.00,
+        "precision": 100,
+        "reference": "tx_003",
+        "description": "First transaction",
+        "currency": "NGN",
+        "source": "@account1",
+        "destination": "@account2"
+      },
+      {
+        "amount": 50.00,
+        "precision": 100,
+        "reference": "tx_004",
+        "description": "Second transaction",
+        "currency": "NGN",
+        "source": "@account2",
+        "destination": "@account3"
+      }
+    ]
+  }
+  ```
+  </Step>
+  <Step title="Later, commit the batch" titleSize="h4">
+  ```
+  PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk_c62f200b-905f-4983-a349-cadd279234aa
+  ```
+  ```json
+  {
+    "status": "commit"
+  }
+  ```
+  </Step>
+</Steps>
+
+---
+
+## Error handling
+
+### Failed atomic transactions (synchronous)
+
+When using atomic: true with `inflight: false` and `run_async: false`, if any transaction in the batch fails, all previously processed transactions will be automatically refunded, and you'll receive an error response like this:
+
+```json
+{
+  "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
+  "error": "failed to queue transaction 1 (Reference: ref001, Source: @account1, Destination: @account2, Amount: 50.00): transaction validation failed: reference ref001 has already been used. All transactions in this batch have been refunded."
+}
+```
+
+### Failed atomic transactions (asynchronous)
+
+When using `atomic: true` with `run_async: true`, if any transaction fails, all transactions will be rolled back, and you'll receive a webhook notification with an error message containing the rollback status:
+
+```json
+{
+  "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
+  "status": "failed",
+  "error": "failed to queue transaction 2 (Reference: ref002, Source: @account1, Destination: @account2, Amount: 75.50): transaction validation failed: insufficient balance. All transactions in this batch have been refunded.",
+  "timestamp": "2025-03-02T15:30:45Z"
+}
+```
+
+### Failed atomic inflight transaction
+
+When using `atomic: true` with `inflight: true`, if any transaction in the batch fails during the inflight creation phase, all previously created inflight transactions will be automatically voided, and you'll receive an error response (or webhook for async) like this:
+
+```json
+{
+  "batch_id": "bulk_0813d39e-7ead-406b-83de-51eb1975357c",
+  "error": "failed to queue transaction 1 (Reference: ref003, Source: @account1, Destination: @account2, Amount: 25.00): transaction validation failed: reference ref003 has already been used. All transactions in this batch have been voided."
+}
+```
+
+### Failed non-atomic transactions
+
+When using `atomic: false`, if any transaction in the batch fails, only that specific transaction fails while all other valid transactions are still processed. You'll receive an error response (or webhook for async) like this:
+
+```json
+{
+  "batch_id": "bulk_2adde6a2-87b9-4ef1-ab10-8c5f1a82083c",
+  "error": "failed to queue transaction 1 (Reference: ref004, Source: @account1, Destination: @account2, Amount: 125.00): transaction validation failed: reference ref004 has already been used. Previous transactions were not rolled back."
+}
+```
+
+---
+
+## Important notes
+
+1. When `atomic` is `true`, transactions are processed in the order provided in the request.
+2. Each transaction's `reference` must be unique.
+3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
+4. For large transaction batches (1000+ transactions), using `run_async: true` is recommended to avoid timeout issues.
+5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
+
+---
+
+<NeedHelp />
