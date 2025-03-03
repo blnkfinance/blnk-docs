@@ -48,7 +48,7 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
     {
       "amount": 358.90,
       "precision": 100,
-      "reference": "unique_reference_1",
+      "reference": "unique_reference_2",
       "description": "Transaction description",
       "currency": "NGN",
       "source": "@source_account",
@@ -280,7 +280,7 @@ Process a large batch of transactions in the background:
 
 ### Failed atomic transactions (synchronous)
 
-When using atomic: true with `inflight: false` and `run_async: false`, if any transaction in the batch fails, all previously processed transactions will be automatically refunded, and you'll receive an error response like this:
+When using `atomic: true` with `inflight: false` and `run_async: false`, if any transaction in the batch fails, all previously processed transactions will be automatically refunded, and you'll receive an error response like this:
 
 ```json
 {
@@ -315,7 +315,9 @@ When using `atomic: true` with `inflight: true`, if any transaction in the batch
 
 ### Failed non-atomic transactions
 
-When using `atomic: false`, if any transaction in the batch fails, only that specific transaction fails while all other valid transactions are still processed. You'll receive an error response (or webhook for async) like this:
+When using `atomic: false`, if a transaction in the batch fails, only that transaction and the subsequent transactions in the sequence will fail; all previous transactions that succeeded before the failed one will remain applied in your ledger. 
+
+You'll receive an error response (or webhook for async) like this:
 
 ```json
 {
