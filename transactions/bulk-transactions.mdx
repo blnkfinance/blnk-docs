@@ -31,9 +31,9 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
 
 ```json 
 {
-  "atomic": true | false,
-  "inflight": true | false,
-  "run_async": true | false,
+  "atomic": true,
+  "inflight": true,
+  "run_async": true,
   "transactions": [
     {
       "amount": 358.90,
@@ -45,7 +45,16 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
       "allow_overdraft": true,
       "destination": "@destination_account"
     },
-    // Additional transactions...
+    {
+      "amount": 358.90,
+      "precision": 100,
+      "reference": "unique_reference_1",
+      "description": "Transaction description",
+      "currency": "NGN",
+      "source": "@source_account",
+      "allow_overdraft": true,
+      "destination": "@destination_account"
+    }
   ]
 }
 ```
@@ -109,13 +118,22 @@ The webhooks follow this structure:
   "event": "bulk_transaction.applied | bulk_transaction.inflight | bulk_transaction.failed",
   "data": {
     "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-    "status": "applied|inflight|failed",
-    "transaction_count": 4,       // Only included for success cases
-    "error": "error message",     // Only included for failure cases
+    "status": "applied",
+    "transaction_count": 4,       
+    "error": "error message",     
     "timestamp": "2025-03-02T15:30:45+01:00"
   }
 }
 ```
+
+| **Field** | **Type** | **Description** |
+| :-- | :-- | :-- |
+| `event` | String | Name of event. Can be `bulk_transaction.applied`, `bulk_transaction.inflight`, or `bulk_transaction.failed`. |
+| `batch_id` | String | Specifies the id of the batch transaction. |
+| `status` | String | Status of the batch transaction. Can be `applied`, `inflight`, or `failed`. |
+| `transaction_count` | String | Number of transactions in the batch. Only included for successful cases. |
+| `error` | String | Error message. Only included for failure cases. |
+| `timestamp` | String | Specifies the date & time when the batch transaction was completed. |
 
 <Tabs>
   <Tab title="Successful webhook">
@@ -200,7 +218,6 @@ Process a large batch of transactions in the background:
       "source": "@account1",
       "destination": "@account2"
     },
-    // Many more transactions...
     {
       "amount": 75.00,
       "precision": 100,
