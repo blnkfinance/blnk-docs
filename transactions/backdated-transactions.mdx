@@ -1,0 +1,155 @@
+---
+title: "Backdated Transactions"
+sidebarTitle: "Backdated transactions"
+description: "Learn how to log past transactions in your ledger"
+icon: "backward"
+"og:title": "Backdated Transactions • Blnk Developer Documentation"
+"og:description": "Retrieve accurate historical balance information"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.9.0 and later.</Info>
+
+## Overview
+
+The `effective_date` feature is a critical functionality in financial systems that allows recording transactions with a financial date different from their system entry date. 
+
+This capability ensures seamless migration, accurate financial reporting, reconciliation, and historical balance calculations.
+
+### Effective date vs created date
+
+When `effective_date` isn't specified, the system automatically uses the created date as the effective date.
+
+* `created_at`: Timestamp of when the transaction was recorded in the system.
+* `effective_date`: The actual financial date when the transaction occurred
+
+### Create transaction with effective date
+
+Call the [Record Transaction](/reference/create-transaction) endpoint:
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/transactions
+```
+
+<Tabs>
+  <Tab title="Request body">
+  ```json {9}
+  {
+    "amount": 358.90,
+    "precision": 100,
+    "reference": "unique_reference_1",
+    "description": "Backdated transaction",
+    "currency": "NGN",
+    "source": "@source_account",
+    "destination": "@destination_account",
+    "effective_date": "2025-02-15T10:30:00Z"
+  }
+  ```
+
+  <Tip>
+    Use the `effective_date` field (optional, string) to specify the date a transaction financially occurred, formatted in ISO 8601 (e.g., "2023-01-15T10:30:00Z"). 
+    
+    If left blank, the system will automatically use the current timestamp.
+  </Tip>
+  </Tab>
+  <Tab title="Response example">
+  ```json {8}
+  {
+    "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
+    "status": "applied",
+    "amount": 358.90,
+    "reference": "unique_reference_1",
+    "source": "bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66",
+    "destination": "bln_68be0aed-383c-4d27-87db-fb0650093686",
+    "effective_date": "2025-02-15T10:30:00Z",
+    "created_at": "2025-03-02T15:30:45Z"
+  }
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## Balance calculations
+
+In this section, you'll learn how this affects how balances calculated.
+
+### Current Running Balance
+
+* Backdated transactions immediately update the current running balance.
+* The running balance always reflects the most up-to-date financial position based on all known transactions.
+
+### Example
+
+* Current balance before backdated transaction: `$500`.
+* Record a `$200` transaction with an `effective_date` from last month.
+* Current balance after: `$700`.
+
+### Historical Balance Queries
+
+When querying a balance at a specific point in time, the system:
+
+1. Starts with the most recent snapshot before the requested time
+2. Applies all transactions with an `effective_date` on or before the requested time
+3. Ignores transactions with an `effective_date` after the requested time
+
+```json Response example
+{
+  "balance_id": "bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66",
+  "balance": "1245.67",
+  "credit_balance": "2000.00",
+  "debit_balance": "754.33",
+  "currency": "NGN",
+  "timestamp": "2025-03-01T13:19:26Z"
+}
+```
+
+In this example historical balance calculation includes:
+
+* All transactions with `effective_date` on or before March 1st, 2025.
+*  Transactions recorded after March 1st are included if their effective date is on or before that date.
+
+<Card title="Historical balances" iconType="duotone" icon="clock" href="/balances/historical-balances">
+  Learn how to use historical balances.
+</Card>
+
+---
+
+## Common use cases
+
+Here are some use cases for backdating transactions:
+
+1. **Late-arriving transactions:** Record transactions that occurred in the past but were discovered later, ensuring historical accuracy with backdated entries.
+2. **Month-end reconciliation:** Attribute transactions to the correct fiscal period by backdating them, maintaining accurate financial records for period-end reporting.
+3. **Financial reporting:** Generate precise reports for specific time periods by backdating transactions to reflect their true financial occurrence, improving data integrity.
+4. **Audit compliance:** Maintain historically accurate records for auditing purposes by backdating transactions, ensuring compliance with regulatory requirements.
+5. **Error correction:** Rectify mistakes or omissions in past records by backdating transactions to their original dates, preserving ledger accuracy. See also: [Adjusting Balances →](/balances/adjusting-balances).
+6. **Historical analysis:** Support retrospective financial analysis or trend tracking by backdating transactions, enabling accurate insights into past performance.
+
+---
+
+## Best practices & constraints
+
+### Important Considerations
+
+* Backdated transactions immediately impact the running balance.
+* The `effective_date`:
+    * Can be in the past.
+    * Must not be in the future. Use `scheduled_for` instead to schedule transactions in the future. Learn how: [Scheduling Transactions →](/transactions/scheduling).
+    * Defaults to the current system time if not specified.
+
+### Error Handling
+
+Invalid effective date error:
+
+```json
+{
+  "error": "Invalid effective_date: must not be in the future",
+  "status": 400
+}
+```
+
+---
+
+<NeedHelp />
