@@ -1,0 +1,492 @@
+---
+sidebarTitle: "Lending"
+title: "Building a Lending Management System"
+description: "Learn how to manage & track loans and repayments with the Blnk Ledger."
+icon: "landmark-dome"
+"og:title": "Building a Lending Management System with Blnk • Blnk Developer Documentation"
+"og:description": Learn how to manage & track loans and repayments with the Blnk Ledger."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+This tutorial provides a step-by-step guide to building a simple loan management system using Blnk Finance. You’ll learn how to: 
+
+1. Disburse loans to customers. 
+2. Calculate and apply interest.
+3. Process repayments.
+4. Monitor loan status effectively.
+
+For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript/introduction) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+
+---
+
+## Designing your map
+
+Before writing code, it's crucial to design a [money movement map](/ledgers/money-movement-map) that outlines how money moves in your system. This serves as the blueprint for your implementation.
+
+```mermaid
+flowchart TD
+  mainWallet([Customer Main Wallet])
+  loanWallet([Customer Loan Wallet])
+  interest([@InterestRevenue])
+
+  loanWallet -- Step 1: Loan is disbursed \n to customer --> mainWallet
+  loanWallet -- Step 2: Interest is charged \n to customer --> interest
+  mainWallet -- Step 3: Customer repays \n the loan + interest --> loanWallet
+```
+
+This map shows three key aspects our lending fund flow:
+
+* The `Customer Loan Wallet` tracks the amount owed by the customer. All loans disbursed to the customer are debited from their loan wallet. A zero balance indicates that all debt has been fully repaid.
+
+* The `@InterestRevenue` records all interest earned from loan customers.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+2. An API key for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
+3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+
+To prepare for the rest of this tutorial, read our [Building a Wallet with Blnk](/tutorials/quick-start/wallet-management) tutorial if you haven’t already.
+
+---
+
+## Create your ledgers
+
+First, we create 2 ledgers. 
+
+* `Customer Accounts` to organize all customers' main accounts.
+* `Loan Accounts` to organize all loan accounts.
+
+<CodeGroup>
+```javascript TypeScript
+const blnk = await getBlnk();
+
+async function createCustomerLedger() {
+  const { Ledgers } = blnk;
+  
+  const customerLedger = await Ledgers.create({
+    name: "Customer Accounts",
+    meta_data: {
+      description: "Contains all customer main balances"
+    }
+  });
+  
+  console.log("Customer Ledger created:", customerLedger.data);
+  return customerLedger.data.ledger_id;
+}
+
+async function createLoanLedger() {
+  const { Ledgers } = blnk;
+  
+  const loanLedger = await Ledgers.create({
+    name: "Loan Accounts",
+    meta_data: {
+      description: "Contains all customer loan balances"
+    }
+  });
+  
+  console.log("Loan Ledger created:", loanLedger.data);
+  return loanLedger.data.ledger_id;
+}
+```
+```bash cURL
+# Create main wallet ledger (Customer Accounts)
+curl -X POST http://localhost:5001/ledgers \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+  "name": "Customer Accounts", 
+  "meta_data": {
+    "description": "Contains all customer main balances"
+  }
+}'
+
+# Create loan wallet ledger (Loan Accounts)
+curl -X POST http://localhost:5001/ledgers \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+  "name": "Loan Accounts", 
+  "meta_data": {
+    "description": "Contains all customer loan balances"
+  }
+}'
+```
+</CodeGroup>
+
+---
+
+## Create customer balances
+
+First, we create the customer's balance:
+
+<CodeGroup>
+```javascript TypeScript
+async function createCustomerMainBalance(customerLedgerId, customerDetails) {
+  const blnk = await getBlnk();
+  const { LedgerBalances } = blnk;
+  
+  const mainBalance = await LedgerBalances.create({
+    ledger_id: customerLedgerId,
+    currency: "USD",
+    meta_data: {
+      customer_id: customerDetails.id,
+      customer_name: customerDetails.name,
+      account_type: "main",
+      account_status: "active"
+    }
+  });
+  
+  console.log("Customer Main Balance created:", mainBalance.data);
+  return mainBalance.data.balance_id;
+}
+```
+```bash cURL
+curl -X POST http://localhost:5001/balances \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "ledger_id": "ldg_CUSTOMER_LEDGER_ID",
+    "currency": "USD",
+    "meta_data": {
+        "customer_id": "12345",
+        "customer_name": "John Doe",
+        "account_type": "main",
+        "account_status": "active"
+    }
+}'
+```
+</CodeGroup>
+
+Next, we create the loan balance:
+
+<CodeGroup>
+```javascript TypeScript
+async function createLoanBalance(loanLedgerId, customerDetails, loanDetails) {
+  const blnk = await getBlnk();
+  const { LedgerBalances } = blnk;
+  
+  const loanBalance = await LedgerBalances.create({
+    ledger_id: loanLedgerId,
+    currency: "USD",
+    meta_data: {
+      customer_id: customerDetails.id,
+      customer_name: customerDetails.name
+    }
+  });
+  
+  console.log("Loan Balance created:", loanBalance.data);
+  return loanBalance.data.balance_id;
+}
+```
+```bash cURL
+curl -X POST http://localhost:5001/balances \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "ledger_id": "ldg_LOAN_LEDGER_ID",
+    "currency": "USD",
+    "meta_data": {
+        "customer_id": "12345",
+        "customer_name": "John Doe"
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Disbursing a loan
+
+When the loan is disbursed, money is deducted from the `Loan Balance` to the `Main Balance`.
+
+```txt Example scenario
+* Starting Scenario
+Alice Loan Balance: 0.00 USD
+Alice Main Balance: 0.00 USD
+
+* Loan Request Scenario:
+Alice borrows 500.00 USD
+
+* After Loan Disbursement:
+Alice Loan Balance: - 500.00 USD (debt owed)
+Alice Main Balance: + 500.00 USD (funds received by customer)
+```
+
+Initiate this transaction in your ledger:
+
+<CodeGroup>
+```javascript TypeScript
+async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
+  const blnk = await getBlnk();
+  const { Transactions, LedgerBalances } = blnk;
+  
+  // Generate a unique reference for this transaction
+  const reference = `LOAN-DISBURSE-${Date.now()}`;
+  
+  const disbursement = await Transactions.create({
+    amount: loanAmount,
+    precision: 100,
+    reference: reference,
+    currency: "USD",
+    source: loanBalanceId,
+    destination: customerBalanceId,
+    description: "Loan disbursement",
+    allow_overdraft: true, // This allows the loan balance to go negative
+    meta_data: {
+      transaction_type: "loan_disbursement",
+    }
+  });
+  
+  console.log("Loan disbursed:", disbursement.data);
+  
+  // Create loan status in metadata
+  await LedgerBalances.updateMetadata(loanBalanceId, {
+    metadata: {
+      loan_status: "active",
+      pri
+    }
+  });
+  
+  return disbursement.data.transaction_id;
+}
+```
+```bash cURL
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 500,
+    "precision": 100,
+    "reference": "LOAN-DISBURSE-1709741652384",
+    "currency": "USD",
+    "source": "bln_LOAN_BALANCE_ID",
+    "destination": "bln_CUSTOMER_BALANCE_ID",
+    "description": "Loan disbursement",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "loan_disbursement",
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Calculate and charge daily interest
+
+Next, we need to calculate daily interest based on the formula $P * R * T$, where:
+
+* P is the principal (loan amount or remaining balance)
+* R is the daily interest rate
+* T is time (1 day for daily interest)
+
+According to our map, interest is transferred from the `Loan Balance` to the `@InterestRevenue`.
+
+```txt Example scenario (cont'd)
+* After 1 day, with 1% daily interest
++5 USD added to @InterestRevenue
+-5 USD deducted from Loan Balance
+
+* Final Balances
+Alice Loan Balance: - 505.00 USD (debt owed, including interest)
+Alice Main Balance: 500.00 USD (funds received by customer)
+@InterestRevenue: + 5.00 USD (interest earned)
+```
+
+<CodeGroup>
+```javascript TypeScript
+async function calculateAndChargeInterest(loanBalanceId, interestRate) {
+  const blnk = await getBlnk();
+  const { Transactions, LedgerBalances } = blnk;
+  
+  // Get current loan balance
+  const loanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  
+  // Get the principal amount (convert negative balance to positive)
+  const principal = Math.abs(loanBalance.data.balance);
+  
+  // Calculate daily interest amount
+  const dailyRate = interestRate / 365; // Convert annual rate to daily
+  const interestAmount = principal * dailyRate;
+  
+  // Round to 2 decimal places and convert to cents
+  const roundedInterest = Math.round(interestAmount * 100) / 100;
+  
+  // Generate a unique reference
+  const reference = `INTEREST-${Date.now()}`;
+  
+  // Transfer interest from loan balance to interest revenue balance
+  const interestTransaction = await Transactions.create({
+    amount: roundedInterest,
+    precision: 100,
+    reference: reference,
+    currency: "USD",
+    source: loanBalanceId,
+    destination: "@InterestRevenue",
+    description: "Daily interest charge",
+    allow_overdraft: true, // Allow loan balance to go further negative
+    meta_data: {
+      transaction_type: "interest_charge",
+      interest_rate: interestRate,
+      principal_amount: principal / 100, // Convert back to dollars for readability
+    }
+  });
+  
+  console.log("Interest charged:", interestTransaction.data);
+  
+  return interestTransaction.data.transaction_id;
+}
+```
+```bash cURL
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 5,
+    "precision": 100,
+    "reference": "INTEREST-1709741780214",
+    "currency": "USD",
+    "source": "bln_LOAN_BALANCE_ID",
+    "destination": "@InterestRevenue",
+    "description": "Daily interest charge",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "interest_charge",
+        "interest_rate": 0.01,
+        "principal_amount": 500,
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Loan repayments
+
+When a customer makes a loan repayment, the money moves from their main balance to the loan balance.
+
+<CodeGroup>
+```javascript TypeScript
+async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentAmount) {
+  const blnk = await getBlnk();
+  const { Transactions, LedgerBalances } = blnk;
+  
+  // Generate a unique reference
+  const reference = `LOAN-REPAY-${Date.now()}`;
+  
+  // Transfer from customer's balance to loan balance
+  const repayment = await Transactions.create({
+    amount: repaymentAmount,
+    precision: 100,
+    reference: reference,
+    currency: "USD",
+    source: customerBalanceId,
+    destination: loanBalanceId,
+    description: "Loan repayment",
+    meta_data: {
+      transaction_type: "loan_repayment",
+      payment_method: "bank_transfer"
+    }
+  });
+  
+  console.log("Loan repayment processed:", repayment.data);
+  
+  // Check if loan is fully repaid
+  const updatedLoanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  
+  if (updatedLoanBalance.data.balance >= 0) {
+    // Loan is fully repaid, update status
+    await LedgerBalances.updateMetadata(loanBalanceId, {
+      loan_status: "fully_repaid",
+      repayment_completed_date: new Date().toISOString()
+    });
+    console.log("Loan fully repaid!");
+  }
+  
+  return repayment.data.transaction_id;
+}
+```
+```bash cURL
+curl -X POST http://localhost:5001/transactions \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--data '{
+    "amount": 200,
+    "precision": 100,
+    "reference": "LOAN-REPAY-1709741952867",
+    "currency": "USD",
+    "source": "bln_CUSTOMER_BALANCE_ID",
+    "destination": "bln_LOAN_BALANCE_ID",
+    "description": "Loan repayment",
+    "meta_data": {
+        "transaction_type": "loan_repayment",
+        "payment_method": "bank_transfer"
+    }
+}'
+```
+</CodeGroup>
+
+---
+
+## Check loan status
+
+We can check if a loan is fully repaid by verifying if the loan balance is zero or positive:
+
+<CodeGroup>
+```javascript TypeScript
+async function checkLoanStatus(loanBalanceId) {
+  const blnk = await getBlnk();
+  const { LedgerBalances } = blnk;
+  
+  const loanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  
+  const status = {
+    balance_id: loanBalanceId,
+    current_balance: loanBalance.data.balance / 100, // Convert cents to dollars
+    is_fully_repaid: loanBalance.data.balance >= 0,
+    loan_status: loanBalance.data.meta_data.loan_status,
+    loan_details: loanBalance.data.meta_data
+  };
+  
+  console.log("Loan status:", status);
+  return status;
+}
+```
+```bash cURL
+curl --location 'http://localhost:5001/balances/bln_LOAN_BALANCE_ID' \
+--header 'Content-Type: application/json'
+--header 'Authorization: Bearer YOUR_API_KEY' \
+```
+</CodeGroup>
+
+---
+
+## Conclusion
+
+You now have a fully functional loan management system built with Blnk Finance. This system can:
+
+* Create and manage loan accounts
+* Disburse loans
+* Calculate and charge daily interest
+* Process loan repayments
+* Track loan status
+
+You can also:
+
+1. **Track due dates:** Enhance the loan metadata to include payment schedules and due dates to monitor late payments.
+
+2. **Audit trail:** Use detailed metadata for all transactions to maintain a comprehensive audit trail.
+
+3. **Schedule interest charges:** Set up a cron job or scheduled task to automatically calculate and charge interest daily.
+
+---
+
+<RequestTutorial />
