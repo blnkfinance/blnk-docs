@@ -1,5 +1,3 @@
-![Blnk logo](https://res.cloudinary.com/dmxizylxw/image/upload/v1719884842/blnk-github-logo_twgk1x.png)
-
 ## Introduction
 
 This is the official developer documentation for the [open-source Blnk Ledger](https://github.com/blnkfinance/blnk). 
@@ -10,7 +8,7 @@ This is the official developer documentation for the [open-source Blnk Ledger](h
 
 ## Open-source fintech ledger for the internet
 
-Blnk Ledger is an open-source fintech database for building fintech products to standard and at scale. We designed Blnk to help developers do three things well:
+Blnk Ledger is a developer-first toolkit for building compliant financial products at scale. It is designed to help developers do three things well:
 
 1. Accurately record transactions in their system.
 2. Correctly manage complex flow of funds and transaction data.
