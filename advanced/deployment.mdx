@@ -57,7 +57,7 @@ This guide covers two primary deployment strategies, each suited to different op
   - Managed Redis instance
 </Step>
 <Step title="Configuration">
-  Create or update your `blnk.json` configuration file:
+  Create or update your `blnk.json` configuration file. Learn more: [Advanced configuration](/advanced/configuration)
   ```json blnk.json
   {
     "project_name": "Blnk",
@@ -77,37 +77,102 @@ This guide covers two primary deployment strategies, each suited to different op
 </Step>
 <Step title='Create a "docker-compose.yml" file'>
   Copy and paste the following configuration into your file to get started. This setup includes the API server, worker, and migration services for seamless deployment.
-  ```yaml docker-compose.yml
+
+  ```yaml docker-compose.yml [expandable]
   version: "3.8"
+
   services:
     server:
-      image: jerryenebeli/blnk:0.7.4
-      restart: unless-stopped
+      image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.9.0}
+      container_name: server
+      restart: on-failure
+      entrypoint: ["/bin/sh", "-c"]
+      command:
+        - "blnk migrate up && blnk start"
+      environment:
+        TZ: ${TZ:-Etc/UTC}
+        OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       ports:
         - "5001:5001"
+        - "80:80"
+        - "443:443"
+      depends_on:
+        - redis
+        - postgres
+        - jaeger
       volumes:
         - ./blnk.json:/blnk.json
-      healthcheck:
-        test: ["CMD", "curl", "-f", "<http://localhost:5001/health>"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
 
     worker:
-      image: jerryenebeli/blnk:0.7.4
-      restart: unless-stopped
+      image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.9.0}
+      container_name: worker
+      restart: on-failure
       entrypoint: ["blnk", "workers"]
-      volumes:
-        - ./blnk.json:/blnk.json
+      environment:
+        OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       depends_on:
-        - server
-
-    migration:
-      image: jerryenebeli/blnk:0.7.4
-      entrypoint: ["blnk", "migrate", "up"]
+        - redis
+        - postgres
+        - jaeger
       volumes:
         - ./blnk.json:/blnk.json
-      restart: "no"
+
+    redis:
+      image: redis:7.2.4
+      container_name: redis
+
+    postgres:
+      image: ${POSTGRES_IMAGE:-postgres:16}
+      container_name: ${POSTGRES_CONTAINER:-postgres}
+      restart: on-failure
+      ports:
+        - "${POSTGRES_OUTER_PORT:-5432}:5432"
+      environment:
+        TZ: ${TZ:-Etc/UTC}
+        POSTGRES_USER: ${POSTGRES_USER:-postgres}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+        POSTGRES_DB: ${POSTGRES_DB:-blnk}
+      volumes:
+        - pg_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+    typesense:
+      image: typesense/typesense:0.23.1
+      container_name: typesense
+      command:
+        ["--data-dir", "/data", "--api-key=blnk-api-key", "--listen-port", "8108"]
+      volumes:
+        - typesense_data:/data
+      logging:
+        driver: "none"
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+
+    jaeger:
+      image: jaegertracing/all-in-one:latest
+      container_name: jaeger
+      ports:
+        - "16686:16686" # Jaeger UI
+        - "4317:4317" # OTLP gRPC
+        - "4318:4318" # OTLP HTTP
+      environment:
+        - COLLECTOR_OTLP_ENABLED=true
+      healthcheck:
+        test: ["CMD", "wget", "--spider", "http://localhost:16686"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+
+  volumes:
+    pg_data:
+    typesense_data:
   ```
 </Step>
 <Step title="Start deployment">
