@@ -9,63 +9,174 @@ icon: "key"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
+## Overview
+
 The security of your Blnk server is very important, especially when dealing with financial applications where data integrity and privacy are critical. 
 
 This guide will walk you through the steps to run your Blnk server in secure mode and implement best practices for maintaining a secure environment.
 
-### Before you start
+Before you start, please ensure that you have a working instance of Blnk Core:
 
-Make sure you that the Blnk server has been successfully deployed and is running on your machine.
 <Card title="Deploy Blnk" icon="square-1" href="/home/install">
         Start here to run your Blnk server
 </Card>
 
-<Steps>
-  <Step title="Enable secure mode">
-    Modify your `blnk.json` configuration file to enable secure mode. Set `server.secure` to true and provide a strong `server.secret_key`
+---
 
-    ```json blnk.json
-    {
-      "server": {
-        "secure": true,
-        "secret_key": "your_strong_secret_key"
-      }
-    }
-    ```
-  </Step>
-  <Step title="Secure your secret key">
-    The `server.secret_key` is important for the security of your Blnk server. It is used to encrypt data and authenticate requests to/from the Blnk server. 
+## Enable secure mode
 
-    Follow these guidelines to manage your secret key securely:
+Modify your `blnk.json` configuration file to enable secure mode. Set `server.secure` to true and provide a strong `server.secret_key`.
 
-    1. **Generate a strong key**: Use a strong, random value for your secret key. Avoid using easily guessable or common strings.
-
-    2. **Keep it confidential**: Never share your secret key or commit it to a public repository. Consider using environment variables or secret management tools to manage your key securely.
-
-    3. **Regular rotation**: Periodically change your secret key to mitigate the risk of it being compromised. Ensure you update all necessary configurations and restart your server accordingly.
-  </Step>
-</Steps>
-
-### Sending secure HTTP requests to your Blnk server
-
-When making HTTP requests to your Blnk server running in secure mode, it's required to include the `X-Blnk-Key` header with your secret key:
-
-```bash bash
-curl -H "X-Blnk-Key: your_strong_secret_key" https://yourdomain.com:5001 -I
+```json blnk.json
+{
+  "server": {
+    "secure": true,
+    "secret_key": "your_strong_secret_key"
+  }
+}
 ```
 
-This header authenticates all your requests, ensuring that only clients with the correct secret key can interact with your server.
+---
 
-### Security precautions
+## Authentication methods
 
-There's a lot more you can do to improve the security of your Blnk server beyond your configuration settings. Adhere to the following precautions to maintain a more secure environment:
+Blnk supports authentication via the X-Blnk-Key header.
 
-1. **Configuration management:** Avoid committing sensitive information, like your `blnk.json` configuration file with the secret key to version control systems. Use `.gitignore` or its equivalent to exclude such files.
+### Master key authentication
 
-2. **Access control:** Limit access to your Blnk server and its configurations to authorized personnel only. Implement role-based access control and audit logs to monitor access and activities on your server.
+The master key (`server.secret_key`) provides full access to all API endpoints. Use it only for administrative tasks and initial setup.
 
-3. **Update regularly:** Keep your server software, including Docker, Compose, and Blnk, up to date to protect against known vulnerabilities.
+```bash 
+curl -H "X-Blnk-Key: your_strong_secret_key" https://yourdomain.com:5001/ledgers
+```
 
-4. **Monitor and audit:** Regularly monitor your server for unauthorized access attempts and audit logs for suspicious activity. Implement alerting mechanisms for anomalous behaviour.
+### API key authentication
+
+For regular operations, create API keys with specific permissions to enforce fine-grained access control.
+
+#### Create an API key
+
+This requires the master key authentication:
+
+```bash
+curl -X POST -H "X-Blnk-Key: your_strong_secret_key" -H "Content-Type: application/json" \
+-d '{
+  "name": "Service Account",
+  "owner": "service_name",
+  "scopes": ["ledgers:read", "balances:write"],
+  "expires_at": "2026-03-11T00:00:00Z"
+}' https://yourdomain.com:5001/api-keys
+```
+
+#### Use the API key
+
+```bash
+curl -H "X-Blnk-Key: your_api_key" https://yourdomain.com:5001/ledgers
+```
+
+---
+
+## Understanding Scopes
+
+Scopes define what resources an API key can access and what actions it can perform, formatted as `resource:action`.
+
+### Available resources
+
+| **Resources** | **Description** |
+| :-- | :-- |
+| `*` | All resources |
+| `ledgers` | Ledger management |
+| `balances` | Balance operations |
+| `accounts` | Account management |
+| `identities` | Identity management |
+| `transactions` | Transaction processing |
+| `balance-monitors` | Balance monitoring |
+| `hooks` | Webhook management |
+| `api-keys` | API key management |
+| `search` | Search operations |
+| `reconciliation` | Reconciliation tasks |
+| `metadata` | Metadata management |
+| `backup` | Backup operations |
+
+### Available actions
+
+| **Actions** | **Description** |
+| :-- | :-- |
+| `*` | All actions |
+| `read` | View operations — `GET/HEAD` |
+| `write` | Modify operations — `POST/PUT/PATCH` |
+| `delete` | Delete operations — `DELETE` |
+
+### Examples
+
+* `ledgers:read`: Can only view ledgers
+* `transactions:write`: Can create/modify transactions
+* `*:*`: Full access to all resources and actions
+
+---
+
+## Security best practices
+
+### Master key management
+
+* Use a strong, randomly generated master key
+* Never share or commit it to version control
+* Store it in environment variables or secret management tools
+* Rotate keys regularly
+
+### API key management
+
+* Create separate API keys for different services
+* Set expiration dates for API keys
+* Grant only necessary scopes
+* Regularly audit and revoke unused keys
+* Monitor API key usage
+
+### Configuration management
+
+* Exclude `blnk.json` from version control (`.gitignore`)
+* Store sensitive configurations in environment variables
+* Implement secure secret rotation procedures
+
+### Access control
+
+* Follow the principle of least privilege
+* Regularly review API key permissions
+* Implement role-based access control (RBAC)
+* Maintain audit logs of key activities
+
+### Monitoring and auditing
+
+* Track failed authentication attempts
+* Monitor API key usage patterns
+* Set up alerts for suspicious activity
+* Regularly review access logs
+
+### Regular updates
+
+* Keep all components up to date
+* Monitor security advisories
+* Schedule regular maintenance windows
+
+---
+
+## Error handling
+
+Authentication failures return specific error messages:
+
+| **Status Code** | **Message** |
+| :-- | :-- |
+| **401 Unauthorized** | "Authentication required. Use X-Blnk-Key header" <br/> "Invalid API key" <br/> "API key is expired or revoked" |
+| **403 Forbidden** | "Insufficient permissions for resource:action" <br/> "Unknown resource type" |
+
+### Example error response
+
+```json
+{
+  "error": "Insufficient permissions for transactions:write"
+}
+```
+
+---
 
 <NeedHelp />
