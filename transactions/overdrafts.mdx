@@ -28,7 +28,9 @@ What we'll cover …
 1. [Enabling overdrafts](#1-enabling-overdrafts)
 2. [Some real-life applications](#2-some-real-life-applications)
 
-## 1. Enabling overdrafts
+---
+
+## Enabling overdrafts
 
 Overdrafts are applied when recording a transacton. To enable overdraft, include the `allow_overdraft` parameter and set its value to `true` in your request body:
 
@@ -47,12 +49,71 @@ Overdrafts are applied when recording a transacton. To enable overdraft, include
 }
 ```
 
-## 2. Some real-life applications
+---
 
-1. **Loans and credit facilities:** You can easily implement lending features, track how much a customer has spent outside of their available balance, manage credit history, etc., and record it all in your Blnk Ledger.
+## Setting overdraft limits
+
+By default, when the `allow_overdraft` parameter is set to true without additional settings, there is no limit to how negative an account balance can go. 
+
+However, in most cases, you’ll want to define a maximum overdraft limit using the `overdraft_limit` parameter.
+
+```json Request
+{
+  "amount": 112.30,
+  "precision": 100,
+  "reference": "ref-ghwe12009",
+  "currency": "USD",
+  "source": "@World",
+  "destination": "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+  "allow_overdraft": true,
+  "overdraft_limit": 500.00,
+  "meta_data": {
+    "account_type": "savings"
+  }
+}
+```
+
+| Overdraft fields | Type | Description |
+| :-- | :-- | :-- |
+| `allow_overdraft` | Boolean | Enables overdraft functionality, allowing the account balance to go negative. |
+| `overdraft_limit` | Number | Sets the maximum overdraft amount. |
+
+### How overdraft limits work
+
+When processing a transaction with an overdraft limit:
+
+1. If the source account has sufficient funds, the transaction proceeds as normal.
+2. If the source account has insufficient funds but `allow_overdraft` is `true`:
+    
+    * If `overdraft_limit` is set to 0 or not provided, the transaction will succeed, and the balance can go negative without restriction.
+    * If `overdraft_limit` is greater than 0, the transaction will only succeed if the resulting negative balance does not exceed the specified limit.
+
+### Error handling
+
+If a transaction would cause the balance to exceed the overdraft limit, it will fail with the following error message:
+
+```json
+{
+  "error": "failed to apply transaction to balances: transaction exceeds overdraft_limit"
+}
+```
+
+---
+
+## Some real-life applications
+
+1. **Loans and credit facilities:** You can easily implement lending features, track how much a customer has spent outside of their available balance, manage credit history, etc., and record it all in your Blnk Ledger. 
+
+    With overdraft limits, you can set credit limits for different customers based on their creditworthiness.
 
 2. **Internal money movement:** Your internal balances can often face fluctuations in cash flow, especially during unpredictable periods. Overdrafts allow you to efficiently manage this without disrupting your financial operation. 
 
-    See also: [Internal balances](/balances/internal-balances).
+    Setting overdraft limits helps maintain control over internal spending.
+
+3. **Prepaid cards with buffer:** You can implement prepaid cards that allow a small overdraft buffer (e.g., $20) to handle scenarios like tips added after a restaurant charge.
+
+4. **Tiered overdraft limits:** You can implement different overdraft limits for different customer tiers or account types by storing these values in your system and applying the appropriate limit in each transaction.
+
+---
 
 <NeedHelp />
