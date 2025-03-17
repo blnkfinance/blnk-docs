@@ -1,0 +1,366 @@
+---
+sidebarTitle: "Practice example"
+title: "Practice Example"
+description: "Hands-on tutorial on performing reconciliation with Blnk Core."
+icon: "laptop-file"
+"og:title": "Reconciliation Practice Example • Blnk Developer Documentation"
+"og:description": Hands-on tutorial on performing reconciliation with Blnk Core.
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+In this guide, you'll learn how to perform a simple one-to-one reconciliation workflow with Blnk. This includes:
+
+1. Preparing and uploading our data.
+2. Creating our matching rules.
+3. Running our reconciliation process.
+4. Review the reconciliation results.
+
+For this example, we'll use Postman or cURL to send our API requests. You can also refer to the [API reference](/reference/start-reconciliation) for details on the available endpoints.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`). Version 0.10.0 or later.
+
+---
+
+## Recording sample transactions
+
+First, import the following sample transactions using the [Bulk Transactions](/transactions/bulk-transactions) feature:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/transactions/bulk
+```
+```json Request body [expandable]
+{
+  "atomic": true,
+  "inflight": false,
+  "run_async": false,
+  "transactions": [
+    {
+      "amount": 152.75,
+      "precision": 100,
+      "reference": "txn_001",
+      "description": "Invoice settlement",
+      "currency": "USD",
+      "source": "@WorldA",
+      "allow_overdraft": true,
+      "destination": "@WorldB"
+    },
+    {
+      "amount": 329.40,
+      "precision": 100,
+      "reference": "txn_002",
+      "description": "Refund processing",
+      "currency": "USD",
+      "source": "@WorldB",
+      "allow_overdraft": true,
+      "destination": "@WorldA"
+    },
+    {
+      "amount": 87.15,
+      "precision": 100,
+      "reference": "txn_003",
+      "description": "Service charge",
+      "currency": "USD",
+      "source": "@WorldA",
+      "allow_overdraft": true,
+      "destination": "@WorldB"
+    },
+    {
+      "amount": 413.60,
+      "precision": 100,
+      "reference": "txn_004",
+      "description": "Payment for goods",
+      "currency": "USD",
+      "source": "@WorldB",
+      "allow_overdraft": true,
+      "destination": "@WorldA"
+    },
+    {
+      "amount": 276.89,
+      "precision": 100,
+      "reference": "txn_005",
+      "description": "Subscription fee",
+      "currency": "USD",
+      "source": "@WorldA",
+      "allow_overdraft": true,
+      "destination": "@WorldB"
+    },
+    {
+      "amount": 199.99,
+      "precision": 100,
+      "reference": "txn_006",
+      "description": "Expense reimbursement",
+      "currency": "USD",
+      "source": "@WorldB",
+      "allow_overdraft": true,
+      "destination": "@WorldA"
+    },
+    {
+      "amount": 540.25,
+      "precision": 100,
+      "reference": "txn_007",
+      "description": "Project funding",
+      "currency": "USD",
+      "source": "@WorldA",
+      "allow_overdraft": true,
+      "destination": "@WorldB"
+    },
+    {
+      "amount": 135.70,
+      "precision": 100,
+      "reference": "txn_008",
+      "description": "Loan repayment",
+      "currency": "USD",
+      "source": "@WorldB",
+      "allow_overdraft": true,
+      "destination": "@WorldA"
+    },
+    {
+      "amount": 92.80,
+      "precision": 100,
+      "reference": "txn_009",
+      "description": "Freelance payment",
+      "currency": "USD",
+      "source": "@WorldA",
+      "allow_overdraft": true,
+      "destination": "@WorldB"
+    },
+    {
+      "amount": 480.55,
+      "precision": 100,
+      "reference": "txn_010",
+      "description": "Revenue share",
+      "currency": "USD",
+      "source": "@WorldB",
+      "allow_overdraft": true,
+      "destination": "@WorldA"
+    }
+  ]
+}
+```
+
+---
+
+## Preparing the external data
+
+Next, download the sample CSV file provided below.
+
+This file will act as our external data source and has already been formatted to meet Blnk's specifications. See [External Data Preparation](/reconciliations/external-data) for more details.
+
+<Card title="External data source" iconType="duotone" icon="file-csv" href="https://github.com/blnkfinance/blnk-docs/blob/main/resources/recon-example-external-source.csv">
+  Click to download sample CSV file.
+</Card>
+
+---
+
+## Uploading the data
+
+Upload your CSV file with the [Upload Data](/reference/upload-data) endpoint:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload
+```
+
+or use cURL
+
+```bash
+curl --location 'https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload' \
+--form 'file=@recon-example-external-source.csv' \
+--form 'source=Stripe'
+```
+
+```json Response
+{
+  "record_count": 10,
+  "source": "Stripe",
+  "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32"
+}
+```
+
+<Tip>Save the `upload_id`. You’ll need it to start the reconciliation.</Tip>
+
+---
+
+## Setting our matching rules
+
+We’ll define rules to match internal and external transactions. For this example, we want:
+
+1. **Amount Match**: Exact match with a 1% drift (e.g., internal `$100` matches external `$99 - $101`).
+
+2. **Currency and Description Match**: Exact matches for both fields.
+
+3. **Reference Match**: Partial match (external reference contains the internal reference).
+
+All rules must be true for successful matching. Create the rule with this request:
+
+```
+POST http://localhost:5001/reconciliation/matching-rules
+```
+
+<CodeGroup>
+```json Request
+{
+    "name": "Basic matcher",
+    "description": "Matches transactions by amount and reference",
+    "criteria": [
+        {
+            "field": "amount",
+            "operator": "equals",
+            "allowable_drift": 0.01
+        },
+        {
+            "field": "currency",
+            "operator": "equals"
+        },
+        {
+            "field": "reference",
+            "operator": "contains"
+        },
+        {
+            "field": "description",
+            "operator": "equals"
+        }
+    ]
+}
+```
+```json Response
+{
+    "rule_id": "rule_95429312-73d1-4f8f-a5a5-44f5bfe82095",
+    "created_at": "2025-03-17T06:58:16.13945209Z",
+    "updated_at": "2025-03-17T06:58:16.13945234Z",
+    "name": "Basic matcher",
+    "description": "Matches transactions by amount and reference",
+    "criteria": [
+        {
+            "field": "amount",
+            "operator": "equals",
+            "value": "",
+            "pattern": "",
+            "allowable_drift": 0.01
+        },
+        {
+            "field": "currency",
+            "operator": "equals",
+            "value": "",
+            "pattern": "",
+            "allowable_drift": 0
+        },
+        {
+            "field": "reference",
+            "operator": "contains",
+            "value": "",
+            "pattern": "",
+            "allowable_drift": 0
+        },
+        {
+            "field": "description",
+            "operator": "equals",
+            "value": "",
+            "pattern": "",
+            "allowable_drift": 0
+        }
+    ]
+}
+```
+</CodeGroup>
+
+<Tip>Save the `rule_id` for the reconciliation step.</Tip>
+
+---
+
+## Run reconciliation
+
+With the external data uploaded and our matching rules configured, we’re ready to run our first reconciliation. 
+
+In this example, we’ll use the [Batch Reconciliation](/reconciliations/overview#option-1-batch-reconciliation) option and apply a `one_to_one` strategy to ensure precise matching.
+
+See [Reconciliation Strategies](/reconciliations/strategies) for details.
+
+Send this request to start the reconciliation:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
+```
+
+<CodeGroup>
+```json Request
+{
+    "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32",
+    "strategy": "one_to_one",
+    "matching_rule_ids": [
+        "rule_95429312-73d1-4f8f-a5a5-44f5bfe82095"
+    ]
+}
+```
+```json Response
+{
+    "reconciliation_id": "recon_070631ed-953d-4cbb-a14f-8593c830ad20"
+}
+```
+</CodeGroup>
+
+---
+
+## View reconciliation results
+
+Finally, you can view the status of your reconciliation with the following endpoint:
+
+```
+GET https://YOUR_BLNK_INSTANCE_URL/reconciliation/{reconciliation_id}
+```
+
+```json Response
+{
+    "reconciliation_id": "recon_070631ed-953d-4cbb-a14f-8593c830ad20",
+    "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32",
+    "status": "completed",
+    "matched_transactions": 6,
+    "unmatched_transactions": 4,
+    "is_dry_run": false,
+    "started_at": "2025-03-17T06:59:56.393854Z",
+    "completed_at": "2025-03-17T06:59:56.454487Z"
+}
+```
+
+You can confirm this result by manually comparing your ledger transactions with the transactions in our external data CSV. 
+
+Here are the transaction ids of the external records that were not matched based on our matching rules:
+
+<CodeGroup>
+```txt Matched
+1	pay-ei9j0k1l2m3n	txn_324cebf0-c4bf-4318-a421-277f1b712cd6	92.80	2025-03-17 06:50:22
+2	pay-7b2c3d4e5f6g	txn_09a2487d-87f1-46e8-b5b7-f09bee1073ba	328.80	2025-03-17 06:35:10
+3	pay-6a1b2c3d4e5f	txn_6024d60b-ef92-4f91-b5d9-089f84d0912e	152.75	2025-03-17 06:32:49
+4	pay-9d4e5f6g7h8i	txn_3c038922-34a7-430d-b331-c762a2cf706a	417.00	2025-03-17 06:39:45
+5	pay-cg7h8i9j0k1l	txn_b3c60cd9-b244-46e4-9733-69c3e1478ab0	545.00	2025-03-17 06:45:55
+6	pay-ae5f6g7h8i9j	txn_9b8687f7-f921-4b4e-9001-ed49877747c9	278.00	2025-03-17 06:41:12
+```
+```txt Unmatched
+1	pay-8c3d4e5f6g7h	2025-03-17 06:59:56.441212
+2	pay-bf6g7h8i9j0k	2025-03-17 06:59:56.440564
+3	pay-fj0k1l2m3n4o	2025-03-17 06:59:56.447376
+4	pay-dh8i9j0k1l2m	2025-03-17 06:59:56.451545
+```
+</CodeGroup>
+
+---
+
+## Error handling
+
+1. **401 Unauthorized**: Ensure your API key is correct and included in the `Authorization` header.
+
+2. **400 Bad Request**: Check your request body or file format. For uploads, ensure the CSV matches Blnk’s specifications.
+
+3. **404 Not Found**: Verify the endpoint URL (e.g., `/reconciliation/upload` for uploads, `/reconciliation/start` for reconciliation).
+
+---
+
+<NeedHelp />
