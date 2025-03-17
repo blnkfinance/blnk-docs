@@ -193,9 +193,9 @@ curl --location 'https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload' \
 
 We’ll define rules to match internal and external transactions. For this example, we want:
 
-1. **Amount Match**: Exact match with a 1% drift (e.g., internal `$100` matches external `$99 - $101`).
+1. **Amount Match**: Exact amount match
 
-2. **Currency and Description Match**: Exact matches for both fields.
+2. **Currency Match**: Exact matches for both fields.
 
 3. **Reference Match**: Partial match (external reference contains the internal reference).
 
@@ -213,8 +213,7 @@ POST http://localhost:5001/reconciliation/matching-rules
     "criteria": [
         {
             "field": "amount",
-            "operator": "equals",
-            "allowable_drift": 0.01
+            "operator": "equals"
         },
         {
             "field": "currency",
@@ -223,19 +222,15 @@ POST http://localhost:5001/reconciliation/matching-rules
         {
             "field": "reference",
             "operator": "contains"
-        },
-        {
-            "field": "description",
-            "operator": "equals"
         }
     ]
 }
 ```
 ```json Response
 {
-    "rule_id": "rule_95429312-73d1-4f8f-a5a5-44f5bfe82095",
-    "created_at": "2025-03-17T06:58:16.13945209Z",
-    "updated_at": "2025-03-17T06:58:16.13945234Z",
+    "rule_id": "rule_3d5ae6d4-6722-40c5-ac4b-0bd66ab7d363",
+    "created_at": "2025-03-17T08:31:24.97610651Z",
+    "updated_at": "2025-03-17T08:31:24.976106635Z",
     "name": "Basic matcher",
     "description": "Matches transactions by amount and reference",
     "criteria": [
@@ -244,7 +239,7 @@ POST http://localhost:5001/reconciliation/matching-rules
             "operator": "equals",
             "value": "",
             "pattern": "",
-            "allowable_drift": 0.01
+            "allowable_drift": 0
         },
         {
             "field": "currency",
@@ -256,13 +251,6 @@ POST http://localhost:5001/reconciliation/matching-rules
         {
             "field": "reference",
             "operator": "contains",
-            "value": "",
-            "pattern": "",
-            "allowable_drift": 0
-        },
-        {
-            "field": "description",
-            "operator": "equals",
             "value": "",
             "pattern": "",
             "allowable_drift": 0
@@ -296,13 +284,13 @@ POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
     "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32",
     "strategy": "one_to_one",
     "matching_rule_ids": [
-        "rule_95429312-73d1-4f8f-a5a5-44f5bfe82095"
+        "rule_3d5ae6d4-6722-40c5-ac4b-0bd66ab7d363"
     ]
 }
 ```
 ```json Response
 {
-    "reconciliation_id": "recon_070631ed-953d-4cbb-a14f-8593c830ad20"
+    "reconciliation_id": "recon_f1df3e68-fd8d-4566-8670-891c3c1e7d58"
 }
 ```
 </CodeGroup>
@@ -319,37 +307,21 @@ GET https://YOUR_BLNK_INSTANCE_URL/reconciliation/{reconciliation_id}
 
 ```json Response
 {
-    "reconciliation_id": "recon_070631ed-953d-4cbb-a14f-8593c830ad20",
-    "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32",
-    "status": "completed",
-    "matched_transactions": 6,
-    "unmatched_transactions": 4,
-    "is_dry_run": false,
-    "started_at": "2025-03-17T06:59:56.393854Z",
-    "completed_at": "2025-03-17T06:59:56.454487Z"
+  "reconciliation_id": "recon_f1df3e68-fd8d-4566-8670-891c3c1e7d58",
+  "upload_id": "upload_0cd4a87d-544c-4b7e-9232-f36e79631c32",
+  "status": "completed",
+  "matched_transactions": 2,
+  "unmatched_transactions": 8,
+  "is_dry_run": false,
+  "started_at": "2025-03-17T08:32:24.005476Z",
+  "completed_at": "2025-03-17T08:32:24.062136Z"
 }
 ```
 
-You can confirm this result by manually comparing your ledger transactions with the transactions in our external data CSV. 
-
-Here are the transaction ids of the external records that were not matched based on our matching rules:
-
-<CodeGroup>
-```txt Matched
-1	pay-ei9j0k1l2m3n	txn_324cebf0-c4bf-4318-a421-277f1b712cd6	92.80	2025-03-17 06:50:22
-2	pay-7b2c3d4e5f6g	txn_09a2487d-87f1-46e8-b5b7-f09bee1073ba	328.80	2025-03-17 06:35:10
-3	pay-6a1b2c3d4e5f	txn_6024d60b-ef92-4f91-b5d9-089f84d0912e	152.75	2025-03-17 06:32:49
-4	pay-9d4e5f6g7h8i	txn_3c038922-34a7-430d-b331-c762a2cf706a	417.00	2025-03-17 06:39:45
-5	pay-cg7h8i9j0k1l	txn_b3c60cd9-b244-46e4-9733-69c3e1478ab0	545.00	2025-03-17 06:45:55
-6	pay-ae5f6g7h8i9j	txn_9b8687f7-f921-4b4e-9001-ed49877747c9	278.00	2025-03-17 06:41:12
-```
-```txt Unmatched
-1	pay-8c3d4e5f6g7h	2025-03-17 06:59:56.441212
-2	pay-bf6g7h8i9j0k	2025-03-17 06:59:56.440564
-3	pay-fj0k1l2m3n4o	2025-03-17 06:59:56.447376
-4	pay-dh8i9j0k1l2m	2025-03-17 06:59:56.451545
-```
-</CodeGroup>
+| Field | Description |
+| :-- | :-- |
+| `matched_transactions` | Number of external records matched. |
+| `unmatched_transactions` | Number of external records not matched. |
 
 ---
 
