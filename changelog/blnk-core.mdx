@@ -8,73 +8,20 @@ mode: "center"
 ---
 
 <Update label="Mar 16, 2025" description="v0.10.0">
-  ## Instant reconciliation
+  ## Granular access controls
 
-  You can now instantly match transactions and mark them as reconciled, with reconciliation details stored in the transaction's metadata for easy tracking.
-
-  * Submit an array of transactions from your external records.
-  * Set your [reconciliation strategy](/reconciliations/strategies) and [matching rules](/reconciliations/matching-rules).
-  * Start your reconciliation
-
-  <CodeGroup>
-  ```json Example request
-  POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
-
-  {
-    "external_transactions": [
-      {
-        "id": "txn1dddddddd3ddddsdd4d5",
-        "amount": 3.99,
-        "reference": "INV-2023-001",
-        "currency": "GBP",
-        "description": "Wallet funding",
-        "date": "2024-11-15T14:39:45Z",
-        "source": "bank-api"
-      }
-    ],
-    "strategy": "one_to_one",
-    "matching_rule_ids": [
-      "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
-    ]
-  }
-  ```
-  ```json Reconciled transaction {14-18}
-  {
-    "precise_amount": 399,
-    "amount": 3.99,
-    "precision": 100,
-    "transaction_id": "txn_0663f932-61c7-47aa-98c0-979b1df636e9",
-    "source": "bln_546df224-d7a8-4a20-8e27-399938cb3ead",
-    "destination": "bln_8de42141-059f-42ea-9340-00394285620a",
-    "reference": "INV-2023-001",
-    "currency": "GBP",
-    "description": "Wallet funding",
-    "status": "APPLIED",
-    "created_at": "2024-11-15T14:39:45.123732",
-    "meta_data": {
-      "external_txn_id": "txn1dddddddd3ddddsdd4d5",
-      "reconciled": true,
-      "reconciled_at": "2024-11-15T17:34:11.123732",
-      "reconciliation_amount": 3.99,
-      "reconciliation_id": "recon_01394cb8-a3f6-47e0-b656-4fb9a93fa951"
-    }
-  }
-  ```
-  </CodeGroup>
-
-  ## Balance reconciliation
-
-  Correct ledger discrepancies by recalculating your balance directly from transactions. To use this feature, [update your balance metadata](/metadata/update-metadata) with the following key:
+  You can now create API keys with specific permissions to enforce granular access control in your ledger. 
 
   ```json
   {
-    "meta_data": {
-      "BLNK_RUN_RECONCILIATION": "SOURCE"
-    }
+    "name": "Balance Management",
+    "owner": "balance_management",
+    "scopes": ["balances:write", "search:write"],
+    "expires_at": "2026-03-11T00:00:00Z"
   }
   ```
 
-  To learn more about this feature: [How Balance Reconciliation Works →](/balances/balance-reconciliation)
+  [Set your API keys →](/advanced/secure-blnk#authentication-methods)
 
   ## Overdraft limits
 
@@ -108,21 +55,6 @@ mode: "center"
   GET https://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp={timestamp}&from_source=true
   ```
 
-  ## Granular access controls
-
-  You can now create API keys with specific permissions to enforce granular access control in your ledger. 
-
-  ```json
-  {
-    "name": "Balance Management",
-    "owner": "balance_management",
-    "scopes": ["balances:write", "search:write"],
-    "expires_at": "2026-03-11T00:00:00Z"
-  }
-  ```
-
-  [Set your API keys →](/advanced/secure-blnk#authentication-methods)
-
   ## Apply precision with `precise_amount`
 
   Accurately record amounts exceeding 15 digits with full precision using the `precise_amount` field:
@@ -141,6 +73,26 @@ mode: "center"
   ```
 
   [Applying precision with `precise_amount` →](/transactions/precision#option-2-using-the-precise-amount-field)
+
+  ## Balance reconstruction
+
+  Correct ledger discrepancies by recalculating your balance directly from transactions. To use this feature, [update your balance metadata](/metadata/update-metadata) with the following key:
+
+  ```json
+  {
+    "meta_data": {
+      "BLNK_RUN_RECONCILIATION": "SOURCE"
+    }
+  }
+  ```
+
+  See [How Balance Reconstruction Works](/advanced/balance-reconstruction) for more details.
+
+  ## Instant reconciliation
+
+  You can now instantly match transactions and mark them as reconciled, with reconciliation details stored in the transaction's metadata for easy tracking.
+
+  See [Instant Reconciliation](/reconciliations/overview#option-2-instant-reconciliation) for more details.
 
   ## Other improvements
   

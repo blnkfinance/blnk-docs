@@ -9,53 +9,48 @@ icon: "file-excel"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-External data in reconciliation refers to any and all documents that hold records of your transaction activity outside of your Blnk Ledger.
+## Overview
 
-<Note>
-    Read [Reconciliation Overview](/reconciliations/overview) to learn how to perform reconciliation in your ledger.
-</Note>
+External data refers to files and datasets containing transaction activity records from sources outside your Ledger, such as bank statements or payment processor reports.
 
-## 1. Preparing your data
+Since these data are exported in various formats, it’s essential to standardize them before uploading to Blnk Core for reconciliation to ensure accuracy and compatibility
 
-External data sources have different formats for exporting your data. To prepare your data for reconciliation in Blnk:
+---
 
-1. Download and extract your data from your partners (payment processor, bank, etc.)
-2. Transform the extracted data to the following structure:
+## Preparing your data
 
-    | Field | Type | Description |
-    | :--- | :--- | :--- |
-    | `amount` | Float | The transaction amount, e.g. 100.50 |
-    | `currency` | String | ISO 4217 currency code, e.g. "USD" |
-    | `source` | String | Origin of the transaction data, e.g. "Stripe" |
-    | `description` | String | Transaction details or narration, e.g., "Monthly subscription" |
-    | `reference` | String | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
-    | `date` | ISO 8601 | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
+After exporting your data from the external source, convert it into the specified structure below, ensuring each record includes the following attributes:
 
-3. Export and upload your data in CSV or JSON to Blnk using the endpoint below.
+| Attributes | Type | Description |
+| :-- | :-- | :-- |
+| `id` | String | Unique external transaction id. |
+| `amount` | Number | The transaction amount, e.g. 100.50 |
+| `currency` | String | ISO 4217 currency code, e.g. "USD" |
+| `source` | String | Origin of the transaction data, e.g. "Stripe" |
+| `description` | String | Description/narration of the transaction, e.g. "Monthly subscription" |
+| `reference` | String | Unique transaction reference, e.g., "ref_128GA6Ag1298ahkj" |
+| `date` | String | Transaction date and time, e.g., "2025-02-15T13:30:00Z" |
 
-### Things to note
+Once set, export your data in CSV or JSON and upload for reconciliation.
 
-Take note of the following when uploading external data to prevent errors or mismatches in your reconciliation:
+### Key considerations
 
-- Use consistent formatting across all fields. 
-- Ensure that each transaction has a unique `reference` value.
-- Convert your `date` value to the UTC timezone to avoid timezone discrepancies. 
+1. Use consistent formatting across all fields.
+2. Ensure that each transaction has a unique `reference`.
+3. Convert your `date` to the UTC timezone to avoid timezone discrepancies.
 
-## 2. Upload your data
+---
 
-<Frame caption="Upload external data from any external data source.">
-  ![Uploading external data to the Blnk Ledger for reconciliation](/images/recon/external-data.png)
-</Frame>
+## Upload your data
 
-Once you have finished preparing your data, you can upload to Blnk with the following endpoint:
+Upload your formatted data to Blnk with the following endpoint:
 
-```curl Request
-curl --location '<https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload>' \\
---header 'Authorization: Bearer YOUR_API_KEY' \\
---form 'file=@"transactions.json"' \\
---form 'source="Stripe"'
+```bash Request
+curl --location 'https://YOUR_BLNK_INSTANCE_URL/reconciliations/upload' \
+--header 'Authorization: Bearer YOUR_API_KEY' \
+--form 'file=@transactions.json' \
+--form 'source=Stripe'
 ```
-
 ```json Response
 {
   "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
@@ -65,24 +60,13 @@ curl --location '<https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload>' \\
 }
 ```
 
-## Common data sources
+| Field | Description |
+| :-- | :-- |
+| `upload_id` | Unique identifier of the uploaded external record for reconciliation. |
+| `status` | Indicates that the file was uploaded successfully. |
+| `record_count` | Counts the number of records found in the uploaded file. |
+| `source` | Indicates the source of the file. |
 
-Depending on the type of fintech product/feature, these external data sources may differ from product to product. Some common sources include:
-
-1. **Bank statements:** Monthly or daily statements from banks that detail all transactions, including deposits, withdrawals, fees, and interest.
-2. **Payment processor reports:** Detailed reports from local and global payment processors like PayPal, Stripe, Square, Flutterwave, etc., showing transactions processed through their platforms.
-3. **Merchant account statements:** Statements from merchant accounts detailing credit card and debit card transactions.
-4. **Gateway reports:** Transaction reports from payment gateways that facilitate online payments.
-5. **Credit card statements:** Statements from credit card companies showing transactions, fees, and interest.
-6. **Investment account statements:** Statements from brokerage or investment accounts detailing trades, dividends, interest, and account balances.
-7. **Loan servicing reports:** Reports from loan servicing platforms showing loan disbursements, repayments, and outstanding balances.
-8. **Interbank transfer reports:** Reports detailing transfers between different bank accounts.
-9. **Third-party service provider reports:** Reports from third-party service providers like payroll services, accounting software, or expense management tools.
-10. **Blockchain and cryptocurrency exchange statements:** Transaction records from blockchain ledgers and cryptocurrency exchanges for fintechs dealing in digital assets.
-11. **ACH reports:** Detailed records of ACH transactions including direct deposits and electronic payments.
-12. **E-wallet statements:** Statements from digital wallet providers like Apple Pay, Google Wallet, and similar services showing transactions and balances.
-13. **Foreign exchange transaction reports:** Detailed reports of foreign currency transactions for fintechs involved in international trade.
-14. **Mobile payments reports:** Reports from mobile payment services like Venmo, Zelle, and others.
-15. **Escrow account statements:** Statements from escrow accounts used in various types of transactions, particularly in real estate or large purchases.
+---
 
 <NeedHelp />

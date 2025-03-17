@@ -1,6 +1,5 @@
 ---
-title: "Get started with Reconciliations"
-sidebarTitle: "Get started"
+title: "Overview"
 description: "Learn how to reconcile your Blnk Ledger."
 icon: "object-union"
 "og:title": "About Reconciliation • Blnk Developer Documentation"
@@ -13,140 +12,56 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 ## Overview
 
-Reconciliation is a vital component of financial operations, essential for maintaining precise and reliable financial records. This process involves comparing and matching internal records (your Blnk ledger) with external statements (such as payment processor reports and bank statements) to identify and rectify any discrepancies. The primary goal of reconciliation is to ensure that all records accurately represent the company’s financial position at all times.
+Reconciliation compares and matches your Blnk Ledger with external records such as bank statements, payment processor reports, etc. to identify and resolve discrepancies in your financial data.
 
-Regular, meticulous, and effective reconciliation enhances operational efficiency, financial transparency, and stakeholder trust. This includes banking partners, customers, investors, and regulatory bodies, all of whom rely on the accuracy of your financial reporting.
+When performed effectively, reconciliation enhances operational efficiency, financial transparency, and stakeholder trust.
 
-In this guide, you'll learn how to perform reconciliation in 4 steps. 
+In this guide, you'll learn how to run reconciliation processes with Blnk Core.
 
-Let's dive in ✨
+---
 
-1. [Upload external data](#1-upload-external-data): Import external data from payment processor reports, bank statements, and other systems and prepare them for reconciliation.
-2. [Set matching rules](#2-set-matching-rules): Define how transactions should be compared and matched.
-3. [Define reconciliation strategies](#3-define-reconciliation-strategies): Choose thes type of reconciliation you want to perform.
-4. [Run reconciliation](#4-run-reconciliation): Initiate a reconciliation.
+## Before you start
 
-## 1. Upload external data
+To successfully run reconciliation, you need to first do three things:
 
-Your external data is any document that holds the records of all transaction activity outside of your Blnk Ledger. Learn more: [External Data Preparation](external-data).
+1. **Prepare your external data:** Format your external data according to the specified structure to enable seamless matching with your Ledger. 
 
-First, ensure that your data includes these six fields:
+    See [External Data Preparation](/reconciliations/external-data) for details.
+2. **Define your matching rules:** Set rules to compare fields like amount, date, or reference between your ledger and external records. These rules determine how closely records must match. 
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `amount` | Float | The transaction amount, e.g. 100.50 |
-| `currency` | String | ISO 4217 currency code, e.g. "USD" |
-| `source` | String | Origin of the transaction data, e.g. "Stripe" |
-| `description` | String | Transaction details or narration, e.g., "Monthly subscription" |
-| `reference` | String | Unique identifier of the transaction, e.g., "ref_128GA6Ag1298ahkj" |
-| `date` | ISO 8601 | Transaction date and time, e.g., "2023-04-15T14:30:00Z" |
+    See [Matching Rules](/reconciliations/matching-rules) for details.
 
-Next, upload with the following endpoint:
+3. **Set your reconciliation strategy:** Specify how transactions are distributed between both records, e.g., one transaction in your ledger can be split into 2 or more in a bank statement. 
 
-```curl Request
-curl --location '<https://YOUR_BLNK_INSTANCE_URL/reconciliation/upload>' \\
---header 'Authorization: Bearer YOUR_API_KEY' \\
---form 'file=@"transactions.json"' \\
---form 'source="Stripe"'
-```
+    See [Reconciliation Strategies](/reconciliations/strategies) for details.
 
-<Tip>
-  We support both CSV and JSON file types for external data upload.
-</Tip>
+---
 
-```json Response
-{
-  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
-  "record_count": 1000,
-  "source": "Stripe"
-}
-```
+## Reconciliation options
 
-## 2. Set matching rules
+Blnk offers two reconciliation options based on your needs:
 
-Blnk uses matching rules to understand how you want to compare and reconcile your records. This is the most central aspect of the reconciliation process. 
+1. **Batch reconciliation:** Ideal for scheduled bulk processing, such as daily bank reconciliations. It’s efficient for handling large volumes of transactions at once.
 
-To set a rule, you need to give it a name, description, and define its criteria. To learn more about matching rules: [Matching Rules](/reconciliations/matching-rules).
+2. **Instant reconciliation:** Best for real-time accuracy, like immediate fraud detection or on-the-fly transaction matching. It ensures your ledger stays up-to-date as transactions occur.
 
-### Supported attributes and operators
+---
 
-Matching rules are used to match your internal data from your Blnk Ledger and [external data](/reconciliations/external-data). Supported fields are:
+## Option 1: Batch reconciliation
 
-| Attributes | Supported operators | Description |
-| :--- | :--- | :--- |
-| `amount` | `equals`, `greater_than`, `less_than` | Match by amount, e.g. external amount should equals internal amount. |
-| `currency` | `equals` | Match by currency, e.g. external currency should equals internal currency. |
-| `reference` | `equals`, `contains` | Match by reference, e.g. external reference should equals internal reference |
-| `description` | `equals`, `contains` | Match by description, e.g., internal description should contain part of or equals external description.  |
-| `date` | `equals`, `greater_than`, `less_than` | Match by date and time, e.g., external transaction date is greater than internal transaction date. |
+To reconcile in batches, you need to:
 
-### Handling discrepancies with drifts
+1. [Prepare and upload your external data](/reconciliations/external-data) in a CSV or JSON file for upload.
+2. Pass the `upload_id` from your successful upload in the request body.
+3. Set your [matching rules](/reconciliations/matching-rules) and [reconciliation strategy](/reconciliations/strategies).
 
-1. **Amount Drift:** Allows for differences in transaction amounts. For example, if your internal record shows a transaction amount of \$100, an amount drift of 1% (0.01) would allow for the external statement to report the amount as anything between \$99 and \$101.
-
-2. **Date Drift:** Allows for differences in transaction dates. For example, a time drift value of 3600 seconds permits a 1-hour difference in transaction dates, accommodating timing discrepancies.
-
-### Creating a matching rule
-
-To create a matching rule, call the following endpoint:
-
-```
-POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/matching-rules
-```
-
-And pass the following request body:
-
-```json Request
-{
-    "name": "Default matcher",
-    "description": "Amount with 1% drift matcher"
-    "criteria": [
-        {
-            "field": "amount",
-            "operator": "equals",
-            "allowable_drift": 0.01
-        },
-        {
-            "field": "currency",
-            "operator": "equals"
-        },
-        {
-            "field": "date",
-            "operator": "equals",
-            "allowable_drift": 1800
-        },
-        {
-            "field": "reference",
-            "operator": "contains"
-        }
-    ]
-}
-```
-
-The above matching rule matches internal and external transaction records with:
-
-- Equal amounts with a 1% drift.
-- The same currency.
-- The same date with a 30 mins drift, i.e. +/- 30 mins.
-- References that contain "ref_"
-
-## 3. Define reconciliation strategies
-
-Reconciliation strategies are essential for maintaining accurate financial records and ensuring that all transactions and payments are correctly matched based on your unique financial workflows. Learn more: [Reconciliation Strategies](/reconciliations/strategies).
-
-1. **One-to-One**: `one_to_one` is used for a direct match between an internal transaction record in your Blnk Ledger and an external transaction record.
-2. **One-to-Many**: `one_to_many` is used when one external transaction represents multiple internal transactions (e.g., batch or split payments).
-3. **Many-to-One**: `many_to_one` is used when multiple external transaction records make up one internal transaction record (e.g., installment payments, ACH transfers, etc.).
-
-## 4. Run reconciliation
-
-Once you've set your matching rules and determined your reconciliation strategy, you can initiate reconciliation with this endpoint:
+To run your batch reconciliation, call the [Start Reconciliation](/reference/start-reconciliation) endpoint:
 
 ```
 POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
 ```
 
-```json Example
+```json Example request
 {
   "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
   "strategy": "one_to_many",
@@ -159,44 +74,131 @@ POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
 }
 ```
 
-This reconciliation example:
+| **Field** | **Type** | **Description** |
+| :-- | :-- | :-- |
+| `upload_id` | String | Unique identifier of the uploaded external record for reconciliation.  |
+| `strategy` | String | Defines the reconciliation strategy to be used. |
+| `matching_rule_ids` | Array | An array of rule ids that determine how the records are matched. |
+| `grouping_criteria` | String | Specifies the field used to group related records during reconciliation. Not required for `one_to_one`. |
+| `dry_run` | Boolean | If `false`, result is saved to the database. If `true`, it is not. |
 
-1. Uses one-to-many as its reconciliation strategy.
-2. Groups transactions by parent, currency, and status.
-3. Groups similar internal transaction records based on their reference. [Learn more](/reconciliations/strategies#grouping-criteria)
-4. Applies two different matching rules.
-5. Saves the reconciliation result to the database.
+<Tip>
+  `dry_run` is useful for debugging and testing strategies when performing reconciliation. If set to `true`, Blnk performs the reconciliation and prints the result without saving to the database. 
+</Tip>
 
-### Understanding dry run
+---
 
-Dry run (`dry_run`) is useful for debugging and testing strategies when performing reconciliation. If set to `true`, Blnk performs the reconciliation and prints the result without saving to the database. 
+## Option 2: Instant reconciliation
 
-If set to `false`, the result is saved to the database.
+<Info>Available on version 0.10.0 or later.</Info>
 
-## Best practices
+To reconcile transactions instantly, provide the external records as an array of transactions in your request body instead of a bulk upload.
 
-1. **Iterative Refinement:**  Initially, set up general rules that can capture a wide range of transactions. Identify any patterns or recurring issues and adjust the matching criteria to be more precise.
+To run your reconciliation, call the [Instant Reconciliation](/reference/instant-reconciliation) endpoint:
 
-2. **Custom Fields:** Use metadata or custom fields to include additional matching criteria specific to your business. Metadata provides additional data points attached to transactions, such as customer ID or region.
+```
+POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/instant
+```
 
-3. **Partial Matching:** For complex scenarios, consider implementing a scoring system for partial matches. Partial matches occur when transactions do not match exactly but share several similar attributes. A scoring system assigns scores to different matching criteria (e.g., amount, date, description). 
+<CodeGroup>
+```json Example request
+{
+  "external_transactions": [
+    {
+      "id": "txn1a2b3c4d5e6f7g8h9i0",
+      "amount": 5.49,
+      "reference": "INV-2023-002",
+      "currency": "GBP",
+      "description": "Card payment",
+      "date": "2024-11-15T14:25:30Z",
+      "source": "bank-api"
+    },
+    {
+      "id": "txn9z8y7x6w5v4u3t2s1",
+      "amount": 12.75,
+      "reference": "INV-2023-003",
+      "currency": "GBP",
+      "description": "Subscription renewal",
+      "date": "2024-11-15T14:40:15Z",
+      "source": "bank-api"
+    },
+    {
+      "id": "txn5p4o3n2m1l0k9j8h7",
+      "amount": 8.99,
+      "reference": "INV-2023-004",
+      "currency": "GBP",
+      "description": "Online purchase",
+      "date": "2024-11-15T14:55:10Z",
+      "source": "bank-api"
+    }
+  ],
+  "strategy": "one_to_one",
+  "matching_rule_ids": [
+    "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
+  ]
+}
+```
+```json Response
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3",
+  "upload_id": "instant_ad4f809c-7e2a-4c9d-8a65-1f76131afdf1",
+  "status": "completed",
+  "matched_transactions": 3,
+  "unmatched_transactions": 0,
+  "is_dry_run": false,
+  "started_at": "2025-03-15T17:43:26.463849Z",
+  "completed_at": "2025-03-15T17:43:26.508514Z"
+}
+```
+</CodeGroup>
 
-    If a transaction’s cumulative score exceeds a certain threshold, it is considered a match. For example, a transaction might match 80% of the criteria based on amount and date but differ slightly in description. The scoring system can still identify it as a likely match by assigning higher scores to critical criteria like transaction amount and lower scores to less critical ones like description.
+### Verifying reconciled transactions
 
-4. **Automated Scheduling:** Set up automated daily or weekly reconciliation jobs using Blnk's API and a task scheduler.
+You can verify if a transaction has been reconciled with **Instant Reconciliation** by retrieving the transaction details with the [Get Transaction](/reference/get-transaction) endpoint.
 
-5. **Exception Handling:** Develop a process for manually reviewing and resolving unmatched transactions. Exception handling involves a systematic approach to address transactions that do not match automatically, requiring human intervention to investigate and resolve discrepancies.
+```
+GET https://YOUR_BLNK_INSTANCE_URL/transactions/{transaction_id}
+```
 
-6. **Performance Optimization**: For large datasets, use date ranges and batching to improve reconciliation speed. Limiting the scope of reconciliation to specific periods reduces the volume of data processed at once. For instance, reconcile transactions on a daily/weekly basis instead of monthly to manage smaller datasets.
+You'll find the reconciliation results in the `meta_data` object as shown below:
 
-7. **Audit Trails**: Maintain detailed logs of all reconciliation activities for auditing purposes. Audit trails are comprehensive records of all actions taken during the reconciliation process, including changes made, rules applied, and transactions matched.
+```json Response {5}
+{
+  ...
+  "meta_data": {
+    "external_txn_id": "txn9z8y7x6w5v4u3t2s1",
+    "reconciled": true,
+    "reconciled_at": "2025-03-15T18:11:52.61+00",
+    "reconciliation_amount": 12.75,
+    "reconciliation_id": "recon_9134cb8-a3f6-47e9-b566-4fb93fa051"
+  }
+}
+```
 
-## Learn more
+| Field | Description |
+| :-- | :-- |
+| `external_txn_id` | ID of the matched external transaction. |
+| `reconciled: true` | If matched successfully. |
+| `reconciled_at` | When the reconciliation was done. |
+| `reconciliation_amount` | Amount from the external record. |
+| `reconciliation_id` | Unique ID of the reconciliation process. |
 
-<CardGroup>
-    <Card title="External data preparation" icon="file-excel" iconType="duotone" href="external-data"></Card>
-    <Card title="Matching rules" icon="code-compare" iconType="duotone" href="matching-rules"></Card>
-    <Card title="Reconciliation strategies" icon="route" iconType="duotone" href="strategies"></Card>
-</CardGroup>
+---
+
+## Common use cases
+
+Reconciliation can be a great fit for you if you are building:
+
+1. **BNPL platforms:** Verify loan disbursements and repayments match merchant records, preventing billing errors and ensuring smooth settlements.
+
+2. **Fintech apps:** Sync payments from multiple sources (e.g., cards, wallets) for accurate reporting and user trust.
+
+3. **Crypto exchanges:** Reconcile transactions between wallets, smart contracts, and fiat ramps to maintain balance integrity.
+
+4. **Payment processors:** Ensure funds move correctly between merchants, banks, and users, avoiding costly mismatches.
+
+5. **Multi-currency systems:** Align balances across regions and providers, simplifying global operations.
+
+---
 
 <NeedHelp />

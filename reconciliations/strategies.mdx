@@ -9,108 +9,124 @@ icon: "route"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Reconciliation strategies allow you to outline how transactions are distributed between both records. Sometimes, one transaction in the internal record can be split into 2 or more transactions in the external record and vice versa.
+---
 
-These strategies help maintain the integrity of financial data by aligning transactions with corresponding payments, thus preventing discrepancies and ensuring that financial statements are accurate and reliable. 
+## Overview
 
-In this guide, we will explore three common reconciliation strategies: [One-to-One](#1-one-to-one), [One-to-Many](#2-one-to-money), and [Many-to-One](#3-many-to-one). Each strategy serves specific purposes and suits different financial workflows.
+Reconciliation strategies define the relationship between external and internal transactions.
 
-<Note>
-    Read [Reconciliation Overview](/reconciliations/overview) to learn how to perform reconciliation in your ledger.
-</Note>
+For example, a single internal transaction may correspond to multiple external transactions, or vice versa. With reconciliation strategies, you can specify how you want run your reconciliation.
 
-## 1. One-to-one
+Blnk support three types of strategies:
 
-The One-to-One reconciliation strategy (`one_to_one`) involves a direct match between an internal transaction record and an external transaction record. It is the simplest form of reconciliation, ensuring that the amount in your Blnk Ledger matches exactly with the corresponding amount in an external system.
+1. **One-to-One:** Ideal for straightforward payments where each external transaction has a single internal match.
 
-<Frame caption="One-to-one strategy">
-    ![Image showing one-to-one reconciliation strategy](/images/recon/one-to-one.png)
-</Frame>
+2. **One-to-Many:** Suited for split transactions, such as a loan repayment split across multiple internal disbursements.
 
-```json Example
+3. **Many-to-One:** Perfect for aggregating transactions, like daily sales combined into one internal ledger entry.
+
+---
+
+## One-to-One (1:1) strategy
+
+This matches a single external transaction directly to a single internal transaction based on your [matching rules](/reconciliations/matching-rules).
+
+```json
 {
-  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
-  "strategy": "one_to_one",
-  "dry_run": false,
-  "matching_rule_ids": [
-    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
-  ]
+  ...
+  "strategy": "one_to_one"
 }
 ```
 
-## 2. One-to-many
+<Tip>
+  `grouping_criteria` is not needed for one-to-one.
+</Tip>
 
-The One-to-Many reconciliation strategy (`one_to_many`) is used when one external transaction record represents multiple internal transaction records. This strategy is useful for batch payments or situations where a single transaction needs to be matched with multiple internal transaction records in your Blnk Ledger.
+---
 
-This strategy is commonly used to reconcile transactions that settle in groups, e.g., a credit of \$100 in your bank statement, may be recorded as \$90 to the customer, and \$10 for fees in your Blnk Ledger.
+## One-to-Many (1:N) strategy
 
-<Frame caption="One-to-many strategy (matched)">
-    ![Image showing one-to-many reconciliation strategy](/images/recon/one-to-many-right.png)
-</Frame>
-<Frame caption="One-to-many strategy (not matched)">
-    ![Image showing one-to-many reconciliation strategy](/images/recon/one-to-many-wrong.png)
-</Frame>
+This matches a single external transaction with multiple internal transactions.
 
-```json Example
+```json
 {
-  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  ...
   "strategy": "one_to_many",
-  "dry_run": false,
-  "matching_rule_ids": [
-    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
-  ]
+  "grouping_criteria": "parent_transaction"
 }
 ```
 
-For this to work:
+<Warning>
+  `grouping_criteria` is required to combine related internal transactions before matching.
+</Warning>
 
-- The matching internal transaction records must be equal to the external transaction record.
-- You also need to specify how the internal transaction records must be grouped.
+### How it works
 
-## 3. Many-to-one
+1. **Group related internal transactions:**
 
-The Many-to-One reconciliation strategy (`many_to_one`) is employed when multiple external transaction records make up one internal transaction record. It is effective for cases such as installment payments, where several smaller transactions in your external records over time need to be reconciled with a single larger internal transaction record.
+    * Internal transactions are grouped with a grouping criteria, e.g., `parent_transaction` or a similar identifier.
 
-This strategy is commonly used to reconcile transactions that settle in groups, e.g., a bank transfer of \$100 may settle as \$10 and \$90 in your external records. 
+2. **Summing transaction amounts:** The total sum of transaction amounts is calculated.
 
-<Frame caption="Many-to-one strategy">
-    ![Image showing many-to-one reconciliation strategy](/images/recon/many-to-one-right.png)
-</Frame>
+3. **Matching against the external transaction:**
 
-```json Example
+    * The grouped internal transactions are compared to the external transaction using predefined rules:
+
+        * **Date:** The earliest transaction date in the group is used for matching.
+
+        * **Amount:** If the summed amount falls within the allowable drift, the match is confirmed.
+
+        * **Reference/Description:** If at least one internal transaction matches, the group is valid.
+
+        * **Currency:** One mismatched currency invalidates the entire group.
+---
+
+## Many-to-One (N:1) strategy
+
+This is the inverse of the One-to-Many strategy. It matches multiple external transactions to a single internal transaction:
+
+* The process mirrors the One-to-Many approach, but the roles are flipped.
+
+* The amounts of multiple external transactions are summed and compared to the amount of one internal transaction.
+
+* Matching rules (date, amount, reference/description, currency) are applied similarly as well.
+
+```json
 {
-  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  ...
   "strategy": "many_to_one",
-  "dry_run": false,
-  "matching_rule_ids": [
-    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
-  ]
+  "grouping_criteria": "description"
 }
 ```
 
-For this to work:
+<Warning>
+  `grouping_criteria` is required to combine related external transactions before matching.
+</Warning>
 
-- The matching external transaction records must be equal to the internal transaction record.
+---
 
-## Grouping criteria
+## Choosing the right grouping criteria
 
-Grouping is crucial for complex reconciliation strategies, particularly for one-to-many or many-to-one reconciliations. We use grouping to define a way for identifying multiple similar records during reconciliation. 
+Grouping criteria define how transactions are clustered before matching, ensuring that reconciliation strategies like One-to-Many and Many-to-One work correctly. 
 
-Proper grouping ensures that transactions are matched accurately and efficiently. Grouping criteria define how transactions should be categorized before they are reconciled.
+Choosing the right grouping criteria prevents incorrect matches and improves reconciliation accuracy.
 
-Depending on the reconciliation strategy being employed, the grouping criteria may vary. For one-to-many, you can group similar transactions by `parent_transaction`, `description`, or `reference` WHILE for many-to-one, you can group only by `description`.
+1. **One-to-Many:** You can group similar transactions by `parent_transaction`, `description` or `reference`.
+
+2. **Many-to-One:** You can group by `description`.
 
 ```json Example
 {
-  "grouping_criteria": "reference"
+  ...
+  "grouping_criteria": "parent_transaction"
 }
 ```
 
-The above example for a one-to-many reconciliation groups internal records by their reference numbers.
+### How it works
 
-For **many-to-one transactions**, you can include a key or value to the description of the transactions to make it easy to identify similar transactions and group them together as one. For example, if a user makes a transfer, you can pass `bankTransfer-209018` in the description so that all external records with the description can be grouped together to be matched to an internal record. 
+1. Before applying matching rules, transactions are grouped using a shared attribute.
+2. Grouping ensures that unrelated transactions are not mistakenly matched.
+
+---
 
 <NeedHelp />
