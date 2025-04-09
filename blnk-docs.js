@@ -17,21 +17,4 @@ var _cio = _cio || [];
   s.parentNode.insertBefore(t, s);
 })();
 
-function getUTMParams() {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    utm_source: params.get("utm_source"),
-    utm_medium: params.get("utm_medium"),
-    utm_campaign: params.get("utm_campaign"),
-    utm_content: params.get("utm_content")
-  };
-}
-
-const utms = getUTMParams();
-
-_cio.track('utm_visit', {
-  ...utms,
-  date: new Date().toISOString()
-})
-
 _cio.page("", {})
