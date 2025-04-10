@@ -8,10 +8,6 @@ var _cio = _cio || [];
   t.async = true;
   t.id    = 'cio-tracker';
   t.setAttribute('data-site-id', 'e2bc67f8e0ad2d091d54');
-  t.setAttribute('data-use-array-params', 'true');
-
-  // Enabled in-app messaging
-  t.setAttribute('data-use-in-app', 'true');
 
   t.src = 'https://assets.customer.io/assets/track.js';
   s.parentNode.insertBefore(t, s);
