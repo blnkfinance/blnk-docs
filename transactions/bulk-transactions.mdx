@@ -105,6 +105,40 @@ PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{batch_id}
 
 ---
 
+## Retrieving transactions in a batch
+
+When you submit a bulk transaction request, Blnk assigns each transaction in the batch its own unique transaction ID but tags them all with the same `parent_transaction` (which is your original `batch_id`). 
+
+To retrieve every transaction in that batch:
+
+```
+POST http://YOUR_BLNK_INSTANCE_URL/search/transactions
+```
+<CodeGroup>
+```curl cURL
+curl -X POST http://localhost:5001/search/transactions \
+  -H "Content-Type: application/json" \
+  -H "X-blnk-key: <api-key>" \
+  -d '{
+    "q": "<batch-id>",
+    "query_by": "parent_transaction"
+  }'
+```
+```json JSON Request
+{
+  "q": "<batch-id>",
+  "query_by": "parent_transaction"
+}
+```
+</CodeGroup>
+
+* `q`: The `batch_id` returned when you created the request.
+* `query_by`: Must be set to `parent_transaction`.
+
+The response will include an array of all child transactions linked to that `batch_id`.
+
+---
+
 ## Webhook notifications
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
