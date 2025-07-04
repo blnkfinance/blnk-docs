@@ -1,0 +1,62 @@
+---
+title: "Applying rates"
+sidebarTitle: "Rates"
+description: "Learn how to transactions between different currencies."
+icon: "rotate-reverse"
+noindex: true
+"og:title": "Applying Rates • Blnk Developer Documentation"
+"og:description": "Record transactions between different currencies in your Blnk Ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Blnk also supports recording transactions between ledger balances of different asset classes using the `rate` field. 
+
+<Warning>
+    **Important:** Avoid applying rates to transactions within the same currency, as it is unnecessary and redundant.
+</Warning>
+
+**Let's dive in ✨**
+
+What we'll cover …
+
+1. [Applying rates](#1-applying-rates)
+2. [Key considerations](#2-key-considerations)
+
+## 1. Applying rates
+
+Consider a transaction record sending USD 2,290.19 from a USD balance to a GBP balance. 
+
+The first thing is to calculate the exchange rate value against the `source`, i.e., by how much should you multiply the transaction amount to convert from the source's currency to the destination's currency.
+
+In our example, 1 USD = 0.79 GBP. This means `"rate": 0.79`.
+
+```json Request {6-8}
+{
+  "reference": "ref_1234567890",
+  "amount": 2290.19,
+  "currency": "USD",
+  "precision": 100,
+  "rate": 0.79,
+  "source": "bal_usd",
+  "destination": "bal_gbp"
+}
+```
+
+<Warning>
+  Failing to specify a `rate` value for transactions between currencies can result in incorrect destination balances and ledger discrepancies. Always include an exchange rate to ensure accuracy.
+</Warning>
+
+### What happens next
+
+1. Blnk applies the rate to the transaction amount: 2290.19 * 0.79 = 1803.09
+2. Blnk applies the precision to the converted amount: 1803.09 * 100 = 180309
+3. Blnk records the amount as `180309` in `bal_gbp`, and `229019` in `bal_usd` and computes their balances.
+
+## 2. Key considerations
+
+1. Only send money between balances whose different asset classes have the same `precision` value, i.e., USD to GBP work well because the precision value for their lowest unit possible is 100. However, NGN to BTC is not advisable.
+
+2. Always specify your `precision` value in your transaction payload to ensure consistency in how your balance is computed.
+
+<NeedHelp />

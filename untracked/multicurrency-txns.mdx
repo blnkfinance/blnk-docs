@@ -1,0 +1,142 @@
+---
+sidebarTitle: "Multicurrency"
+title: "Implementing Multicurrency Transactions"
+description: "Learn how to implement a multicurrency transaction workflow with Blnk."
+icon: "arrows-rotate"
+"og:title": "Implementing Multicurrency Transactions with Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to implement a multicurrency transaction workflow with Blnk Finance."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+This tutorial will guide you through implementing multicurrency transactions with the Blnk Ledger.
+
+For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript/introduction) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+
+---
+
+## Designing your map
+
+Before writing code, it's crucial to design a [money movement map](/ledgers/money-movement-map) that outlines how money moves in your system. This serves as the blueprint for your implementation.
+
+```mermaid
+    flowchart LR
+        usdSettle([@USDLiquidity])
+        usd([Customer USD Wallet])
+        gbp([Customer GBP Wallet])
+        gbpSettle([@GBPLiquidity])
+        
+        subgraph sendUSD [Send USD]
+            usd --> usdSettle
+        end
+        subgraph receiveGBP [Receive GBP]
+            gbpSettle --> gbp
+        end
+
+        sendUSD -- FX conversion --> receiveGBP
+
+    style sendUSD fill:#000
+    style receiveGBP fill:#000
+    ```
+
+---
+
+## Set up your implementation
+
+A simple multicurrency transaction flow (e.g. USD to GBP) needs:
+
+1. Two balances in different currencies. We'll use USD and GBP for this guide.
+2. Two transactions: one to debit the source (send USD), and the other the credit the destination balance (receive GBP).
+3. Use a linked id to connect both transactions together.
+
+---
+
+## Sending USD
+
+Record a transaction for the USD being sent, and deposit it into a liquidity balance (in USD) managed by your organization.
+
+```javascript TypeScript
+async function sendUSD(usdSourceBalance, linkedTransactionId, usdAmount, currentFxRate, uniqueReference, description) {
+  const blnk = await getBlnkInstance();
+  const { Transactions } = blnk;
+  
+  const send = await Transactions.create({
+    amount: usdAmount,
+    precision: 100,
+    reference: uniqueReference,
+    description: description || "Transfer for GBP",
+    currency: "USD",
+    source: usdSourceBalance,
+    destination: "@USDLiquidity",
+    meta_data: {
+      fx_transaction_id: linkedTransactionId,
+      fx_rate: currentFxRate
+    }
+  });
+  
+  console.log("Transaction created:", send.data.transaction_id);
+  return send.data.transaction_id;
+}
+```
+
+---
+
+## Sending GBP
+
+Next, record a transaction for the GBP received in the destination balance, transferred from a liquidity balance (in GBP) that your organization also manages.
+
+```javascript TypeScript
+async function sendUSD(usdDestinationBalance, linkedTransactionId, gbpAmount, currentFxRate, uniqueReference, description) {
+  const blnk = await getBlnkInstance();
+  const { Transactions } = blnk;
+  
+  const receive = await Transactions.create({
+    amount: gbpAmount,
+    precision: 100,
+    reference: uniqueReference,
+    description: description || "Transfer for GBP",
+    currency: "GBP",
+    source: "@GBPLiquidity",
+    destination: usdDestinationBalance,
+    meta_data: {
+      fx_transaction_id: linkedTransactionId,
+      fx_rate: currentFxRate
+    }
+  });
+  
+  console.log("Transaction created:", receive.data.transaction_id);
+  return receive.data.transaction_id;
+}
+```
+
+---
+
+## Handling FX rates
+
+Develop a function to compute the amount the recipient will receive in GBP, using real-time FX rates:
+
+```javascript TypeScript
+function calculateGBP(usdAmount, usdToGbpRate) {
+  const gbpAmount = usdAmount * usdToGbpRate;
+
+  return Number(gbpAmount.toFixed(2));
+}
+```
+
+---
+
+## Conclusion
+
+This tutorial provides a clear and detailed understanding of money movement between different currencies, ensuring no risk of missing cents.
+
+Other things you can do is:
+
+1. Atomically process both transactions as a [bulk transaction](/transactions/bulk-transactions) ensuring that they either both succeed or both fail. 
+
+2. Use [multiple destinations](/transactions/multiple-destinations) to record and charge spread fees and charges typically associated with FX conversions.
+
+---
+
+<RequestTutorial />

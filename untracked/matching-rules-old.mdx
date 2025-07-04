@@ -1,0 +1,118 @@
+---
+title: "Matching rules"
+sidebarTitle: "Matching rules"
+description: "Determine how Blnk compares and matches records between your Ledger and external data."
+icon: "code-compare"
+"og:title": "Matching Rules • Blnk Developer Documentation"
+"og:description": "Set rules that govern how your Ledger and external records are matched"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Reconciliation in fintech is all about comparing and matching records in your Blnk Ledger with records from [external sources](/reconciliations/external-data) to ensure accuracy and correctness. At the core of this process is matching rules — clearly defined and systematic guidelines that define how these records should be compared and matched.
+
+Understanding and implementing these rules is crucial for streamlining reconciliation, reducing manual effort, and minimizing errors.
+
+<Note>
+    Read [Reconciliation Overview](/reconciliations/overview) to learn how to perform reconciliation in your ledger.
+</Note>
+
+## Creating a matching rule
+
+To create a matching rule, call the following endpoint:
+
+```
+POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/matching-rules
+```
+
+And pass the following request body:
+
+```json Request
+{
+    "name": "Default matcher",
+    "description": "Amount with 1% drift matcher",
+    "criteria": [
+        {
+            "field": "amount",
+            "operator": "equals",
+            "allowable_drift": 0.01
+        },
+        {
+            "field": "currency",
+            "operator": "equals"
+        },
+        {
+            "field": "date",
+            "operator": "equals",
+            "allowable_drift": 1800
+        },
+        {
+            "field": "reference",
+            "operator": "contains"
+        }
+    ]
+}
+```
+
+The above matching rule matches internal and external transaction records with:
+
+- Equal amounts with a 1% drift.
+- The same currency.
+- The same date with a 30 mins drift, i.e. +/- 30 mins.
+- References that contain "ref_"
+
+| Field | Description |
+| :--- | :--- |
+| `name` | The name of the rule being created. |
+| `description` | A short narration of what the rule does. |
+| `criteria` | An array of criteria that defines the rule. Each criteria is defined by 3 attributes — `field`, `operator`, `allowable_drift`. |
+| `field` | Fields to match. It can be `"amount"`, `"currency"`, `"reference"`, `"description"`, or `"date"`. |
+| `operator` | Defines how the selected field should be compared with internal records. Depending on the field, this can be `"equals"` or `"contains"`. |
+| `allowable_drift` | Helps to accomodate small variations in transaction amounts between both records. |
+
+### Supported criteria attributes and operators
+
+Matching rules are used to match your internal data and [external data](/reconciliations/external-data). Supported fields are:
+
+| Attributes | Supported operators | Description |
+| :--- | :--- | :--- |
+| `amount` | `equals` | Match by amount, e.g. external amount should equals internal amount. |
+| `currency` | `equals` | Match by currency, e.g. external currency should equals internal currency. |
+| `reference` | `equals`, `contains` | Match by reference, e.g. external reference should equals internal reference |
+| `description` | `equals`, `contains` | Match by description, e.g., internal description should contain part of or equals external description.  |
+| `date` | `equals` | Match by date and time, e.g., external transaction date is greater than internal transaction date. |
+
+### Handling discrepancies with drifts
+
+In the reconciliation process, discrepancies between internal records in your Blnk Ledger and external statements can occur. Drifts allow for tolerances in matching criteria, accommodating these discrepancies and ensuring smoother reconciliation. 
+
+There are two main types of drifts:
+
+1. **Amount Drift:** Allows for differences in transaction amounts. 
+
+    For example, if your internal record shows a transaction amount of \$100, an amount drift of 1% (0.01) would allow for the external statement to report the amount as anything between \$99 and \$101.
+
+    <Frame caption="Amount is matched +/- $22 (1% of the amount)">
+      ![Image showing how records are matched using amount drift](/images/recon/amount-drift.png)
+    </Frame>
+
+2. **Date Drift:** Allows for differences in transaction dates. For example, a time drift value of 3600 seconds permits a 1-hour difference in transaction dates, accommodating timing discrepancies.
+    
+    For example, if your Blnk ledger shows a transaction date and time of 2:00 PM, a date drift of 3600 seconds would allow for the external statement to report the date and time as anything between 1:00 PM and 3:00 PM.
+
+    <Frame caption="Date is matched +/- 1 hour.">
+      ![Image showing how records are matched using date drift](/images/recon/date-drift.png)
+    </Frame>
+
+## Importance of matching rules
+
+Matching rules are the backbone of the reconciliation process, providing a structured approach to ensure that financial data is accurate and reliable. They enable organizations to automate the comparison of transactions across various data sources, such as bank statements, payment processor reports, and more. 
+
+By establishing clear and precise matching criteria, organizations can enhance their financial operations in several ways:
+
+1. **Efficiency**: Automated matching rules significantly reduce the time and effort required for manual reconciliation.
+2. **Accuracy**: Consistent application of matching rules minimizes the risk of human error, leading to more accurate financial records.
+3. **Scalability**: Robust and advanced matching rules allow organizations to handle large volumes of transactions, which is especially critical for fintech companies dealing with high transaction frequencies and complex financial products.
+4. **Compliance**: Accurate reconciliation helps organizations meet regulatory requirements and maintain transparent financial practices.
+
+<NeedHelp />

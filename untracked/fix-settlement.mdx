@@ -1,0 +1,76 @@
+```mermaid
+flowchart LR
+    payin([@pay-in])
+    customer([customer])
+    payout([@pay-out])
+    revenue([@revenue])
+    cold([@settlement-account])
+    hot([@payout-account])
+    fees([@fees])
+
+    %% Deposit flow
+    payin -- "deposit\n(full amount)" --> customer
+    payin -- "payin provider fee" --> fees
+    payin -- "settlement\n(manual)" --> cold
+
+    %% Payout flow
+    customer -- "withdrawal/transfer\n(amount + fees)" --> payout
+    customer -- "our fee" --> revenue
+    payout -- "payout \nprovider fee" --> fees
+
+    %% Internal movements
+    cold -- "manual\nmovement" --> hot
+    hot -- "payout amount" --> payout
+```
+
+<AccordionGroup>
+  <Accordion title="1. Transaction reconciliation">
+    1. Match individual deposits between `@pay-in` and customer balances.
+    2. Match individual payouts between customer balances and `@pay-out`.
+    3. Auto-detect mismatches in transaction amounts between provider statements and customer balances.
+  </Accordion>
+  <Accordion title="2. Balance reconciliation">
+    1. Reconcile settlement amounts:
+        - Sum all deposits to customer balances.
+        - Subtract provider fees.
+        - Match against actual settlement to `@settlement-account`.
+
+    2. Reconcile payout account:
+        - Sum all payouts from `@payout-account`.
+        - Match against actual bank statement.
+
+    3. Track provider fee accuracy:
+        - Sum all fee entries in `@fees`.
+        - Match against provider invoices.
+
+    4. Monitor revenue accuracy:
+        - Sum all fee entries in `@revenue`.
+        - Match against expected fee calculations.
+  </Accordion>
+  <Accordion title="3. Liquidity management">
+    1. Monitor `@payout-account` balance:
+        - Set minimum thresholds for auto-alerts.
+        - Project daily/weekly payout volumes.
+        - Calculate optimal timing for manual transfers.
+
+    2. Track `@settlement-account` balance:
+        - Monitor incoming settlements.
+        - Set maximum thresholds for security.
+
+    3. Calculate optimal amount to keep in `@payout-account` based on:
+        - Historical payout patterns.
+        - Peak usage periods.
+        - Risk tolerance.
+  </Accordion>
+  <Accordion title="4. Cost optimization">
+    1. Analyze fee structures:
+        - Compare provider fees vs revenue.
+        - Track fee trends over time.
+        - Identify optimization opportunities.
+
+    2. Track revenue efficiency:
+        - Fee revenue vs costs.
+        - Customer segment profitability.
+        - Product line performance.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,58 @@
+### Amount drifts: Handling minor value differences
+
+Even small rounding errors, processing fees, or currency exchange fluctuations can cause mismatches in transaction amounts. 
+
+Amount drift allows reconciliation to tolerate these differences.
+
+>Here's how it works:
+>
+>If an internal transaction is \$100, and the drift is 1% (0.01), the external transaction can be between \$99 and \$101 to still be considered a match.
+>
+>| Internal amount | Allowed range (with 1% drift) | External amount | Match? |
+>| :-- | :-- | :-- | :-- |
+>| $100 | \$99 - \$101 | $100.50 | ✅ Yes | 
+>| $100 | \$99 - \$101 | $105.50 | ❌ No | 
+
+### Date drifts: Handling timing differences
+
+Banks and payment processors often record transactions at slightly different times due to processing delays or time zone differences. 
+
+Date drift allows for transactions to be matched even if their timestamps are slightly off.
+
+>Here's how it works:
+>
+>If an internal transaction is recorded at 2:00 PM, and the drift is 3600 seconds (1 hour), the external transaction can have a timestamp between 1:00 PM and 3:00 PM and still match.
+>
+>| Internal date | Allowed range (with 1h drift) | External date | Match? |
+>| :-- | :-- | :-- | :-- |
+>| March 10, 2:00 PM | \$99 - \$101 | March 10, 2:30 PM | ✅ Yes | 
+>| March 10, 2:00 PM | \$99 - \$101 | March 10, 4:00 PM | ❌ No | 
+
+
+
+### How it works
+
+1. **Group related internal transactions:**
+
+    * Internal transactions are grouped with a grouping criteria, e.g., `parent_transaction` or a similar identifier.
+
+2. **Summing transaction amounts:** The total sum of transaction amounts is calculated.
+
+3. **Matching against the external transaction:**
+
+    * The grouped internal transactions are compared to the external transaction using predefined rules:
+
+        * **Date:** The earliest transaction date in the group is used for matching.
+
+        * **Amount:** If the summed amount falls within the allowable drift, the match is confirmed.
+
+        * **Reference/Description:** If at least one internal transaction matches, the group is valid.
+
+        * **Currency:** One mismatched currency invalidates the entire group.
+
+---
+
+"banner": {
+    "content": "🚀 Blnk is now live on Product Hunt! If it’s been a helpful part of your workflow, we’d really value your support. [Upvote or share a comment](https://producthunt.com/posts/blnk-finance)",
+    "dismissible": true
+  },
