@@ -1,0 +1,122 @@
+---
+title: "Currency Exchange"
+sidebarTitle: "Currency exchange"
+description: "Learn how to handle currency exchange and multi-currency transactions in your Blnk Ledger."
+icon: "rotate-reverse"
+"og:title": "Currency Exchange • Blnk Developer Documentation"
+"og:description": "Handle currency exchange and multi-currency transactions in your Blnk Ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Some applications need to support transactions that involve multiple currencies. For example:
+
+* A customer wants to send money from their USD balance to another user who receives it in GBP.
+
+* A customer wants to convert funds from their USD balance to BTC within their own account.
+
+In this guide, you'll learn how to record such transactions in your Blnk Ledger while ensuring complete audit trail and accurate balance tracking for each currency.
+
+---
+
+## Recording multi-currency transactions
+
+To record a multi-currency transaction, create two distinct but atomically-linked transaction records — one for each currency. Each transaction reflects the flow of funds into and out of dedicated nostro balances used to facilitate the exchange.
+
+<Tip>
+  A nostro balance is a balance that is used to facilitate the exchange of one currency for another. 
+
+  We recommend using [internal balances](/balances/internal-balances) to create/manage these types of balances.
+</Tip>
+
+1. The first transaction reflects the deduction from the source currency to its corresponding nostro balance.
+
+2. The second transaction represents the corresponding credit to the destination currency from the nostro balance.
+
+These transactions must be logically and atomically linked to maintain consistency across ledgers. Atomicity ensures both legs of the conversion succeed or fail together—preventing cases where funds are debited in one currency but not credited in another. 
+
+This guarantees accurate reconciliation, a clear audit trail, and protects against partial or inconsistent updates during currency swaps.
+
+---
+
+## Practical example
+
+A customer wants to convert `$1000.00` to GBP. Assuming an exchange rate of `$1.00 = £0.79`, `$1000.00 = £790.00`. You can record this and ensure atomicity with the [Bulk Transactions](/transactions/bulk-transactions) feature. 
+
+Create a bulk transaction request containing two transactions as shown below:
+
+```json {2, 11-12, 25-26}
+{
+  "atomic": true,
+  "inflight": true,
+  "run_async": false,
+  "transactions": [
+    {
+      "amount": "1000.00",
+      "precision": 100,
+      "currency": "USD",
+      "reference": "ref_usd-debit-1",
+      "source": "customer-balance-usd",
+      "destination": "@Nostro-USD",
+      "description": "USD to GBP conversion",
+      "allow_overdraft": false,
+      "meta_data": {
+        "exchange_rate": "0.79",
+        "counterparty": "customer-balance-gbp"
+      }
+    },
+    {
+      "amount": "790.00",
+      "precision": 100,
+      "currency": "GBP",
+      "reference": "ref_gbp-credit-1",
+      "source": "@Nostro-GBP",
+      "destination": "customer-balance-gbp",
+      "description": "USD to GBP conversion",
+      "allow_overdraft": true,
+      "meta_data": {
+        "exchange_rate": "0.79",
+        "counterparty": "customer-balance-usd"
+      }
+    }
+  ]
+}
+```
+
+**A few things to note:**
+
+* `atomic = true` ensures that both transactions are processed together. If one fails, the other will be rolled back.
+
+* `@Nostro-USD` and `@Nostro-GBP` are created as internal balances in your General Ledger. You can use them to track your incoming and outgoing transactions per currency across your application.
+
+* [Both transactions are linked together](/transactions/bulk-transactions#retrieving-transactions-in-a-batch) with a `parent_transaction` field that contains the `batch_id` of the bulk transaction request.
+
+---
+
+## Recording FX spread
+
+In real-world scenarios, applications often apply a spread to the exchange rate—either to account for market volatility or as a source of revenue. In such cases: 
+
+* The amount credited in the destination currency will be less than the raw market equivalent, or;
+
+* The amount debited in the source currency will be greater than the raw market equivalent.
+
+To account for this, you should explicitly record the spread as a separate movement. This ensures transparency in your ledger and enables accurate reporting.
+
+**Example:**
+
+If the market rate is `$1 = £0.79`, but the customer receives at a rate of `$1 = £0.77`, then:
+
+* USD amount: `$1000.00`
+* GBP credited to customer: `£770.00`
+* GBP retained as spread: `£20.00`
+
+| Currency | Source | Destination | Amount | Purpose |
+| :--- | :--- | :--- | ---: | :--- |
+| USD | customer-balance-usd | @Nostro-USD | `$1000.00` | Deduct USD from customer |
+| GBP | @Nostro-GBP | customer-balance-gbp | `£770.00` | Credit GBP to customer (after deducting spread) |
+| GBP | @Nostro-GBP | @Spread-GBP | `£20.00` | Record spread as revenue |
+
+---
+
+<NeedHelp />
