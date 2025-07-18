@@ -1,0 +1,178 @@
+---
+title: "Account Number Generation"
+description: "Configure external services to automatically generate account numbers and bank names in Blnk"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Warning>
+**Deprecated Feature**: The Accounts API has been deprecated in favor of using Balances. We recommend using the [Balances API](/balances/introduction) for all new implementations.
+</Warning>
+
+Blnk supports external HTTP service integration for automatically generating account numbers and bank names during account creation. This feature streamlines the account setup process and ensures consistency in account information.
+
+---
+
+## Overview
+
+When external account number generation is enabled, Blnk will:
+
+1. Make an HTTP request to your configured external service
+2. Retrieve account number and bank name from the response
+3. Automatically populate these fields during account creation
+4. Fall back to manual values if the external service is unavailable
+
+<Info>
+This feature is optional and can be enabled/disabled through configuration. When disabled, you must provide account numbers and bank names manually.
+</Info>
+
+---
+
+## Configuration
+
+### Enable External Generation
+
+Configure account number generation in your `blnk.json` configuration file:
+
+```json
+{
+  "account_number_generation": {
+    "enable_auto_generation": true,
+    "http_service": {
+      "url": "https://your-account-service.com/generate",
+      "timeout": 30,
+      "headers": {
+        "Authorization": "Bearer YOUR_SERVICE_TOKEN"
+      }
+    }
+  }
+}
+```
+
+### Configuration Parameters
+
+| Parameter | Type | Required | Description | Environment Variable |
+|:----------|:-----|:---------|:------------|:---------------------|
+| `enable_auto_generation` | boolean | Yes | Whether to enable automatic account number generation | `BLNK_ACCOUNT_NUMBER_GENERATION_ENABLE_AUTO_GENERATION` |
+| `http_service.url` | string | Yes | The URL endpoint of your external account generation service | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_URL` |
+| `http_service.timeout` | integer | No | Request timeout in seconds | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_TIMEOUT` |
+| `http_service.headers.Authorization` | string | No | Authorization header for the external service (e.g., "Bearer YOUR_TOKEN") | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_HEADERS_AUTHORIZATION` |
+
+---
+
+## External Service Requirements
+
+### Request Format
+
+Your external service should accept HTTP GET requests:
+
+```bash
+GET https://your-account-service.com/generate
+Authorization: Bearer YOUR_SERVICE_TOKEN
+```
+
+### Response Format
+
+Your external service must return a JSON response with the following structure:
+
+```json
+{
+  "account_number": "1234567890",
+  "bank_name": "Your Bank Name"
+}
+```
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:------------|
+| `account_number` | string | Yes | The generated account number |
+| `bank_name` | string | Yes | The bank name associated with the account number |
+
+---
+
+## Account Creation with Auto-Generation
+
+When external generation is enabled, you can create accounts without providing account numbers or bank names:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://api.blnk.com/accounts' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -d '{
+    "currency": "USD",
+    "identity_id": "id_123456789",
+    "ledger_id": "led_123456789",
+    "meta_data": {
+      "account_type": "checking"
+    }
+  }'
+```
+
+```json Success
+{
+  "account_id": "acc_123456789",
+  "name": "John Doe",
+  "number": "1234567890",
+  "bank_name": "Blnk Bank",
+  "currency": "USD",
+  "balance_id": "bal_123456789",
+  "identity_id": "id_123456789",
+  "ledger_id": "led_123456789",
+  "created_at": "2024-01-15T10:30:00Z",
+  "meta_data": {
+    "account_type": "checking"
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## Error Handling
+
+### External Service Unavailable
+
+If the external service is unavailable, Blnk will:
+
+1. Log the error
+2. Continue with account creation
+3. Use any manually provided values
+4. Leave fields empty if no manual values are provided
+
+### Configuration Errors
+
+Common configuration errors and solutions:
+
+| Error | Description | Solution |
+|:------|:------------|:---------|
+| `enable_auto_generation` is true but no URL configured | Missing service URL | Add `http_service.url` to configuration |
+| External service returns invalid JSON | Malformed response | Ensure service returns valid JSON with required fields |
+| External service timeout | Service not responding | Check service availability and increase timeout |
+| Authorization failed | Invalid or missing token | Verify authorization header and token |
+
+
+---
+
+## Navigation
+
+<CardGroup cols={3}>
+<Card title="Introduction" icon="book-user" href="/accounts/introduction">
+  Overview and key concepts
+</Card>
+
+<Card title="Create Account" icon="code" href="/accounts/create-account">
+  Create new accounts
+</Card>
+
+<Card title="Get Account" icon="code" href="/accounts/get-account">
+  Retrieve account details
+</Card>
+
+<Card title="Account Number Generation" icon="gear" href="/accounts/account-number-generation">
+  Configure external account generation
+</Card>
+
+
+</CardGroup>
+
+<NeedHelp /> 
