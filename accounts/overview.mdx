@@ -1,0 +1,388 @@
+---
+title: "Accounts Overview • Blnk Developer Documentation"
+description: "Complete guide to managing bank accounts in Blnk with comprehensive API documentation, examples, and configuration for external account generation."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Warning>
+**Deprecated Feature**: The Accounts API has been deprecated in favor of using Balances. We recommend using the [Balances API](/balances/introduction).
+</Warning>
+
+Accounts in Blnk represent bank accounts linked to identities, ledgers, and balances. They provide a way to organize and manage financial relationships between entities in your system.
+
+---
+
+## Key Concepts
+
+### Account Structure
+An account in Blnk consists of:
+
+| Parameter | Description |
+|:-----------|:-------------|
+| **Account ID** | Unique identifier for the account |
+| **Name** | Human-readable account name (auto-generated from identity if not provided) |
+| **Number** | Bank account number |
+| **Bank Name** | Name of the financial institution |
+| **Currency** | The account's currency (inherited from balance or specified directly) |
+| **Balance** | Linked balance that tracks the account's financial state |
+| **Identity** | The individual or organization that owns the account |
+| **Ledger** | The ledger the account belongs to |
+| **Metadata** | Custom data for additional account information |
+
+### Account Creation Requirements
+When creating an account in Blnk, you must provide:
+
+- **`balance_id`**: The ID of an existing balance to link to this account
+- **`identity_id`**: The ID of the identity (individual or organization) that owns the account
+
+The account will inherit the currency, ledger, and other balance properties from the linked balance.
+
+### Multiple Accounts per Balance
+You can create multiple accounts using the same `balance_id` and `identity_id`. This allows a single identity to have multiple bank accounts linked to the same balance.
+
+### External Account Generation
+Blnk can integrate with external HTTP services to automatically generate account numbers and bank names, streamlining the account creation process. [Read more](/accounts/account-number-generation).
+
+---
+
+## Create Account
+
+Create new accounts linked to existing balances.
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/accounts \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "balance_id": "bal_123456789",
+    "identity_id": "idt_123456789",
+    "bank_name": "Blnk Bank",
+    "number": "1234567890",
+    "meta_data": {
+      "account_type": "checking",
+      "branch_code": "001"
+    }
+  }'
+```
+
+```json Request
+{
+  "balance_id": "bln_123456789",
+  "identity_id": "idt_123456789",
+  "bank_name": "Blnk Bank",
+  "number": "1234567890",
+  "meta_data": {
+    "account_type": "checking",
+    "branch_code": "001"
+  }
+}
+```
+
+```json Response
+{
+  "account_id": "acc_123456789",
+  "name": "John Doe",
+  "number": "1234567890",
+  "bank_name": "Blnk Bank",
+  "currency": "USD",
+  "balance_id": "bal_123456789",
+  "identity_id": "idt_123456789",
+  "ledger_id": "ldg_123456789",
+  "created_at": "2024-01-15T10:30:00Z",
+  "meta_data": {
+    "account_type": "checking",
+    "branch_code": "001"
+  }
+}
+```
+</CodeGroup>
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:------------|
+| `balance_id` | string | Yes | The ID of an existing balance to link to this account. The account will inherit currency, ledger, and other properties from this balance. You can use the same balance_id for multiple accounts. |
+| `identity_id` | string | Yes | The ID of the identity (individual or organization) that owns the account. You can use the same identity_id for multiple accounts. |
+| `bank_name` | string | Yes | The name of the bank where the account is held. |
+| `number` | string | Yes | The account number. Can be auto-generated if external account generation is enabled. |
+| `meta_data` | object | No | Custom metadata for the account. Can include any additional information you want to store. |
+
+### Response Fields
+
+| Field | Type | Description |
+|:------|:-----|:-------------|
+| `account_id` | string | Unique identifier for the created account. |
+| `name` | string | The account name. Auto-generated based on the linked identity if not provided. |
+| `number` | string | The account number. |
+| `bank_name` | string | The name of the bank. |
+| `currency` | string | The account currency. |
+| `balance_id` | string | The ID of the linked balance. |
+| `identity_id` | string | The ID of the linked identity. |
+| `ledger_id` | string | The ID of the linked ledger. |
+| `created_at` | timestamp | ISO 8601 formatted timestamp of when the account was created. |
+| `meta_data` | object | Custom metadata associated with the account. |
+
+---
+
+## Get Accounts
+
+Retrieve account information - either a specific account by ID or all accounts in your system.
+
+1. Use `GET /accounts/{account_id}` to retrieve a specific account by ID.
+2. Use `GET /accounts` to retrieve all accounts in your system.
+
+```bash Endpoint
+GET /accounts/{account_id}
+```
+
+<CodeGroup>
+```bash cURL
+curl --request GET \
+  --url http://localhost:5001/accounts/acc_123456789 \
+  --header 'X-blnk-key: <api-key>'
+```
+
+```json Success
+{
+  "account_id": "acc_123456789",
+  "name": "John Doe",
+  "number": "1234567890",
+  "bank_name": "Blnk Bank",
+  "currency": "USD",
+  "balance_id": "bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+  "identity_id": "idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+  "ledger_id": "ldg_c00a10b6-f08b-4e52-86ae-d9a490269df0",
+  "created_at": "2024-01-15T10:30:00Z",
+  "meta_data": {
+    "account_type": "checking",
+    "branch_code": "001"
+  }
+}
+```
+</CodeGroup>
+
+### Path Parameters
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:------------|
+| `account_id` | string | Yes | The unique identifier of the account to retrieve. |
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|:----------|:-----|:-------------|
+| `include` | array | Comma-separated list of related entities to include in the response. Valid values: `balance`, `identity`, `ledger`. Example: `/accounts/{account_id}?include=balance,identity,ledger` |
+
+### Response Fields
+
+| Field | Type | Description |
+|:------|:-----|:-------------|
+| `account_id` | string | Unique identifier for the account. |
+| `name` | string | The account name. |
+| `number` | string | The account number. |
+| `bank_name` | string | The name of the bank. |
+| `currency` | string | The account currency. |
+| `balance_id` | string | The ID of the linked balance. |
+| `identity_id` | string | The ID of the linked identity. |
+| `ledger_id` | string | The ID of the linked ledger. |
+| `created_at` | timestamp | ISO 8601 formatted timestamp of when the account was created. |
+| `meta_data` | object | Custom metadata associated with the account. |
+
+---
+
+## Account Number Generation
+
+Blnk supports external HTTP service integration for automatically generating account numbers and bank names during account creation. This feature streamlines the account setup process and ensures consistency in account information.
+
+### Overview
+
+When external account number generation is enabled, Blnk will:
+
+1. Make an HTTP request to your configured external service;
+2. Retrieve account number and bank name from the response;
+3. Automatically populate these fields during account creation;
+4. Fall back to manual values if the external service is unavailable.
+
+<Info>
+This feature is optional and can be enabled/disabled through configuration. When disabled, you must provide account numbers and bank names manually.
+</Info>
+
+### Configuration
+
+Configure account number generation in your `blnk.json` configuration file:
+
+```json
+{
+  "account_number_generation": {
+    "enable_auto_generation": true,
+    "http_service": {
+      "url": "https://your-account-service.com/generate",
+      "timeout": 30,
+      "headers": {
+        "Authorization": "Bearer YOUR_SERVICE_TOKEN"
+      }
+    }
+  }
+}
+```
+
+### Configuration Parameters
+
+| Parameter | Type | Required | Description | Environment Variable |
+|:----------|:-----|:---------|:------------|:---------------------|
+| `enable_auto_generation` | boolean | Yes | Whether to enable automatic account number generation | `BLNK_ACCOUNT_NUMBER_GENERATION_ENABLE_AUTO_GENERATION` |
+| `http_service.url` | string | Yes | The URL endpoint of your external account generation service | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_URL` |
+| `http_service.timeout` | integer | No | Request timeout in seconds | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_TIMEOUT` |
+| `http_service.headers.Authorization` | string | No | Authorization header for the external service (e.g., "Bearer YOUR_TOKEN") | `BLNK_ACCOUNT_NUMBER_GENERATION_HTTP_SERVICE_HEADERS_AUTHORIZATION` |
+
+### Example Guide: Setting Up Account Generation
+
+<Steps>
+<Step title="Create account generation server">
+  Create a simple server that generates account numbers and bank names:
+
+  ```javascript server.js
+  const express = require('express');
+  const cors = require('cors');
+  
+  const app = express();
+  const PORT = process.env.PORT || 3001;
+  
+  app.use(cors());
+  app.use(express.json());
+  
+  // Sample bank data
+  const banks = [
+    { name: 'Blnk Bank', prefix: 'BLNK' },
+    { name: 'Digital First Bank', prefix: 'DFB' },
+    { name: 'Tech Finance Bank', prefix: 'TFB' }
+  ];
+  
+  // Generate account number
+  function generateAccountNumber(prefix) {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `${prefix}-${timestamp}${random}`;
+  }
+  
+  // Main endpoint
+  app.get('/generate', (req, res) => {
+    const bank = banks[Math.floor(Math.random() * banks.length)];
+    const accountNumber = generateAccountNumber(bank.prefix);
+    
+    res.json({
+      account_number: accountNumber,
+      bank_name: bank.name
+    });
+  });
+  
+  app.listen(PORT, () => {
+    console.log(`Account Generation Server running on http://localhost:${PORT}`);
+  });
+  ```
+</Step>
+
+<Step title="Configure Blnk">
+  Add the following configuration to your `blnk.json` file:
+
+  ```json blnk.json
+  {
+    "account_number_generation": {
+      "enable_auto_generation": true,
+      "http_service": {
+        "url": "http://localhost:3001/generate",
+        "timeout": 30,
+        "headers": {}
+      }
+    }
+  }
+  ```
+</Step>
+
+<Step title="Test the Server">
+  Test your account generation server:
+
+  ```bash
+  # Start the server
+  node server.js
+  
+  # Test the endpoint
+  curl http://localhost:3001/generate
+  ```
+
+  Expected response:
+  ```json
+  {
+    "account_number": "BLNK-1234567890",
+    "bank_name": "Blnk Bank"
+  }
+  ```
+</Step>
+
+<Step title="Create Account with Auto-Generation">
+  Now create accounts without providing account numbers or bank names:
+
+  ```bash
+  curl -X POST 'http://localhost:5001/accounts' \
+    -H 'Content-Type: application/json' \
+    -H 'X-blnk-key: YOUR_API_KEY' \
+    -d '{
+      "balance_id": "bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+      "identity_id": "idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+      "meta_data": {
+        "account_type": "checking"
+      }
+    }'
+  ```
+
+  The account will be created with auto-generated account number and bank name.
+</Step>
+</Steps>
+
+### Error Handling
+
+#### External Service Unavailable
+
+If the external service is unavailable, Blnk will:
+
+1. Log the error
+2. Continue with account creation
+3. Use any manually provided values
+4. Leave fields empty if no manual values are provided
+
+---
+
+## Quick Start
+
+<Steps>
+<Step title="Create your first account">
+  Start by creating an account linked to an existing balance.
+  
+  <Check>
+  Use the Create Account endpoint with required balance_id and identity_id parameters.
+  </Check>
+</Step>
+
+<Step title="Retrieve account information">
+  Use the account ID to get detailed information about your account.
+  
+  <Check>
+  Use the Get Account endpoint to retrieve account details and related data.
+  </Check>
+</Step>
+
+<Step title="Configure auto-generation (optional)">
+  Set up external account number generation for streamlined account creation.
+  
+  <Check>
+  Configure the account_number_generation settings in your blnk.json file.
+  </Check>
+</Step>
+</Steps>
+
+---
+
+<NeedHelp /> 
