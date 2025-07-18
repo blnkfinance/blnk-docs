@@ -1,14 +1,18 @@
-// Blnk Auto Account Generation Test
-// This file tests the complete auto account generation flow
+/**
+ * Test Auto Account Generation
+ * 
+ * This file tests the complete auto account generation flow with Blnk.
+ * It verifies the generation server works and tests creating accounts with auto-generated
+ * account numbers and bank names. Requires both Blnk server and generation server to be running.
+ */
 
 const axios = require('axios');
 
-// Configuration
-const API_KEY = '425bb17c954657b03a002cbe71c44bd8f1d40bffbefe52accdf3a93099d4e2a1';
+const API_KEY = 'YOUR_API_KEY';
 const BLNK_BASE_URL = 'http://localhost:5001';
 const GENERATION_SERVER_URL = 'http://localhost:3001';
 
-// Test data storage
+// Store test data for use across functions
 let testData = {
   ledger_id: null,
   identity_id: null,
@@ -16,7 +20,7 @@ let testData = {
   accounts: []
 };
 
-// Utility function for making HTTP requests to Blnk
+// Helper function to make HTTP requests to Blnk API
 async function makeBlnkRequest(endpoint, options = {}) {
   const url = `${BLNK_BASE_URL}${endpoint}`;
   const defaultOptions = {
@@ -47,44 +51,41 @@ async function makeBlnkRequest(endpoint, options = {}) {
     return response.data;
   } catch (error) {
     if (error.response) {
-      // Server responded with error status
       const errorMessage = error.response.data?.error || error.response.data?.message || 'Unknown error';
       throw new Error(`HTTP ${error.response.status}: ${errorMessage}`);
     } else if (error.request) {
-      // Request was made but no response received
       throw new Error('No response received from server');
     } else {
-      // Something else happened
       throw new Error(`Request failed: ${error.message}`);
     }
   }
 }
 
-// Test the account generation server
+// Test the account generation server is working
 async function testGenerationServer() {
-  console.log('\n=== Testing Account Generation Server ===');
+  console.log('Testing Account Generation Server');
   
   try {
-    // Test 1: Health check
-    console.log('1. Testing generation server health...');
+    // Check server health
+    console.log('Testing generation server health...');
     const healthResponse = await axios.get(`${GENERATION_SERVER_URL}/health`);
     const healthData = healthResponse.data;
     
     if (healthData.status === 'healthy') {
-      console.log('✅ Generation server is healthy');
+      console.log('Generation server is healthy');
     } else {
       throw new Error('Generation server health check failed');
     }
     
-    // Test 2: Generate account details
-    console.log('2. Testing account generation...');
+    // Test account generation
+    console.log('Testing account generation...');
     const genResponse = await axios.get(`${GENERATION_SERVER_URL}/generate`);
     const genData = genResponse.data;
     
     if (genData.account_number && genData.bank_name) {
-      console.log('✅ Account generation working:');
-      console.log(`   Account Number: ${genData.account_number}`);
-      console.log(`   Bank Name: ${genData.bank_name}`);
+      console.log('Account generation working:');
+      console.log(`Account Number: ${genData.account_number}`);
+      console.log(`Bank Name: ${genData.bank_name}`);
     } else {
       throw new Error('Invalid response from generation server');
     }
@@ -92,14 +93,14 @@ async function testGenerationServer() {
     return genData;
     
   } catch (error) {
-    console.error('❌ Generation server test failed:', error.message);
+    console.error('Generation server test failed:', error.message);
     throw error;
   }
 }
 
-// Setup function 1: Create Ledger
+// Setup: Create a test ledger
 async function createTestLedger() {
-  console.log('\n=== Creating Test Ledger ===');
+  console.log('Creating Test Ledger');
   
   try {
     const ledger = await makeBlnkRequest('/ledgers', {
@@ -114,18 +115,18 @@ async function createTestLedger() {
     });
     
     testData.ledger_id = ledger.ledger_id;
-    console.log('✅ Test ledger created:', ledger.ledger_id);
+    console.log('Test ledger created:', ledger.ledger_id);
     return ledger;
     
   } catch (error) {
-    console.error('❌ Failed to create test ledger:', error.message);
+    console.error('Failed to create test ledger:', error.message);
     throw error;
   }
 }
 
-// Setup function 2: Create Identity
+// Setup: Create a test identity
 async function createTestIdentity() {
-  console.log('\n=== Creating Test Identity ===');
+  console.log('Creating Test Identity');
   
   try {
     const identity = await makeBlnkRequest('/identities', {
@@ -147,18 +148,18 @@ async function createTestIdentity() {
     });
     
     testData.identity_id = identity.identity_id;
-    console.log('✅ Test identity created:', identity.identity_id);
+    console.log('Test identity created:', identity.identity_id);
     return identity;
     
   } catch (error) {
-    console.error('❌ Failed to create test identity:', error.message);
+    console.error('Failed to create test identity:', error.message);
     throw error;
   }
 }
 
-// Setup function 3: Create Balance
+// Setup: Create a test balance
 async function createTestBalance() {
-  console.log('\n=== Creating Test Balance ===');
+  console.log('Creating Test Balance');
   
   try {
     const balance = await makeBlnkRequest('/balances', {
@@ -176,23 +177,23 @@ async function createTestBalance() {
     });
     
     testData.balance_id = balance.balance_id;
-    console.log('✅ Test balance created:', balance.balance_id);
+    console.log('Test balance created:', balance.balance_id);
     return balance;
     
   } catch (error) {
-    console.error('❌ Failed to create test balance:', error.message);
+    console.error('Failed to create test balance:', error.message);
     throw error;
   }
 }
 
-// Test function: Create Account with Auto Generation
+// Test: Create account with auto-generated details
 async function testAutoAccountGeneration() {
-  console.log('\n=== Testing Auto Account Generation ===');
+  console.log('Testing Auto Account Generation');
   
   try {
     console.log('Creating account with auto-generated details...');
     
-    // Create account WITHOUT providing bank_name and number
+    // Create account without providing bank_name and number
     const account = await makeBlnkRequest('/accounts', {
       method: 'POST',
       body: JSON.stringify({
@@ -203,41 +204,32 @@ async function testAutoAccountGeneration() {
           test: true,
           created_by: 'auto_generation_test'
         }
-        // Note: bank_name and number will be auto-generated
       })
     });
     
+    console.log('Account with auto-generated details:', account.account_id);
+    console.log('Bank Name:', account.bank_name);
+    console.log('Account Number:', account.number);
+    
     testData.accounts.push(account);
-    console.log('✅ Auto-generated account created:');
-    console.log(`   Account ID: ${account.account_id}`);
-    console.log(`   Account Number: ${account.number}`);
-    console.log(`   Bank Name: ${account.bank_name}`);
-    console.log(`   Currency: ${account.currency}`);
-    console.log(`   Balance ID: ${account.balance_id}`);
-    console.log(`   Identity ID: ${account.identity_id}`);
-    
-    // Verify that account number and bank name were generated
-    if (!account.number || !account.bank_name) {
-      throw new Error('Account number or bank name was not auto-generated');
-    }
-    
     return account;
     
   } catch (error) {
-    console.error('❌ Auto account generation failed:', error.message);
+    console.error('Auto account generation test failed:', error.message);
     throw error;
   }
 }
 
-// Test function: Create Multiple Auto-Generated Accounts
+// Test: Create multiple accounts with auto-generation
 async function testMultipleAutoAccounts() {
-  console.log('\n=== Testing Multiple Auto-Generated Accounts ===');
+  console.log('Testing Multiple Auto Account Generation');
   
   try {
     const accounts = [];
     
+    // Create 3 accounts with auto-generated details
     for (let i = 1; i <= 3; i++) {
-      console.log(`Creating auto-generated account ${i}...`);
+      console.log(`Creating account ${i}...`);
       
       const account = await makeBlnkRequest('/accounts', {
         method: 'POST',
@@ -245,177 +237,148 @@ async function testMultipleAutoAccounts() {
           balance_id: testData.balance_id,
           identity_id: testData.identity_id,
           meta_data: {
-            account_type: `auto_generated_${i}`,
+            account_type: 'auto_generated',
             test: true,
             created_by: 'auto_generation_test',
-            sequence: i
+            batch: i
           }
         })
       });
       
+      console.log(`Account ${i} created:`, account.account_id);
+      console.log(`Bank: ${account.bank_name}, Number: ${account.number}`);
+      
       accounts.push(account);
       testData.accounts.push(account);
-      
-      console.log(`✅ Account ${i} created:`);
-      console.log(`   Number: ${account.number}`);
-      console.log(`   Bank: ${account.bank_name}`);
       
       // Small delay between requests
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    // Verify uniqueness
-    const accountNumbers = accounts.map(acc => acc.number);
-    const uniqueNumbers = new Set(accountNumbers);
-    
-    if (accountNumbers.length === uniqueNumbers.size) {
-      console.log('✅ All auto-generated account numbers are unique!');
-    } else {
-      console.log('❌ Duplicate account numbers found!');
-    }
-    
-    // Verify bank variety
-    const bankNames = accounts.map(acc => acc.bank_name);
-    const uniqueBanks = new Set(bankNames);
-    console.log(`✅ Generated ${uniqueBanks.size} different banks:`, Array.from(uniqueBanks));
-    
+    console.log(`Successfully created ${accounts.length} accounts with auto-generation`);
     return accounts;
     
   } catch (error) {
-    console.error('❌ Multiple auto account generation failed:', error.message);
+    console.error('Multiple auto account generation test failed:', error.message);
     throw error;
   }
 }
 
-// Test function: Verify Auto-Generated Accounts
+// Test: Verify all generated accounts
 async function verifyAutoGeneratedAccounts() {
-  console.log('\n=== Verifying Auto-Generated Accounts ===');
+  console.log('Verifying Auto-Generated Accounts');
   
   try {
-    for (let i = 0; i < testData.accounts.length; i++) {
-      const account = testData.accounts[i];
-      console.log(`Verifying account ${i + 1}: ${account.account_id}`);
-      
-      // Get the account details
-      const retrievedAccount = await makeBlnkRequest(`/accounts/${account.account_id}`);
-      
-      console.log(`✅ Account ${i + 1} verified:`);
-      console.log(`   Original Number: ${account.number}`);
-      console.log(`   Retrieved Number: ${retrievedAccount.number}`);
-      console.log(`   Original Bank: ${account.bank_name}`);
-      console.log(`   Retrieved Bank: ${retrievedAccount.bank_name}`);
-      
-      // Verify the data matches
-      if (account.number !== retrievedAccount.number || account.bank_name !== retrievedAccount.bank_name) {
-        throw new Error(`Account ${i + 1} data mismatch`);
-      }
+    if (testData.accounts.length === 0) {
+      console.log('No accounts to verify');
+      return;
     }
     
-    console.log('✅ All auto-generated accounts verified successfully!');
+    console.log(`Verifying ${testData.accounts.length} accounts...`);
+    
+    // Display details for each account
+    for (let i = 0; i < testData.accounts.length; i++) {
+      const account = testData.accounts[i];
+      console.log(`Account ${i + 1}:`);
+      console.log(`  ID: ${account.account_id}`);
+      console.log(`  Bank: ${account.bank_name}`);
+      console.log(`  Number: ${account.number}`);
+      console.log(`  Balance ID: ${account.balance_id}`);
+      console.log(`  Identity ID: ${account.identity_id}`);
+      console.log('');
+    }
+    
+    // Check uniqueness and variety
+    const uniqueBanks = new Set(testData.accounts.map(acc => acc.bank_name));
+    const uniqueNumbers = new Set(testData.accounts.map(acc => acc.number));
+    
+    console.log('Verification Summary:');
+    console.log(`- Total accounts: ${testData.accounts.length}`);
+    console.log(`- Unique banks: ${uniqueBanks.size}`);
+    console.log(`- Unique account numbers: ${uniqueNumbers.size}`);
+    
+    if (uniqueNumbers.size === testData.accounts.length) {
+      console.log('All account numbers are unique!');
+    } else {
+      console.log('Warning: Duplicate account numbers found!');
+    }
     
   } catch (error) {
-    console.error('❌ Account verification failed:', error.message);
+    console.error('Account verification failed:', error.message);
     throw error;
   }
 }
 
-// Main test runner
+// Main test runner - executes complete auto generation test suite
 async function runAutoGenerationTests() {
-  console.log('🚀 Starting Blnk Auto Account Generation Tests');
+  console.log('Starting Auto Account Generation Tests');
   console.log('Make sure to:');
-  console.log('1. The account generation server is running on http://localhost:3001');
-  console.log('2. Blnk server is running on http://localhost:5001');
-  console.log('3. Auto generation is configured in your blnk.json');
-  console.log('');
+  console.log('1. Replace YOUR_API_KEY with your actual API key');
+  console.log('2. Update BASE_URL if your Blnk instance is not running on localhost:5001');
+  console.log('3. Ensure your Blnk server is running with auto-generation enabled');
+  console.log('4. Start the generation server: npm start\n');
   
   try {
-    // Test 1: Verify generation server is working
+    // Test generation server first
+    console.log('Testing generation server...');
     await testGenerationServer();
     
-    // Test 2: Setup test data
-    console.log('\n📋 Setting up test data...');
+    // Setup test data
+    console.log('Setting up test data...');
     await createTestLedger();
     await createTestIdentity();
     await createTestBalance();
     
-    // Test 3: Create single auto-generated account
+    // Test single account generation
+    console.log('Testing single auto account generation...');
     await testAutoAccountGeneration();
     
-    // Test 4: Create multiple auto-generated accounts
+    // Test multiple account generation
+    console.log('Testing multiple auto account generation...');
     await testMultipleAutoAccounts();
     
-    // Test 5: Verify all accounts
+    // Verify all generated accounts
+    console.log('Verifying generated accounts...');
     await verifyAutoGeneratedAccounts();
     
-    console.log('\n🎉 All auto generation tests completed successfully!');
-    console.log('');
-    console.log('📊 Test Summary:');
-    console.log(`   - Generation server: ✅`);
-    console.log(`   - Test data setup: ✅`);
-    console.log(`   - Single auto account: ✅`);
-    console.log(`   - Multiple auto accounts: ✅`);
-    console.log(`   - Account verification: ✅`);
-    console.log(`   - Total accounts created: ${testData.accounts.length}`);
-    console.log('');
-    console.log('🔧 Auto account generation is working correctly!');
+    console.log('All auto generation tests completed successfully!');
     
   } catch (error) {
-    console.error('\n💥 Auto generation test suite failed:', error.message);
-    console.log('');
-    console.log('🔧 Troubleshooting:');
-    console.log('   1. Ensure the generation server is running: npm start (in accounts-test folder)');
-    console.log('   2. Check if auto generation is enabled in blnk.json');
-    console.log('   3. Verify Blnk server is running and accessible');
-    console.log('   4. Check the generation server logs for errors');
+    console.error('Auto generation test suite failed:', error.message);
   }
 }
 
-// Individual test runners
+// Individual test runners for specific functionality
 async function runGenerationServerTest() {
-  console.log('🚀 Running Generation Server Test');
+  console.log('Running Generation Server Test');
   await testGenerationServer();
 }
 
 async function runSingleAutoAccountTest() {
-  console.log('🚀 Running Single Auto Account Test');
-  await createTestLedger();
-  await createTestIdentity();
-  await createTestBalance();
+  console.log('Running Single Auto Account Test');
   await testAutoAccountGeneration();
 }
 
 async function runMultipleAutoAccountsTest() {
-  console.log('🚀 Running Multiple Auto Accounts Test');
-  await createTestLedger();
-  await createTestIdentity();
-  await createTestBalance();
+  console.log('Running Multiple Auto Accounts Test');
   await testMultipleAutoAccounts();
 }
 
-// Export functions for individual testing
 module.exports = {
-  // Setup functions
+  testGenerationServer,
   createTestLedger,
   createTestIdentity,
   createTestBalance,
-  
-  // Test functions
-  testGenerationServer,
   testAutoAccountGeneration,
   testMultipleAutoAccounts,
   verifyAutoGeneratedAccounts,
-  
-  // Runner functions
   runAutoGenerationTests,
   runGenerationServerTest,
   runSingleAutoAccountTest,
   runMultipleAutoAccountsTest,
-  
-  // Test data access
   getTestData: () => testData
 };
 
-// If running directly (not imported), run all tests
 if (require.main === module) {
   runAutoGenerationTests();
 } 

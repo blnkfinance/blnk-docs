@@ -1,9 +1,15 @@
-// Blnk Accounts API Test Functions
-// Replace YOUR_API_KEY with your actual API key
-const API_KEY = 'YOUR_API_KEY';
-const BASE_URL = 'http://localhost:5001'; // Change this to your Blnk instance URL
+/**
+ * Test Accounts API
+ * 
+ * This file contains test functions for the Blnk Accounts API endpoints.
+ * It tests creating, retrieving, and listing accounts, plus auto account generation.
+ * Replace YOUR_API_KEY with your actual API key before running.
+ */
 
-// Test data storage
+const API_KEY = 'YOUR_API_KEY';
+const BASE_URL = 'http://localhost:5001';
+
+// Store test data IDs for use across functions
 let testData = {
   ledger_id: null,
   identity_id: null,
@@ -11,7 +17,7 @@ let testData = {
   account_id: null
 };
 
-// Utility function for making HTTP requests
+// Helper function to make HTTP requests to Blnk API
 async function makeRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
   const defaultOptions = {
@@ -33,7 +39,7 @@ async function makeRequest(endpoint, options = {}) {
   try {
     const response = await fetch(url, requestOptions);
     
-    // Check if response is JSON
+    // Handle JSON responses
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
@@ -44,7 +50,7 @@ async function makeRequest(endpoint, options = {}) {
       
       return data;
     } else {
-      // Handle non-JSON responses (like HTML error pages)
+      // Handle non-JSON responses
       const text = await response.text();
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: Server returned non-JSON response. Content-Type: ${contentType}`);
@@ -57,9 +63,9 @@ async function makeRequest(endpoint, options = {}) {
   }
 }
 
-// Setup function 1: Create Ledger
+// Setup: Create a test ledger
 async function createTestLedger() {
-  console.log('\n=== Creating Test Ledger ===');
+  console.log('Creating Test Ledger');
   
   try {
     const ledger = await makeRequest('/ledgers', {
@@ -74,18 +80,18 @@ async function createTestLedger() {
     });
     
     testData.ledger_id = ledger.ledger_id;
-    console.log('✅ Test ledger created:', ledger);
+    console.log('Test ledger created:', ledger.ledger_id);
     return ledger;
     
   } catch (error) {
-    console.error('❌ Failed to create test ledger:', error.message);
+    console.error('Failed to create test ledger:', error.message);
     throw error;
   }
 }
 
-// Setup function 2: Create Identity
+// Setup: Create a test identity
 async function createTestIdentity() {
-  console.log('\n=== Creating Test Identity ===');
+  console.log('Creating Test Identity');
   
   try {
     const identity = await makeRequest('/identities', {
@@ -107,18 +113,18 @@ async function createTestIdentity() {
     });
     
     testData.identity_id = identity.identity_id;
-    console.log('✅ Test identity created:', identity);
+    console.log('Test identity created:', identity.identity_id);
     return identity;
     
   } catch (error) {
-    console.error('❌ Failed to create test identity:', error.message);
+    console.error('Failed to create test identity:', error.message);
     throw error;
   }
 }
 
-// Setup function 3: Create Balance
+// Setup: Create a test balance
 async function createTestBalance() {
-  console.log('\n=== Creating Test Balance ===');
+  console.log('Creating Test Balance');
   
   try {
     const balance = await makeRequest('/balances', {
@@ -136,24 +142,21 @@ async function createTestBalance() {
     });
     
     testData.balance_id = balance.balance_id;
-    console.log('✅ Test balance created:', balance);
+    console.log('Test balance created:', balance.balance_id);
     return balance;
     
   } catch (error) {
-    console.error('❌ Failed to create test balance:', error.message);
+    console.error('Failed to create test balance:', error.message);
     throw error;
   }
 }
 
-
-
-// Test function 1: Create Account
+// Test: Create accounts with manual account numbers
 async function testCreateAccount() {
-  console.log('\n=== Testing Create Account ===');
+  console.log('Testing Create Account');
   
   try {
     console.log('Creating first account...');
-    // Generate unique account number using timestamp
     const uniqueNumber1 = `123456${Date.now()}`;
     
     const account1 = await makeRequest('/accounts', {
@@ -172,10 +175,10 @@ async function testCreateAccount() {
     });
     
     testData.account_id = account1.account_id;
-    console.log('✅ First account created:', account1);
+    console.log('First account created:', account1.account_id);
     
-    // Demonstrate creating multiple accounts with same balance and identity
-    console.log('\nCreating second account with same balance and identity...');
+    // Demonstrate multiple accounts with same balance and identity
+    console.log('Creating second account with same balance and identity...');
     const uniqueNumber2 = `654321${Date.now()}`;
     
     const account2 = await makeRequest('/accounts', {
@@ -193,71 +196,67 @@ async function testCreateAccount() {
       })
     });
     
-    console.log('✅ Second account created:', account2);
-    console.log('📝 Note: Both accounts use the same balance_id and identity_id');
+    console.log('Second account created:', account2.account_id);
+    console.log('Note: Both accounts use the same balance_id and identity_id');
     
     return { account1, account2 };
     
   } catch (error) {
-    console.error('❌ Account creation failed:', error.message);
+    console.error('Account creation failed:', error.message);
     throw error;
   }
 }
 
-// Test function 2: Get Account
+// Test: Retrieve account details
 async function testGetAccount(accountId) {
-  console.log('\n=== Testing Get Account ===');
+  console.log('Testing Get Account');
   
   try {
-    // Test 1: Get specific account
-    console.log(`1. Getting account with ID: ${accountId}`);
+    console.log(`Getting account with ID: ${accountId}`);
     const account = await makeRequest(`/accounts/${accountId}`);
-    console.log('✅ Account retrieved:', account);
+    console.log('Account retrieved:', account.account_id);
     
-    // Test 2: Get account with includes
-    console.log('\n2. Getting account with related data...');
+    // Test with related data included
+    console.log('Getting account with related data...');
     const accountWithIncludes = await makeRequest(`/accounts/${accountId}?include=balance,identity,ledger`);
-    console.log('✅ Account with includes retrieved:', accountWithIncludes);
+    console.log('Account with includes retrieved:', accountWithIncludes.account_id);
     
     return { account, accountWithIncludes };
     
   } catch (error) {
-    console.error('❌ Get account test failed:', error.message);
+    console.error('Get account test failed:', error.message);
     throw error;
   }
 }
 
-// Test function 3: List All Accounts
+// Test: List all accounts
 async function testListAccounts() {
-  console.log('\n=== Testing List Accounts ===');
+  console.log('Testing List Accounts');
   
   try {
-    // Test 1: List all accounts
-    console.log('1. Listing all accounts...');
+    console.log('Listing all accounts...');
     const accounts = await makeRequest('/accounts');
-    console.log(`✅ Found ${accounts.length} accounts:`, accounts);
+    console.log(`Found ${accounts.length} accounts`);
     
-    // Test 2: List with pagination
-    console.log('\n2. Listing accounts with pagination...');
+    // Test pagination
+    console.log('Listing accounts with pagination...');
     const accountsPaginated = await makeRequest('/accounts?page=1&per_page=5');
-    console.log('✅ Paginated accounts:', accountsPaginated);
+    console.log('Paginated accounts retrieved');
     
     return { accounts, accountsPaginated };
     
   } catch (error) {
-    console.error('❌ List accounts test failed:', error.message);
+    console.error('List accounts test failed:', error.message);
     throw error;
   }
 }
 
-
-
-// Test function 6: Account Number Generation (if enabled)
+// Test: Auto account number generation (requires external service)
 async function testAccountNumberGeneration() {
-  console.log('\n=== Testing Account Number Generation ===');
+  console.log('Testing Account Number Generation');
   
   try {
-    console.log('1. Creating account with auto-generated number...');
+    console.log('Creating account with auto-generated number...');
     
     const accountWithAutoGeneration = await makeRequest('/accounts', {
       method: 'POST',
@@ -269,115 +268,100 @@ async function testAccountNumberGeneration() {
           test: true,
           created_by: 'test_script'
         }
-        // Note: bank_name and number will be auto-generated if external service is configured
       })
     });
     
-    console.log('✅ Account with auto-generated details:', accountWithAutoGeneration);
+    console.log('Account with auto-generated details:', accountWithAutoGeneration.account_id);
     return accountWithAutoGeneration;
     
   } catch (error) {
-    console.error('❌ Account number generation test failed:', error.message);
+    console.error('Account number generation test failed:', error.message);
     console.log('Note: This may fail if external account generation is not configured');
     throw error;
   }
 }
 
-// Main test runner
+// Main test runner - executes all tests in sequence
 async function runAllTests() {
-  console.log('🚀 Starting Blnk Accounts API Tests');
+  console.log('Starting Blnk Accounts API Tests');
   console.log('Make sure to:');
   console.log('1. Replace YOUR_API_KEY with your actual API key');
   console.log('2. Update BASE_URL if your Blnk instance is not running on localhost:5001');
   console.log('3. Ensure your Blnk server is running\n');
   
   try {
-    // Setup: Create test data
-    console.log('📋 Setting up test data...');
+    // Setup test data
+    console.log('Setting up test data...');
     await createTestLedger();
     await createTestIdentity();
     await createTestBalance();
     
-    // Test 1: Create accounts
+    // Run account tests
     const createdAccounts = await testCreateAccount();
     const accountId = createdAccounts.account1.account_id;
     
-    // Test 2: Get account
     try {
       await testGetAccount(accountId);
     } catch (error) {
-      console.error('❌ Get account test failed:', error.message);
+      console.error('Get account test failed:', error.message);
     }
     
-    // Test 3: List all accounts
     try {
       await testListAccounts();
     } catch (error) {
-      console.error('❌ List accounts test failed:', error.message);
+      console.error('List accounts test failed:', error.message);
     }
     
-    // Test 4: Test account number generation (optional)
     try {
       await testAccountNumberGeneration();
     } catch (error) {
-      console.log('⚠️  Account number generation test skipped (likely not configured)');
+      console.log('Account number generation test skipped (likely not configured)');
     }
     
-    console.log('\n🎉 All tests completed successfully!');
+    console.log('All tests completed successfully!');
     
   } catch (error) {
-    console.error('\n💥 Test suite failed:', error.message);
+    console.error('Test suite failed:', error.message);
   }
 }
 
-// Individual test runners
+// Individual test runners for specific functionality
 async function runCreateTest() {
-  console.log('🚀 Running Create Account Test');
+  console.log('Running Create Account Test');
   await testCreateAccount();
 }
 
 async function runGetTest(accountId) {
-  console.log('🚀 Running Get Account Test');
+  console.log('Running Get Account Test');
   await testGetAccount(accountId);
 }
 
 async function runListTest() {
-  console.log('🚀 Running List Accounts Test');
+  console.log('Running List Accounts Test');
   await testListAccounts();
 }
 
-
-
 async function runGenerationTest() {
-  console.log('🚀 Running Account Number Generation Test');
+  console.log('Running Account Number Generation Test');
   await testAccountNumberGeneration();
 }
 
-// Export functions for individual testing
 module.exports = {
-  // Setup functions
   createTestLedger,
   createTestIdentity,
   createTestBalance,
-  
-  // Test functions
   testCreateAccount,
   testGetAccount,
   testListAccounts,
   testAccountNumberGeneration,
-  
-  // Runner functions
   runAllTests,
   runCreateTest,
   runGetTest,
   runListTest,
   runGenerationTest,
-  
-  // Test data access
   getTestData: () => testData
 };
 
-// If running directly (not imported), run all tests
 if (require.main === module) {
   runAllTests();
 } 
