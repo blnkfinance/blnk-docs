@@ -186,22 +186,20 @@ Implement sequential processing to ensure that transactions are sent one after t
 
 Introduce an intermediary balance to reduce load and improve response times. 
 
-**Instead of:** `Customer balance → Stripe`
+**Instead of:** `Customer balance → GL Balance`
 
-**Use:** `Customer balance → Customer hold balance → Stripe`
+**Use:** `Customer balance → Customer hold balance → GL Balance`
 
 This approach works by:
 
 1. **Customer balance → Customer hold balance** (can use `skip_queue: true` for immediate processing)
-   * The customer hold balance can safely use skip_queue because it only receives transactions from that specific customer
-   * It acts like a mini balance that represents the customer's interaction with Stripe, but scoped only to that customer to avoid lock contention
-   * Each customer gets their own hold balance, eliminating competition for locks
+   * The customer hold balance can safely use `skip_queue` because it only receives transactions from that specific customer.
+   * It acts like a mini balance that represents the customer's interaction with the GL balance, but scoped only to that customer to avoid lock contention.
+   * Each customer gets their own hold balance, eliminating competition for locks.
 
-2. **Customer hold balance → Stripe** (use queue, don't skip)
-   * Internally, funds can be bulk settled into Stripe using the queue system
-   * This allows for efficient batch processing and reduces the load on the Stripe balance
-
-This moves pressure away from the Stripe balance and provides you with more flexibility in processing high-traffic transactions.
+2. **Customer hold balance → GL balance** (use queue, don't skip)
+   * Internally, funds can be bulk settled into the GL balance using the queue system.
+   * This moves pressure away from the GL balance and provides you with more flexibility in processing high-traffic transactions.
 
 ---
 
