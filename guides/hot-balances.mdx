@@ -1,0 +1,125 @@
+---
+title: "Handling Hot Balances"
+sidebarTitle: "Handling hot balances"
+description: "Strategies for managing high-traffic balances and preventing lock contention in Blnk."
+icon: "bolt"
+"og:title": "Handling Hot Balances • Blnk Developer Documentation"
+"og:description": "Strategies for managing high-traffic balances and preventing lock contention in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+"Hot balances" are ledger balances that perform high volumes of concurrent transactions. These balances can experience lock contention when using immediate processing (`skip_queue: true`), leading to transaction failures and poor user experience.
+
+This guide covers strategies for handling hot balances effectively in Blnk, ensuring reliable transaction processing even under high load.
+
+---
+
+## Understanding the problem
+
+When multiple transactions target the same balance simultaneously using `skip_queue: true`, they must acquire distributed locks to maintain balance integrity. If a lock isn't acquired, the transaction fails with a  `Failed to acquire lock` error.
+
+This becomes problematic for hot balances that receive:
+- High-frequency payments from multiple customers
+- Batch processing operations
+- Real-time transaction streams
+- Popular accounts with frequent activity
+
+---
+
+## Solution strategies
+
+### Option 1: Use the queue (recommended)
+
+The most reliable approach for hot balances is to use Blnk's built-in queuing system:
+
+<Steps>
+<Step title="Remove skip_queue parameter">
+  When creating transactions for hot balances, omit the `skip_queue` parameter or set it to `false`. This routes transactions through the queue system.
+
+  <Tip>
+    Queue-based processing eliminates lock contention by serializing transactions for the same balance, ensuring all transactions eventually succeed without manual intervention.
+  </Tip>
+</Step>
+
+<Step title="Listen for webhook events">
+  Set up [webhooks](/advanced/notifications) to receive real-time updates when transaction status changes:
+  
+  Common webhook events:
+  * `transaction.applied` - Transaction successfully processed
+  * `transaction.rejected` - Transaction rejected (insufficient funds, etc.)
+  * `transaction.inflight` - Transaction held in inflight state
+</Step>
+
+<Step title="Track transaction status">
+  Alternatively, use the Search API to actively query transaction status via `parent_transaction` or `reference`:
+  
+  <CodeGroup>
+    ```json Via parent transaction
+    {
+      "q": "queued-transaction-id",
+      "query_by": "parent_transaction"
+    }
+    ```
+
+    ```json Via reference
+    {
+      "q": "queued-txn-reference",
+      "query_by": "reference"
+    }
+    ```
+  </CodeGroup>
+</Step>
+</Steps>
+
+### Option 2: Handle concurrency on your end
+
+If you must use `skip_queue: true` for hot balances, implement your own concurrency controls to prevent race conditions:
+
+<Steps>
+<Step title="Implement sequential processing">
+  Ensure transactions are sent one after another, not simultaneously. Avoid sending all transactions at once and instead process them sequentially to prevent lock contention.
+
+  <Warning>
+    Client-side concurrency management requires careful implementation and testing. Consider using the Blnk's queueing system instead for better reliability.
+  </Warning>
+</Step>
+
+<Step title="Add retry logic">
+  Implement exponential backoff for failed transactions. When a transaction fails due to lock acquisition, wait a bit before retrying to reduce contention.
+</Step>
+</Steps>
+
+### Option 3: Use intermediary balances
+
+Introduce intermediary balances to reduce load on hot balances:
+
+**Instead of:** `Customer balance → GL Balance`
+
+**Use:** `Customer balance → Customer hold balance → GL Balance`
+
+<Steps>
+<Step title="Create customer hold balances">
+  Each customer gets their own hold balance that acts as a buffer. Create separate hold balances for each customer to isolate their transactions.
+</Step>
+
+<Step title="Process customer transactions immediately">
+  Customer transactions can safely use `skip_queue: true` since each customer has their own hold balance, eliminating competition for locks.
+</Step>
+
+<Step title="Settle to GL balance via queue">
+  Periodically settle hold balances to the main GL balance using queue processing to move pressure away from the GL balance. This reduces lock contention and improves performance.
+</Step>
+</Steps>
+
+**Benefits of this approach:**
+* Each customer gets their own hold balance, eliminating competition for locks;
+* Customer transactions process immediately for better UX;
+* GL balance receives fewer, larger transactions via queue;
+* Provides flexibility in processing high-traffic transactions.
+
+---
+
+<NeedHelp /> 
