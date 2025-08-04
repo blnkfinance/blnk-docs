@@ -35,6 +35,10 @@ This becomes problematic for hot balances that receive:
 
 The most reliable approach for hot balances is to use Blnk's built-in queuing system:
 
+<Frame caption="With queue, Blnk gracefully handles concurrency and race conditions for your financial system">
+<img src="/images/hot-balances-option-1.png" alt="Diagram showing concurrent transactions entering a queue system and being processed sequentially" />
+</Frame>
+
 <Steps>
 <Step title="Remove skip_queue parameter">
   When creating transactions for hot balances, omit the `skip_queue` parameter or set it to `false`. This routes transactions through the queue system.
@@ -78,6 +82,10 @@ The most reliable approach for hot balances is to use Blnk's built-in queuing sy
 
 If you must use `skip_queue: true` for hot balances, implement your own concurrency controls to prevent race conditions:
 
+<Frame caption="Client-side sequential processing ensures only one transaction is in flight at a time to prevent lock contention">
+<img src="/images/hot-balances-option-2.png" alt="Handling concurrency client-side" />
+</Frame>
+
 <Steps>
 <Step title="Implement sequential processing">
   Ensure transactions are sent one after another, not simultaneously. Avoid sending all transactions at once and instead process them sequentially to prevent lock contention.
@@ -94,11 +102,15 @@ If you must use `skip_queue: true` for hot balances, implement your own concurre
 
 ### Option 3: Use intermediary balances
 
-Introduce intermediary balances to reduce load on hot balances:
+Introduce intermediary balances in your [money movement map](/ledgers/money-movement-map) to reduce load on hot balances:
 
 **Instead of:** `Customer balance → GL Balance`
 
 **Use:** `Customer balance → Customer hold balance → GL Balance`
+
+<Frame caption="Intermediary balances isolate customer transactions and reduce load on the main GL balance">
+<img src="/images/hot-balances-option-3.png" alt="Diagram showing how to skip queues with intermediary balances while reducing lock contention errors" />
+</Frame>
 
 <Steps>
 <Step title="Create customer hold balances">
