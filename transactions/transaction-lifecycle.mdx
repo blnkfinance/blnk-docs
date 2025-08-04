@@ -1,0 +1,111 @@
+---
+title: "Transaction Lifecycle"
+sidebarTitle: "Transaction lifecycle"
+description: "Learn how transactions move through different states in Blnk."
+icon: "arrows-spin"
+"og:title": "Transaction Lifecycle • Blnk Developer Documentation"
+"og:description": "Understand how transactions progress through different states in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+Every transaction goes through multiple states in Blnk, and each state change is stored as a separate record in the database. This gives you complete traceability, allowing you to see the lifecycle of a transaction from initiation to completion. 
+
+Each state is connected to the previous state through a `parent_transaction` attribute. Here's how it works:
+
+<Frame caption="Transaction lifecycle flow showing how transactions progress from QUEUED to final states">
+<img src="/images/blnk-transaction-lifecycle.png" alt="Transaction lifecycle diagram showing how transactions move through different states in Blnks" />
+</Frame>
+
+---
+
+## Transaction lifecycle
+
+By default, every transaction begins in a `QUEUED` state. 
+
+<Tip>You can track balances with transactions still in queue using [Queued Balances](/balances/introduction#queued-balances).</Tip>
+
+Blnk then processes it and moves it to one of three possible states:
+
+* `INFLIGHT`: If the transaction request includes `"inflight": "true"`. It continues to:
+    * `APPLIED`: If the inflight transaction is committed or;
+    * `VOID`: If the inflight transaction is voided.
+* `APPLIED`: When the transaction is completed and applied to the balances.
+* `REJECTED`: When the transaction is not processed due to reasons like insufficient funds, etc.
+
+Here's an example response when you record a new transaction on Blnk:
+
+```json Example response {13}
+{
+  "precise_amount": 10000000,
+  "amount": 100000,
+  "rate": 0,
+  "precision": 100,
+  "transaction_id": "txn_d4951810-706c-44d1-be45-6f254be0e167",
+  "parent_transaction": "",
+  "source": "bln_7769aedf-bc88-49f7-bbb2-118f121daee6",
+  "destination": "bln_c42e4bbd-4ea9-494a-89be-7634b0c1e41a",
+  "reference": "ref_e55c4f33-bff7-4c30-9b9f-5d2d10a29b7a",
+  "currency": "USD",
+  "description": "Sample transaction",
+  "status": "QUEUED",
+  "hash": "3ef19e9cd9aba07d33068d096da1e1596f1270a70c9aa2d160206b4d6da553dc",
+  "allow_overdraft": true,
+  "inflight": false,
+  "created_at": "2025-02-02T02:35:16.606614793Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z"
+}
+```
+
+---
+
+## Skip transaction queue
+
+<Info>Available in version 0.8.2 and later.</Info>
+
+The `skip_queue` feature allows you to bypass the default transaction queuing system and immediately process transactions directly. This is useful for scenarios where you need real-time transaction processing while still maintaining data consistency.
+
+To enable this feature, include "skip_queue": true in the request body when calling the [Create Transaction](/reference/create-transaction.mdx) endpoint:
+
+```json {6}
+{
+  "amount": 102.12,
+  "precision": 100,
+  ...
+  "allow_overdraft": true,
+  "skip_queue": true
+}
+```
+
+### How it works
+
+When you enable `skip_queue`, the transaction:
+
+* Bypasses the normal queuing process
+* Executes immediately on the balance
+* Uses distributed locks via Redis to maintain consistency
+* Applies optimistic locking at the database level
+
+### Example applications
+
+Use `skip_queue` when:
+
+* Processing low-volume transactions with minimal balance contention;
+* You need synchronous confirmation of transaction completion;
+* Time-sensitive financial operations.
+
+<Tip>We recommend using queues for high traffic scenarios to avoid lock errors. Learn how: [Handling Hot Balances](/guides/hot-balances#option-1-use-the-queue-recommended)</Tip>
+
+---
+
+<CardGroup>
+  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
+  <Card title="Applying inflight" iconType="duotone" icon="plane" href="/transactions/inflight"></Card>
+</CardGroup>
+
+---
+
+<NeedHelp /> 

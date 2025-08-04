@@ -21,6 +21,8 @@ All ledger balances in the Blnk Ledger each have 6 main balance attributes:
 
 <Warning>**Important to note:** Balance amounts are immutable and can only be updated through transactions. You cannot manually set or alter a balance amount directly.</Warning>
 
+---
+
 ## Creating a balance
 
 To create a balance in Blnk, call the **Create Balance** endpoint:
@@ -86,22 +88,35 @@ blnk balances create
 
 <Note>All newly created balances in the Blnk Ledger start from 0. You cannot create a ledger balance with a predefined balance amount.</Note>
 
+---
+
 ## Queued balances
 
 <Info>Available in version 0.8.3 and later.</Info>
 
-When transactions are in the queue, the source and destination balances remain unchanged until processing is complete. 
+You can track total transaction amounts in queue per balance via the `queued_credit_balance` and `queued_debit_balance` attributes. These attributes show the cumulative value of all queued transactions that will affect a balance once they're processed.
 
-Queued balances help estimate the available or expected balance of a ledger. Unlike [inflight balances](/transactions/inflight), which require certain conditions to be met (commit or void) before being applied, queued balances simply represent the total amount of transactions waiting in the queue, regardless of conditions.
+When you query a balance, you'll see:
+
+1. **queued_credit_balance**: Total amount of incoming transactions waiting to be processed.
+2. **queued_debit_balance**: Total amount of outgoing transactions waiting to be processed.
+
+This helps you estimate the potential impact of queued transactions on your balance before they're processed. 
 
 <Tip>
-  Queued balances can also be used to check if a balance has any pending transactions in queue. If the queued balance value is greater than 0, it indicates that there is at least one transaction waiting in the queue.
+Use queued balances to check if a balance has pending transactions. If either `queued_credit_balance` or `queued_debit_balance` is greater than 0, there are transactions waiting in the queue for that balance.
 </Tip>
 
-To view the queued balances of a ledger balance, call the [Get Balance](/reference/get-balance) endpoint:
+<Warning>
+Queued balances are estimates and may change as transactions are processed or if queue processing fails. Always verify final balances after queue processing completes.
+</Warning>
 
-```
-GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true
+To view the queued balances of a ledger balance:
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
 ```
 ```json Response {9-10}
 {
@@ -127,26 +142,39 @@ GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true
     }
 }
 ```
+</CodeGroup>
 
 ### Calculating expected and available balances
 
-1. **Expected balance:** Total amount queuing to be added to a ledger balance
+Use these formulas to understand your balance position:
+
+1. **Expected balance:** What your balance will be after all queued credits are processed
 
     ```
-    expected_balance = balance + queued_credit_balance
+    expected_balance = current_balance + queued_credit_balance
     ```
 
-2. **Available balance:** Total amount available to be deducted from a ledger balance
+2. **Available balance:** How much you can safely spend or transfer (accounting for pending debits)
 
     ```
-    available_balance = balance - inflight_debit_balance - queued_debit_balance
+    available_balance = current_balance - inflight_debit_balance - queued_debit_balance
     ```
+
+<Info>
+**Example:** If your current balance is $100, you have $50 in queued credits, and $20 in queued debits:
+- Expected balance: $100 + $50 = $150
+- Available balance: $100 - $0 - $20 = $80
+</Info>
+
+---
 
 ## Multi-currency balances
 
 Blnk enables you to create and manage balances in multiple currencies within your ledger. When building multi-currency wallets with Blnk, keep the following in mind:
 
 1. **Standardize [precision](/transactions/precision) across currencies:** Most fiat currencies have a precision of 100. However, when managing currencies with different precision values, such as crypto and fiat, it’s crucial to use the highest precision value for all transactions in your ledger. This ensures consistency when calculating transactions and converting exchange rates between currencies.
+
+---
 
 ## Balance overdrafts
 

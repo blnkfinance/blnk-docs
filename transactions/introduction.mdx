@@ -11,14 +11,15 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 ## Overview
 
-Transactions are used to enable money movement between two or more balances. These can be payments, transfers, settlements, internal treasury management, etc. All transactions in Blnk are recorded with the [double entry principle](/resources/double-entry), i.e., there is a source and a corresponding destination for each transaction entry. 
+Transactions enable money movement between two or more balances. These can be payments, transfers, settlements, internal treasury management, etc. All transactions in Blnk are recorded with the [double entry principle](/resources/double-entry) — every transaction has a source and a corresponding destination.
 
-In this guide, you'll learn:
+Transactions happen between balances, and [balances are created](/balances/introduction) within [ledgers](/ledgers/introduction).
+
+In this guide, you'll learn about:
 
 1. [Transaction properties](#transaction-properties)
 2. [Recording a transaction](#recording-a-transaction)
-3. [How transactions work in Blnk](#how-transactions-work-in-blnk)
-4. [Managing insufficient funds](#managing-insufficient-funds)
+3. [Verifying transactions](#verifying-transactions)
 
 ---
 
@@ -45,8 +46,10 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions
 With the following request body:
 
 <CodeGroup>
-```json Request {9}
-{
+```bash Request {11}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 750,
     "reference": "ref_001adcfgf",
     "currency": "USD",
@@ -55,33 +58,10 @@ With the following request body:
     "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
     "description": "Fund with starting balance amount",
     "allow_overdraft": true,
-    "meta_data": {
-      "sender_name": "John Doe",
-      "sender_account": "00000000000"
-    }
-}
+    "skip_queue": false,
+    "meta_data": {}
+  }'
 ```
-```sh Blnk CLI {9}
-blnk transactions create
-? Amount: <amount>
-? Precision: <precision>
-? Reference: <reference>
-? Description: <description>
-? Currency: <currency>
-? Source: <source>
-? Destination: <destination>
-? Allow overdraft: (y)
-? Inflight: (n)
-? Metadata (JSON format): <metadata>
-```
-</CodeGroup>
-
-<Tip>
-If this is your first transaction, the participating balances will start at 0. To ensure the transaction is successful, enable overdrafts as shown above, allowing the source balance to go negative.
-
-Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](/resources/negative-balances).
-</Tip>
-
 ```json Response
 {
     "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
@@ -101,6 +81,13 @@ Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](
     }
 }
 ```
+</CodeGroup>
+
+<Tip>
+If this is your first transaction, the participating balances will start at 0. To ensure the transaction is successful, enable overdrafts as shown above, allowing the source balance to go negative.
+
+Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](/resources/negative-balances).
+</Tip>
 
 <Tabs>
     <Tab title="Request">
@@ -145,157 +132,104 @@ blnk transactions list
 
 ---
 
-## How transactions work in Blnk
+## Verifying transactions
 
-Every transaction goes through multiple states in Blnk, and each state change is recorded as a separate record in the database. This gives you complete traceability, allowing to see the lifecycle of a transaction from initiation to completion. 
+After recording a transaction, you can verify its status using different methods depending on whether you're using the default queue system or the skip queue feature.
 
-Each state is connected to the previous state through a `parent_transaction` attribute. Here's how it works:
+### Verifying transactions with queue (default)
 
-<Steps titleSize="h3">
-  <Step title="Transaction lifecycle">
-    By default, every transaction begins in a `QUEUED` state.
+When using the default queue system, every transaction starts as `QUEUED`. To verify your transaction status, you have two options:
 
-    <Tip>You can choose to skip this `QUEUED` state altogether and directly process your transactions. Learn more: [Skip Transaction Queue](#skip-transaction-queue)</Tip>
-    
-    Within milliseconds of being queued, Blnk processes it and transitions it to one of three possible states:
+1. **Webhooks**: Blnk sends [webhook notifications](/advanced/notifications) when transaction states change.
+2. **Direct API calls**: Query the transaction status using the reference or transaction ID. See below:
 
-    * `INFLIGHT`: If the transaction request includes `"inflight": "true"`.
-        * `APPLIED`: If the inflight transaction is committed.
-        * `VOID`: If the inflight transaction is voided.
-    * `APPLIED`: When the transaction is completed and applied to the balances.
-    * `REJECTED`: When the transaction is not processed due to reasons like insufficient funds.
+<CodeGroup>
+```bash By reference
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "<transaction-reference>",
+    "query_by": "reference"
+  }'
+```
+```bash By transaction ID
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "<queued-transaction-id>",
+    "query_by": "parent_transaction"
+  }'
+```
+</CodeGroup>
 
-    Here's an example response when you record a new transaction on Blnk:
+### Verifying transactions without queue (skip queue)
 
-    ```json Record transaction response {13}
-    {
-      "precise_amount": 10000000,
-      "amount": 100000,
-      "rate": 0,
-      "precision": 100,
-      "transaction_id": "txn_d4951810-706c-44d1-be45-6f254be0e167",
-      "parent_transaction": "",
-      "source": "bln_7769aedf-bc88-49f7-bbb2-118f121daee6",
-      "destination": "bln_c42e4bbd-4ea9-494a-89be-7634b0c1e41a",
-      "reference": "ref_e55c4f33-bff7-4c30-9b9f-5d2d10a29b7a",
-      "currency": "USD",
-      "description": "Sample transaction",
-      "status": "QUEUED",
-      "hash": "3ef19e9cd9aba07d33068d096da1e1596f1270a70c9aa2d160206b4d6da553dc",
-      "allow_overdraft": true,
-      "inflight": false,
-      "created_at": "2025-02-02T02:35:16.606614793Z",
-      "scheduled_for": "0001-01-01T00:00:00Z",
-      "inflight_expiry_date": "0001-01-01T00:00:00Z"
-    }
-    ```
-  </Step>
-  <Step title="Record creation and tracking">
-    When a transaction moves to its next state (`INFLIGHT`, `APPLIED`, or `REJECTED`), Blnk creates a new record that maintains a connection to the original queued transaction. This connection is maintained in two ways:
+When using `skip_queue: true`, transactions are processed immediately and you can verify them from the direct response. Learn more about [skip queue](/transactions/transaction-lifecycle#skip-transaction-queue).
 
-    1. **Parent-Child Relationship:** The new record's `parent_transaction` field stores the original transaction's `transaction_id`. This creates a clear lineage between related transaction records.
-    2. **Reference Tracking:** To ensure each record remains uniquely identifiable while preserving its relationship to other states, Blnk:
-        * Uses the same base reference as the original transaction.
-        * Appends a `_q` suffix to create a unique reference.
 
-    For example, if the original transaction has:
 
-    ```json
-    {
-      ...
-      "transaction_id": "txn_123",
-      "reference": "payment_abc"
-    }
-    ```
+<CodeGroup>
+```bash cURL {12}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 750,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "precision": 100,
+    "source": "@FundingPool",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Fund with starting balance amount",
+    "allow_overdraft": true,
+    "skip_queue": true
+  }'
+```
+```json Response {11}
+{
+  "id": "txn_6164573b-6cc8-45d4-ad2e-7b4ba6a60f7d",
+  "source": "@FundingPool",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_001adcfgf",
+  "amount": 750,
+  "precision": 100,
+  "precise_amount": 75000,
+  "currency": "USD",
+  "description": "Fund with starting balance amount",
+  "status": "APPLIED",
+  "created_at": "2024-12-21T01:36:46.997063436Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
 
-    The next state's record would have:
+The response immediately shows the final status (`INFLIGHT`, `APPLIED`, or `REJECTED`), allowing you to confirm the transaction result without waiting for webhooks or additional API calls.
 
-    ```json 
-    {
-      ...
-      "parent_transaction": "txn_123",
-      "reference": "payment_abc_q"
-    }
-    ```
-  </Step>
-  <Step title="Tracking transaction status">
-    You can track the final state of your transactions using either of these methods:
-
-    1. **Reference Search:** Query transactions using the original reference. Blnk will return the `INFLIGHT` or `APPLIED` record associated with that reference.
-        ```json
-        {
-          "q": "payment_abc",
-          "query_by": "reference"
-        }
-        ```
-    2. **Parent Transaction Search:** Look up transactions using the original `transaction_id` as a parent transaction identifier. This returns the same result as the reference search but uses the parent-child relationship instead of the reference string.
-        ```json
-        {
-          "q": "txn_123",
-          "query_by": "parent_transaction"
-        }
-        ```
-  </Step>
-  <Step title="Discarded transactions">
-    A discarded transaction is not recorded in the ledger. Blnk discards transactions for one reason:
-
-    1. **Duplicate reference:** Your new transaction `reference` matches an existing `reference` in your ledger. Blnk requires unique `reference` values per transaction. Options are timestamps (e.g. UNIX timestamp), random string or UUID (e.g. `ref_e55c4f33-bff7-4c30-9b9f-5d2d10a29b7a`), or a business identifier like an `order_id`.
-
-    <Tip>Make sure your request body match the Blnk Ledger API specifications. For example, avoid passing `apply_overdraft` instead of `allow_overdraft`.</Tip>
-  </Step>
-</Steps>
+<Warning>
+When using `skip_queue: true`, you may encounter lock errors if multiple transactions are processed simultaneously on the same balance. Learn how to handle these scenarios in our [Handling Hot Balances](/guides/hot-balances) guide.
+</Warning>
 
 ---
 
-## Skip transaction queue
+## Discarded transactions
 
-<Info>Available in version 0.8.2 and later.</Info>
+A discarded transaction is not recorded in the ledger. Blnk discards transactions for one reason:
 
-The `skip_queue` feature allows you to bypass the default transaction queuing system outlined above and process transactions directly. This is useful for scenarios where you need real-time transaction processing while still maintaining data consistency.
+1. **Duplicate reference:** Your new transaction `reference` matches an existing `reference` in your ledger. Blnk requires unique `reference` values per transaction. Options are timestamps (e.g. UNIX timestamp), random string or UUID (e.g. `ref_e55c4f33-bff7-4c30-9b9f-5d2d10a29b7a`), or a business identifier like an `order_id`.
 
-To enable this feature, include "skip_queue": true in the request body when calling the [Create Transaction](/reference/create-transaction.mdx) endpoint:
-
-```json {6}
-{
-  "amount": 102.12,
-  "precision": 100,
-  ...
-  "allow_overdraft": true,
-  "skip_queue": true
-}
-```
-
-### How it works
-
-When you enable `skip_queue`, the transaction:
-
-* Bypasses the normal queuing process
-* Executes immediately on the balance
-* Uses distributed locks via Redis to maintain consistency
-* Applies optimistic locking at the database level
-
-### Example applications
-
-Use `skip_queue` when:
-
-* Processing low-volume transactions with minimal balance contention;
-* You need synchronous confirmation of transaction completion;
-* Time-sensitive financial operations.
-
-<Tip>We recommend using queues for high traffic scenarios to avoid lock errors. Learn how: [Handling Hot Balances](/guides/hot-balances#option-1-use-the-queue-recommended)</Tip>
+<Tip>Make sure your request body match the Blnk Ledger API specifications. For example, avoid passing `apply_overdraft` instead of `allow_overdraft`.</Tip>
 
 ---
 
 ## Managing insufficient funds
 
-You can handle insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
+You can manage insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
 
 ### 1. Automatic rejection
 
 When a transaction is posted where the `source` balance has insufficient funds, Bink automatically handles this scenario to maintain ledger integrity. Blnk:
 
 1. Rejects the transaction.
-2. Records this rejection in your ledger using the same state tracking mechanism we discussed above (i.e. `QUEUED` → `REJECTED`).
+2. Records this rejection in your ledger using the same state tracking mechanism (i.e. `QUEUED` → `REJECTED`). Learn more about [transaction lifecycle](/transactions/transaction-lifecycle).
 3. Sends a webhook notification to inform your system of the state change and new ledger record.
 
 <Tip>You can also preemptively track the transaction status (via `reference` or `parent_transaction`) to know if the transaction was successful or rejected.</Tip>
@@ -306,8 +240,9 @@ Instead of waiting for a `transaction.rejected` webhook, you can implement a pre
 
 First, query the balance of the sender using:
 
-```
-GET /balances/{balance_id}?with_queued=true
+```bash cURL
+curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
 ```
 
 Next, calculate your available balance: 
@@ -328,10 +263,12 @@ For a detailed understanding of how insufficient funds can be managed in infligh
 
 ---
 
+## Dive deeper
+
 <CardGroup>
+  <Card title="Transaction lifecycle" iconType="duotone" icon="arrows-spin" href="/transactions/transaction-lifecycle"></Card>
   <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="/transactions/precision"></Card>
   <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
-  <Card title="Applying inflight" iconType="duotone" icon="plane" href="/transactions/inflight"></Card>
 </CardGroup>
 
 ---
