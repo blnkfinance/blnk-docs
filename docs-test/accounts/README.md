@@ -261,6 +261,8 @@ const banks = [
 
 Modify the `generateAccountNumber` function in `generation-server.js` to change the format.
 
+Learn more about [account number generation](https://docs.blnkfinance.com/accounts/overview)
+
 ### Running Individual Tests
 
 You can import and run individual test functions:
