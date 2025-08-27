@@ -7,14 +7,58 @@ mode: "center"
 "og:description": "Stay up to date with latest features, releases, and improvement to Blnk Core."
 ---
 
+<Update label="Aug 27, 2025" description="v0.11.0">
+  ## Search with metadata
+
+  Blnk now supports searching transactions, balances, and identities with metadata. Use your own tags, customer IDs, categories, or nested fields to filter and retrieve exactly what you need, making it easier to organize data around your business context.
+
+  <CodeGroup>
+  ```bash Transactions
+  curl -X GET 'http://localhost:5001/transactions/search' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "q": "mobile_app",
+      "query_by": "meta_data.source"
+    }'
+  ```
+  ```bash Balances
+  curl -X GET 'http://localhost:5001/balances/search' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "q": "*",
+      "filter_by": "meta_data.active_products:=[deposits, cards]"
+    }'
+  ```
+  ```bash Identities
+  curl -X GET 'http://localhost:5001/identities/search' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "q": "*",
+      "filter_by": "meta_data.connected_accounts:=[stripe, paypal]"
+    }'
+  ```
+  </CodeGroup>
+
+  ## Fixes & improvements
+
+  1. Insufficient balance checks now include pending transactions (both queued and inflight), giving a more accurate view of available funds and helping prevent overdrafts.
+  2. Improved handling of inflight transactions during commit and void operations eliminates race conditions in high-concurrency environments.
+  3. The system now properly excludes rejected inflight transactions from commit operations to prevent errors.
+  4. References for commit and void operations now use UUID suffixes instead of “-commit,” ensuring uniqueness and better traceability.
+  5. General bug fixes and performance improvements.
+</Update>
+
 <Update label="Jul 31, 2025" description="v0.10.8">
-  ## Fixes & Improvements
+  ## Fixes & improvements
 
   1. **Enhanced PII tokenization**: Strengthened PII tokenization functionality to properly handle international characters, emojis, and special symbols without corruption during tokenization and detokenization processes.
 </Update>
 
 <Update label="Jul 24, 2025" description="v0.10.7">
-  ## Fixes & Improvements
+  ## Fixes & improvements
 
   1. **Fixed telemetry configuration bug**: Resolved issue where `BLNK_ENABLE_TELEMETRY=false` would still default to enabled. Telemetry and observability concerns are now properly separated with independent feature flags.
 
@@ -52,23 +96,23 @@ mode: "center"
 
   Bulk transactions now use the queue system by default for improved performance and reliability. Learn more: [Why we use queueing](/guides/concurrency#queuing-transactions).
 
-  * Bulk transactions default to `skip_queue: false`.
-  * Users can add `"skip_queue": true` to bypass the queue for immediate processing.
+  1. Bulk transactions default to `skip_queue: false`.
+  2. Users can add `"skip_queue": true` to bypass the queue for immediate processing.
 
   ## Other improvements
 
-  * Enhanced balance creation to prevent duplicate entries with the same indicator and currency.
+  1. Enhanced balance creation to prevent duplicate entries with the same indicator and currency.
 
 </Update>
 
 <Update label="Jun 25, 2025" description="v0.10.4">
-  ## Fixes & Improvements
+  ## Fixes & improvements
 
   1. **Security**: Added authentication bypass for `/health` endpoint to enable health checks without authentication.
 </Update>
 
 <Update label="Jun 21, 2025" description="v0.10.3">
-  ## New Features
+  ## New features
   
   This release brings significant improvements to transaction processing, balance management, and system reliability with enhanced locking mechanisms and better webhook handling.
 
@@ -84,24 +128,24 @@ mode: "center"
   4. **Kubernetes deployment support**  
       Added comprehensive Kubernetes manifests for streamlined deployment and management in containerized environments.
 
-  ## Major Improvements
+  ## Major improvements
  
-  - Enhanced transaction precision for better handling of large financial values.
-  - Refunding transactions is now idempotent: you can no longer refund a transaction more than once.
-  - Improved balance creation reliability to prevent race conditions.
-  - Enhanced commit functionality using queue system for better transaction flow management.
-  - Improved webhook processing for better reliability.
-  - Enhanced webhook delivery consistency.
-  - Improved webhook error handling and retry mechanisms.
-  - Added comprehensive [health check endpoints](/reference/get-health) for better system monitoring.
-  - Added [queue monitoring port](/advanced/monitoring-port) for real-time queue metrics and dashboard monitoring.
-  - Enhanced system observability with improved logging and status tracking.
-  - Better configuration handling for transaction lock duration.
-  - Fixed API key revocation to properly bind to owner ID, preventing unauthorized access bypass.
-  - Enhanced reconciliation testing framework for better financial accuracy validation.
-  - Improved bulk transaction cleanup processes.
-  - Enhanced Docker workflow with multi-platform support for broader deployment compatibility.
-  - Streamlined deployment processes with better containerization.
+  1. Enhanced transaction precision for better handling of large financial values.
+  2. Refunding transactions is now idempotent: you can no longer refund a transaction more than once.
+  3. Improved balance creation reliability to prevent race conditions.
+  4. Enhanced commit functionality using queue system for better transaction flow management.
+  5. Improved webhook processing for better reliability.
+  6. Enhanced webhook delivery consistency.
+  7. Improved webhook error handling and retry mechanisms.
+  8. Added comprehensive [health check endpoints](/reference/get-health) for better system monitoring.
+  9. Added [queue monitoring port](/advanced/monitoring-port) for real-time queue metrics and dashboard monitoring.
+  10. Enhanced system observability with improved logging and status tracking.
+  11. Better configuration handling for transaction lock duration.
+  12. Fixed API key revocation to properly bind to owner ID, preventing unauthorized access bypass.
+  13. Enhanced reconciliation testing framework for better financial accuracy validation.
+  14. Improved bulk transaction cleanup processes.
+  15. Enhanced Docker workflow with multi-platform support for broader deployment compatibility.
+  16. Streamlined deployment processes with better containerization.
 
 </Update>
 <Update label="Apr 14, 2025" description="v0.10.2">
@@ -161,9 +205,9 @@ mode: "center"
 
   Accurately record amounts exceeding 15 digits with full precision using the `precise_amount` field:
 
-  * Convert the amount to its smallest unit.
-  * Enter this value directly into the `precise_amount` field of your request.
-  * Include the corresponding `precision` value.
+  1. Convert the amount to its smallest unit.
+  2. Enter this value directly into the `precise_amount` field of your request.
+  3. Include the corresponding `precision` value.
 
   ```json Example {2}
   {
@@ -227,7 +271,7 @@ mode: "center"
   [Backdated Transactions →](/transactions/backdated-transactions)
 </Update>
 <Update label="Feb 26, 2025" description="v0.8.8">
-  ## PII Tokenization
+  ## PII tokenization
   
   We've introduced a PII tokenization feature allowing you to replace sensitive customer data with non-sensitive tokens while maintaining the ability to use the data for business operations. 
 
@@ -303,9 +347,9 @@ mode: "center"
 
   Added `skip_queue` option to allow transactions to bypass the queue system and process immediately. When enabled:
 
-  * Transactions act directly on balances without entering the queued state
-  * System maintains data consistency through Redis distributed locks
-  * Optimistic locking at database level ensures transaction integrity
+  1. Transactions act directly on balances without entering the queued state
+  2. System maintains data consistency through Redis distributed locks
+  3. Optimistic locking at database level ensures transaction integrity
 
   To implement, add `"skip_queue": true` to your transaction request body when posting a transaction to your ledger.
 
@@ -318,22 +362,22 @@ mode: "center"
   ```
 </Update>
 <Update label="Jan 18, 2025" description="v0.8.1">
-  ## Updates to Transactions
+  ## Updates to transactions
   
   The `QUEUED` state is now stored in your Ledger to enhance organisation and traceability in your financial data.
   
   When a queued transaction is processed, we maintain a clear link to its origin:
   
-  * Each queued transaction maintains two connections to its parent:
+  1. Each queued transaction maintains two connections to its parent:
       1. Direct link via `parent_transaction` field
       2. Modified reference with `_q` suffix
   
   This ensures:
 
-  * Clear audit trail of transaction flow
-  * Easy tracking of transaction history
-  * Prevention of reference collisions
-  * Ability to trace complete transaction lifecycle
+  1. Clear audit trail of transaction flow
+  2. Easy tracking of transaction history
+  3. Prevention of reference collisions
+  4. Ability to trace complete transaction lifecycle
 
   <Card title="How transactions work in Blnk" href="/transactions/introduction" icon="tag" iconType="duotone">
     Learn how transactions are recorded in your Ledger and how to work with them
@@ -457,7 +501,7 @@ mode: "center"
 </Update>
 
 <Update label="Apr 12, 2024" description="v0.6.1">
-  ## Added Search
+  ## Added search
 
   Search gives you full control and flexibility over how you fetch your transaction data from your Blnk Ledger. You can use Search to retrieve any data — ledgers, ledger balances, and transactions — from your Blnk Ledger.
 
