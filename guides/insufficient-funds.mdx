@@ -1,0 +1,80 @@
+---
+title: "Managing Insufficient Funds"
+sidebarTitle: "Managing insufficient funds"
+description: "Learn how to handle insufficient funds scenarios in Blnk versions 0.10.8 and older"
+icon: "money-bills"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Warning>
+This guide is for Blnk versions 0.10.8 and older. For version 0.11.0 and newer, see the [updated documentation](/transactions/introduction#managing-insufficient-funds).
+</Warning>
+
+You can manage insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
+
+### 1. Automatic rejection
+
+When a transaction is posted where the `source` balance has insufficient funds, Bink automatically handles this scenario to maintain ledger integrity. Blnk checks only the balance amount to determine if it is sufficient for the transaction amount being processed.
+
+If funds are insufficient, Blnk:
+
+1. Rejects the transaction.
+2. Records this rejection in your ledger using the same state tracking mechanism (i.e. `QUEUED` → `REJECTED`). Learn more about [transaction lifecycle](/transactions/transaction-lifecycle).
+3. Sends a webhook notification to inform your system of the state change and new ledger record.
+
+<Tip>You can also preemptively track the transaction status (via `reference` or `parent_transaction`) to know if the transaction was successful or rejected.</Tip>
+
+### 2. Proactive balance verification
+
+Instead of waiting for a `transaction.rejected` webhook, you can implement a preemptive available balance check in your workflow. Here's how:
+
+First, query the balance of the sender using:
+
+```bash cURL
+curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+Next, calculate your available balance: 
+```
+available_balance = balance - queued_debit_balance
+```
+
+* If the available balance is sufficient, proceed with posting your transaction.
+* If the available balance is insufficient, you can gracefully handle this scenario in your application by notifying the customer immediately, avoiding the need for webhook handling.
+
+<Card title="Queued balances" iconType="duotone" icon="list-timeline" href="/balances/introduction#queued-balances">
+  Learn how queued balances work
+</Card>
+
+### 3. Insufficient funds for inflight transactions
+
+When working with inflight transactions, your system must always consider both the actual balance and any pending inflight amounts.
+
+To do this, compute an `available_balance` for your customers indicating the amount available for them to spend on new transactions:
+
+```
+available_balance = balance - inflight_debit_balance - queued_debit_balance
+```
+
+To check for insufficient funds before initiating an inflight transaction:
+
+1. Query the `source` balance, and compute the `available_balance`:
+        ```
+        GET /balances/{balance_id}?with_queued=true
+        ```
+
+2. Compare the new transaction amount against `available_balance`:
+        * **If amount ≤ available_balance:** Proceed with transaction.
+        * **If amount > available_balance:** Handle gracefully in your application by notifying the customer of insufficient funds.
+
+With this approach:
+
+* You ensure that pending inflight transactions will always be committed when they need to.
+* Customers are prevented from spending funds that are waiting to be deducted from their balance.
+
+---
+
+<NeedHelp />
+

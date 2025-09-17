@@ -222,53 +222,44 @@ A discarded transaction is not recorded in the ledger. Blnk discards transaction
 
 ## Managing insufficient funds
 
-You can manage insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
+<Info>
+Available in version 0.11.0 and later. For versions 0.10.8 and older, see our [insufficient funds guide](/guides/insufficient-funds).
+</Info>
 
-### 1. Automatic rejection
+Blnk performs comprehensive balance checks before processing any transaction to ensure you have sufficient funds available. The system computes an available balance by calculating `balance - inflight_debit_balance` on the source balance. 
 
-When a transaction is posted where the `source` balance has insufficient funds, Bink automatically handles this scenario to maintain ledger integrity. Blnk:
+<Info>
+  Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Inflight transactions](/transactions/inflight).
+</Info>
 
-1. Rejects the transaction.
-2. Records this rejection in your ledger using the same state tracking mechanism (i.e. `QUEUED` → `REJECTED`). Learn more about [transaction lifecycle](/transactions/transaction-lifecycle).
-3. Sends a webhook notification to inform your system of the state change and new ledger record.
+If the transaction amount is more than the available balance, the source has insufficient funds and:
 
-<Tip>You can also preemptively track the transaction status (via `reference` or `parent_transaction`) to know if the transaction was successful or rejected.</Tip>
+1. The transaction is rejected and status is recorded as `REJECTED`.
+2. A webhook notification to inform your system of the rejected transaction and a reason in its `meta_data`.
 
-### 2. Proactive balance verification
 
-Instead of waiting for a `transaction.rejected` webhook, you can implement a preemptive available balance check in your workflow. Here's how:
+### Using overdrafts
 
-First, query the balance of the sender using:
+If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request.
 
-```bash cURL
-curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
-```
-
-Next, calculate your available balance: 
-```
-available_balance = balance - queued_debit_balance
-```
-
-* If the available balance is sufficient, proceed with posting your transaction.
-* If the available balance is insufficient, you can gracefully handle this scenario in your application by notifying the customer immediately, avoiding the need for webhook handling.
-
-<Card title="Queued balances" iconType="duotone" icon="list-timeline" href="/balances/introduction#queued-balances">
-  Learn how queued balances work
+<Card title="Learn about overdrafts" iconType="duotone" icon="credit-card" href="/transactions/overdrafts">
+  Detailed guide on managing overdrafts and negative balances
 </Card>
-
-### Insufficient funds for inflight transactions
-
-For a detailed understanding of how insufficient funds can be managed in inflight scenarios, please refer to our [Applying inflight](/transactions/inflight) guide.
 
 ---
 
 ## Dive deeper
 
 <CardGroup>
-  <Card title="Transaction lifecycle" iconType="duotone" icon="arrows-spin" href="/transactions/transaction-lifecycle"></Card>
-  <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="/transactions/precision"></Card>
-  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
+  <Card title="Transaction lifecycle" iconType="duotone" icon="arrows-spin" href="/transactions/transaction-lifecycle">
+    Learn how transactions move through different states from creation to completion
+  </Card>
+  <Card title="Understanding precision" iconType="duotone" icon="bullseye" href="/transactions/precision">
+    Master decimal handling and precision for accurate financial calculations
+  </Card>
+  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses">
+    Understand what each transaction status means and when they occur
+  </Card>
 </CardGroup>
 
 ---

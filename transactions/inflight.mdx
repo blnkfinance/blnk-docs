@@ -30,7 +30,7 @@ Remember that all ledger balances in Blnk have 6 main balance parameters:
 
 ## How Inflight works
 
-### Record transaction with Inflight
+### 1. Record transaction with Inflight
 ```json Record inflight {9}
 {
     "amount": 100,
@@ -50,7 +50,7 @@ When recording a new transaction with Inflight, the system, by default, will:
 2. Processes and moves the transaction to `INFLIGHT`.
 3. Maintains the original balances while tracking the pending amounts in inflight balance parameters.
 
-### Balance management
+### 2. Balance management
 ![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
 
 Blnk uses three balance parameters for accurate tracking of inflight amounts:
@@ -61,7 +61,7 @@ inflight_debit_balance:  Pending debits awaiting processing
 inflight_balance:        Net inflight amount (credit - debit)
 ```
 
-### Balance tracking example
+### 3. Balance tracking example
 
 Consider an inflight transaction where $100 is transferred from balance_A to balance_B:
 
@@ -84,7 +84,7 @@ In this scenario:
 * `balance_B` shows a positive inflight balance (100) because funds are pending inflow.
 * The main balances remain unchanged until the transaction is committed.
 
-### Updating Inflight
+### 4. Updating Inflight
 ![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
 To act on an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
@@ -95,7 +95,7 @@ PUT /transactions/inflight/{transaction_id}
 
 There are two ways to act on an inflight transaction: commit or void.
 
-#### 1. Commit inflight
+#### i. Commit inflight
 
 ```json Request
 {
@@ -114,7 +114,7 @@ In our example, after commit:
 | `balance_A` | 100 | 0 | 0 | 0 |
 | `balance_B` | 100 | 0 | 0 | 0 |
 
-#### 2. Partial commits
+#### ii. Partial commits
 
 ```json Request
 {
@@ -135,7 +135,7 @@ Our example after a partial commit:
 | `balance_A` | 160 | -60 | 0 | 60 |
 | `balance_B` | 40 | 60 | 60 | 0 |
 
-#### 3. Void inflight
+#### iii. Void inflight
 
 ```json Request
 {
@@ -147,7 +147,7 @@ Our example after a partial commit:
 * Creates new transaction record with `VOID` status.
 * Resets inflight balances without affecting actual balances.
 
-#### 4. Expired inflight
+#### iv. Expired inflight
 
 A transaction will stay inflight indefinitely unless it gets committed, void, or gets expired. To set a time limit on an inflight transaction, include the `inflight_expiry_date` parameter in the request body.
 
@@ -172,37 +172,6 @@ A transaction will stay inflight indefinitely unless it gets committed, void, or
 <Tip>
     Always format the `inflight_expiry_date` date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
 </Tip>
-
-## Managing insufficient funds
-
-When working with inflight transactions, your system must always consider both the actual balance and any pending inflight amounts.
-
-To do this, compute an `available_balance` for your customers indicating the amount available for them to spend on new transactions:
-
-```
-available_balance = balance - inflight_debit_balance - queued_debit_balance
-```
-
-To check for insufficient funds before initiating an inflight transaction:
-
-1. Query the `source` balance, and compute the `available_balance`:
-        ```
-        GET /balances/{balance_id}?with_queued=true
-        ```
-
-2. Compare the new transaction amount against `available_balance`:
-        * **If amount ≤ available_balance:** Proceed with transaction.
-        * **If amount > available_balance:** Handle gracefully in your application by notifying the customer of insufficient funds.
-
-With this approach:
-
-* You ensure that pending inflight transactions will always be committed when they need to.
-* Customers are prevented from spending funds that are waiting to be deducted from their balance.
-
-<Card title="Queued balances" iconType="duotone" icon="list-timeline" href="/balances/introduction#queued-balances">
-  Learn how queued balances work
-</Card>
-
 
 ## Inflight for multiple sources/destinations
 
