@@ -12,57 +12,51 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 ## Overview
 
-Blnk allows you to process similar transactions from multiple sources to a single destination, providing your application with more customization and efficiency.
+Blnk allows you to move money from multiple sources to a single destination in one transaction. This provides enhanced flexibility for complex money flows and makes tracking and reconciliation easier.
 
-<Frame caption="Simplified flow of how multiple sources work">
+<Card title="Multiple destinations" href="multiple-destinations" iconType="duotone" icon="arrows-maximize">
+  Move money from a single source to multiple destinations in one transaction.
+</Card>
+
+---
+
+## What you'll learn
+
+1. [How to send from multiple sources](#sending-from-multiple-sources)
+2. [Distribution types available](#distribution-types)
+3. [How transaction references work](#handling-transaction-references)
+
+---
+
+## Example scenario
+
+A customer receives USD 30,000 from three sources. Here's how the transaction is structured:
+
+<Frame caption="Multiple sources transaction flow">
 	<img src="/images/multiple-sources.png" />
 </Frame>
 
-This provides enhanced flexibility and control over complex money flows within your application. By consolidating multiple sources into one single transaction, you can monitor and manage transactions more effectively, contextualize your transaction, and facilitate easier tracking and reconciliation.
-
-<CardGroup>
-    <Card title="Multiple destinations" href="multiple-destinations" iconType="duotone" icon="arrows-maximize"></Card>
-</CardGroup>
-
-**Let's get started ✨**
-
-What we'll cover …
-
-1. [Sending from multiple sources](#sending-from-multiple-sources)
-2. [Distribution types](#distribution-types)
-3. [Handling transaction references](#handling-transaction-references)
-
-## Sending from multiple sources
-
-Consider a customer receiving USD 30,000 from 3 people. Person A sends 10%, Person B sends USD 20,000, and Person C sends the rest.
-
-| User | Balance ID | Expectation
+|  | Balance ID | Amount |
 | :--- | :--- | :--- |
-| Recipient | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | Will receive a total of USD 30,000
-| Person A | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | Will send 10% of USD 30,000
-| Person B | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | Will send USD 20,000
-| Person C | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | Will send the remaining amount left
-
-### 1. Define your transaction parameters
-
-Define the total amount to be sent, the source balances you are sending from, and the destination balance you are sending to.
-
-| Parameters | Description
-| :--- | :--- |
-| Amount| Total amount to be received by the recipient (USD 30,000).
-|Sources| Balance IDs of all the balances the amount is sourced from.
-|Destination| Balance ID of the recipient.
-
+| Alice | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | 10% (USD 3,000) |
+| Bob | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | USD 20,000 |
+| Charlie | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | Remaining amount (USD 7,000) |
+| **Sarah (Recipient)** | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | **Total: USD 30,000** |
 <Warning>
     When sending from multiple sources, you can only send to one destination.
 </Warning>
 
-### 2. Initiate the transaction
+---
 
-Call the **record-transaction** endpoint, and provide the following required fields.
+## Create multiple sources transaction
 
-```json Request {6-22}
-{
+Call the [Create Transaction](/reference/create-transaction) endpoint with these fields:
+
+```bash cURL
+curl -X POST http://localhost:5001/transactions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
     "amount": 30000,
     "precision": 100,
     "reference": "ref_001adcfgf",
@@ -81,62 +75,128 @@ Call the **record-transaction** endpoint, and provide the following required fie
             "distribution": "left"
         }
     ],
-    "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38"
-}
+    "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "description": "Payment to Sarah"
+  }'
 ```
 
-| Field | Description | Required | Type
-| :--- | :--- | :--- | :---
-|`amount`| Total amount of money to be received. | Yes | `float`
-| `precision` | Converts the transaction amount to the lowest unit possible. **See also → [Understanding precision](/transactions/precision).** | No | `int64`
-|`reference`| Unique transaction reference. | Yes | `string`
-| `currency`| Short code for your asset class. **See also → [Defining asset classes](/balances/asset-classes).** |Yes|`string`
-| `sources`| Contains information about the sources from where the money is being sent from. Each object within this array represents a source and has 2 required fields — `identifier` and `distribution`. | Yes
-|`identifier`| Sender's balance ID | Yes | `string`
-| `distribution`|Specific amount being drawn from the respective source. | Yes | `string`
-|`destination`| Recipient's balance ID. | Yes | `string`
-| `meta_data` | Custom data associated with the transaction | No | `object`
+| Field | Description | Required | Type |
+| :--- | :--- | :--- | :--- |
+| `amount` | Total amount to be received | Yes | `float` |
+| `precision` | Converts amount to lowest unit. See [Understanding precision](/transactions/precision) | No | `int64` |
+| `reference` | Unique transaction reference | Yes | `string` |
+| `currency` | Asset class code. See [Asset classes](/balances/asset-classes) | Yes | `string` |
+| `sources` | Array of source objects with `identifier` and `distribution` fields | Yes | `array` |
+| `sources.identifier` | Balance ID of the source account | Yes | `string` |
+| `sources.distribution` | Amount to send from this source (specific amount, percentage, or "left") | Yes | `string` |
+| `destination` | Recipient's balance ID | Yes | `string` |
+| `meta_data` | Custom transaction data | No | `object` |
 
 <Warning>
     When sending from multiple sources, do not include the `source` field in your payload. Use the `sources` array to group the participating balances in your payload.
 </Warning>
 
-Once your request is submitted, Blnk creates separate transaction records for each source with their respective amounts. The transactions are computed, queued, and processed like this:
+---
 
-| Reference | Currency | Amount | Source | Destination
-| :--- | :--- | :--- | :--- | :--- |
-| ref_001adcfgf1 | USD | 3000 | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38
-| ref_001adcfgf2 | USD | 20000 | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38
-| ref_001adcfgf3 | USD | 7000 | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38
+## API response structure
 
-At the end of the transaction, the recipient's balance will have received a total of 30000.
+When you create a multiple sources transaction, Blnk .
+
+Blnk returns a response containing:
+- A **main transaction ID** for the overall split transaction. If `inflight: true`, it can be used to commit or void all transactions at once.
+- A **sources array** with individual transaction IDs for each source. 
+
+```json Response {7,23,28,33}
+{
+    "precise_amount": 3000000,
+    "amount": 30000,
+    "rate": 1,
+    "precision": 100,
+    "overdraft_limit": 0,
+    "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+    "parent_transaction": "",
+    "source": "",
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "description": "txn",
+    "status": "QUEUED",
+    "hash": "8cfdc0f2562ce30c3728ef624dc29fbd0e4207c77df9220df0c699d45de0eef",
+    "allow_overdraft": true,
+    "inflight": false,
+    "skip_queue": false,
+    "atomic": false,
+    "sources": [
+        {
+            "identifier": "@test-2024",
+            "distribution": "10%",
+            "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+        },
+        {
+            "identifier": "@test-21",
+            "distribution": "20000",
+            "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+        },
+        {
+            "identifier": "@test-218",
+            "distribution": "left",
+            "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+        }
+    ],
+    "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "created_at": "2025-09-18T01:26:30.648049042Z",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z",
+    "meta_data": {
+        "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab"
+    }
+}
+```
+
+### Retrieving child transactions
+
+You can retrieve all transactions in the split by searching for the main transaction ID in the `meta_data.QUEUED_PARENT_TRANSACTION` field:
+
+```bash cURL
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
+  }'
+```
+
+This will return all individual transactions that were created as part of the multiple sources transaction, allowing you to track and manage the complete set of related transactions.
+
+---
 
 ## Distribution types
 
-There are three ways you can specify how the amount should be distributed among the sources as you've seen in the example above.
+You can specify distribution amounts in three ways:
 
-| Distribution type | Description | Example
+| Type | Description | Example |
 | :--- | :--- | :--- |
-| Specific amount | Provide the specific amount of money to be sent | `"distribution": "20000"` - Means USD 20,000 from the total amount should be sent
-| Percentage | Calculates a percentage of the total amount to be sent | `"distribution": "10%"` - Means 10% of the total amount should be sent
-| "left" | Calculates the remaining amount not assigned to a source | `"distribution": "left"` - Means the remaining amount left after others have been deducted should be sent
+| **Specific amount** | Fixed amount to send | `"distribution": "20000"` |
+| **Percentage** | Percentage of total amount | `"distribution": "10%"` |
+| **Remaining** | Leftover amount after other distributions | `"distribution": "left"` |
 
 <Warning>
-    You can only use the `left` distribution type once in your request body.
+You can only use `"left"` once per transaction, and all distributions must sum to the total amount.
 </Warning>
 
-<Warning>
-    It is crucial to ensure that the total sum of your `sources` fields is exactly equal to the value specified in the `amount` field.
-</Warning>
+---
 
-## Handling transaction references
+## Transaction references
 
-Blnk auto-generates a unique transaction reference for each transaction record based on the original reference you provided in your transaction request. 
+Blnk automatically generates unique references for each transaction record by appending a counter to your original reference (starting from `1`).
 
-A counter, starting at `1`, is appended for each transaction record created ensuring that the individual transaction records have unique references derived from the original transaction reference. This makes sure that each transaction record is unique through its modified reference ensuring traceability and management while preserving the integrity of the original transaction's reference.
+**Example:** If your reference is `ref_001adcfgf`, the generated references will be:
+- `ref_001adcfgf1` (first source)
+- `ref_001adcfgf2` (second source) 
+- `ref_001adcfgf3` (third source)
 
-<Tip>
-    Refer to the sample transaction table in Step 3 above to see how it is applied.
-</Tip>
+This ensures traceability while maintaining connection to the original transaction.
+
+---
 
 <NeedHelp />
