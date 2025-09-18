@@ -82,12 +82,16 @@ This configuration ensures that sensitive data is encrypted and protected during
 
 ### Database configuration
 
-The data source configuration establishes the connection between the Blnk server and your database backend.
+The data source configuration establishes the connection between the Blnk server and your database backend, including connection pooling settings for optimal performance.
 
 ```json
 {
   "data_source": {
-    "dns": ""                      
+    "dns": "",
+    "max_open_conns": 25,
+    "max_idle_conns": 10,
+    "conn_max_lifetime": "30m",
+    "conn_max_idle_time": "5m"
   }
 }
 ```
@@ -97,6 +101,10 @@ The data source configuration establishes the connection between the Blnk server
     | **Attribute** | **Type** | **Description** | **Environment variables**
     | :-- | :-- | :-- | :-- |
     | `dns` | string | The database connection string that specifies the location, credentials, and parameters for connecting to your database. Required for server startup. | `BLNK_DATA_SOURCE_DNS` |
+    | `max_open_conns` | integer | Maximum number of open connections to the database. Controls the size of the connection pool. | `BLNK_DATABASE_MAX_OPEN_CONNS` |
+    | `max_idle_conns` | integer | Maximum number of idle connections in the pool. Should be less than or equal to max_open_conns. | `BLNK_DATABASE_MAX_IDLE_CONNS` |
+    | `conn_max_lifetime` | duration | Maximum amount of time a connection may be reused. Use Go duration format (e.g., "30m", "1h"). | `BLNK_DATABASE_CONN_MAX_LIFETIME` |
+    | `conn_max_idle_time` | duration | Maximum amount of time a connection may be idle before being closed. Use Go duration format (e.g., "5m", "10s"). | `BLNK_DATABASE_CONN_MAX_IDLE_TIME` |
 
     <Tip>The DNS string typically follows this pattern: `[driver]://[username]:[password]@[host]:[port]/[database]`</Tip>
   </Tab>
@@ -182,7 +190,8 @@ The transaction configuration manages how Blnk processes and handles batched ope
     "max_queue_size": 1000,              
     "max_workers": 10,                   
     "lock_duration": 1800,               
-    "index_queue_prefix": "transactions" 
+    "index_queue_prefix": "transactions",
+    "enable_queued_checks": false
   }
 }
 ```
@@ -196,6 +205,7 @@ The transaction configuration manages how Blnk processes and handles batched ope
     | `max_workers` | number | Maximum number of concurrent workers processing transactions. | `BLNK_TRANSACTION_MAX_WORKERS` |
     | `lock_duration` | number | Duration for which a transaction lock is held. Format: seconds. | `BLNK_TRANSACTION_LOCK_DURATION` |
     | `index_queue_prefix` | string | Prefix used for the transaction queue names in the indexing system. | `BLNK_TRANSACTION_INDEX_QUEUE_PREFIX` |
+    | `enable_queued_checks` | boolean | Enables additional validation checks for queued transactions before processing. | `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` |
   </Tab>
   <Tab title="Best Practices">
     1. **Batch Processing:**
@@ -347,13 +357,14 @@ The S3 configuration manages connection settings for Amazon S3 storage service f
   </Tab>
 </Tabs>
 
-### Telemetry
+### Telemetry and observability
 
-This configuration ensures enables telemetry.
+This configuration enables telemetry and observability features for monitoring and debugging.
 
 ```json
 {
-  "enable_telemetry": "true"
+  "enable_telemetry": true,
+  "enable_observability": true
 }
 ```
 
@@ -361,7 +372,8 @@ This configuration ensures enables telemetry.
   <Tab title="Definitions">
     | **Attribute** | **Type** | **Description** | **Environment variables**
     | :-- | :-- | :-- | :-- |
-    | `enable_telemetry` | string |  Sends data to Jaeger for tracing and monitoring via OTLP. Set to `false` to disable. | `BLNK_ENABLE_TELEMETRY` |
+    | `enable_telemetry` | boolean | Sends data to Jaeger for tracing and monitoring via OTLP. Defaults to `false` for privacy. | `BLNK_ENABLE_TELEMETRY` |
+    | `enable_observability` | boolean | Enables additional observability features like metrics collection and detailed logging. | `BLNK_ENABLE_OBSERVABILITY` |
 
   </Tab>
 </Tabs>
@@ -377,22 +389,35 @@ This configuration ensures enables telemetry.
 
 ### Automatic defaults
 
-1. Project name defaults to "Blnk Server"
-2. Server port defaults to "5001"
-3. TypeSense URL defaults to "[http://typesense:8108](http://typesense:8108/)"
-4. Rate limiting:
+1. **Server defaults:**
+    * Project name: "Blnk Server"
+    * Server port: "5001"
+    * TypeSense key: "blnk-api-key"
+    * Tokenization secret: "blnk-default-tokenization-key!!!!" (⚠️ Change in production)
+
+2. **Database defaults:**
+    * Max open connections: 25
+    * Max idle connections: 10
+    * Connection max lifetime: 30 minutes
+    * Connection max idle time: 5 minutes
+
+3. **Rate limiting:**
     * If RPS is set without burst, burst defaults to 2 * RPS
     * If burst is set without RPS, RPS defaults to burst / 2
     * Cleanup interval defaults to 10800 seconds (3 hours)
-5. Telemetry is enabled by default
+
+4. **Privacy defaults:**
+    * Telemetry is **disabled** by default (opt-in for privacy)
+    * Observability is **disabled** by default
 
 ### Transaction defaults
 
 * Batch size: 100,000
 * Max queue size: 1,000
 * Max workers: 10
-* Lock duration: 1800 seconds
+* Lock duration: 30 minutes
 * Index queue prefix: "transactions"
+* Enable queued checks: false
 
 ### Reconciliation defaults
 
@@ -408,11 +433,7 @@ This configuration ensures enables telemetry.
 * Index queue: "new:index"
 * Inflight expiry queue: "new:inflight-expiry"
 * Number of queues: 20
-* Insufficient retries: false
-
-### Telemetry defaults
-
-* Enable telemetry: true
+* Monitoring port: "5004"
 
 ---
 
