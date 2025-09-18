@@ -1,0 +1,161 @@
+---
+title: "v0.11.0 Migration Guide"
+description: "Migration guide for upgrading from Blnk v0.10.x to v0.11.0, covering Typesense upgrades and breaking changes."
+icon: "arrow-up-right"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+This migration guide covers the breaking changes introduced in Blnk v0.11.0, specifically related to Typesense/Search functionality. The main change involves upgrading the Typesense server from version 0.23.x to 0.24.x, which requires updating your Docker configuration.
+
+---
+
+## Breaking changes summary
+- **From:** Typesense 0.23.x
+- **To:** Typesense 0.24.x
+- **Impact:** Breaking changes in API compatibility and schema handling
+
+---
+
+## Migration steps
+
+<Steps titleSize="h3">
+<Step title="Update Docker configuration">
+  Update your Typesense server version in your Docker configuration files.
+
+  1. **For Production (`docker-compose.yaml`)**
+      ```yaml
+      # Before (v0.10.x and lower)
+      typesense:
+        image: typesense/typesense:0.23.1
+
+      # After (v0.11.0)
+      typesense:
+        image: typesense/typesense:0.24.0
+      ```
+
+  2. **For Development (`docker-compose.dev.yaml`)**
+      ```yaml
+      # Before (v0.10.x and lower)
+      typesense:
+        image: typesense/typesense:0.23.1
+
+      # After (v0.11.0)
+      typesense:
+        image: typesense/typesense:0.24.0
+      ```
+
+  3. **For Kubernetes (`infrastructure/k8s-manifests/typesense-deployment.yaml`)**
+      ```yaml
+      # Before (v0.10.x and lower)
+      containers:
+        - image: typesense/typesense:0.23.1
+
+      # After (v0.11.0)
+      containers:
+        - image: typesense/typesense:0.24.0
+      ```
+</Step>
+
+<Step title="Allow automatic schema migration">
+  The new version includes automatic schema migration capabilities. When you start Blnk v0.11.0, it will automatically:
+
+  1. **Detect existing collections** in your Typesense instance.
+  2. **Compare schemas** between your current collections and the latest schema definitions.
+  3. **Add new fields** to existing collections without data loss.
+  4. **Create missing collections** with the latest schema.
+
+  **Collections affected:**
+  - `ledgers`.
+  - `balances`.
+  - `transactions`.
+  - `reconciliations`.
+  - `identities`.
+</Step>
+
+<Step title="Schema improvements">
+  1. **Ledgers collection:**
+      - Enhanced metadata handling with object type support.
+      - Improved nested field support.
+
+  2. **Balances collection:**
+      - All balance fields now use `string` type for precise decimal handling.
+      - Enhanced metadata object support.
+      - Improved nested field capabilities.
+
+  3. **Transactions collection:**
+      - `precise_amount` field uses `string` type for exact decimal precision.
+      - Enhanced metadata object support.
+      - Improved nested field capabilities.
+
+  4. **Reconciliations collection:**
+      - No breaking changes to existing fields.
+      - Enhanced performance optimizations.
+
+  5. **Identities collection:**
+      - Enhanced metadata object support.
+      - Improved nested field capabilities.
+</Step>
+
+<Step title="Start Blnk v0.11.0">
+  Start your updated Blnk instance. The system will automatically handle data migration including:
+
+  1. **Large number conversion:** Automatically converts `big.Int` values to strings for Typesense compatibility.
+  2. **Metadata normalization:** Handles metadata field normalization for object schemas.
+  3. **Time field normalization:** Ensures consistent timestamp formatting.
+
+  <Check>
+  No manual intervention is required for data migration - everything happens automatically.
+  </Check>
+</Step>
+
+<Step title="Configuration compatibility">
+  <Info>
+  No changes to environment variables or configuration files are required. All existing configurations remain compatible.
+  </Info>
+
+  - Environment variables remain the same.
+  - `blnk.json` configuration structure unchanged.
+  - Search API endpoints unchanged.
+  - Response formats remain compatible.
+
+  **API Endpoints (No Changes Required):**
+
+  ```bash
+  # Single collection search
+  POST /search/{collection}
+  ```
+</Step>
+</Steps>
+
+---
+
+## Testing checklist
+
+After migration, verify the following:
+
+- Typesense server starts successfully.
+- All collections are accessible.
+- Search functionality works correctly.
+- Data integrity is maintained.
+- API endpoints respond correctly.
+- No errors in application logs.
+
+---
+
+## Performance improvements
+
+Blnk v0.11.0 includes several performance improvements:
+
+1. **Enhanced search performance:** Optimized query execution.
+2. **Improved memory usage:** Better resource management.
+3. **Faster schema updates:** Streamlined collection management.
+4. **Better error handling:** More robust error recovery.
+
+<Note>This migration guide covers the breaking changes in Blnk v0.11.0. For additional features and improvements, refer to the [release notes](/changelog/blnk-core)</Note>
+
+---
+
+<NeedHelp />
