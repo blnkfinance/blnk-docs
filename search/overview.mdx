@@ -11,8 +11,350 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 <Info>Available in version 0.6.1 and later.</Info>
 
-## Introduction
+## Overview
 
+The Blnk Search API enables you to retrieve one or more records from your ledger. You can search across ledgers, balances, transactions, and identities using its filtering, sorting, and full-text search capabilities.
 
+Unlike the standard GET endpoints that return either all records or a single specific record, the Search API gives you more control over your results. Use it when you need to:
+
+* Find specific records based on multiple criteria
+* Filter large datasets efficiently  
+* Perform full-text searches across your data
+* Sort and paginate results for better performance
+* Combine multiple search conditions in a single request
+
+<Tip>
+For simple operations like retrieving a single transaction by ID or listing all balances, use the standard GET endpoints. For everything else that requires filtering, searching, or complex queries, use the Search API.
+</Tip>
+
+---
+
+## Searchable collections
+
+The Search API works with four main collections in your Blnk ledger:
+
+| Collection | Endpoint | Description |
+| :--- | :--- | :--- |
+| Transactions | `/search/transactions` | Search through all transaction records |
+| Balances | `/search/balances` | Find balance records across all ledgers |
+| Ledgers | `/search/ledgers` | Locate specific ledgers by name or metadata |
+| Identities | `/search/identities` | Search customer identity records |
+
+---
+
+## Quick start
+
+To get started with the Search API, use the endpoint: `/search/{collection}` where collection can be `ledgers`, `balances`, `identities`, or `transactions`. 
+
+Here's how a full search request looks:
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+    "query_by": "parent_transaction",
+    "filter_by": "status:=APPLIED && currency:=USD",
+    "sort_by": "created_at:desc",
+    "page": 1,
+    "per_page": 10
+  }'
+```
+
+```json Response
+{
+  "facet_counts": [],
+  "found": 2,
+  "hits": [
+    {
+      "document": {
+        "amount": 532,
+        "created_at": 1758116489,
+        "currency": "USD",
+        "description": "Test bulk",
+        "destination": "bln_20666087-1355-4736-ba04-3ba92a7542b9",
+        "id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5",
+        "parent_transaction": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+        "precise_amount": 53200,
+        "precision": 100,
+        "reference": "bulk-search-1d2",
+        "source": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+        "status": "APPLIED",
+        "transaction_id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5"
+      },
+      "highlights": [
+        {
+          "field": "parent_transaction",
+          "matched_tokens": ["bulk_baaea495-148a-4b16-b171-68c92fb911a6"],
+          "snippet": "<mark>bulk_baaea495-148a-4b16-b171-68c92fb911a6</mark>"
+        }
+      ],
+      "text_match": 578730123365711993
+    },
+    {
+      "document": {
+        "amount": 100,
+        "created_at": 1758116489,
+        "currency": "USD",
+        "description": "Test bulk",
+        "destination": "bln_d298f2b8-fdd6-4d0e-ade7-3cddcea90a8d",
+        "id": "txn_0ae624a5-7fbc-4c67-831d-f888e928d4bc",
+        "parent_transaction": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "bulk-search-2d3",
+        "source": "bln_6592f225-f8fe-48cd-8974-51974dc83a3a",
+        "status": "APPLIED",
+        "transaction_id": "txn_0ae624a5-7fbc-4c67-831d-f888e928d4bc"
+      },
+      "highlights": [
+        {
+          "field": "parent_transaction",
+          "matched_tokens": ["bulk_baaea495-148a-4b16-b171-68c92fb911a6"],
+          "snippet": "<mark>bulk_baaea495-148a-4b16-b171-68c92fb911a6</mark>"
+        }
+      ],
+      "text_match": 578730123365711993
+    }
+  ],
+  "out_of": 232,
+  "page": 1,
+  "request_params": {
+    "collection_name": "transactions",
+    "per_page": 10,
+    "q": "bulk_baaea495-148a-4b16-b171-68c92fb911a6"
+  },
+  "search_cutoff": false,
+  "search_time_ms": 2
+}
+```
+</CodeGroup>
+
+### Request parameters
+
+| Parameter | Description | Required | Type |
+| :--- | :--- | :--- | :--- |
+| `q` | The search query text. Use `*` to return all records. [Learn more](/search/querying) | Yes | `string` |
+| `query_by` | Comma-separated list of fields to search in. [Learn more](/search/querying) | No | `string` |
+| `filter_by` | Filter conditions to refine results. [Learn more](/search/filtering) | No | `string` |
+| `sort_by` | Sorting conditions for ordering results. [Learn more](/search/sorting) | No | `string` |
+| `page` | Page number for pagination. Starts at 1. [Learn more](/search/pagination) | No | `integer` |
+| `per_page` | Number of results per page. Maximum 250, default 10. [Learn more](/search/pagination) | No | `integer` |
+
+### Response structure
+
+| Field | Description | Type |
+| :--- | :--- | :--- |
+| `found` | Total number of matching records. | `integer` |
+| `hits` | Array of search results, each containing a `document` with the record data. | `array` |
+| `out_of` | Total number of records in the collection. | `integer` |
+| `page` | Current page number. | `integer` |
+| `search_time_ms` | Time taken to execute the search in milliseconds. | `integer` |
+| `highlights` | Search term highlighting information for matched fields. | `array` |
+
+## Common use cases
+
+### 1. Transaction analysis
+
+<Steps>
+<Step title="Find all transactions for a specific account">
+Get a complete transaction history by searching for all transactions where a particular balance ID appears as either source or destination.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+
+<Step title="Get recent high-value transactions">
+Find transactions above a certain amount threshold to monitor large money movements or flag suspicious activity.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:>10000",
+    "sort_by": "created_at:desc",
+    "per_page": 50
+  }'
+```
+</Step>
+
+<Step title="Search transactions by date range">
+Retrieve all transactions that occurred within a specific time period for reporting or audit purposes. Use Unix timestamps for date filtering.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "created_at:[1704067200..1706745599]",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+<Info>
+Learn more about date filtering and Unix timestamps in our [Filtering documentation](/search/filtering).
+</Info>
+</Step>
+
+<Step title="Find rejected transactions">
+Filter transactions by status to identify failed payments that were rejected due to insufficient funds or validation errors.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=REJECTED",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+<Tip>
+For advanced filtering with operators like `:=`, `&&`, and ranges, see our detailed [Filtering guide](/search/filtering).
+</Tip>
+</Step>
+
+<Step title="Search by transaction type or description">
+Use full-text search to find transactions based on transaction type in metadata or descriptions for customer support.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payment",
+    "query_by": "meta_data.transaction_type,description",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+<Info>
+Learn more about full-text search and field-specific queries in our [Querying documentation](/search/querying).
+</Info>
+</Step>
+
+<Step title="Find transactions between specific accounts">
+Search for transactions that occurred between two particular balance IDs to track money flow or analyze trading patterns.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+</Steps>
+
+### 2. Account management
+
+<Steps>
+<Step title="Get balances above/below a threshold">
+Find all balances with amounts greater than or less than specific values for risk management or account monitoring.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "balance:>100000",
+    "sort_by": "balance:desc"
+  }'
+```
+</Step>
+
+<Step title="Fetch all balances belonging to an identity">
+Retrieve all balances associated with a specific identity ID to get a complete view of a user's accounts and wallets.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+
+<Step title="Search ledgers by name or metadata">
+Find specific ledgers using partial name matching or metadata filters to locate the right ledger for operations.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/ledgers" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "customer savings",
+    "query_by": "name",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+</Steps>
+
+### 3. Customer support
+
+<Steps>
+<Step title="Search identities by name or email">
+Find specific customer identities using partial name matching or email addresses for customer support and account verification.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "john doe",
+    "query_by": "first_name,last_name,email",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+</Steps>
+
+---
+
+## Learn more
+
+Now that you understand the basics of the Search API, dive deeper into specific topics:
+
+<CardGroup cols={1}>
+  <Card title="Querying" iconType="duotone" icon="comments-question" href="/search/querying">
+    Learn how to use the `q` and `query_by` parameters for full-text search and field-specific queries.
+  </Card>
+  
+  <Card title="Filtering" iconType="duotone" icon="filter" href="/search/filtering">
+    Master advanced filtering with operators, ranges, and complex conditions using `filter_by`.
+  </Card>
+  
+  <Card title="Sorting" iconType="duotone" icon="bars-sort" href="/search/sorting">
+    Control result ordering with single and multi-field sorting using `sort_by`.
+  </Card>
+  
+  <Card title="Pagination" iconType="duotone" icon="file-dashed-line" href="/search/pagination">
+    Efficiently handle large result sets with `page` and `per_page` parameters.
+  </Card>
+</CardGroup>
+
+---
 
 <NeedHelp />

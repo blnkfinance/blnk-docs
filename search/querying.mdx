@@ -1,6 +1,6 @@
 ---
-title: "Querying parameters"
-sidebarTitle: "Querying parameters"
+title: "Querying Parameters"
+sidebarTitle: "Querying"
 description: "Learn how to use the query field."
 icon: "comments-question"
 "og:title": "Querying • Blnk Developer Documentation" 
@@ -9,227 +9,209 @@ icon: "comments-question"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-The query field, `q`, is used to query your ledger data. The query field is required in all search request payloads that you send to the search endpoint.
+## Overview
 
-When providing a search term to query, use the `query_by` to specify what field(s) it should search from. See example below:
+The querying parameters `q` and `query_by` work together to control what data you search for and which fields to search in. These parameters enable you to perform full-text searches, exact matches, and wildcard queries across your ledger data.
 
-<CodeGroup>
-```json Request
-{
-    "q": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
-    "query_by": "source"
-}
-```
-```json Response
-{
-    "facet_counts": [],
-    "found": 2,
-    "hits": [
-        {
-            "document": {
-                "amount": 5000,
-                "created_at": "2024-07-07T14:04:23.094327",
-                "currency": "USD",
-                "description": "Payment for Quidditch",
-                "destination": "bln_ec9110c3-bd55-4eaf-9ab1-757cc4eb1f8b",
-                "hash": "322116a989fc12c964b96913fbb6b981055e994d1b9c54eb6bb9edacf2ddf379",
-                "id": "14",
-                "meta_data": "{\"fullName\":{\"firstName\":\"Praise\",\"lastName\":\"Philemon\"},\"parent_ref\":\"ref_k2d2zqclx5t4wdca\"}",
-                "parent_transaction": "txn_f3c31190-973f-4e14-9da3-2979828702dc",
-                "precise_amount": 500000,
-                "precision": 100,
-                "rate": 0,
-                "reference": "ref_6d3a8e7f-f227-414e-80fd-8e4f9718090f",
-                "scheduled_for": "0001-01-01T00:00:00",
-                "source": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad",
-                "status": "VOID",
-                "transaction_id": "txn_4c86b65e-8249-4b3b-8000-b907d32f9a9f"
-            },
-            "highlights": [
-                {
-                    "field": "source",
-                    "matched_tokens": [
-                        "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-                    ],
-                    "snippet": "<mark>bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad</mark>"
-                }
-            ],
-            "text_match": 72341265420713985
-        },
-        {
-            "document": {
-                "amount": 5000,
-                "created_at": "2024-07-07T14:04:23.094327",
-                "currency": "USD",
-                "description": "Payment for Quidditch",
-                "destination": "bln_ec9110c3-bd55-4eaf-9ab1-757cc4eb1f8b",
-                "hash": "96e7587d261a8ac5913f80a2858c98ad622ad9d3d756daa8b650b95dabfc5fba",
-                "id": "13",
-                "meta_data": "{\"fullName\":{\"firstName\":\"Praise\",\"lastName\":\"Philemon\"},\"parent_ref\":\"ref_k2d2zqclx5t4wdca\"}",
-                "parent_transaction": "txn_f3c31190-973f-4e14-9da3-2979828702dc",
-                "precise_amount": 500000,
-                "precision": 100,
-                "rate": 0,
-                "reference": "ref_0333c02e-b79f-4969-a186-ea20a5a38d22",
-                "scheduled_for": "0001-01-01T00:00:00",
-                "source": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad",
-                "status": "APPLIED",
-                "transaction_id": "txn_af0af6bd-7ab1-4c30-8cac-01ff0ac3b159"
-            },
-            "highlights": [
-                {
-                    "field": "source",
-                    "matched_tokens": [
-                        "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-                    ],
-                    "snippet": "<mark>bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad</mark>"
-                }
-            ],
-            "text_match": 72341265420713985
-        }
-    ],
-    "out_of": 20,
-    "page": 1,
-    "request_params": {
-        "collection_name": "transactions",
-        "per_page": 10,
-        "q": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-    },
-    "search_cutoff": false,
-    "search_time_ms": 3
-}
-```
-</CodeGroup>
+The `q` parameter is required in all search requests. The `query_by` parameter is required when searching for specific terms, and optional only when using the wildcard `*`.
 
-The above request will return results where the specified `balance_id` is in the source field. To query by more fields, use commas to separate the fields you want to search in. 
+---
 
-See example below:
+## Quick start
+
+Here's a basic search query that demonstrates both parameters:
 
 <CodeGroup>
-```json Request
-{
-    "q": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
     "query_by": "source,destination"
-}
+  }'
 ```
+
 ```json Response
 {
-    "facet_counts": [],
-    "found": 2,
+  "found": 3,
     "hits": [
         {
             "document": {
                 "amount": 5000,
-                "created_at": "2024-07-07T14:04:23.094327",
+        "created_at": 1720363463,
                 "currency": "USD",
-                "description": "Payment for Quidditch",
-                "destination": "bln_ec9110c3-bd55-4eaf-9ab1-757cc4eb1f8b",
-                "hash": "322116a989fc12c964b96913fbb6b981055e994d1b9c54eb6bb9edacf2ddf379",
-                "id": "14",
-                "meta_data": "{\"fullName\":{\"firstName\":\"Praise\",\"lastName\":\"Philemon\"},\"parent_ref\":\"ref_k2d2zqclx5t4wdca\"}",
-                "parent_transaction": "txn_f3c31190-973f-4e14-9da3-2979828702dc",
-                "precise_amount": 500000,
-                "precision": 100,
-                "rate": 0,
-                "reference": "ref_6d3a8e7f-f227-414e-80fd-8e4f9718090f",
-                "scheduled_for": "0001-01-01T00:00:00",
-                "source": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad",
-                "status": "VOID",
+        "description": "Payment for services",
+        "destination": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        "source": "bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+        "status": "APPLIED",
                 "transaction_id": "txn_4c86b65e-8249-4b3b-8000-b907d32f9a9f"
             },
             "highlights": [
                 {
-                    "field": "source",
-                    "matched_tokens": [
-                        "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-                    ],
-                    "snippet": "<mark>bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad</mark>"
-                }
-            ],
-            "text_match": 72341265420713985
-        },
-        {
-            "document": {
-                "amount": 5000,
-                "created_at": "2024-07-07T14:04:23.094327",
-                "currency": "USD",
-                "description": "Payment for Quidditch",
-                "destination": "bln_ec9110c3-bd55-4eaf-9ab1-757cc4eb1f8b",
-                "hash": "96e7587d261a8ac5913f80a2858c98ad622ad9d3d756daa8b650b95dabfc5fba",
-                "id": "13",
-                "meta_data": "{\"fullName\":{\"firstName\":\"Praise\",\"lastName\":\"Philemon\"},\"parent_ref\":\"ref_k2d2zqclx5t4wdca\"}",
-                "parent_transaction": "txn_f3c31190-973f-4e14-9da3-2979828702dc",
-                "precise_amount": 500000,
-                "precision": 100,
-                "rate": 0,
-                "reference": "ref_0333c02e-b79f-4969-a186-ea20a5a38d22",
-                "scheduled_for": "0001-01-01T00:00:00",
-                "source": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad",
-                "status": "APPLIED",
-                "transaction_id": "txn_af0af6bd-7ab1-4c30-8cac-01ff0ac3b159"
-            },
-            "highlights": [
-                {
-                    "field": "source",
-                    "matched_tokens": [
-                        "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-                    ],
-                    "snippet": "<mark>bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad</mark>"
-                }
-            ],
-            "text_match": 72341265420713985
-        },
-        {
-            "document": {
-                "amount": 20000,
-                "created_at": "2024-07-07T13:10:43.975735",
-                "currency": "USD",
-                "description": "Making payment for the first session",
-                "destination": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad",
-                "hash": "87160cd72414a6fc575d52970b8e035a1a0afba79cb7a1ea083dc9f645bc1c49",
-                "id": "1",
-                "meta_data": "\"no value\"",
-                "parent_transaction": "",
-                "precise_amount": 2000000,
-                "precision": 100,
-                "rate": 1,
-                "reference": "ref_dwdkl66as40j4jff",
-                "scheduled_for": "0001-01-01T00:00:00",
-                "source": "bln_3f8dd80c-9310-4a0c-9065-073995e4b03c",
-                "status": "APPLIED",
-                "transaction_id": "txn_be5dc07b-9139-423c-a432-51c20cad7467"
-            },
-            "highlights": [
-                {
-                    "field": "destination",
-                    "matched_tokens": [
-                        "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-                    ],
-                    "snippet": "<mark>bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad</mark>"
-                }
-            ],
-            "text_match": 72341265420713985
+          "field": "destination",
+          "matched_tokens": ["bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e"],
+          "snippet": "<mark>bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e</mark>"
         }
-    ],
-    "out_of": 20,
-    "page": 1,
-    "request_params": {
-        "collection_name": "transactions",
-        "per_page": 10,
-        "q": "bln_b06a83a6-2cc7-4d73-8c12-32d4f9dbf5ad"
-    },
-    "search_cutoff": false,
-    "search_time_ms": 3
+      ]
+    }
+  ]
 }
 ```
 </CodeGroup>
 
-To return all documents in the collection without searching for a specific query text, you can use `*` as the query field's value.
+---
 
-```json Request
-{
+## Query parameters
+
+### Exact text search
+
+Search for specific text or IDs by specifying the fields to search in:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination"
+  }'
+```
+
+### Wildcard search
+
+Use `*` to return all records (only case where `query_by` is optional):
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
     "q": "*"
+  }'
+```
+
+### Multi-word search
+
+Search for multiple words across specified fields:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payment services",
+    "query_by": "description"
+  }'
+```
+
+<Warning>
+Multi-word searches require ALL words to be present in the document. For "payment services", both "payment" AND "services" must exist in the specified fields.
+</Warning>
+
+### Single vs multiple fields
+
+Search in one field or across multiple fields using comma separation:
+
+```bash
+# Single field
+{
+  "q": "john",
+  "query_by": "first_name"
+}
+
+# Multiple fields
+{
+  "q": "john doe",
+  "query_by": "first_name,last_name,email"
 }
 ```
+
+### Metadata search
+
+<Info> Available in version 0.11.0 and later. </Info>
+
+Search within metadata or nested objects using dot notation:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "transfer",
+    "query_by": "meta_data.transaction_type,description"
+  }'
+```
+
+---
+
+## Common patterns
+
+<Steps>
+<Step title="Search for a specific balance's transactions">
+This finds all transactions where the specified balance ID appears as either source or destination.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination"
+  }'
+```
+</Step>
+
+<Step title="Find customers by name or email">
+This searches for "alice" across name and email fields, useful for customer support.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "alice",
+    "query_by": "first_name,last_name,email"
+  }'
+```
+</Step>
+
+<Step title="Find transactions by description keywords">
+This finds transactions containing "refund" in their description or reference fields.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "refund",
+    "query_by": "description,reference"
+  }'
+```
+</Step>
+</Steps>
+
+---
+
+## Best practices
+
+- **Be specific with fields**: Target relevant fields in `query_by` for better performance.
+- **Validate field names**: Invalid fields in `query_by` may return unexpected results.
+
+---
+
+## Related topics
+
+<CardGroup cols={1}>
+  <Card title="Filtering" iconType="duotone" icon="filter" href="/search/filtering">
+    Learn how to combine queries with filters for more precise results.
+  </Card>
+  
+  <Card title="Search overview" iconType="duotone" icon="magnifying-glass" href="/search/overview">
+    Return to the main Search API documentation for a complete overview.
+  </Card>
+</CardGroup>
+
+---
 
 <NeedHelp />

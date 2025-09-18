@@ -1,60 +1,268 @@
 ---
-title: "Filtering parameters"
-sidebarTitle: "Filtering parameters"
-description: "Learn how to use filters to streamline your search results."
+title: "Filtering Results"
+sidebarTitle: "Filtering"
+description: "Learn how to use the filter_by parameter to refine search results with precise conditions"
 icon: "filter"
-"og:title": "Filtering • Blnk Developer Documentation" 
-"og:description": "Use filters to streamline your search results"
+"og:title": "Filtering • Blnk Developer Documentation"
+"og:description": "Use the filter_by parameter to refine search results with exact matches, ranges, comparisons, and logical operators."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Filters allow you to refine your search results based on specific values or ranges in your data. In this guide, you'll learn how to use filters to find what you want in your ledger.
+## Overview
 
-Filters are represented by the `filter_by` field in your request payload. This field can be matched against one or more values. For example:
+The `filter_by` parameter refines your search results based on specific field values. Use filters to narrow down large datasets and find exactly what you're looking for.
 
-- `"status:applied"` returns documents where the status is "applied."
-- `"status:[applied, inflight]"` returns documents where the status is "applied" or "inflight."
+Filters work with any search query, including the wildcard `*`, and support various operators for different data types.
 
-## 1. Exact vs non-exact filtering
+---
 
-To match a field's value verbatim, use the `:=` exact match operator, e.g., `status:=applied` returns documents where the status is exactly "applied".
+## Quick start
 
-Using the non-exact match operator, `:`, will do a word-level partial match, returning documents where the field has the word within it, e.g., `account_name:John` will match records with `account_name` equal to `John`, `John Smith`, `Smith John`.
+Here's a basic filter that demonstrates the most common pattern:
 
-## 2. Negation
+<CodeGroup>
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD"
+  }'
+```
 
-Not equal to / negation is supported by the `:!=` operator, e.g., `currency:!=USD`. This will return records where the `currency` field is not equal to "USD". 
+```json Response
+{
+  "found": 15,
+  "hits": [
+    {
+      "document": {
+        "amount": 1500,
+        "currency": "USD",
+        "status": "APPLIED",
+        "created_at": 1720363463,
+        "source": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        "destination": "bln_86ba7976-499d-4282-955e-a7c2abf5db12"
+      }
+    }
+  ]
+}
+```
+</CodeGroup>
 
-You can also negate multiple values, e.g., `currency:!=[USD, EUR]`.
+---
 
-To exclude results that contain strings, use the `:!` operator, e.g., `account_name:!John` will exclude all records with `account_name` containing "John" from the search results.
+## Filter operators
 
-## 3. Filtering numbers and dates
+### Exact match (`:=`)
 
-To filter records with numeric values or dates, you can use the simple comparison operators `>`, `>=`, `<`, `<=`, and `=`. To filter between a min and max value, use the range operator, `[min..max]`
+Match field values exactly:
 
-| Operator | Meaning | Examples |
-| :---: | --- | ---
-| `>` | Greater than | `balance:>500000`
-| `>=` | Greater than or equal to | `balance:>=500000`
-| `<` | Less than or equal to | `balance:<500000`
-| `<=` | Less than or equal to | `balance:<=500000` 
-| `=` | Equal to | `balance:=500000`
-| `[min..max]` | Between min and max | `balance:[200..500000]` filters documents where `balance` value is between 200 and 500000.
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD"
+  }'
+```
 
-You can also filter multiple values, e.g., `balance:[200..500000, 0]` returns docs where the value is between 200 and 500000 or exactly equal to 0.
+### Partial match (`:`)
 
-The same syntax works for date fields as well such as `created_at` or `scheduled_for`, e.g., `created_at:>2024-04-21` returns docs with dates later than than 21 April, 2024. 
+Match fields containing the value:
 
-Note, when filtering by date, input the values in the same format it was stored in your ledger (YYYY-MM-DD).
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_001"
+  }'
+```
 
-## 4. Multiple conditions
+### Comparison operators
 
-You can combine more than one filter condition in your query using the `&&` and `||` operators. `&&` means all conditions must be true, while `||` means that at least one condition must be true.
+Compare numeric values and dates:
 
-For example, to filter all USD transactions with the `APPLIED` and `INFLIGHT` statuses, our filter will look like this: `currency:=USD && status:[applied, inflight]`. 
+| Operator | Meaning | Example |
+| :--- | :--- | :--- |
+| `>` | Greater than | `amount:>1000` |
+| `>=` | Greater than or equal | `balance:>=5000` |
+| `<` | Less than | `created_at:<1720396800` |
+| `<=` | Less than or equal | `balance:<=50000` |
 
-To use `||`, e.g., all balances with `balance` less than 500000 or `credit_balance` above 100000, we'll have: `balance:<500000 || credit_balance:>100000`.
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:>1000 && balance:<=50000"
+  }'
+```
+
+### Range operator (`[min..max]`)
+
+Filter values within a range:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "balance:[1000..50000] && created_at:[1720310400..1720396800]"
+  }'
+```
+
+<Info>
+Use Unix timestamps for date ranges. The example above filters for July 7-8, 2024.
+</Info>
+
+### IN operator (`[value1, value2]`)
+
+Match any value from a list:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"
+  }'
+```
+
+### AND operator (`&&`)
+
+Combine multiple conditions where ALL must be true:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD && amount:>1000"
+  }'
+```
+
+### Partial match (`:`)
+
+Match fields containing the value:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_001"
+  }'
+```
+
+### Not equal (`:!=`)
+
+Exclude specific values:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "currency:!=USD && status:!=REJECTED"
+  }'
+```
+
+---
+
+## Common patterns
+
+<Steps>
+<Step title="Filter by transaction status">
+Find all successful and pending transactions.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:[APPLIED, INFLIGHT]"
+  }'
+```
+</Step>
+
+<Step title="Filter transactions by amount range">
+Find USD transactions between \$1,000 and \$10,000.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:[1000..10000] && currency:=USD"
+  }'
+```
+</Step>
+
+<Step title="Filter by creation date">
+Find transactions created within a specific date range using Unix timestamps.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "created_at:[1720310400..1720396800]"
+  }'
+```
+</Step>
+
+<Step title="Filter by multiple currencies">
+Find balances in major currencies with positive amounts.
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "currency:[USD, EUR, GBP] && balance:>0"
+  }'
+```
+</Step>
+</Steps>
+
+---
+
+## Best practices
+
+- **Use exact matches** (`:=`) for IDs, statuses, and currencies
+- **Combine with AND** (`&&`) for precise filtering 
+- **Use ranges** for amounts and dates instead of multiple comparisons
+- **Test complex filters** with simple queries first
+
+---
+
+## Related topics
+
+<CardGroup cols={1}>
+  <Card title="Querying" iconType="duotone" icon="comments-question" href="/search/querying">
+    Learn how to combine filters with search queries for powerful data retrieval.
+  </Card>
+  
+  <Card title="Search overview" iconType="duotone" icon="magnifying-glass" href="/search/overview">
+    Return to the main Search API documentation for a complete overview.
+  </Card>
+</CardGroup>
+
+---
 
 <NeedHelp />
