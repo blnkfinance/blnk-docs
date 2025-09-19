@@ -183,29 +183,30 @@ You can verify transaction status using the Search API by querying with the appr
 
 <Tabs>
 <Tab title="When skip_queue = false">
-Use the **parent transaction ID** to search for the original queued transaction:
+Use the **queued transaction ID** to search its child transactions.
 
 ```bash
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "q": "txn_parent_123",
-    "query_by": "parent_transaction"
+    "q": "<queued_transaction_id>",
+    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION",
+    "filter_by": "status:[APPLIED, VOID]"
   }'
 ```
 </Tab>
 
 <Tab title="When skip_queue = true">
-Use the **inflight transaction ID** and query by the transaction ID field:
+Use the **inflight transaction ID** and search for its child transactions:
 
 ```bash
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "q": "txn_inflight_456",
-    "query_by": "transaction_id"
+    "q": "<inflight_transaction_id>",
+    "query_by": "parent_transaction"
   }'
 ```
 </Tab>
