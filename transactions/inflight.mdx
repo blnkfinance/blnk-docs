@@ -177,6 +177,46 @@ A transaction will stay inflight indefinitely unless it gets committed, void, or
 
 ## Verifying inflight statuses
 
+### 1. Via Search API
+
+You can verify transaction status using the Search API by querying with the appropriate transaction ID:
+
+<Tabs>
+<Tab title="When skip_queue = false">
+Use the **parent transaction ID** to search for the original queued transaction:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "txn_parent_123",
+    "query_by": "parent_transaction"
+  }'
+```
+</Tab>
+
+<Tab title="When skip_queue = true">
+Use the **inflight transaction ID** and query by the transaction ID field:
+
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "txn_inflight_456",
+    "query_by": "transaction_id"
+  }'
+```
+</Tab>
+</Tabs>
+
+<Check>
+The Search API returns the complete transaction history, allowing you to track the entire lifecycle from `QUEUED` → `INFLIGHT` → `APPLIED`/`VOID`.
+</Check>
+
+### 2. Via webhooks
+
 The most reliable way to verify if an inflight transaction has been committed or voided is through webhooks. This approach allows you to receive real-time notifications when the transaction status changes:
 
 <Steps>
