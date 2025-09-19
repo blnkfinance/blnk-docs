@@ -173,52 +173,82 @@ A transaction will stay inflight indefinitely unless it gets committed, void, or
     Always format the `inflight_expiry_date` date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
 </Tip>
 
+---
+
 ## Verifying inflight statuses
 
-To verify an inflight transaction after commit or void:
+The most reliable way to verify if an inflight transaction has been committed or voided is through webhooks. This approach allows you to receive real-time notifications when the transaction status changes:
 
 <Steps>
-<Step title="Check the Update Inflight response">
-When you use the [Update Inflight](/reference/update-inflight) endpoint, the API returns a response indicating the final status:
+<Step title="Add verification reference to metadata">
+Before creating the inflight transaction, generate a unique verification reference and add it to the transaction's metadata:
 
-- **`APPLIED`**: Transaction was successfully committed
-- **`VOID`**: Transaction was voided or expired
+<CodeGroup>
+```json Create inflight with verification ref
+{
+    "amount": 100,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For vacation",
+    "inflight": true,
+    "meta_data": {
+        "verification_ref": "verify_abc123xyz"
+    }
+}
+```
+</CodeGroup>
 </Step>
 
-<Step title="Verify using Search API (optional)">
-You can also verify transaction status using the Search API:
+<Step title="Handle webhook notifications">
+When the inflight transaction is committed or voided, Blnk sends a webhook notification. The metadata from the parent transaction is passed down to the child transaction, so you can identify your transaction using the verification reference.
 
-<Tabs>
-<Tab title="When skip_queue = false (default)">
-Use the **queued transaction ID** to retrieve all its child transactions:
+<Tip> Blnk also adds `inflight: true` to the transaction's metadata. </Tip>
 
-```bash
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "<queued_transaction_id>",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
-  }'
+```json transaction.applied
+{
+    "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+    "hook_type": "POST_TRANSACTION",
+    "timestamp": "2025-02-23T09:43:49.636219+01:00",
+    "data": {
+        "precise_amount": 20000,
+        "amount": 200,
+        "rate": 1,
+        "precision": 100,
+        "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+        "parent_transaction": "",
+        "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+        "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+        "reference": "4rddddd3dd3rredddddddddde3sddddsdddeddeed",
+        "currency": "GBP",
+        "description": "Testing inflight/rates issue",
+        "status": "APPLIED",
+        "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+        "allow_overdraft": true,
+        "inflight": false,
+        "skip_queue": true,
+        "created_at": "2025-02-23T09:43:49.623494+01:00",
+        "scheduled_for": "0001-01-01T00:00:00Z",
+        "inflight_expiry_date": "0001-01-01T00:00:00Z",
+        "meta_data": {
+            "verification_ref": "verify_abc123xyz",
+            "inflight": true
+        }
+    }
+}
 ```
-</Tab>
+</Step>
 
-<Tab title="When skip_queue = true">
-Use the **inflight transaction ID** to search for all its child transactions:
+<Step title="Process webhook in your application">
+Finally, check each webhook and verify that the verification reference from the webhook matches the specific inflight transaction you're tracking.
 
-```bash
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "<inflight_transaction_id>",
-    "query_by": "parent_transaction"
-  }'
-```
-</Tab>
-</Tabs>
+<Check>You're good to go!</Check>
 </Step>
 </Steps>
+
+---
 
 ## Inflight for multiple sources/destinations
 
