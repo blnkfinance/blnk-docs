@@ -62,6 +62,23 @@ Here's an example response when you record a new transaction on Blnk:
 
 ---
 
+## Parent transactions
+
+Because transactions in Blnk are immutable, each new state or related record is linked back to the one that created it through the `parent_transaction` field.
+
+<Tip> For example, if you have a \$100 inflight transaction that is later committed, the commit record points to the inflight record as its parent. </Tip>
+
+This structure ensures that every transaction has a clear lineage. By following the `parent_transaction` chain, you can always trace a transaction back to its origin, see how it evolved, and connect it to any related siblings.
+
+- Queued transactions act as the parent of the next state (e.g. `APPLIED`, `INFLIGHT`, `REJECTED`).
+- Inflight transactions are the parent of their final outcome (e.g. `APPLIED`, `VOID`).
+- Split transactions are the parent of the resulting individual transactions.
+- Bulk transactions are the parent of the included individual transactions.
+- Scheduled transactions are the parent of the executed state (e.g. `APPLIED`, `REJECTED`).
+- Refunds use the original transaction as their parent.
+
+---
+
 ## Skip transaction queue
 
 <Info>Available in version 0.8.2 and later.</Info>
@@ -102,8 +119,12 @@ Use `skip_queue` when:
 ---
 
 <CardGroup>
-  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses"></Card>
-  <Card title="Applying inflight" iconType="duotone" icon="plane" href="/transactions/inflight"></Card>
+  <Card title="Transaction statuses" iconType="duotone" icon="tag" href="/transactions/statuses">
+    Learn about all transaction statuses and what they mean in your ledger.
+  </Card>
+  <Card title="Applying inflight" iconType="duotone" icon="plane" href="/transactions/inflight">
+    Understand how to hold transactions until specific conditions are met.
+  </Card>
 </CardGroup>
 
 ---

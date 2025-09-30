@@ -21,12 +21,15 @@ Any transaction record associated with a linked balance is also automatically ma
 
 To create a balance connected to an identity, include the `identity_id` of the identity you want to associate with the balance in the request body of the **create-balance** endpoint as shown below:
 
-```json Request {3}
-{
+```bash cURL
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
     "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
     "currency": "USD"
-}
+  }'
 ```
 
 ```json Response {11}
@@ -51,6 +54,38 @@ To create a balance connected to an identity, include the `identity_id` of the i
     }
 }
 ```
+
+---
+
+## Update a balance's identity
+
+You can update the identity associated with an existing balance using the [**Update Balance Identity**](/reference/update-balance-identity) endpoint:
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:5001/balances/{id}/identity" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6"
+  }'
+```
+
+```javascript TypeScript
+const updatedBalance = await LedgerBalances.updateIdentity(balanceId, {
+    identity_id: "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6"
+});
+console.log("Balance Identity Updated:", updatedBalance);
+```
+
+```bash Blnk CLI
+blnk balances update-identity
+```
+</CodeGroup>
+
+<Tip>
+You can link a balance to a different identity. The identity must exist in your system before you can associate it with a balance. This provides flexibility in managing customer data relationships.
+</Tip>
 
 ---
 

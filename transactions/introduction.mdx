@@ -141,32 +141,45 @@ After recording a transaction, you can verify its status using different methods
 When using the default queue system, every transaction starts as `QUEUED`. To verify your transaction status, you have two options:
 
 1. **Webhooks**: Blnk sends [webhook notifications](/advanced/notifications) when transaction states change.
-2. **Direct API calls**: Query the transaction status using the reference or transaction ID. See below:
+2. **Direct API calls**: Query the transaction status using the reference or transaction ID. See below: <br/>
+    <Tabs>
+      <Tab title="By reference (direct endpoint)">
+        Blnk appends a `_q` suffix to your original reference after processing a `QUEUED` transaction. To verify the updated status, retrieve the transaction using your original reference plus the `_q` suffix.
 
-<CodeGroup>
-```bash By reference
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "<transaction-reference>",
-    "query_by": "reference"
-  }'
-```
-```bash By transaction ID
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "<queued-transaction-id>",
-    "query_by": "parent_transaction"
-  }'
-```
-</CodeGroup>
+        ```bash
+        curl -X GET "http://YOUR_BLNK_INSTANCE_URL/transactions/reference/{reference}" \
+          -H "X-blnk-key: <api-key>"
+        ```
+      </Tab>
+      <Tab title="By reference (search)">
+        Use the **Search API** to look up your transaction by reference. If the transaction exists, the response will include its current status.
+
+        ```bash
+        curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "q": "<transaction-reference>",
+            "query_by": "reference"
+          }'
+        ```
+      </Tab>
+      <Tab title="By transaction ID">
+        To check the updated status, take the queued transaction ID and search with it as the `parent_transaction`. This is because Blnk treats the queued transaction as the parent for the next transaction state. See also: [Transaction lifecycle](/transactions/transaction-lifecycle)
+
+        ```bash
+        curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "q": "<queued-transaction-id>",
+            "query_by": "parent_transaction"
+          }'
+        ```
+      </Tab>
+    </Tabs>
 
 ### Verifying transactions without queue (skip queue)
 
 When using `skip_queue: true`, transactions are processed immediately and you can verify them from the direct response. Learn more about [skip queue](/transactions/transaction-lifecycle#skip-transaction-queue).
-
-
 
 <CodeGroup>
 ```bash cURL {12}

@@ -12,6 +12,8 @@ Blnk uses a structured ledger system to organize and group account balances effe
 
 When setting up Blnk for your application, the first step is to create ledgers. Since balances need to be grouped within a ledger, you cannot create balances without one. Therefore, it’s essential to plan how you want to categorize your balances before you begin. To learn more, see the following: [Ledger architecture](/ledgers/architecture).
 
+---
+
 ## Types of ledgers in Blnk
 
 Blnk includes two types of ledgers — a General Ledger and custom ledgers.
@@ -25,19 +27,24 @@ Blnk includes two types of ledgers — a General Ledger and custom ledgers.
   <Card title="Architecting your ledger" iconType="duotone" icon="sitemap" href="/ledgers/architecture"></Card>
 </CardGroup>
 
+---
+
 ## Creating a ledger
 
-To create a ledger, call the **Create Ledger** endpoint:
+To create a ledger, call the [**Create Ledger**](/reference/create-ledger) endpoint:
 
 <CodeGroup>
-```json JSON
-{
+```bash cURL
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "Customer Savings Account",
     "meta_data": {
         "project_owner": "YOUR_APP_NAME"
     }
-}
-``` 
+  }'
+```
 
 ```javascript TypeScript
 import { BlnkInit } from '@blnkfinance/blnk-typescript';
@@ -73,7 +80,7 @@ blnk ledgers create
 <Tabs>
     <Tab title="Request">
         | Field | Description | Required | Type
-		| --- | --- | --- | ---
+		| :--- | :--- | :--- | :--- |
 		| `name` | A name that best describes the function of the ledger | Yes | `string`
 		| `meta_data` | Custom data associated with the ledger being created | No | `object`
     </Tab>
@@ -85,6 +92,40 @@ blnk ledgers create
 		| `created_at` | Date and time of when it was created | `string`
     </Tab>
 </Tabs>
+
+---
+
+## Updating a ledger name
+
+You can rename an existing ledger using the [**Update Ledger Name**](/reference/update-ledger-name) endpoint without affecting any balances or transactions:
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:5001/ledgers/{id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Customer Savings Account"
+  }'
+```
+
+```javascript TypeScript
+const updatedLedger = await Ledgers.updateName(ledgerId, {
+    name: "Updated Customer Savings Account"
+});
+console.log("Ledger Updated:", updatedLedger);
+```
+
+```bash Blnk CLI
+blnk ledgers update-name
+```
+</CodeGroup>
+
+<Tip>
+The ledger ID remains unchanged when you update the name, ensuring all existing references continue to work properly.
+</Tip>
+
+---
 
 ## Practical example
 
@@ -127,5 +168,7 @@ In this approach, rather than organizing accounts by type (e.g., Savings or Chec
 Each ledger entry is focused on the customer, showing all accounts that the customer holds. For instance, Jasper Hale and Ruby Foster each have both a checking and a savings account, so both account types are listed under their names.
 
 This customer-focused organization makes it easy to see all account types associated with each individual. It can be helpful when managing customer relationships or viewing a comprehensive overview of each customer’s financial engagement in the system.
+
+---
 
 <NeedHelp />
