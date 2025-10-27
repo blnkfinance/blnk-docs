@@ -1,0 +1,103 @@
+---
+title: "Parent Transactions"
+sidebarTitle: "Parent transactions"
+description: "Learn how parent transactions work in Blnk and how to use them in your application"
+"og:title": "Parent Transactions • Blnk Developer Documentation"
+"og:description": "Understand the concept of parent transactions and how to use them in your application"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+In simple terms, a parent transaction is a transaction that generates another transaction in your ledger.
+
+Blnk records the ID of this parent transaction in the `parent_transaction` field of the new (child) transaction. This creates a clear lineage of transactions, allowing you to trace a transaction back to its origin, see how it evolved, and connect it to any related siblings.
+
+```json transaction.json
+{
+  "transaction_id": "txn_1234567890",
+  "parent_transaction": "txn_9023802909"
+}
+```
+
+<Note>Because transactions in Blnk are immutable, each status change creates a new transaction record. This new record references the previous one through the `parent_transaction` field, preserving the full history.</Note>
+
+### Single transaction
+
+Consider a single \$100 transaction in your ledger. Its lifecycle might look like this:
+
+<img src="/images/parent/parent-txn-1.png" alt="Parent transaction lifecycle diagram showing how a $100 transaction evolves through different states" className="rounded-lg" />
+
+1. When the transaction is first created, it starts in the `QUEUED` state.
+2. Once Blnk processes it, a new transaction is created in the `APPLIED` state.
+3. The initial `QUEUED` transaction becomes the parent of the new `APPLIED` transaction.
+
+### Inflight transaction
+
+Consider an inflight transaction of \$100. Its lifecycle looks like this:
+
+<img src="/images/parent/parent-txn-2.png" alt="Parent transaction lifecycle diagram showing how a $100 inflight transaction evolves through different states" className="rounded-lg" />
+
+1. When the transaction is created, it starts in the `QUEUED` state.
+2. Once Blnk processes it, a new transaction is created in the `INFLIGHT` state.
+3. The initial `QUEUED` transaction becomes the parent of the new `INFLIGHT` transaction.
+4. Once the inflight transaction is committed, a new transaction is created in the `APPLIED` state.
+5. If the inflight transaction is voided instead, a new transaction is created in the `VOID` state.
+5. The `INFLIGHT` transaction becomes the parent of the `APPLIED` and/or `VOID` transactions.
+
+With the `INFLIGHT` record as the parent, you can retrieve the complete outcome of that transaction by querying for all transactions whose `parent_transaction` field matches the `INFLIGHT` transaction ID:
+
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "<inflight_transaction_id>",
+    "query_by": "parent_transaction"
+  }'
+```
+
+---
+
+## Queued parent transactions
+
+A queued parent transaction refers to the very first transaction in a chain — the one that initiates the entire transaction lifecycle.
+
+In most cases, this initial transaction starts in the `QUEUED` state, serving as the root from which all subsequent transactions (like `INFLIGHT` or `APPLIED`) are derived.
+
+Blnk records the ID of this initial transaction in the `meta_data.QUEUED_PARENT_TRANSACTION` field of every subsequent transaction. You can use this ID to query and retrieve all transactions that belong to the same lifecycle chain:
+
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "<queued_parent_transaction_id>",
+    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
+  }'
+```
+
+Blnk automatically creates this field whenever you use the queue system to process any transaction — single, inflight, split, or bulk transactions.
+
+In the case of split or bulk transactions, it becomes particularly useful, as it lets you trace the entire chain and identify the final outcome of each branch.
+
+### Bulk/split transaction
+
+Consider a split transaction of \$100. Half to person A and half to person B. The lifecycle of this transaction would be as follows:
+
+<img src="/images/parent/parent-txn-3.png" alt="Parent transaction lifecycle diagram showing how a $100 split transaction evolves through different states" className="rounded-lg" />
+
+1. The split transaction is first created in the `QUEUED` state.
+2. Blnk then generates two individual transactions — one for Person A and one for Person B — both in the `QUEUED` state.
+3. The original `QUEUED` split transaction becomes the parent of these two new `QUEUED` transactions.
+4. As Blnk processes the two individual transactions, it creates two new transactions in the `APPLIED` state.
+5. Each individual child `QUEUED` transaction becomes the parent of its corresponding `APPLIED` transaction.
+
+Unlike the [inflight transaction](#inflight-transaction) example above, you can’t query by `parent_transaction` to get the final outcome of a split transaction. This is because the final `APPLIED` transactions aren’t directly linked to the original split transaction. Instead, they’re linked to the two individual `QUEUED` transactions created from it — each representing a separate outcome for Person A and Person B. 
+
+Instead you'll need to query by the `meta_data.QUEUED_PARENT_TRANSACTION` field, which is present in all related transactions, regardless of their parent.
+
+---
+
+<NeedHelp />
