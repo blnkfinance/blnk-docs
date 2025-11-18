@@ -35,9 +35,9 @@ When a customer makes a purchase with a card, the following happens:
 
 Before starting, ensure you have:
 
-1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+1. A running Blnk Core instance (e.g. at `http://localhost:5001`).
 2. [An API key](/advanced/secure-blnk) for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
-3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+3. Optionally, you can connect your Blnk Core to your [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
 
 Okay, let's dive in!
 
@@ -100,7 +100,13 @@ curl -X POST http://localhost:5001/balances \
   -d '{
     "ledger_id": "<customer-ledger-id>",
     "identity_id": "<xavier-identity-id>",
-    "currency": "USD"
+    "currency": "USD",
+    "meta_data": {
+      "last_4_digits": "1234",
+      "card_scheme": "visa",
+      "type": "virtual",
+      "card-id": "card-id-1234"
+    }
   }'
 ```
 
@@ -123,12 +129,7 @@ You can model this in Blnk with [inflight transactions](/transactions/inflight-t
 <Steps titleSize="h3">
 <Step title="Money movement map">
 
-When a card transaction is authorized, money moves from the customer's `card_primary` balance to `@World-USD` (representing the external merchant):
-
-{/* ```mermaid
-graph LR
-    card_primary(["card_primary"]) --Authorize transaction<br/>(INFLIGHT)--> World(["@World-USD"])
-``` */}
+When a card transaction is authorized, money moves from the customer's card balance to `@World-USD` (representing the external merchant):
 
 <img src="/images/tutorials/cards/mmm-auth-1.png" className="rounded-xl" alt="Money movement map for card authorization" />
 

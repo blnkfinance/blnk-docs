@@ -1,0 +1,822 @@
+---
+title: "SDK Code Examples"
+sidebarTitle: "Code examples"
+description: "Real life use-case implementation with the Go SDK."
+"og:title": "Go – Code Examples • Blnk SDK Documentation"
+"og:description": "Real life use-case implementation with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import Issues from "/snippets/sdk-issues.mdx";
+
+## Introduction
+
+In this examples guide, you'll learn how to implement common real life fintech use-cases with the Blnk Go SDK.
+
+Click on a use-case item to view its sample SDK code. Each example is also linked with a detailed documentation of how it works.
+
+To view the full list of examples, see the following: [Blnk Go SDK Code Examples](https://github.com/blnkfinance/blnk-go/tree/main/examples)
+
+<Accordion title="Escrow application">
+<Tip>To view a detailed explanation of this implementation, see the following: [Escrow application](/tutorials/quick-start/escrow-payments)</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL and configuration options
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Create an escrow ledger for managing escrow accounts
+	var LedgerBody blnkgo.CreateLedgerRequest = blnkgo.CreateLedgerRequest{
+		Name: "USD Ledger",
+	}
+
+	esrowLedger, resp, err := client.Ledger.Create(LedgerBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Printf("%+v\n", esrowLedger)
+
+	// Create the first escrow balance for Alice
+	escrowBalanceBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: esrowLedger.LedgerID,
+		Currency: "USD",
+		MetaData: map[string]interface{}{
+			"account_type":        "Escrow",
+			"customer_name":       "Alice Johnson",
+			"customer_id":         "CUST001",
+			"account_opened_date": "2024-01-01",
+			"account_status":      "active",
+		},
+	}
+
+	escrowBalance, resp, err := client.LedgerBalance.Create(escrowBalanceBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Println(resp.StatusCode)
+
+	// Create the second escrow balance for Bob
+	escrowBalanceBody2 := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: esrowLedger.LedgerID,
+		Currency: "USD",
+		MetaData: map[string]interface{}{
+			"account_type":        "Escrow",
+			"customer_name":       "Bob Smith",
+			"customer_id":         "CUST002",
+			"account_opened_date": "2024-01-01",
+			"account_status":      "active",
+		},
+	}
+
+	escrowBalance2, resp, err := client.LedgerBalance.Create(escrowBalanceBody2)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Println(resp.StatusCode)
+
+	// Fund Alice's escrow account with a deposit transaction
+	// Using inflight: true to create a pending transaction
+	fundAliceBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-21",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      "@bank-account",
+			Destination: escrowBalance.BalanceID,
+			MetaData: map[string]interface{}{
+				"transaction_type": "deposit",
+				"customer_name":    "Alice Johnson",
+				"customer_id":      "alice-5786",
+			},
+			Description: "Alice Funds",
+		},
+		Inflight: true,
+	}
+
+	fundAlice, resp, err := client.Transaction.Create(fundAliceBody)
+
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Printf("%+v\n", fundAlice)
+	fmt.Println(resp.StatusCode)
+
+	// Release funds from Alice's escrow account to Bob's escrow account
+	fundBobBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-22",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      escrowBalance.BalanceID,
+			Destination: escrowBalance2.BalanceID,
+			MetaData: map[string]interface{}{
+				"transaction_type": "release",
+				"customer_name":    "Bob Smith",
+				"customer_id":      "bob-5786",
+			},
+			Description: "Fund Bob",
+		},
+	}
+
+	fundBob, _, err := client.Transaction.Create(fundBobBody)
+
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Printf("%+v\n", fundBob.TransactionID)
+
+	// Refund Alice by moving funds from Bob's escrow account back to Alice's escrow account
+	refundAliceBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-23",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      escrowBalance2.BalanceID,
+			Destination: escrowBalance.BalanceID,
+			MetaData: map[string]interface{}{
+				"transaction_type": "refund",
+				"customer_name":    "Alice Johnson",
+				"customer_id":      "alice-5786",
+			},
+			Description: "Alice refund",
+		},
+	}
+
+	refund, resp, err := client.Transaction.Create(refundAliceBody)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Printf("%+v\n", refund)
+	fmt.Println(resp.StatusCode)
+}
+```
+</Accordion>
+
+<Accordion title="Savings application">
+<Tip>To view a detailed explanation of this implementation, see the following: [Savings application](/tutorials/quick-start/savings-application)</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL and timeout configuration
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Create a ledger specifically for managing savings accounts
+	savingsLedgerBody := blnkgo.CreateLedgerRequest{
+		Name: "Savings",
+	}
+
+	savingsLedger, resp, err := client.Ledger.Create(savingsLedgerBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Println(savingsLedger)
+
+	// Create a balance for Alice's savings account within the savings ledger
+	savingsBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: savingsLedger.LedgerID,
+		Currency: "USD",
+	}
+
+	savingsBalance, resp, err := client.LedgerBalance.Create(savingsBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Println(savingsBalance)
+
+	// Fund Alice's savings balance with an initial deposit transaction
+	// Using allow_overdraft: true to enable overdraft for the initial deposit
+	transactionBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-04",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      "@World",
+			Destination: savingsBalance.BalanceID,
+			Description: "Savings",
+		},
+		AllowOverdraft: true,
+	}
+
+	transaction, resp, err := client.Transaction.Create(transactionBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Println(transaction)
+}
+```
+</Accordion>
+
+<Accordion title="Virtual cards">
+<Tip>To view a detailed explanation of this implementation, see the following: [Virtual cards](/tutorials/payments/card-payments)</Tip>
+```go main.go
+package main
+
+import (
+	"log"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL and configuration options
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Create a USD ledger for managing virtual card transactions
+	usdLedgerBody := blnkgo.CreateLedgerRequest{
+		Name: "USD Ledger",
+		MetaData: map[string]interface{}{
+			"project_name": "USD virtual card",
+		},
+	}
+	usdLedger, resp, err := client.Ledger.Create(usdLedgerBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("USD Ledger created: %+v\n", usdLedger)
+	log.Printf("Response: %+v\n", resp)
+
+	// Create a USD virtual card balance with masked card details for security
+	usdBalanceBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: usdLedger.LedgerID,
+		Currency: "USD",
+		MetaData: map[string]interface{}{
+			"customer_name":        "Jerry",
+			"customer_internal_id": "1234",
+			"card_state":           "ACTIVE",
+			"card_number":          "411111XXXXXX1111", // Masked for security
+			"card_expiry":          "12/26",
+			"card_cvv":             "XXX", // Masked for security
+		},
+	}
+	usdBalance, resp, err := client.LedgerBalance.Create(usdBalanceBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("USD Balance created: %+v\n", usdBalance)
+	log.Printf("Response: %+v\n", resp)
+
+	// Record the first transaction on this balance, allowing overdraft for setup
+	usdTransactionBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Currency:    "USD",
+			Precision:   100,
+			Reference:   "ref-05",
+			Source:      "@World",
+			Destination: "@Merchant",
+			MetaData: map[string]interface{}{
+				"merchant_name": "Store ABC",
+				"customer_name": "Jerry",
+			},
+			Description: "Purchase at Store ABC",
+		},
+		AllowOverdraft: true,
+	}
+	usdTransaction, resp, err := client.Transaction.Create(usdTransactionBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("USD Transaction created: %+v\n", usdTransaction)
+	log.Printf("Response: %+v\n", resp)
+
+	// Record an authorization transaction as inflight (pending approval)
+	inflightBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Currency:    "USD",
+			Precision:   100,
+			Reference:   "ref-06",
+			Source:      "@Merchant",
+			Destination: usdBalance.BalanceID, // Jerry's virtual card balance_id
+			MetaData: map[string]interface{}{
+				"merchant_name": "Store ABC",
+				"customer_name": "Jerry",
+			},
+			Description: "Purchase at Store ABC",
+		},
+		Inflight: true,
+	}
+	inflightTransaction, resp, err := client.Transaction.Create(inflightBody)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Inflight Transaction created: %+v\n", inflightTransaction)
+	log.Printf("Response: %+v\n", resp)
+
+	// Sleep for 4 seconds to simulate waiting for a webhook or action to commit the transaction
+	// This also allows for it to be processed by the background job
+	time.Sleep(4 * time.Second)
+
+	// Commit the inflight transaction once verified
+	_, _, err = client.Transaction.Update(inflightTransaction.TransactionID, blnkgo.UpdateStatus{
+		Status: blnkgo.InflightStatusCommit,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optionally void the transaction if it fails or is canceled
+	// client.Transaction.Update(inflightTransaction.TransactionID, blnkgo.UpdateStatus{
+	//     Status: blnkgo.InflightStatusVoid,
+	// })
+}
+```
+</Accordion>
+
+<Accordion title="Reconciliation">
+<Tip>To view a detailed explanation of this implementation, see the following: [Reconciliation workflows](/reconciliations/overview)</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"net/url"
+	"os"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL and configuration options
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Open the reconciliation file for upload
+	file, _ := os.Open("file.csv")
+	fmt.Println("file", file.Name())
+	defer file.Close()
+
+	// Upload the reconciliation file for the Stripe account
+	reconUpload, resp, err := client.Reconciliation.Upload("stripe", file, file.Name())
+	if err != nil {
+		fmt.Print(err.Error())
+		fmt.Println(resp)
+		return
+	}
+
+	fmt.Println(reconUpload.UploadID)
+
+	// Create a matching rule to reconcile based on the 'amount' field
+	matchingRuleB := blnkgo.Matcher{
+		Criteria: []blnkgo.Criteria{
+			{
+				Field:          "amount",
+				Operator:       blnkgo.ReconciliationOperatorEquals,
+				AllowableDrift: 0.1, // Allowable difference in amount for a match
+			},
+		},
+		Name: "Matching Rule",
+	}
+
+	matchingRule, resp, err := client.Reconciliation.CreateMatchingRule(matchingRuleB)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Print(resp.StatusCode)
+	fmt.Printf("%+v\n", matchingRule)
+
+	// Start the reconciliation process with specified criteria
+	runReconBody := blnkgo.RunReconData{
+		UploadID:        reconUpload.UploadID,
+		MatchingRuleIDs: []string{matchingRule.RuleID}, // Use the created matching rule
+		Strategy:        blnkgo.ReconciliationStrategyOneToMany, // Reconciliation strategy
+		DryRun:          true, // Run in test mode without making actual changes
+	}
+
+	runRecon, resp, err := client.Reconciliation.Run(runReconBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Print(resp.StatusCode)
+	fmt.Printf("%+v\n", runRecon)
+}
+```
+</Accordion>
+
+<Accordion title="Multi-currency wallet">
+<Tip>Learn how to manage wallets with multiple currencies and exchange rates.</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+type LedgerBalanceResponseCh struct {
+	Resp *http.Response
+	Data *blnkgo.LedgerBalance
+	Err  error
+}
+
+func main() {
+	// Initialize the Blnk client with base URL and configuration options
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Create a USD ledger for USD transactions
+	var usdLedgerBody blnkgo.CreateLedgerRequest = blnkgo.CreateLedgerRequest{
+		Name: "USD Ledger",
+	}
+
+	usdLedger, resp, err := client.Ledger.Create(usdLedgerBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Printf("%+v\n", usdLedger)
+
+	// Create a EUR ledger for EUR transactions
+	var eurLedgerBody blnkgo.CreateLedgerRequest = blnkgo.CreateLedgerRequest{
+		Name: "EUR Ledger",
+	}
+
+	eurLedger, resp, err := client.Ledger.Create(eurLedgerBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Printf("%+v\n", eurLedger)
+
+	// Prepare balance creation requests for both currencies
+	usdBalanceBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: usdLedger.LedgerID,
+		Currency: "USD",
+	}
+
+	eurBalanceBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: eurLedger.LedgerID,
+		Currency: "EUR",
+	}
+
+	// Use concurrency to create both ledger balances simultaneously
+	usdBalanceChan := make(chan LedgerBalanceResponseCh)
+	eurBalanceChan := make(chan LedgerBalanceResponseCh)
+
+	// Create USD balance in a goroutine
+	go func() {
+		usdBalance, resp, err := client.LedgerBalance.Create(usdBalanceBody)
+		if err != nil {
+			fmt.Print(err.Error())
+			return
+		}
+
+		fmt.Println(resp.StatusCode)
+		usdBalanceChan <- LedgerBalanceResponseCh{
+			Resp: resp,
+			Data: usdBalance,
+			Err:  err,
+		}
+	}()
+
+	// Create EUR balance in a goroutine
+	go func() {
+		eurBalance, resp, err := client.LedgerBalance.Create(eurBalanceBody)
+		if err != nil {
+			fmt.Print(err.Error())
+			return
+		}
+
+		fmt.Println(resp.StatusCode)
+		eurBalanceChan <- LedgerBalanceResponseCh{
+			Resp: resp,
+			Data: eurBalance,
+			Err:  err,
+		}
+	}()
+
+	// Wait for both balance creations to complete
+	usdBalanceResp := <-usdBalanceChan
+	eurBalanceResp := <-eurBalanceChan
+
+	if usdBalanceResp.Err != nil || eurBalanceResp.Err != nil {
+		fmt.Print("Error creating ledger balances")
+		fmt.Print(usdBalanceResp.Err.Error())
+		fmt.Print(eurBalanceResp.Err.Error())
+		return
+	}
+	usdBalance := usdBalanceResp.Data
+	eurBalance := eurBalanceResp.Data
+
+	fmt.Printf("%+v\n", *usdBalance)
+	fmt.Printf("%+v\n", *eurBalance)
+
+	// Create a transaction to fund the USD balance
+	transactionBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-01",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      "@World",
+			Destination: usdBalance.BalanceID,
+			Description: "Usd Exchange",
+		},
+		AllowOverdraft: true,
+	}
+
+	transaction, resp, err := client.Transaction.Create(transactionBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Printf("%+v\n", transaction)
+
+	// Create a transaction to fund the EUR balance
+	eurTransactionBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      1000,
+			Reference:   "ref-02",
+			Precision:   100,
+			Currency:    "EUR",
+			Source:      "@World",
+			Destination: eurBalance.BalanceID,
+			Description: "Eur Exchange",
+		},
+		AllowOverdraft: true,
+	}
+
+	fmt.Printf("%+v\n", eurTransactionBody)
+	_, resp, err = client.Transaction.Create(eurTransactionBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Println(resp.StatusCode)
+
+	// Simulate waiting for the transactions to complete on the service by sleeping
+	time.Sleep(5 * time.Second)
+
+	// Create a debit on USD balance by making it the source and destination the world
+	debitBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      100,
+			Reference:   "ref-03",
+			Precision:   100,
+			Currency:    "USD",
+			Source:      usdBalance.BalanceID,
+			Destination: "@World",
+			Description: "Debit",
+		},
+	}
+
+	debit, resp, err := client.Transaction.Create(debitBody)
+
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Printf("Debit: %+v\n", debit)
+	fmt.Println(resp.StatusCode)
+
+	// Move money from the EUR balance to the USD balance and set an exchange rate
+	exchangeBody := blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			Amount:      100,
+			Reference:   "ref-04",
+			Precision:   100,
+			Currency:    "EUR",
+			Source:      eurBalance.BalanceID,
+			Destination: usdBalance.BalanceID,
+			Rate:        1.1, // Exchange rate: 1 EUR = 1.1 USD
+			Description: "Exchange",
+		},
+	}
+	fmt.Printf("%+v\n", exchangeBody)
+	exchange, resp, err := client.Transaction.Create(exchangeBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Printf("Exchange: %+v\n", exchange)
+	fmt.Printf("Exchange: %+v\n", resp)
+
+	// Simulate waiting for the transactions to complete on the service by sleeping
+	time.Sleep(5 * time.Second)
+
+	// Get the updated balance of the USD balance
+	usdBalance, resp, err = client.LedgerBalance.Get(usdBalance.BalanceID)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Printf("USD Balance: %+v\n", usdBalance)
+	fmt.Println(resp.StatusCode)
+
+	// Get the updated balance of the EUR balance
+	eurBalance, resp, err = client.LedgerBalance.Get(eurBalance.BalanceID)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Printf("EUR Balance: %+v\n", eurBalance)
+	fmt.Println(resp.StatusCode)
+}
+```
+</Accordion>
+
+<Accordion title="Multi-sources transaction">
+<Tip>Learn how to create transactions with multiple sources distributing amounts.</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"math/big"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL and configuration options
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(
+		5*time.Second,
+	), blnkgo.WithRetry(2))
+
+	// Create a transaction with multiple sources
+	// This allows splitting a transaction amount across multiple source balances
+	_, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			// Use PreciseAmount for exact amount representation
+			PreciseAmount: big.NewInt(10000), // Represents 100.00 with precision 100
+			Reference:     "ref-21d",
+			Precision:     100,
+			Currency:      "USD",
+			Description:   "Alice Funds",
+			Destination:   "@alice",
+			// Define multiple sources with distribution amounts
+			Sources: []blnkgo.Source{
+				{
+					Identifier:   "@test-1",
+					Distribution: "2000000.00", // Specific amount from source 1
+				},
+				{
+					Identifier:   "@test-2",
+					Distribution: "left", // Remaining amount goes to source 2
+				},
+			},
+		},
+	})
+	if err != nil {
+		fmt.Println("Error creating transaction:", err)
+		return
+	}
+	fmt.Println("Transaction created successfully")
+}
+```
+</Accordion>
+
+<Accordion title="Balance monitoring">
+<Tip>Learn how to set up balance monitors to track balance changes and thresholds.</Tip>
+```go main.go
+package main
+
+import (
+	"fmt"
+	"net/url"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil)
+
+	// Create a ledger for the application
+	ledgerBody := blnkgo.CreateLedgerRequest{
+		Name: "Ledge",
+		MetaData: map[string]interface{}{
+			"project_name": "SendWorldApp",
+		},
+	}
+
+	ledger, resp, err := client.Ledger.Create(ledgerBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Println(ledger.LedgerID)
+
+	// Create a balance to monitor
+	ledgerBalanceBody := blnkgo.CreateLedgerBalanceRequest{
+		LedgerID: ledger.LedgerID,
+		Currency: "USD",
+		MetaData: map[string]interface{}{
+			"customer_name": "SendWorldApp",
+		},
+	}
+
+	ledgerBalance, resp, err := client.LedgerBalance.Create(ledgerBalanceBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+	fmt.Println(resp.StatusCode)
+	fmt.Println(ledgerBalance.BalanceID)
+
+	// Create a balance monitor to track when credit balance exceeds 1000
+	// This will trigger notifications or webhooks when the condition is met
+	ledgerBalanceMonitorBody := blnkgo.MonitorData{
+		BalanceID: ledgerBalance.BalanceID,
+		Condition: blnkgo.MonitorCondition{
+			Field:     "credit_balance", // Field to monitor
+			Operator:  blnkgo.OperatorGreaterThan, // Comparison operator
+			Value:     1000, // Threshold value
+			Precision: 100, // Precision for the value
+		},
+	}
+
+	bl, resp, err := client.BalanceMonitor.Create(ledgerBalanceMonitorBody)
+
+	if err != nil {
+		fmt.Print(err.Error())
+		return
+	}
+
+	fmt.Println(resp.StatusCode)
+	fmt.Println(bl.BalanceID)
+}
+```
+</Accordion>
+
+<NeedHelp />
+
+<Issues />
+

@@ -1,30 +1,30 @@
 ---
-title: "Getting started with the TypeScript SDK"
-description: "Learn how to work with the Blnk SDK for TypeScript."
+title: "Getting started with the Go SDK"
+description: "Learn how to work with the Blnk SDK for Go."
 sidebarTitle: "Getting started"
-"og:title": "Getting Started with the TypeScript SDK • Blnk SDK Documentation"
-"og:description": "Get started with Blnk's TypeScript SDK, learn how to install, initialize, and integrate with your TypeScript projects"
+"og:title": "Getting Started with the Go SDK • Blnk SDK Documentation"
+"og:description": "Get started with Blnk's Go SDK, learn how to install, initialize, and integrate with your Go projects"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 import Issues from "/snippets/sdk-issues.mdx";
 
-Welcome to the Blnk SDK for TypeScript Developer Guide. In this guide, you'll learn how to install Blnk and work with our Blnk TypeScript SDK. To view the open-source file, see the following: [Blnk TypeScript SDK](https://github.com/blnkfinance/blnk-ts/).
+Welcome to the Blnk SDK for Go Developer Guide. In this guide, you'll learn how to install Blnk and work with our Blnk Go SDK. To view the open-source file, see the following: [Blnk Go SDK](https://github.com/blnkfinance/blnk-go/).
 
-You'll also find examples of running different fintech use cases with our TypeScript SDK. 
+You'll also find examples of running different fintech use cases with our Go SDK.
 
 ## Prerequisites
 
 Ensure that you have the following installed on your machine.
 
 1. [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) for running Blnk locally on your machine.
-2. [Node.js (v14.0.0 or later)](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs) and [npm](https://www.npmjs.com/) for installing the Blnk Typescript SDK.
+2. [Go (v1.22 or later)](https://go.dev/doc/install) for installing and using the Blnk Go SDK.
 
 ---
 
 ## 1: Installation & Configuration
 
-Once you're good to go with the prerequisites, you can set up your Blnk server and SDK in 5 steps:
+Once you're good to go with the prerequisites, you can set up your Blnk Core instance and SDK in 5 steps:
 
 <Steps titleSize="h3">
     <Step title="Clone the Blnk repository">
@@ -60,7 +60,7 @@ Once you're good to go with the prerequisites, you can set up your Blnk server a
         This configuration sets up the required connections to PostgreSQL and Redis, specifies your server details, and allows Slack notifications if needed.
     </Step>
     <Step title="Launch Blnk">
-        Launch the Blnk server with the following command:
+        Launch the Blnk Core instance with the following command:
         ```bash bash
         docker compose up
         ```
@@ -78,11 +78,12 @@ Once you're good to go with the prerequisites, you can set up your Blnk server a
 
 ---
 
-## 2: Install the Blnk TypeScript SDK
+## 2: Install the Blnk Go SDK
 
-In your `blnk` project folder, install Blnk Typescript SDK.
+In your Go project, install the Blnk Go SDK using `go get`:
+
 ```bash bash
-npm install @blnkfinance/blnk-typescript --save
+go get github.com/blnkfinance/blnk-go
 ```
 
 ---
@@ -91,21 +92,42 @@ npm install @blnkfinance/blnk-typescript --save
 
 A ledger is a folder for grouping balances together in your Blnk server. To learn more, see the following: [Introduction to Ledgers](/ledgers/introduction)
 
-To create a ledger using the TypeScript SDK:
+To create a ledger using the Go SDK:
 
-```javascript Create ledger
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
+```go Create ledger
+package main
 
-const blnk = await BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
-const { Ledgers } = blnk;
+import (
+	"fmt"
+	"net/url"
+	"time"
 
-const newLedger = await Ledgers.create({
-    name: "Customer Savings Account",
-    meta_data: {
-        project_owner: "YOUR_APP_NAME"
-    }
-});
-console.log("Ledger Created:", newLedger);
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(5*time.Second))
+
+	// Create a ledger request
+	ledgerBody := blnkgo.CreateLedgerRequest{
+		Name: "Customer Savings Account",
+		MetaData: map[string]interface{}{
+			"project_owner": "YOUR_APP_NAME",
+		},
+	}
+
+	// Create the ledger
+	ledger, resp, err := client.Ledger.Create(ledgerBody)
+	if err != nil {
+		fmt.Printf("Error creating ledger: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Ledger Created: %+v\n", ledger)
+	fmt.Printf("Response Status: %d\n", resp.StatusCode)
+}
 ```
 
 You can confirm that the ledger has been created with the Blnk CLI:
@@ -119,21 +141,29 @@ blnk ledgers list
 
 A balance is used to represent a store of value in your Blnk server, e.g., wallet or account. To learn more, see the following: [Introduction to Balances](/balances/introduction)
 
-To create a balance using the TypeScript SDK:
+To create a balance using the Go SDK:
 
-```javascript Create balance
-const { LedgerBalances } = blnk;
+```go Create balance
+// Create a balance request
+balanceBody := blnkgo.CreateLedgerBalanceRequest{
+	LedgerID: ledger.LedgerID,
+	Currency: "USD",
+	MetaData: map[string]interface{}{
+		"first_name":     "Alice",
+		"last_name":      "Hart",
+		"account_number": "1234567890",
+	},
+}
 
-const newBalance = await LedgerBalances.create({
-    ledger_id: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-    currency: "USD",
-    meta_data: {
-        first_name: "Alice",
-        last_name: "Hart",
-        account_number: "1234567890"
-    }
-});
-console.log("Balance Created:", newBalance);
+// Create the balance
+balance, resp, err := client.LedgerBalance.Create(balanceBody)
+if err != nil {
+	fmt.Printf("Error creating balance: %v\n", err)
+	return
+}
+
+fmt.Printf("Balance Created: %+v\n", balance)
+fmt.Printf("Response Status: %d\n", resp.StatusCode)
 ```
 
 You can confirm that the balance has been created with the Blnk CLI:
@@ -147,25 +177,34 @@ blnk balances list
 
 Transaction records represent all financial activities (money in and money out) happening within your Blnk ledger. All transactions are immutable (cannot be modified or deleted) and idempotent (producing the same result no matter how many times an operation is performed).
 
-To record a transaction using the TypeScript SDK:
+To record a transaction using the Go SDK:
 
-```javascript Create transaction
-const { Transactions } = blnk;
-
-// Create a transaction using internal balances
+```go Create transaction
+// Create a transaction request using internal balances
 // Internal balances use the "@" prefix and are automatically created if they don't exist
-const newTransaction = await Transactions.create({
-    amount: 1000,
-    reference: "first_transaction_001",
-    currency: "USD",
-    precision: 100,
-    source: "@FundingPool",
-    destination: "@MyBalance",
-    description: "My first Blnk transaction",
-    allow_overdraft: true,
-    meta_data: {}
-});
-console.log("Transaction Recorded:", newTransaction);
+transactionBody := blnkgo.CreateTransactionRequest{
+	ParentTransaction: blnkgo.ParentTransaction{
+		Amount:      1000,
+		Reference:   "first_transaction_001",
+		Currency:    "USD",
+		Precision:   100,
+		Source:      "@FundingPool",
+		Destination: "@MyBalance",
+		Description: "My first Blnk transaction",
+		MetaData:    map[string]interface{}{},
+	},
+	AllowOverdraft: true,
+}
+
+// Create the transaction
+transaction, resp, err := client.Transaction.Create(transactionBody)
+if err != nil {
+	fmt.Printf("Error creating transaction: %v\n", err)
+	return
+}
+
+fmt.Printf("Transaction Recorded: %+v\n", transaction)
+fmt.Printf("Response Status: %d\n", resp.StatusCode)
 ```
 
 You can confirm that the transaction has been created with the Blnk CLI:
@@ -176,3 +215,4 @@ blnk transactions list
 <NeedHelp />
 
 <Issues />
+
