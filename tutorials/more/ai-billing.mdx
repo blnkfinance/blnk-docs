@@ -1,0 +1,377 @@
+---
+sidebarTitle: "AI billing"
+title: "Building an AI Billing System"
+description: "Learn how to implement usage-based billing for AI products with token tracking, cost calculation, and prepaid/postpaid payment models."
+"og:title": "Building an AI Billing System with Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to implement usage-based billing for AI products with token tracking, cost calculation, and prepaid/postpaid payment models."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+This tutorial provides a step-by-step guide to building an AI billing system using Blnk Finance. You'll learn how to track token usage, calculate costs, and manage both prepaid and postpaid billing models.
+
+Usage-based billing is the standard pricing model for AI products. Each usage event has two components that must be tracked together:
+
+* **Tokens**: The amount consumed, typically measured and reported by your AI provider
+* **Dollars**: The monetary value of that consumption based on your pricing model
+
+---
+
+## How AI billing works
+
+When a customer uses your AI product, the following happens:
+
+1. **Usage tracking**: The AI provider reports token consumption (input and output tokens)
+2. **Cost calculation**: The token count is converted to USD based on your pricing model
+3. **Atomic recording**: Both tokens and dollars are recorded together in a single transaction
+4. **Balance management**: For prepaid, funds are deducted from the customer wallet. For postpaid, balances move into overdraft
+5. **Invoice generation**: At the end of the billing period, generate invoices from accumulated usage
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+2. [An API key](/advanced/secure-blnk) for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
+3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+
+Okay, let's dive in!
+
+---
+
+## 1: Create customer wallet
+
+Each customer needs a wallet to track their usage and balance. Each wallet will be represented with [a ledger](/ledgers/introduction.mdx) and a balance.
+
+<Steps titleSize="h3">
+<Step title="Create a ledger">
+
+[Create a ledger](/reference/create-ledger) for customer wallets. This groups all customer balances in one place:
+
+```bash
+curl -X POST http://localhost:5001/ledgers \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "name": "Customers Ledger"
+  }'
+```
+
+<Info>
+  Save the `ledger_id` from the response. You'll need it to create balances for customer wallets.
+</Info>
+</Step>
+
+<Step title="Create customer identity">
+
+[Create a customer identity](/reference/create-identity) to link all balances to the same customer:
+
+```bash
+curl -X POST http://localhost:5001/identities \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "first_name": "Xavier",
+    "last_name": "Woods"
+  }'
+```
+
+<Info>
+  Save the `identity_id` from the response. You'll use this ID to link the customer wallet to this identity.
+</Info>
+</Step>
+
+<Step title="Create customer wallet balance">
+
+[Create a balance](/reference/create-balance) for the customer wallet:
+
+```bash
+curl -X POST http://localhost:5001/balances \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "ledger_id": "<ledger-id>",
+    "identity_id": "<identity-id>",
+    "currency": "USD",
+    "meta_data": { "name": "Xavier Woods" }
+  }'
+```
+
+<Info>
+  Save the `balance_id` from the response. You'll need it for wallet funding and usage transactions.
+</Info>
+</Step>
+</Steps>
+
+---
+
+## 2: Wallet top-up
+
+Customers can fund their wallets before using your AI product. This is required for prepaid billing models.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When a customer funds their wallet, money moves from the external world to the customer's wallet:
+
+```mermaid
+graph LR
+    World(["@World-USD"]) --Fund wallet--> Customer(["Customer USD wallet"])
+```
+
+`@World-USD` is an [internal balance](/balances/internal-balances) that represents money entering and leaving your system. Internal balances use the `@` prefix and don't require a balance ID.
+</Step>
+
+<Step title="Fund the customer wallet">
+
+[Create a transaction](/reference/create-transaction) to add funds to the customer's wallet:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 120,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "ai-billing_ref-001",
+    "source": "@World-USD",
+    "destination": "<customer-balance-id>",
+    "description": "Wallet funding",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  Blnk enforces [double-entry accounting](/guides/double-entry) through the source and destination fields. The source represents where funds are deducted from, while the destination represents where they are credited to.
+</Note>
+
+<Note>
+  The `precision` parameter converts the amount to its smallest unit (e.g., 100 converts dollar amounts to cents). This helps avoid rounding errors common with floating-point arithmetic.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## 3: Track usage and billing
+
+To record usage in your ledger, you need to know **how many tokens** your AI model consumed and **what that usage is worth in USD**. Both components are recorded together atomically.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When a customer uses your AI product, two things happen simultaneously:
+
+```mermaid
+graph LR
+    Token(["@Token-Wallet"]) --User's token consumption--> System(["@System-Tokens"])
+    Customer(["Customer USD wallet"]) --Bill $$ for token used--> Revenue(["@Revenue"])
+```
+
+* Tokens are moved from the customer's token allocation to your system's token pool
+* The corresponding USD value is debited from the customer's wallet and credited to your revenue account
+
+Both actions occur together in a single atomic write, ensuring every token record has a matching customer debit transaction.
+</Step>
+
+<Step title="Connect to your LLM provider">
+
+Connect to your AI provider. For this example, we'll use the OpenAI TypeScript SDK:
+
+```typescript
+import OpenAI from "openai";
+
+export const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY! 
+});
+```
+</Step>
+
+<Step title="Capture token usage">
+
+Make a completion request and extract token usage after each event:
+
+```typescript
+export async function runCompletion(model: string, prompt: string) {
+  const response = await openai.chat.completions.create({
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const inputTokens = response.usage?.prompt_tokens ?? 0;
+  const outputTokens = response.usage?.completion_tokens ?? 0;
+
+  return { 
+    inputTokens, 
+    outputTokens, 
+    totalTokens: inputTokens + outputTokens 
+  };
+}
+```
+</Step>
+
+<Step title="Calculate USD value">
+
+Each model has its own rate for input and output tokens. Calculate the cost:
+
+```typescript
+const MODEL_RATES = {
+  "gpt-4o-mini": { inputPer1K: 0.15, outputPer1K: 0.60 },
+  "gpt-4o": { inputPer1K: 0.30, outputPer1K: 1.20 },
+};
+
+export function calculateUSD(
+  model: string, 
+  inputTokens: number, 
+  outputTokens: number
+) {
+  const rate = MODEL_RATES[model];
+  if (!rate) throw new Error(`No pricing configured for model: ${model}`);
+
+  const inputCost = (inputTokens / 1000) * rate.inputPer1K;
+  const outputCost = (outputTokens / 1000) * rate.outputPer1K;
+
+  return inputCost + outputCost;
+}
+```
+</Step>
+
+<Step title="Record usage atomically">
+
+Record both token usage and dollar cost together using the [bulk transactions](/reference/bulk-transactions) endpoint with `atomic: true`:
+
+```bash
+curl -X POST http://localhost:5001/transactions/bulk \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "atomic": true,
+    "run_async": false,
+    "transactions": [
+      {
+        "amount": 2290,
+        "precision": 1,
+        "currency": "TOKENS",
+        "reference": "ref_ai-billing_001_tokens",
+        "source": "@Token-Wallet",
+        "destination": "@System-Tokens",
+        "description": "Token leg",
+        "allow_overdraft": true
+      },
+      {
+        "amount": 6025,
+        "precision": 100,
+        "currency": "USD",
+        "reference": "ref_ai-billing_001_usd",
+        "source": "<customer-balance-id>",
+        "destination": "@Revenue",
+        "description": "USD leg",
+        "allow_overdraft": false
+      }
+    ]
+  }'
+```
+
+<Note>
+  The `precision` for tokens is set to 1 since tokens aren't measured in decimals. For USD, use precision 100 to convert dollars to cents.
+</Note>
+
+<Note>
+  Use meaningful reference identifiers that include customer ID, model, timestamp, and transaction type for easy tracing.
+</Note>
+
+<Note>
+  The response includes a `batch_id` that links both legs of the transaction in your ledger.
+</Note>
+
+<Tip>
+  You can use `meta_data` to attach extra details to each transaction, such as the model name, prompt type, or customer ID.
+</Tip>
+</Step>
+</Steps>
+
+---
+
+## 4: Prepaid vs postpaid billing
+
+Your system can support both prepaid and postpaid billing models.
+
+<Steps titleSize="h3">
+<Step title="Prepaid billing">
+
+With prepaid billing, customers fund their wallet before using your product:
+
+* The customer must have sufficient balance before usage
+* The corresponding dollar cost is deducted from the customer wallet
+* If the wallet balance becomes insufficient or reaches zero, the transaction fails
+* The customer must top up their wallet to continue using the product
+
+In the bulk transaction from step 3, set `allow_overdraft: false` on the USD leg to enforce prepaid behavior.
+</Step>
+
+<Step title="Postpaid billing">
+
+With postpaid billing, customers don't need to fund their wallet in advance:
+
+* Usage accumulates with the balance moving into overdraft (using `allow_overdraft: true` on the USD leg)
+* The overdraft balance represents how much the customer owes
+* At the end of the billing period, retrieve the overdraft amount to generate an invoice
+* Once payment is made, the balance resets to zero and the next cycle begins
+
+To enable postpaid, set `allow_overdraft: true` on the USD leg of the bulk transaction:
+
+```bash
+curl -X POST http://localhost:5001/transactions/bulk \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "atomic": true,
+    "run_async": false,
+    "transactions": [
+      {
+        "amount": 2290,
+        "precision": 1,
+        "currency": "TOKENS",
+        "reference": "ref_ai-billing_001_tokens",
+        "source": "@Token-Wallet",
+        "destination": "@System-Tokens",
+        "description": "Token leg",
+        "allow_overdraft": true
+      },
+      {
+        "amount": 6025,
+        "precision": 100,
+        "currency": "USD",
+        "reference": "ref_ai-billing_001_usd",
+        "source": "<customer-balance-id>",
+        "destination": "@Revenue",
+        "description": "USD leg",
+        "allow_overdraft": true
+      }
+    ]
+  }'
+```
+</Step>
+</Steps>
+
+---
+
+## Conclusion
+
+You now have a fully functional AI billing system built with Blnk Finance. This system can:
+
+* Create and manage customer wallets for tracking usage per customer
+* Fund customer wallets for prepaid billing models
+* Track token usage and calculate costs atomically
+* Support both prepaid and postpaid billing models
+* Generate accurate invoices from accumulated usage
+
+---
+
+<RequestTutorial />
+
