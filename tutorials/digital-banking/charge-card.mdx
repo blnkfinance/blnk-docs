@@ -1,0 +1,645 @@
+---
+sidebarTitle: "Charge card"
+title: "Building a Charge Card System"
+description: "Learn how to implement a charge card payment system with card authorization, fee accrual, billing cycles, and invoice settlement."
+"og:title": "Building a Charge Card System with Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to implement a charge card payment system with card authorization, fee accrual, billing cycles, and invoice settlement."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+This tutorial provides a step-by-step guide to building a charge card payment system using Blnk Finance. 
+
+A charge card lets you buy things now and pay the full amount later in one payment. You sometimes get an available credit limit, but you must clear everything at the end of the billing cycle or you get charged fees.
+
+---
+
+## How a charge card works
+
+When a customer makes a purchase with a charge card, the following happens:
+
+1. **Authorization**: The transaction is authorized, which reserves the amount from the customer's available credit limit.
+2. **Fee and interest accrual**: Fees and interest begin accruing on the pending transaction while it remains unsettled.
+3. **Clearing**: Once the payment processor clears the transaction, it's finalized and the amount is deducted from the card.
+4. **Billing cycle**: At the end of each billing cycle, all completed transactions are compiled into an invoice.
+5. **Payment**: The customer pays the full invoice amount, which covers all charges (principal, fees, and interest).
+6. **Overdue handling**: If payment isn't received by the due date, the invoice becomes overdue and additional interest accrues.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+2. [An API key](/advanced/secure-blnk) for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
+3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+
+Okay, let's dive in!
+
+---
+
+## 1: Create card account
+
+Each charge card account deals with a number of balances, so each account will be represented with [a ledger](/ledgers/introduction.mdx). All the balances for that account will be created under this ledger.
+
+<Steps titleSize="h3">
+<Step title="Create a ledger">
+
+[Create a ledger](/reference/create-ledger) for the card account. This groups all of the balances for that customer in one place:
+
+```bash
+curl -X POST http://localhost:5001/ledgers \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "name": "Xavier Woods Card Ledger"
+  }'
+```
+
+<Info>
+  Save the `ledger_id` from the response. You'll need it to create balances for the card account.
+</Info>
+
+<img src="/images/tutorials/charge-card/create-ledger.png" className="rounded-xl" alt="Create a ledger" />
+</Step>
+
+<Step title="Create customer identity">
+
+[Create a customer identity](/reference/create-identity) to link all balances to the same customer identity:
+
+```bash
+curl -X POST http://localhost:5001/identities \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "first_name": "Xavier",
+    "last_name": "Woods"
+  }'
+```
+
+<Info>
+  Save the `identity_id` from the response. You'll use this ID to link all balances to this customer.
+</Info>
+
+<img src="/images/tutorials/charge-card/create-identity.png" className="rounded-xl" alt="Create a customer identity" />
+</Step>
+
+<Step title="Create sub-balances for the card account">
+
+Based on our example, we''ll [create 6 balances](/reference/create-balance) for the customer card account:
+
+* **card_primary**: Main charge card balance that tracks all card transactions
+* **fees_payable**: Tracks all fees accrued by the customer in the billing cycle
+* **transaction_interest**: Tracks all interest accrued by pending transactions
+* **billed_balance**: Tracks principal to be billed to the customer
+* **overdue_balance**: Tracks overdue principal yet to be paid by customer
+* **overdue_interest**: Tracks interest accrued on overdue principal
+
+```bash Create balance
+curl -X POST http://localhost:5001/balances \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "ledger_id": "<xavier-ledger-id>",
+    "identity_id": "<xavier-identity-id>",
+    "currency": "USD",
+    "meta_data": { "type": "card_primary" }
+  }'
+```
+
+<img src="/images/tutorials/charge-card/create-balance.png" className="rounded-xl" alt="Create sub-balances for the card account" />
+
+Repeat this request for each balance type, changing the `meta_data.type` value as needed.
+
+<Info>
+  Save all the `balance_id` values from these responses. You'll need them for creating transactions throughout this tutorial.
+</Info>
+</Step>
+</Steps>
+
+---
+
+## 2: Card authorization
+
+Authorizing a card transaction means telling the processor that the customer has enough funds to cover the transaction, and they can proceed with the transaction. 
+
+You can model this in Blnk with [inflight transactions](/transactions/inflight-transactions) and [overdraft limits](/transactions/overdraft-limits).
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When a card transaction is authorized, money moves from the customer's `card_primary` balance to `@World-USD` (representing the external merchant):
+
+{/* ```mermaid
+graph LR
+    card_primary(["card_primary"]) --Authorize transaction<br/>(INFLIGHT)--> World(["@World-USD"])
+``` */}
+
+<img src="/images/tutorials/charge-card/mmm-phase-2.png" className="rounded-xl" alt="Money movement map for card authorization" />
+
+The transaction is created with `inflight: true`, which means it's pending until the payment processor clears it.
+</Step>
+
+<Step title="Create an inflight transaction">
+
+Create an overdraft transaction with an overdraft limit and inflight status. The overdraft allows the customer balance to go negative, signifying how much they owe. Setting `inflight = true` puts the transaction in a pending state until it's settled or voided.
+
+The example below sets a limit of **\$5,000.00**, meaning the `card_primary` balance cannot spend more than **\$5,000.00** total:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2000,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<card_primary_balance_id>",
+    "destination": "@World-USD",
+    "description": "Card transaction",
+    "allow_overdraft": true,
+    "overdraft_limit": 5000,
+    "inflight": true
+  }'
+```
+
+<Note>
+  `@World-USD` is an [internal balance](/balances/internal-balances) that represents money leaving and coming into your system (like payments to merchants or payments from customers). Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+Your transaction will be recorded successfully and it will be in `INFLIGHT` status (pending a commit or void action).
+
+<img src="/images/tutorials/charge-card/card-auth.png" className="rounded-xl" alt="Card authorization" />
+
+<Tip>
+  Try the same request with an amount higher than the sample overdraft limit (e.g., 6000). You will see the transaction is `REJECTED` in your dashboard, demonstrating how Blnk enforces credit limits.
+</Tip>
+</Step>
+
+<Step title="Handling insufficient funds & available balance">
+
+You need to ensure customers cannot spend more than their available credit. When a transaction is pending (`INFLIGHT`), that amount must be reserved and unavailable for other transactions until it's settled or voided.
+
+Blnk automatically calculates the remaining available balance by subtracting all inflight transactions from the overdraft limit. For example:
+
+* If your overdraft limit is $5,000.00
+* And you have a $2,000.00 transaction still `INFLIGHT`
+* The amount available for other transactions is $3,000.00
+
+Any transaction attempt exceeding $3,000.00 will be automatically rejected. 
+
+<img src="/images/tutorials/charge-card/limit-passed.png" className="rounded-xl" alt="Handling insufficient funds" />
+</Step>
+</Steps>
+
+---
+
+## 3: Fee accrual & interest
+
+For charge cards, you typically charge fees and interest on transactions. In this example, we'll charge a fee on each successful card transaction and record interest for the time each transaction spends in a pending state before being cleared.
+
+Since these amounts are owed by the customer but not yet paid, record them as [overdraft transactions](/transactions/overdrafts). This allows you to track the exact fees and interest owed for the billing cycle.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+Fees and interest are tracked separately and moved to their respective revenue accounts:
+
+{/* ```mermaid
+graph LR
+    fees_payable(["fees_payable"]) --Accrued fees--> AcmeFees(["@AcmeFees"])
+    txn_interest(["transaction_interest"]) --Accrued interest--> AcmeInterest(["@AcmeInterestAccrued"])
+``` */}
+
+<img src="/images/tutorials/charge-card/mmm-phase-3.png" className="rounded-xl" alt="Money movement map for fee accrual and interest" />
+
+These transactions use overdrafts since the customer hasn't paid yet, but you need to track what they owe.
+</Step>
+
+<Step title="Calculate and record markup fees">
+
+Calculate the markup fee (e.g., 1.5% of the transaction amount) and record it from the `fees_payable` balance to your revenue account (`@AcmeFees`):
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 30,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<fees_payable_balance_id>",
+    "destination": "@AcmeFees",
+    "description": "1.5% fees of card transaction",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@AcmeFees` is an [internal balance](/balances/internal-balances) that represents your revenue account for fees. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+<Tip>
+  You can optionally link fees to the original card transaction by including the transaction reference or transaction ID in the metadata field.
+</Tip>
+</Step>
+
+<Step title="Record transaction interest">
+
+Record interest accrued on pending transactions. This is typically done periodically (e.g., daily) while transactions remain in inflight status:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 20,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<transaction_interest_balance_id>",
+    "destination": "@AcmeInterestAccrued",
+    "description": "Interest accrued on pending transaction",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@AcmeInterestAccrued` is an [internal balance](/balances/internal-balances) that represents your revenue account for accrued interest. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+<Note>
+  The interest amount shown here (\$20.00) is an example. In practice, you would calculate this based on your interest rate, the principal amount, and the time the transaction has been pending.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## 4: Settlement
+
+Once a transaction is settled by the payment processor, it means the money has finally been transferred to the recipient. Now, you can commit the inflight transaction. 
+
+This [moves the transaction](/transactions/transaction-lifecycle) from `INFLIGHT` (pending) to `APPLIED` (completed). 
+
+If it was rejected or cancelled, you can void the transaction instead.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When you commit the inflight transaction, it finalizes the money movement that was authorized in step 2:
+
+{/* ```mermaid
+graph LR
+    card_primary(["card_primary"]) --Commit transaction<br/>(INFLIGHT → APPLIED)--> World(["@World-USD"])
+``` */}
+
+<img src="/images/tutorials/charge-card/mmm-phase-4.png" className="rounded-xl" alt="Money movement map for transaction settlement" />
+
+The transaction status changes from `INFLIGHT` to `APPLIED`, completing the transfer.
+</Step>
+
+<Step title="Commit the inflight transaction">
+
+Commit the inflight transaction from step 2 (authorization) once clearing is received. This turns the transaction from `INFLIGHT` (pending) to `APPLIED` (completed):
+
+```bash
+curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "status": "commit"
+  }'
+```
+</Step>
+
+<Step title="Handle fee recalculation">
+
+If the fee is recalculated and differs from the original fee, you can refund the previous fee transaction to cancel it, then post the recalculated fee.
+
+First, refund the previous fee transaction:
+
+```bash Refund transaction
+curl -X POST http://localhost:5001/transactions/refund-transaction/<transaction_id> \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY'
+```
+
+Then post the recalculated fee transaction:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 50,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<fees_payable_balance_id>",
+    "destination": "@AcmeFees",
+    "description": "1.5% fees of card transaction",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@AcmeFees` is an [internal balance](/balances/internal-balances) that represents your revenue account for fees. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## 5: End of billing cycle
+
+At the end of each billing cycle, you need to generate an invoice for the customer. 
+
+This involves retrieving all completed transactions from the cycle, updating the `billed_balance` with the total amount due, and preparing the invoice with fees and interest.
+
+Before generating the invoice, it's helpful to understand the balance states during the billing cycle. The following balances will be negative, indicating outstanding amounts yet to be paid by the customer:
+
+* **`card_primary`**: Shows the principal to be billed at the end of the cycle. It also has all of the cleared/completed card transactions for invoice generation.
+* **`fees_payable`**: Shows the fees accrued by the user from their card transactions.
+* **`transaction_interest`**: Shows the interest accrued per time spent in the pending state.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+At the end of the billing cycle, move the outstanding principal to the `billed_balance` for invoice generation, i.e., record an overdraft on `billed_balance`:
+
+{/* ```mermaid
+graph LR
+    billed_balance(["billed_balance"]) --Invoice created--> CustomerRepayments(["@CustomerRepayments"])
+``` */}
+
+<img src="/images/tutorials/charge-card/mmm-phase-5.png" className="rounded-xl" alt="Money movement map for end of billing cycle" />
+
+This mirrors the `card_primary` balance and creates a record of what needs to be billed to the customer.
+</Step>
+
+<Step title="Retrieve completed transactions">
+
+Retrieve all the completed transactions that happened in the billing cycle for the invoice. The total should always equal the outstanding balance on `card_primary`:
+
+```bash
+curl -X POST http://localhost:5001/search/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "q": "<card_primary_balance_id>",
+    "query_by": "source,destination",
+    "filter_by": "created_at:[<billing_start_date>...<billing_end_date>]",
+    "sort_by": "created_at:desc"
+  }'
+```
+</Step>
+
+<Step title="Update billed balance">
+
+Post a transaction that updates the `billed_balance` with the total amount to be billed for that cycle. This mirrors the `card_primary` balance for the billing cycle and is negative as well (outstanding amount due):
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2000,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<billed_balance_id>",
+    "destination": "@CustomerRepayments",
+    "description": "Invoice created",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@CustomerRepayments` is an [internal balance](/balances/internal-balances) that represents money coming from customers to repay their balances. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+<Note>
+  Leave the `card_primary` balance untouched to keep the available balance counting. If the user has used up their limit, they cannot perform any transaction until they clear the due invoice.
+</Note>
+</Step>
+
+<Step title="Retrieve balances for invoice generation">
+
+Retrieve the balances of `fees_payable` and `transaction_interest` to include them in the final invoice. These balances show the total fees and interest accrued during the billing cycle.
+</Step>
+</Steps>
+
+---
+
+## 6: Overdue invoice handling
+
+If an invoice becomes overdue (not paid by the due date), move the outstanding balance from `billed_balance` to `overdue_balance`. 
+
+This keeps the `billed_balance` zeroed out for the next billing cycle, while the `overdue_balance` tracks the open invoice. You can also choose to accrue interest on the overdue amount.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When an invoice becomes overdue, move the balance and record interest:
+
+{/* ```mermaid
+graph LR
+    overdue_balance(["overdue_balance"]) --Move from billed--> billed_balance(["billed_balance"])
+    overdue_interest(["overdue_interest"]) --Accrued interest--> AcmeInterest(["@AcmeInterestAccrued"])
+``` */}
+
+<img src="/images/tutorials/charge-card/mmm-phase-6.png" className="rounded-xl" alt="Money movement map for overdue invoice handling" />
+
+This keeps `billed_balance` zeroed for the next cycle while tracking the overdue amount separately.
+</Step>
+
+<Step title="Move balance to overdue">
+
+Move the negative balance from `billed_balance` to `overdue_balance`:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2000,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<overdue_balance_id>",
+    "destination": "<billed_balance_id>",
+    "description": "Invoice overdue",
+    "allow_overdraft": true
+  }'
+```
+
+This transaction moves the outstanding amount from `billed_balance` to `overdue_balance`, effectively zeroing out the `billed_balance` so you can start a new billing cycle.
+</Step>
+
+<Step title="Record overdue interest">
+
+Record the interest accrued on the overdue invoice into the `overdue_interest` balance:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 20,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<overdue_interest_balance_id>",
+    "destination": "@AcmeInterestAccrued",
+    "description": "Interest accrued on due invoice",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@AcmeInterestAccrued` is an [internal balance](/balances/internal-balances) that represents your revenue account for accrued interest. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+<Note>
+  The interest amount shown here ($0.20) is an example. In practice, you would calculate this based on your overdue interest rate, the overdue principal amount, and the number of days overdue.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## 7: Invoice payment and settlement
+
+When an invoice is paid, you need to settle all outstanding balances (principal, fees, and interest) and update the `card_primary` balance to increase the available credit. If there's any overdue interest, it should also be handled.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When an invoice is paid, money flows from the customer to settle all outstanding balances:
+
+<img src="/images/tutorials/charge-card/mmm-phase-7.png" className="rounded-xl" alt="Money movement map for invoice payment and settlement" />
+
+{/* ```mermaid
+graph LR
+    World(["@World-USD"]) --Split payment--> billed(["billed_balance"])
+    World --Split payment--> fees(["fees_payable"])
+    World --Split payment--> txn_interest(["transaction_interest"])
+    CustomerRepayments(["@CustomerRepayments"]) --Repay principal--> card_primary(["card_primary"])
+``` */}
+
+The payment is split across multiple destinations to settle principal, fees, and interest, then the principal is credited back to `card_primary`.
+</Step>
+
+<Step title="Settle all outstanding balances">
+
+When the invoice is paid, settle all outstanding balances at once using a split transaction with multiple destinations. This distributes the payment across the principal, fees, and transaction interest:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2050,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "@World-USD",
+    "destinations": [
+      { "identifier": "<billed_balance_id>", "distribution": "2000" },
+      { "identifier": "<fees_payable_balance_id>", "distribution": "30" },
+      { "identifier": "<transaction_interest_balance_id>", "distribution": "20" }
+    ],
+    "description": "Invoice paid",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@World-USD` is an [internal balance](/balances/internal-balances) that represents money leaving and coming into your system (like payments to merchants or payments from customers). Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+This transaction splits the payment across three destinations:
+* $2000 to settle the principal (`billed_balance`)
+* $30 to settle the fees (`fees_payable`)
+* $20 to settle the transaction interest (`transaction_interest`)
+</Step>
+
+<Step title="Update card primary balance">
+
+Once the invoice is settled, update the `card_primary` balance with the repaid principal to increase its available balance:
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2000,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "@CustomerRepayments",
+    "destination": "<card_primary_balance_id>",
+    "description": "Invoice settled",
+    "allow_overdraft": true
+  }'
+```
+
+<Note>
+  `@CustomerRepayments` is an [internal balance](/balances/internal-balances) that represents money coming from customers to repay their balances. Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+This credits the `card_primary` balance, increasing the available credit for future transactions.
+</Step>
+
+<Step title="Record overdue interest (if any)">
+
+If there's any overdue interest, record it (and zero it out) on the `card_primary` balance for the next billing cycle:
+
+<img src="/images/tutorials/charge-card/mmm-phase-8.png" className="rounded-xl" alt="Money movement map for overdue interest recording" />
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 32.53,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<card_primary_balance_id>",
+    "destination": "<overdue_interest_balance_id>",
+    "description": "Overdue interest",
+    "allow_overdraft": true,
+    "overdraft_limit": 5000
+  }'
+```
+
+<Note>
+  The amount shown here ($32.53) is an example. Use the actual overdue interest amount from your `overdue_interest` balance.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## Conclusion
+
+You now have a fully functional charge card payment system built with Blnk Finance. This system can:
+
+* Create and manage card accounts with multiple balance types for tracking different aspects of card usage
+* Authorize card transactions using inflight transactions and overdraft limits
+* Accrue fees and interest on pending transactions
+* Handle transaction clearing and settlement, including fee recalculation
+* Manage billing cycles and generate invoices
+* Process invoice payments and handle overdue accounts
+
+---
+
+<RequestTutorial />
+
