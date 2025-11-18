@@ -1,0 +1,155 @@
+---
+title: "Search"
+description: "Search across transactions, balances, ledgers, and identities with filtering, sorting, and pagination."
+api: "POST /search/{collection}"
+noindex: true
+"og:title": "Search API • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+<Key />
+
+<Info>Available in version 0.6.1 and later.</Info>
+
+The Search API enables you to retrieve one or more records from your ledger with advanced filtering, sorting, and full-text search capabilities. Unlike standard GET endpoints, the Search API gives you more control over your results.
+
+### Path Parameters
+<ParamField path="collection" type="string" required>
+  The collection to search. Supported values:
+  - `transactions` - Search through all transaction records
+  - `balances` - Find balance records across all ledgers
+  - `ledgers` - Locate specific ledgers by name or metadata
+  - `identities` - Search customer identity records
+</ParamField>
+
+### Body
+<ParamField body="q" type="string" required>
+  The search query text. Use `*` to return all records. Supports full-text search when combined with `query_by`. Learn more: [Querying](/search/querying)
+</ParamField>
+<ParamField body="query_by" type="string">
+  Comma-separated list of fields to search in. When provided, performs field-specific searches. Learn more: [Querying](/search/querying)
+  
+  Examples:
+  - `"source,destination"` - Search in source and destination fields
+  - `"first_name,last_name,email"` - Search in identity name and email fields
+</ParamField>
+<ParamField body="filter_by" type="string">
+  Filter conditions to refine results. Supports operators like `:=`, `:>`, `:<`, `:>=`, `:<=`, `:!=`, and ranges. Learn more: [Filtering](/search/filtering)
+  
+  Examples:
+  - `"status:=APPLIED"` - Filter by exact status
+  - `"amount:>1000"` - Filter by amount greater than 1000
+  - `"status:=APPLIED && currency:=USD"` - Multiple conditions
+  - `"created_at:[1704067200..1706745599]"` - Date range filter
+</ParamField>
+<ParamField body="sort_by" type="string">
+  Sorting conditions for ordering results. Format: `field:direction` where direction is `asc` or `desc`. Multiple fields: `field1:desc,field2:asc`. Learn more: [Sorting](/search/sorting)
+  
+  Examples:
+  - `"created_at:desc"` - Sort by creation date descending
+  - `"amount:desc,created_at:asc"` - Sort by amount then date
+</ParamField>
+<ParamField body="page" type="integer">
+  Page number for pagination. Starts at 1. Default: 1. Learn more: [Pagination](/search/pagination)
+</ParamField>
+<ParamField body="per_page" type="integer">
+  Number of results per page. Maximum 250, default 10. Learn more: [Pagination](/search/pagination)
+</ParamField>
+
+### Response
+<ResponseField name="found" type="integer">
+  Total number of matching records.
+</ResponseField>
+<ResponseField name="hits" type="array">
+  Array of search results. Each hit contains a `document` object with the record data and optional `highlights` for matched terms.
+</ResponseField>
+<Expandable title="Hit object structure">
+  <ResponseField name="document" type="object">
+    The actual record data. Structure varies by collection type (transaction, balance, ledger, or identity).
+  </ResponseField>
+  <ResponseField name="highlights" type="array">
+    Array of highlight objects showing where search terms matched in the document.
+  </ResponseField>
+  <ResponseField name="text_match" type="integer">
+    Relevance score for the search match.
+  </ResponseField>
+</Expandable>
+<ResponseField name="out_of" type="integer">
+  Total number of records in the collection (regardless of filters).
+</ResponseField>
+<ResponseField name="page" type="integer">
+  Current page number.
+</ResponseField>
+<ResponseField name="per_page" type="integer">
+  Number of results per page.
+</ResponseField>
+<ResponseField name="search_time_ms" type="integer">
+  Time taken to execute the search in milliseconds.
+</ResponseField>
+<ResponseField name="highlights" type="array">
+  Search term highlighting information for matched fields. Only present when full-text search matches are found.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD",
+    "sort_by": "created_at:desc",
+    "page": 1,
+    "per_page": 10
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "facet_counts": [],
+  "found": 2,
+  "hits": [
+    {
+      "document": {
+        "amount": 532,
+        "created_at": 1758116489,
+        "currency": "USD",
+        "description": "Test transaction",
+        "destination": "bln_20666087-1355-4736-ba04-3ba92a7542b9",
+        "id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5",
+        "precise_amount": 53200,
+        "precision": 100,
+        "reference": "ref-001",
+        "source": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+        "status": "APPLIED",
+        "transaction_id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5"
+      },
+      "highlights": [],
+      "text_match": 578730123365711993
+    }
+  ],
+  "out_of": 232,
+  "page": 1,
+  "per_page": 10,
+  "request_params": {
+    "collection_name": "transactions",
+    "per_page": 10,
+    "q": "*"
+  },
+  "search_cutoff": false,
+  "search_time_ms": 2
+}
+```
+</ResponseExample>
+
+<Tip>
+For simple operations like retrieving a single record by ID or listing all records, use the standard GET endpoints. Use the Search API when you need filtering, sorting, or complex queries.
+</Tip>
+
+<NeedHelp />
+

@@ -1,0 +1,106 @@
+---
+title: "Create API key"
+description: "How to create a new API key with fine-grained permissions in Blnk."
+api: "POST /api-keys"
+noindex: true
+"og:title": "Create API Key • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+## Overview
+
+API keys allow you to enforce access control by granting specific scopes (permissions) to different services or applications, rather than using the master key for all operations.
+
+<Info>
+Available on version 0.10.1 or later. Requires master key authentication (the `server.secret_key` from your configuration).
+</Info>
+
+<Key />
+
+### Body
+<ParamField body="name" type="string" required>
+  The name of the API key or service account. Use descriptive names to identify the purpose of each key.
+</ParamField>
+<ParamField body="owner" type="string" required>
+  Unique identifier of the owner or service associated with the API key. This helps track which service or team owns each key.
+</ParamField>
+<ParamField body="scopes" type="array" required>
+  A list of permissions granted to the API key. Each scope follows the format `resource:action`. See [Understanding Scopes](/advanced/secure-blnk#understanding-scopes) for available resources and actions.
+  
+  Examples:
+  - `["ledgers:read"]` - Can only view ledgers
+  - `["transactions:write", "balances:read"]` - Can create/modify transactions and view balances
+  - `["*:*"]` - Full access to all resources and actions
+</ParamField>
+<ParamField body="expires_at" type="string" required>
+  The expiration date and time for the API key in ISO 8601 format (e.g., `"2026-03-11T00:00:00Z"`).
+</ParamField>
+
+### Response
+<ResponseField name="api_key_id" type="string">
+  Unique identifier for the created API key.
+</ResponseField>
+<ResponseField name="key" type="string">
+  The actual API key value. Store this securely as it will not be shown again. Use this value in the `X-Blnk-Key` header for authenticated requests.
+  <Warning>
+    The `api_key` value is only returned once when the key is created. If you lose it, you'll need to create a new API key. Never commit API keys to version control or expose them in client-side code.
+  </Warning>
+</ResponseField>
+<ResponseField name="name" type="string">
+  The name of the API key.
+</ResponseField>
+<ResponseField name="owner_id" type="string">
+  The owner identifier associated with the API key.
+</ResponseField>
+<ResponseField name="scopes" type="array">
+  List of permissions granted to the API key.
+</ResponseField>
+<ResponseField name="expires_at" type="string">
+  The expiration date and time for the API key in ISO 8601 format.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was created.
+</ResponseField>
+<ResponseField name="last_used_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was last used for authentication. Returns `"0001-01-01T00:00:00Z"` if the key has never been used.
+</ResponseField>
+<ResponseField name="is_revoked" type="boolean">
+  Whether the API key has been revoked. Returns `false` for newly created keys.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X POST \
+  -H "X-Blnk-Key: your_master_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Service Account",
+    "owner": "owner_id", 
+    "scopes": ["ledgers:read", "balances:write"],
+    "expires_at": "2026-03-11T00:00:00Z"
+  }' \
+  https://YOUR_BLNK_INSTANCE_URL:5001/api-keys
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "api_key_id": "api_key_879f0ecb-e29f-4137-801b-1048366381db",
+  "key": "YVLIhuIplUzLRCcT9r7DQ_jsGKCXAn39JQ3n_o-Ll2Q=",
+  "name": "Service Account",
+  "owner_id": "owner_id",
+  "scopes": ["ledgers:read", "balances:write"],
+  "expires_at": "2026-03-11T00:00:00Z",
+  "created_at": "2025-11-18T13:39:50.390457762Z",
+  "last_used_at": "0001-01-01T00:00:00Z",
+  "is_revoked": false
+}
+```
+  </ResponseExample>
+
+<NeedHelp />
+

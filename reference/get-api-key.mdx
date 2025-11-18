@@ -1,0 +1,86 @@
+---
+title: "List API keys"
+description: "List all API keys for the authenticated owner."
+api: "GET /api-keys"
+noindex: true
+"og:title": "List API Keys • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+## Overview
+
+List all API keys for the authenticated owner. Use this endpoint to audit and manage your API keys. Note that the actual API key value is not returned for security reasons.
+
+<Info>
+Available on version 0.10.1 or later. Requires master key authentication (the `server.secret_key` from your configuration).
+</Info>
+
+<Key />
+
+### Response
+
+Returns an array of API key objects. Note that the actual `key` value is not returned for security reasons.
+
+<ResponseField name="api_key_id" type="string">
+  Unique identifier for the API key.
+</ResponseField>
+<ResponseField name="name" type="string">
+  The name of the API key.
+</ResponseField>
+<ResponseField name="owner_id" type="string">
+  The owner identifier associated with the API key.
+</ResponseField>
+<ResponseField name="scopes" type="array">
+  List of permissions granted to the API key.
+</ResponseField>
+<ResponseField name="expires_at" type="string">
+  The expiration date and time for the API key in ISO 8601 format.
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was created.
+</ResponseField>
+<ResponseField name="last_used_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was last used for authentication.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X GET \
+  -H "X-Blnk-Key: your_master_key" \
+  https://YOUR_BLNK_INSTANCE_URL:5001/api-keys
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+[
+  {
+    "api_key_id": "key_abc123def456",
+    "name": "Service Account",
+    "owner_id": "owner_id",
+    "scopes": ["ledgers:read", "balances:write"],
+    "expires_at": "2026-03-11T00:00:00Z",
+    "created_at": "2024-01-15T10:30:00Z",
+    "last_used_at": "2024-01-20T14:30:00Z"
+  },
+  {
+    "api_key_id": "key_xyz789uvw012",
+    "name": "Production API",
+    "owner_id": "owner_id",
+    "scopes": ["*:*"],
+    "expires_at": "0001-01-01T00:00:00Z",
+    "created_at": "2024-01-10T08:20:00Z",
+    "last_used_at": "2024-01-19T10:15:00Z"
+  }
+]
+```
+</ResponseExample>
+
+<Note>
+The actual `api_key` value is not returned for security reasons. If you need to view or regenerate the key value, you'll need to create a new API key.
+</Note>
+
+<NeedHelp />
