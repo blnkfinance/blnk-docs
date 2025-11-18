@@ -8,18 +8,16 @@ description: "Learn how to implement usage-based billing for AI products with to
 
 import RequestTutorial from "/snippets/request-tutorial.mdx"
 
-## Overview
-
 This tutorial provides a step-by-step guide to building an AI billing system using Blnk Finance. You'll learn how to track token usage, calculate costs, and manage both prepaid and postpaid billing models.
-
-Usage-based billing is the standard pricing model for AI products. Each usage event has two components that must be tracked together:
-
-* **Tokens**: The amount consumed, typically measured and reported by your AI provider
-* **Dollars**: The monetary value of that consumption based on your pricing model
 
 ---
 
 ## How AI billing works
+
+Each usage event has two components that must be tracked together:
+
+* **Tokens**: The amount consumed, typically measured and reported by your AI provider
+* **Dollars**: The monetary value of that consumption based on your pricing model
 
 When a customer uses your AI product, the following happens:
 
@@ -38,8 +36,6 @@ Before starting, ensure you have:
 1. A running Blnk server instance (e.g. at `http://localhost:5001`).
 2. [An API key](/advanced/secure-blnk) for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
 3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
-
-Okay, let's dive in!
 
 ---
 
@@ -64,6 +60,8 @@ curl -X POST http://localhost:5001/ledgers \
 <Info>
   Save the `ledger_id` from the response. You'll need it to create balances for customer wallets.
 </Info>
+
+<img src="/images/tutorials/ai-billing/create-ledger.png" className="rounded-xl" alt="Create a ledger" />
 </Step>
 
 <Step title="Create customer identity">
@@ -104,6 +102,8 @@ curl -X POST http://localhost:5001/balances \
 <Info>
   Save the `balance_id` from the response. You'll need it for wallet funding and usage transactions.
 </Info>
+
+<img src="/images/tutorials/ai-billing/create-balance.png" className="rounded-xl" alt="Create customer wallet balance" />
 </Step>
 </Steps>
 
@@ -118,10 +118,7 @@ Customers can fund their wallets before using your AI product. This is required 
 
 When a customer funds their wallet, money moves from the external world to the customer's wallet:
 
-```mermaid
-graph LR
-    World(["@World-USD"]) --Fund wallet--> Customer(["Customer USD wallet"])
-```
+<img src="/images/tutorials/ai-billing/mmm-wallet-topup.png" className="rounded-xl" alt="Money movement map for wallet top-up" />
 
 `@World-USD` is an [internal balance](/balances/internal-balances) that represents money entering and leaving your system. Internal balances use the `@` prefix and don't require a balance ID.
 </Step>
@@ -146,12 +143,10 @@ curl -X POST http://localhost:5001/transactions \
   }'
 ```
 
-<Note>
-  Blnk enforces [double-entry accounting](/guides/double-entry) through the source and destination fields. The source represents where funds are deducted from, while the destination represents where they are credited to.
-</Note>
+<img src="/images/tutorials/ai-billing/fund-transaction.png" className="rounded-xl" alt="Create a transaction to add funds to the customer's wallet" />
 
 <Note>
-  The `precision` parameter converts the amount to its smallest unit (e.g., 100 converts dollar amounts to cents). This helps avoid rounding errors common with floating-point arithmetic.
+  Blnk enforces [double-entry accounting](/guides/double-entry) through the source and destination fields. The source represents where funds are deducted from, while the destination represents where they are credited to.
 </Note>
 </Step>
 </Steps>
@@ -167,11 +162,7 @@ To record usage in your ledger, you need to know **how many tokens** your AI mod
 
 When a customer uses your AI product, two things happen simultaneously:
 
-```mermaid
-graph LR
-    Token(["@Token-Wallet"]) --User's token consumption--> System(["@System-Tokens"])
-    Customer(["Customer USD wallet"]) --Bill $$ for token used--> Revenue(["@Revenue"])
-```
+<img src="/images/tutorials/ai-billing/mmm-token-usage.png" className="rounded-xl" alt="Money movement map for token usage" />
 
 * Tokens are moved from the customer's token allocation to your system's token pool
 * The corresponding USD value is debited from the customer's wallet and credited to your revenue account
@@ -277,13 +268,7 @@ curl -X POST http://localhost:5001/transactions/bulk \
   }'
 ```
 
-<Note>
-  The `precision` for tokens is set to 1 since tokens aren't measured in decimals. For USD, use precision 100 to convert dollars to cents.
-</Note>
-
-<Note>
-  Use meaningful reference identifiers that include customer ID, model, timestamp, and transaction type for easy tracing.
-</Note>
+<img src="/images/tutorials/ai-billing/record-usage.png" className="rounded-xl" alt="Record usage atomically" />
 
 <Note>
   The response includes a `batch_id` that links both legs of the transaction in your ledger.
@@ -321,41 +306,7 @@ With postpaid billing, customers don't need to fund their wallet in advance:
 * Usage accumulates with the balance moving into overdraft (using `allow_overdraft: true` on the USD leg)
 * The overdraft balance represents how much the customer owes
 * At the end of the billing period, retrieve the overdraft amount to generate an invoice
-* Once payment is made, the balance resets to zero and the next cycle begins
-
-To enable postpaid, set `allow_overdraft: true` on the USD leg of the bulk transaction:
-
-```bash
-curl -X POST http://localhost:5001/transactions/bulk \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
-    "atomic": true,
-    "run_async": false,
-    "transactions": [
-      {
-        "amount": 2290,
-        "precision": 1,
-        "currency": "TOKENS",
-        "reference": "ref_ai-billing_001_tokens",
-        "source": "@Token-Wallet",
-        "destination": "@System-Tokens",
-        "description": "Token leg",
-        "allow_overdraft": true
-      },
-      {
-        "amount": 6025,
-        "precision": 100,
-        "currency": "USD",
-        "reference": "ref_ai-billing_001_usd",
-        "source": "<customer-balance-id>",
-        "destination": "@Revenue",
-        "description": "USD leg",
-        "allow_overdraft": true
-      }
-    ]
-  }'
-```
+* Once payment is made, the balance resets to zero and the next cycle begins.
 </Step>
 </Steps>
 

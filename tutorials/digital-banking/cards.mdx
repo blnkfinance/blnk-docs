@@ -1,0 +1,247 @@
+---
+sidebarTitle: "Card payments"
+title: "Building an Online Card Payment System"
+description: "Learn how to implement online card payments with authorization and settlement phases using inflight transactions."
+"og:title": "Building an Online Card Payment System with Blnk • Blnk Developer Documentation"
+"og:description": "Learn how to implement online card payments with authorization and settlement phases using inflight transactions."
+---
+
+import RequestTutorial from "/snippets/request-tutorial.mdx"
+
+## Overview
+
+In this tutorial, you’ll learn how to model online card payments using Blnk. 
+
+We cover the full flow a card issuer needs to handle: creating an authorization hold, tracking the pending transaction, settling it when the processor clears it, and voiding it when it’s cancelled. 
+
+By the end, you’ll know the exact ledger steps needed to support basic card payments.
+
+---
+
+## How online card payments work
+
+When a customer makes a purchase with a card, the following happens:
+
+1. **Authorization:** When your customer tries to pay, the card network asks your system if the customer has enough balance. If yes, you reserve that amount and create an inflight transaction. The money is not taken yet, only held.
+
+2. **Settlement:** A few hours or days later, the payment processor sends the final confirmation.
+    
+    - If the transaction is approved, you deduct the money from the customer’s balance and commit the transaction in your ledger.
+    - If it is declined or reversed, you release the reserved amount by voiding the transaction.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+1. A running Blnk server instance (e.g. at `http://localhost:5001`).
+2. [An API key](/advanced/secure-blnk) for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
+3. The [Blnk CLI](/blnk-cli/install) installed or a connected [Blnk Cloud](https://cloud.blnkfinance.com) workspace to view your ledger data.
+
+Okay, let's dive in!
+
+---
+
+## 1: Create card account
+
+Each card account will be represented with [a ledger](/ledgers/introduction.mdx). The card balance will be created under this ledger.
+
+<Steps titleSize="h3">
+<Step title="Create a ledger">
+
+[Create a ledger](/reference/create-ledger) for the card account. This groups all of the balances for that customer in one place:
+
+```bash
+curl -X POST http://localhost:5001/ledgers \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "name": "Customers Card Ledger"
+  }'
+```
+
+<Info>
+  Save the `ledger_id` from the response. You'll need it to create balances for the card account.
+</Info>
+
+<img src="/images/tutorials/cards/create-ledger.png" className="rounded-xl" alt="Create a ledger" />
+</Step>
+
+<Step title="Create customer identity">
+
+[Create a customer identity](/reference/create-identity) to link all balances to the same customer identity:
+
+```bash
+curl -X POST http://localhost:5001/identities \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "first_name": "Xavier",
+    "last_name": "Woods"
+  }'
+```
+
+<Info>
+  Save the `identity_id` from the response. You'll use this ID to link all balances to this customer.
+</Info>
+
+<img src="/images/tutorials/cards/create-identity.png" className="rounded-xl" alt="Create a customer identity" />
+</Step>
+
+<Step title="Create card balance">
+
+[Create a balance](/reference/create-balance) for the card account. This balance will track all card transactions:
+
+```bash Create balance
+curl -X POST http://localhost:5001/balances \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "ledger_id": "<customer-ledger-id>",
+    "identity_id": "<xavier-identity-id>",
+    "currency": "USD"
+  }'
+```
+
+<img src="/images/tutorials/cards/create-balance.png" className="rounded-xl" alt="Create card balance" />
+
+<Info>
+  Save the `balance_id` from the response. You'll need it for creating transactions throughout this tutorial.
+</Info>
+</Step>
+</Steps>
+
+---
+
+## 2: Authorization
+
+Authorizing a card transaction means telling the processor that the customer has enough funds to cover the transaction, and they can proceed with the transaction. 
+
+You can model this in Blnk with [inflight transactions](/transactions/inflight-transactions).
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When a card transaction is authorized, money moves from the customer's `card_primary` balance to `@World-USD` (representing the external merchant):
+
+{/* ```mermaid
+graph LR
+    card_primary(["card_primary"]) --Authorize transaction<br/>(INFLIGHT)--> World(["@World-USD"])
+``` */}
+
+<img src="/images/tutorials/cards/mmm-auth-1.png" className="rounded-xl" alt="Money movement map for card authorization" />
+
+The transaction is created with `inflight: true`, which means it's pending until the payment processor clears it.
+</Step>
+
+<Step title="Create an inflight transaction">
+
+Create an inflight transaction to authorize the payment. Setting `inflight = true` puts the transaction in a pending state until it's settled or voided.
+
+```bash
+curl -X POST http://localhost:5001/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "amount": 2000,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "<unique-reference>",
+    "source": "<customer-card_balance_id>",
+    "destination": "@World-USD",
+    "description": "Card transaction",
+    "inflight": true
+  }'
+```
+
+<Note>
+  `@World-USD` is an [internal balance](/balances/internal-balances) that represents money leaving and coming into your system (like payments to merchants or payments from customers). Internal balances use the `@` prefix and don't require a balance ID.
+</Note>
+
+Your transaction will be recorded successfully and it will be in `INFLIGHT` status (pending a commit or void action).
+
+<img src="/images/tutorials/cards/card-auth.png" className="rounded-xl" alt="Card authorization" />
+</Step>
+
+<Step title="Handling fund reservation">
+
+When a transaction is inflight, the amount is reserved and cannot be used for anything else until it’s settled or voided.
+
+Blnk handles this automatically. Every inflight transaction reduces the customer’s available balance. If the available balance isn’t enough to cover a new transaction, the new one is rejected.
+
+For example:
+
+- Customer balance: $5,000
+- One inflight transaction: $2,000
+- Available balance: $3,000
+
+Any new transaction above $3,000 will fail. This ensures you never spend money that has already been reserved for pending card payments.
+
+<img src="/images/tutorials/cards/limit-passed.png" className="rounded-xl" alt="Handling insufficient funds" />
+</Step>
+</Steps>
+
+---
+
+## 3: Settlement
+
+Once a transaction is settled by the payment processor, it means the money has finally been transferred to the recipient. Now, you can commit the inflight transaction. 
+
+This [moves the transaction](/transactions/transaction-lifecycle) from `INFLIGHT` (pending) to `APPLIED` (completed). 
+
+If it was rejected or cancelled, you can void the transaction instead.
+
+<Steps titleSize="h3">
+<Step title="Money movement map">
+
+When you commit the inflight transaction, it finalizes the money movement that was authorized:
+
+<img src="/images/tutorials/cards/card-settled.png" className="rounded-xl" alt="Money movement map for transaction settlement" />
+
+The transaction status changes from `INFLIGHT` to `APPLIED`, completing the transfer.
+</Step>
+
+<Step title="Commit the inflight transaction">
+
+Commit the inflight transaction from the authorization step once clearing is received. This turns the transaction from `INFLIGHT` (pending) to `APPLIED` (completed):
+
+```bash
+curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "status": "commit"
+  }'
+```
+</Step>
+
+<Step title="Void a transaction">
+
+If a transaction is rejected or cancelled, you can void it instead of committing it:
+
+```bash
+curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
+  -H 'Content-Type: application/json' \
+  -H 'X-Blnk-Key: YOUR_API_KEY' \
+  -d '{
+    "status": "void"
+  }'
+```
+</Step>
+</Steps>
+
+---
+
+## Conclusion
+
+You now have a fully functional card payment system built with Blnk Finance. This system can:
+
+* Create and manage card accounts with a ledger and card balance
+* Authorize card transactions using inflight transactions to reserve funds
+* Commit or void inflight transactions when they're settled or rejected
+
+---
+
+<RequestTutorial />
+
