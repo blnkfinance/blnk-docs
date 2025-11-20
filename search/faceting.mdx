@@ -1,0 +1,156 @@
+---
+title: "Faceting"
+sidebarTitle: "Faceting"
+description: "Learn how to aggregate and count values in your search results"
+"og:title": "Faceting • Blnk Developer Documentation"
+"og:description": "Use faceting in Blnk Search to get value counts, build dynamic filters, and analyze data distributions across your ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+Faceting gives you total counts for any field in your results. It helps you build filters and understand how your data is grouped. You can:
+
+- Count transactions per currency
+- See how many transactions are in each status
+- Group balances by ledger or identity
+- Break transactions into date or amount ranges
+
+---
+
+## Quick start
+
+Here's a basic faceting request that shows the total counts for the `status` and `currency` fields:
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "facet_by": "status,currency"
+  }'
+```
+```json Response
+{
+  "facet_counts": [
+    {
+      "counts": [
+        {
+          "count": 1000,
+          "highlighted": "APPLIED",
+          "value": "APPLIED"
+        },
+        {
+          "count": 1500,
+          "highlighted": "INFLIGHT",
+          "value": "INFLIGHT"
+        }
+        {
+          "count": 500,
+          "highlighted": "REJECTED",
+          "value": "REJECTED"
+        }
+      ],
+      "field_name": "status",
+      "stats": {
+        "total_values": 1
+      }
+    },
+    {
+      "counts": [
+        {
+          "count": 876,
+          "highlighted": "GBP",
+          "value": "GBP"
+        },
+        {
+          "count": 821,
+          "highlighted": "EUR",
+          "value": "EUR"
+        },
+        {
+          "count": 803,
+          "highlighted": "USD",
+          "value": "USD"
+        }
+      ],
+      "field_name": "currency",
+      "stats": {
+        "total_values": 3
+      }
+    }
+  ]
+```
+</CodeGroup>
+
+| **Field**      | **Description**                                  |
+| :------------- | :------------------------------------------- |
+| `field_name`   | The field being faceted.                     |
+| `value`        | A unique value found in that field.          |
+| `count`        | Number of documents that have this value.    |
+| `counts`       | The full list of values and their counts.    |
+| `total_values` | How many unique values exist for this field. |
+
+
+---
+
+## Combining faceting with filters
+
+Faceting becomes more powerful when combined with filters. You can facet on one field while filtering on others to analyze specific subsets of your data.
+
+<CodeGroup>
+```bash USD transactions by status
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "currency:=USD",
+    "facet_by": "status"
+  }'
+```
+
+```bash Customer balances by currency
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "facet_by": "currency"
+  }'
+```
+</CodeGroup>
+
+The example above allows you to answer questions like:
+
+- "Of all my USD transactions, how many are in each status?"
+- "For this specific customer, how many balances do they have in each currency?""
+
+---
+
+## Faceting on metadata fields
+
+You can also facet on metadata objects.
+
+```bash Facet on metadata fields
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "facet_by": "meta_data.transaction_type,meta_data.payment_method"
+  }'
+```
+
+<Tip>
+Always use dot notation to access nested metadata fields: `meta_data.field_name`
+</Tip>
+
+---
+
+<NeedHelp />
+
