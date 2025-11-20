@@ -5,6 +5,81 @@ description: "Latest features, releases, and improvements."
 "og:description": "Explore the Blnk Core changelog. Track our releases, fixes, enhancements, and version history for Blnk's core platform"
 ---
 
+<Update label="Nov 20, 2025" description="v0.11.3">
+  ## Typesense JOINs support
+
+  You can now query related data across collections in a single search. For example, this makes it easier to fetch balances with their associated identity details, or filter identities based on their balance information. 
+  
+  <CodeGroup>
+  ```bash Sample request
+  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+    -H "X-Blnk-Key: YOUR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "q": "*",
+      "include_fields": "$identities(*)" // Fetch identity details for each balance
+    }'
+  ```
+  ```json Response {15-18}
+  {
+    "facet_counts": [],
+    "found": 145,
+    "hits": [
+      {
+        "document": {
+          "balance": "-13166600",
+          "balance_id": "bln_0c2f1ab7-a40d-4e23-a5dc-daad54ddf3c1",
+          "created_at": 1763641569,
+          "credit_balance": "34461100",
+          "currency": "EUR",
+          "currency_multiplier": 0,
+          "debit_balance": "47627700",
+          "id": "bln_0c2f1ab7-a40d-4e23-a5dc-daad54ddf3c1",
+          "identities": {
+            "first_name": "Debra",
+            "last_name": "Barrett"
+          },
+          "identity_id": "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+          "indicator": "",
+          "inflight_balance": "0",
+          "inflight_credit_balance": "0",
+          "inflight_debit_balance": "0",
+          "inflight_expires_at": 1763641569,
+          "ledger_id": "ldg_6dc543d3-1138-4ea8-8072-844398c735a1",
+          "meta_data": {
+            "created_by": "system-api"
+          },
+          "precision": 0,
+          "version": 19
+        },
+        "highlight": {},
+        "highlights": []
+      }
+    ],
+    "out_of": 148,
+    "page": 1,
+    "request_params": {
+      "collection_name": "balances",
+      "per_page": 1,
+      "q": "*"
+    },
+    "search_cutoff": false,
+    "search_time_ms": 8
+  }
+  ```
+  </CodeGroup>
+  
+  This returns balance records with their full identity details joined automatically, reducing the need for multiple API calls.
+
+  ## Fixes & improvements
+
+  1. **Enhanced transaction precision validation**: The system now rejects transactions with non-integer precision values to prevent database failures and balance inconsistencies.
+
+  2. **Default general ledger indexing**: The system now automatically ensures the default general ledger exists in Typesense search index during initialization.
+
+  3. **API key tracking improvements**: Fixed an issue where API key usage tracking (`UpdateLastUsed`) was not correctly updating records by `api_key_id`, ensuring accurate API key activity monitoring.
+</Update>
+
 <Update label="Oct 8, 2025" description="v0.11.2">
   ## Fixes & improvements
 

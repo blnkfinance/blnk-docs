@@ -1,0 +1,381 @@
+---
+title: "JOINs"
+sidebarTitle: "JOINs"
+description: "Learn how to retrieve related data across collections in a single search query"
+"og:title": "JOINs • Blnk Developer Documentation"
+"og:description": "Use JOINs in Blnk Search to retrieve balances with identity details, transactions with balance information, and more in a single query."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.11.3 and later.</Info>
+
+## Overview
+
+JOINs let you pull related data from other collections into the collection you are querying. 
+
+Let's say you want to fetch a list of balances, but also want to see the identity info linked to the balances; with JOIN, you can do that in one request. 
+
+Blnk links collections through `_id` fields. For example, a balance uses `identity_id` to point to the matching `identity_id` in the identities collection.
+
+---
+
+## Retrieving related data
+
+Use `include_fields` to tell the Search API which related collection to return as part of your results. The format is: 
+
+- `$collection_name(*)` to include all fields
+- `$collection_name(field1,field2,field3)` to include specific fields.
+
+For example, when you search for balances, you can fetch the identity linked to each balance:
+
+<CodeGroup>
+```json Show all fields
+{
+  "q": "*",
+  "include_fields": "$identities(*)"
+}'
+```
+```json Show specific fields
+{
+  "q": "*",
+  "include_fields": "$identities(first_name,last_name,email)"
+}'
+```
+</CodeGroup>
+
+The response will include an `identities` object populated with the identity details of the balance. 
+
+<CodeGroup>
+```json Response (all fields) {15-36} expandable
+{
+  "facet_counts": [],
+  "found": 144,
+  "hits": [
+  {
+    "document": {
+        "balance": "9848100",
+        "balance_id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+        "created_at": 1763661598,
+        "credit_balance": "9848100",
+        "currency": "GBP",
+        "currency_multiplier": 0,
+        "debit_balance": "0",
+        "id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+        "identities": {
+          "category": "",
+          "city": "",
+          "country": "Mexico",
+          "created_at": 1763661592,
+          "dob": 1763661592,
+          "email_address": "graciela.rosas@example.com",
+          "first_name": "Graciela",
+          "gender": "",
+          "id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
+          "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
+          "identity_type": "",
+          "last_name": "Rosas",
+          "meta_data": {},
+          "nationality": "",
+          "organization_name": "",
+          "other_names": "",
+          "phone_number": "",
+          "post_code": "",
+          "state": "Guanajuato",
+          "street": "3936 Prolongación Norte Coronado"
+        },
+        "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
+        "indicator": "",
+        "inflight_balance": "0",
+        "inflight_credit_balance": "0",
+        "inflight_debit_balance": "0",
+        "inflight_expires_at": 1763661598,
+        "ledger_id": "ldg_ad728e47-b730-4356-b1a7-703f42d33f87",
+        "meta_data": { },
+        "precision": 0,
+        "version": 2
+      },
+      "highlight": {},
+      "highlights": []
+    }
+  ]
+}
+```
+```json Response (specific fields) {15-19} expandable
+{
+  "facet_counts": [],
+  "found": 144,
+  "hits": [
+  {
+    "document": {
+        "balance": "9848100",
+        "balance_id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+        "created_at": 1763661598,
+        "credit_balance": "9848100",
+        "currency": "GBP",
+        "currency_multiplier": 0,
+        "debit_balance": "0",
+        "id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+        "identities": {
+          "email_address": "graciela.rosas@example.com",
+          "first_name": "Graciela",
+          "last_name": "Rosas"
+        },
+        "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
+        "indicator": "",
+        "inflight_balance": "0",
+        "inflight_credit_balance": "0",
+        "inflight_debit_balance": "0",
+        "inflight_expires_at": 1763661598,
+        "ledger_id": "ldg_ad728e47-b730-4356-b1a7-703f42d33f87",
+        "meta_data": { },
+        "precision": 0,
+        "version": 2
+      },
+      "highlight": {},
+      "highlights": []
+    }
+  ]
+}
+```
+</CodeGroup>
+
+<Tip>
+  You can include multiple related collections in your results, e.g., `$ledgers(*), $identities(first_name,last_name,email)`.
+</Tip>
+
+---
+
+## Filter by related data
+
+You can filter a collection using related data from another collection. For example, let's say you want to only view identities that have a USD balance:
+
+- First, you'll search for all identities – `/search/identities`.
+- Then add a "balance" filter to only include identities linked to a USD balance.
+- Finally, you can specify what balance fields you want to include in the results.
+
+<CodeGroup>
+```json Request
+{
+  "q": "*",
+  "filter_by": "$balances(currency:=USD)",
+  "include_fields": "$balances(balance_id,currency,balance,credit_balance,debit_balance)"
+}
+```
+```json Response {7-13, 40-46} expandable
+{
+  "facet_counts": [],
+  "found": 48,
+  "hits": [
+    {
+      "document": {
+        "balances": {
+          "balance": "16712100",
+          "balance_id": "bln_f933c83c-dc40-4a48-b063-45039173c218",
+          "credit_balance": "61033900",
+          "currency": "USD",
+          "debit_balance": "44321800"
+        },
+        "category": "",
+        "city": "",
+        "country": "United Kingdom",
+        "created_at": 1763661596,
+        "dob": 1763661596,
+        "email_address": "debra.barrett@example.com",
+        "first_name": "Debra",
+        "gender": "",
+        "id": "idt_651d448d-772d-4ae3-a878-836d39600e4a",
+        "identity_id": "idt_651d448d-772d-4ae3-a878-836d39600e4a",
+        "identity_type": "",
+        "last_name": "Barrett",
+        "meta_data": {},
+        "nationality": "",
+        "organization_name": "",
+        "other_names": "",
+        "phone_number": "",
+        "post_code": "",
+        "state": "West Midlands",
+        "street": "7028 Victoria Road"
+      },
+      "highlight": {},
+      "highlights": []
+    },
+    {
+      "document": {
+        "balances": {
+          "balance": "984000",
+          "balance_id": "bln_c7d7c125-2d9b-438f-b99a-1ee7a7ff4000",
+          "credit_balance": "44825600",
+          "currency": "USD",
+          "debit_balance": "43841600"
+        },
+        "category": "",
+        "city": "",
+        "country": "Ireland",
+        "created_at": 1763661596,
+        "dob": 1763661596,
+        "email_address": "darrell.payne@example.com",
+        "first_name": "Darrell",
+        "gender": "",
+        "id": "idt_8752147a-f97b-4d32-842e-92d360774fcf",
+        "identity_id": "idt_8752147a-f97b-4d32-842e-92d360774fcf",
+        "identity_type": "",
+        "last_name": "Payne",
+        "meta_data": {},
+        "nationality": "",
+        "organization_name": "",
+        "other_names": "",
+        "phone_number": "",
+        "post_code": "",
+        "state": "Mayo",
+        "street": "2441 George Street"
+      },
+      "highlight": {},
+      "highlights": []
+    }
+  ],
+  "out_of": 48,
+  "page": 1,
+  "request_params": {
+    "collection_name": "identities",
+    "per_page": 2,
+    "q": "*"
+  },
+  "search_cutoff": false,
+  "search_time_ms": 14
+}
+```
+</CodeGroup>
+
+<Note> 
+  The fields you include when filtering must be from the collection you are filtering by. In this example, we are filtering by balances, so we can only include fields from the balances collection.
+</Note>
+
+Another example: you want to view all balances that has sent money at least once to a particular balance:
+
+- First, you'll search for all balances – `/search/balances`.
+- Next, add a "transactions" filter so you only return balances that were involved in a transaction where the destination matches the target balance.
+- Finally, you can specify what transaction fields you want to include in the results.
+
+```json Request wrap
+{
+  "q": "*",
+  "filter_by": "$transactions(destination:=bln_1234567890)",
+  "include_fields": "$transactions(transaction_id, amount, currency, status, created_at)"
+}
+```
+
+---
+
+## Merging / nesting joined fields
+
+When the joined collection returns one result per document, the collection's fields are returned as nested objects. For example, see our first example response:
+
+```json
+{
+  "facet_counts": [],
+  "found": 144,
+  "hits": [
+    {
+      "document": {
+          "balance": "9848100",
+          "balance_id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+          "identities": {
+            "email_address": "graciela.rosas@example.com",
+            "first_name": "Graciela",
+            "last_name": "Rosas"
+          }
+      }
+    }
+  ]
+}
+```
+
+You can merge the joined fields to the main document by specifying `strategy:merge` in your request.
+
+```json Request
+{
+  "q": "*",
+  "include_fields": "$identities(*, strategy:merge)"
+}
+```
+```json Merged response
+{
+  "facet_counts": [],
+  "found": 144,
+  "hits": [
+  {
+    "document": {
+        "balance": "9848100",
+        "balance_id": "bln_d9eb274a-d8bb-4ada-bc62-541d5e0073ac",
+        "email_address": "graciela.rosas@example.com",
+        "first_name": "Graciela",
+        "last_name": "Rosas"
+      }
+    }
+  ]
+}
+```
+
+### Handling nested arrays
+
+When a join returns more than one match, the Search API gives you an array. When there is only one match, it becomes an object. This can make the shape inconsistent.
+
+To keep it consistent, add `strategy:nest_array` so the joined data is always returned as an array. Example:
+
+```json Request
+{
+  "q": "*",
+  "include_fields": "$balances(*, strategy:nest_array)"
+}
+```
+
+This ensures the joined `balances` data is always an array, no matter how many results it contains.
+
+---
+
+## Nested JOINs
+
+You can stack JOINs to go deeper. For example, you can join a balance to its identity, then also join that same balance to its ledger in the same query.
+
+<CodeGroup>
+```json Request wrap
+{
+  "q": "*",
+  "include_fields": "$balances(balance, currency, $ledgers(*), strategy:nest_array)"
+}
+```
+```json Response {11-16} expandable
+{
+  "facet_counts": [],
+  "found": 48,
+  "hits": [
+    {
+      "document": {
+        "balances": [
+          {
+            "balance": "16712100",
+            "currency": "USD",
+            "ledgers": {
+              "created_at": 1763661567,
+              "ledger_id": "ldg_ad728e47-b730-4356-b1a7-703f42d33f87",
+              "meta_data": {},
+              "name": "Customers Ledger"
+            }
+          }
+        ],
+        "email_address": "debra.barrett@example.com",
+        "first_name": "Debra",
+        "identity_id": "idt_651d448d-772d-4ae3-a878-836d39600e4a",
+        "last_name": "Barrett"
+      }
+    }
+  ]
+}
+```
+</CodeGroup>
+
+---
+
+<NeedHelp />
+
