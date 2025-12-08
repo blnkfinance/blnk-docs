@@ -12,13 +12,18 @@ import Key from "/snippets/key.mdx";
 
 ## Overview
 
-List all API keys for the authenticated owner. Use this endpoint to audit and manage your API keys. Note that the actual API key value is not returned for security reasons.
+List all API keys for a specific owner. The `owner` query parameter is required—you cannot retrieve API keys without specifying the owner identifier. Use this endpoint to audit and manage your API keys. Note that the actual API key value is not returned for security reasons.
 
 <Info>
 Available on version 0.10.1 or later. Requires master key authentication (the `server.secret_key` from your configuration).
 </Info>
 
 <Key />
+
+### Query Parameters
+<ParamField query="owner" type="string" required>
+  Unique identifier of the owner. This parameter is **required**—the request will fail with a 401 Unauthorized error if omitted. Use the same owner identifier that was provided when creating the API keys.
+</ParamField>
 
 ### Response
 
@@ -47,10 +52,10 @@ Returns an array of API key objects. Note that the actual `key` value is not ret
 </ResponseField>
 
 <RequestExample>
-```bash
-curl -X GET \
-  -H "X-Blnk-Key: your_master_key" \
-  https://YOUR_BLNK_INSTANCE_URL:5001/api-keys
+```json
+curl --request GET \
+  --url 'http://localhost:5001/api-keys?owner=owner_id' \
+  --header 'X-blnk-key: <api-key>'
 ```
 </RequestExample>
 

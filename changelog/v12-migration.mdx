@@ -1,0 +1,196 @@
+---
+title: "v0.12.0 Migration Guide"
+description: "Migration guide for upgrading to Blnk v0.12.0, covering API key hashing implementation and breaking changes."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+This migration guide covers the breaking changes introduced in Blnk v0.12.0, specifically related to API key security enhancements. The main change involves implementing SHA-256 hashing for API keys, which affects how API keys are stored and retrieved.
+
+---
+
+## Breaking changes summary
+
+- **From:** API keys stored in plain text, retrievable from list endpoint
+- **To:** API keys hashed using SHA-256, plain text only available during creation
+- **Impact:** Once upgraded, existing API keys will return authentication errors when used. You must recreate API keys after upgrading.
+
+---
+
+## What changed
+
+1. **API key hashing**: API keys are now hashed using SHA-256 before being stored in the database.
+2. **Plain text key availability**: The plain text key is **only** returned during API key creation (`POST /api-keys`).
+3. **List endpoint behavior**: When listing API keys (`GET /api-keys?owner=<owner_id>`), the `key` field now returns the hashed version instead of the plain text key.
+4. **Security enhancement**: Plain text keys cannot be retrieved after creation for security reasons.
+
+---
+
+## What still works
+
+1. **Creating API keys**: Plain text key is returned during creation.
+2. **Authentication**: The system automatically hashes incoming keys for comparison.
+3. **API key management**: Listing, revoking, and checking status still work.
+
+<Warning>
+**Existing API keys will fail authentication after upgrade.** You must recreate all API keys after upgrading to v0.12.0. Old API keys cannot be migrated because their plain text values are not stored.
+</Warning>
+
+---
+
+## Migration steps
+
+<Steps titleSize="h3">
+<Step title="Review your API key usage">
+  Identify all places in your codebase where API keys are retrieved or used:
+
+  1. **Check for code that reads API keys from `GET /api-keys`**
+     - Any code that expects to use the `key` field from list responses.
+     - Automation scripts that retrieve keys after creation.
+     - Migration scripts that read existing API keys.
+
+  2. **Identify API key storage locations**
+     - Where you currently store API keys.
+     - How you retrieve them for authentication.
+     - Any caching mechanisms that rely on plain text keys.
+
+  <Warning>
+  Code that retrieves API keys from the list endpoint and expects plain text values will break. The `key` field now returns hashed values.
+  </Warning>
+</Step>
+
+<Step title="Update API key creation workflow">
+  Ensure you store the plain text key immediately after creation:
+
+  ```bash
+  # Create API key
+  curl --request POST \
+    --url http://localhost:5001/api-keys \
+    --header 'X-blnk-key: <master-key>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+      "name": "My API Key",
+      "owner": "my-owner-id",
+      "scopes": ["ledgers:read", "balances:write"],
+      "expires_at": "2026-12-31T23:59:59Z"
+    }'
+  ```
+
+  **Response:**
+  ```json
+  {
+    "api_key_id": "api_key_123...",
+    "key": "g-nnlP_kfxOP42baBGFJ",  // STORE THIS IMMEDIATELY!
+    "name": "My API Key",
+    "owner_id": "my-owner-id",
+    ...
+  }
+  ```
+
+  <Warning>
+  The plain text `key` value is only returned once during creation. Store it securely immediately—you cannot retrieve it later.
+  </Warning>
+
+  **Store the key securely:**
+  - Environment variables.
+  - Secret management systems (AWS Secrets Manager, HashiCorp Vault, etc.).
+  - Secure configuration files (excluded from version control).
+</Step>
+
+<Step title="Update existing code">
+  Remove any code that expects plain text keys from the list endpoint:
+
+  **Before (BROKEN):**
+  ```javascript
+  // ❌ This will no longer work
+  const response = await fetch('/api-keys?owner=my-owner');
+  const keys = await response.json();
+  const apiKey = keys[0].key;  // This is now hashed, not plain text!
+  // Using this for authentication will fail
+  ```
+
+  **After (CORRECT):**
+  ```javascript
+  // ✅ Store key immediately after creation
+  const createResponse = await fetch('/api-keys', {
+    method: 'POST',
+    headers: {
+      'X-Blnk-Key': masterKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'My Key',
+      owner: 'my-owner',
+      scopes: ['*:*'],
+      expires_at: '2026-12-31T23:59:59Z'
+    })
+  });
+  const newKey = await createResponse.json();
+  const plainTextKey = newKey.key;  // Store this securely!
+  
+  // ✅ Use stored key for authentication
+  const authHeaders = {
+    'X-Blnk-Key': plainTextKey  // Use the stored plain text key
+  };
+  ```
+</Step>
+
+<Step title="Migrate existing API keys">
+  <Warning>
+  **Critical:** Existing API keys will stop working after upgrading to v0.12.0. You must recreate all API keys before or immediately after upgrading.
+  </Warning>
+
+  Before upgrading, or immediately after:
+
+  1. **Identify all existing API keys** that are currently in use.
+  2. **Create new API keys** with the same scopes and permissions.
+  3. **Store the new plain text keys** securely immediately after creation.
+  4. **Update your applications** to use the new keys.
+  5. **Test authentication** with the new keys.
+  6. **Revoke old API keys** once migration is complete.
+
+  <Info>
+  Old API keys cannot be migrated because their plain text values are not stored. You must create new API keys and update your applications to use them.
+  </Info>
+</Step>
+
+<Step title="Verify authentication">
+  Test that authentication works correctly:
+
+  ```bash
+  # Test authentication with stored plain text key
+  curl --request GET \
+    --url http://localhost:5001/ledgers \
+    --header 'X-blnk-key: <your-stored-plain-text-key>'
+  ```
+
+  <Check>
+  Authentication works seamlessly—the system automatically hashes incoming keys for comparison with stored hashes.
+  </Check>
+</Step>
+</Steps>
+
+---
+
+## Security benefits
+
+1. **Secure storage**: API keys are stored as hashes, not plain text.
+2. **Database protection**: Even if database is compromised, plain text keys cannot be extracted.
+3. **Best practices**: Follows security best practices for credential storage.
+4. **Reduced exposure risk**: Reduces risk of key exposure through logs or database dumps.
+
+---
+
+## Technical details
+
+- **Hashing algorithm**: SHA-256.
+- **Authentication**: System handles hashing automatically during authentication.
+- **Caching**: API key caching has been improved for better performance.
+- **Cache invalidation**: Occurs automatically when keys are revoked.
+
+---
+
+<NeedHelp />
+

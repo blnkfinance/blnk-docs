@@ -10,7 +10,7 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 ## Overview
 
-Blnk uses webhooks to send you real-time notifications about crucial transaction events happening in your ledger. Our webhook follows this structure:
+Blnk uses webhooks to send you real-time notifications about crucial transaction events and system errors happening in your ledger. Our webhook follows this structure:
 
 ```json
 {
@@ -74,11 +74,40 @@ Here are a list of supported events:
 | :-- | :-- |
 | `identity.created` | When an identity is created. |
 
+### System errors
+
+<Info>
+Available in version 0.12.0 and later.
+</Info>
+
+| **Event name** | **Description** |
+| :-- | :-- |
+| `system.error` | When a system error occurs (e.g. duplicate reference). |
+
+```json Example payload
+{
+  "event": "system.error",
+  "data": {
+    "error": "reference 0x8fa3c1a2b7d9_q has already been used",
+    "time": "2025-12-08T10:30:45Z"
+  }
+}
+```
+
+| **Field** | **Type** | **Description** |
+| :-- | :-- | :-- |
+| `error` | String | The error message describing what went wrong. |
+| `time` | String | ISO 8601 formatted timestamp when the error occurred. |
+
 ---
 
 ## Handling error notifications
 
-In addition to transaction events, Blnk also allows you to send error notifications to Slack via a specified webhook provided by your Slack workspace. This is very useful for monitoring and quickly addressing issues that may arise during transaction processing.
+Blnk provides multiple ways to handle error notifications:
+
+1. **System error webhooks**: System errors (e.g., duplicate reference, queue failures, etc.) are automatically sent as webhooks to your configured webhook URL. These help you monitor and troubleshoot system issues in real-time.
+
+2. **Slack notifications**: You can also send error notifications to Slack via a specified webhook provided by your Slack workspace. This is useful for team alerts and monitoring.
 
 To learn how to get your Slack webhook URL, go to: [Slack API: Sending messages using incoming webhooks](https://api.slack.com/messaging/webhooks).
 

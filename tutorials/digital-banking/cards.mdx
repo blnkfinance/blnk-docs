@@ -52,11 +52,12 @@ Each card account will be represented with [a ledger](/ledgers/introduction.mdx)
 
 [Create a ledger](/reference/create-ledger) for the card account. This groups all of the balances for that customer in one place:
 
-```bash
-curl -X POST http://localhost:5001/ledgers \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "name": "Customers Card Ledger"
   }'
 ```
@@ -72,11 +73,12 @@ curl -X POST http://localhost:5001/ledgers \
 
 [Create a customer identity](/reference/create-identity) to link all balances to the same customer identity:
 
-```bash
-curl -X POST http://localhost:5001/identities \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/identities \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "first_name": "Xavier",
     "last_name": "Woods"
   }'
@@ -93,11 +95,12 @@ curl -X POST http://localhost:5001/identities \
 
 [Create a balance](/reference/create-balance) for the card account. This balance will track all card transactions:
 
-```bash Create balance
-curl -X POST http://localhost:5001/balances \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "ledger_id": "<customer-ledger-id>",
     "identity_id": "<xavier-identity-id>",
     "currency": "USD",
@@ -140,11 +143,12 @@ The transaction is created with `inflight: true`, which means it's pending until
 
 Create an inflight transaction to authorize the payment. Setting `inflight = true` puts the transaction in a pending state until it's settled or voided.
 
-```bash
-curl -X POST http://localhost:5001/transactions \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "amount": 2000,
     "precision": 100,
     "currency": "USD",
@@ -207,11 +211,12 @@ The transaction status changes from `INFLIGHT` to `APPLIED`, completing the tran
 
 Commit the inflight transaction from the authorization step once clearing is received. This turns the transaction from `INFLIGHT` (pending) to `APPLIED` (completed):
 
-```bash
-curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request PUT \
+  --url http://localhost:5001/transactions/inflight/<transaction_id> \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "status": "commit"
   }'
 ```
@@ -221,11 +226,12 @@ curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
 
 If a transaction is rejected or cancelled, you can void it instead of committing it:
 
-```bash
-curl -X PUT http://localhost:5001/transactions/inflight/<transaction_id> \
-  -H 'Content-Type: application/json' \
-  -H 'X-Blnk-Key: YOUR_API_KEY' \
-  -d '{
+```bash cURL
+curl --request PUT \
+  --url http://localhost:5001/transactions/inflight/<transaction_id> \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "status": "void"
   }'
 ```

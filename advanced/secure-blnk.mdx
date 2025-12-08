@@ -43,8 +43,10 @@ Blnk supports authentication via the **X-Blnk-Key header.**
 
 The master key (`server.secret_key`) provides full access to all API endpoints. Use it only for administrative tasks and initial setup.
 
-```bash 
-curl -H "X-Blnk-Key: your_strong_secret_key" https://yourdomain.com:5001/ledgers
+```bash
+curl --request GET \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>'
 ```
 
 ### Generating fine-grained API keys
@@ -57,34 +59,36 @@ For regular operations, create API keys with specific permissions to enforce fin
 
 This requires the master key authentication. See the [Create API key](/reference/create-api-key) reference for complete documentation.
 
-```bash
-curl -X POST \
-  -H "X-Blnk-Key: your_master_key" \
-  -H "Content-Type: application/json" \
-  -d '{
+```json
+curl --request POST \
+  --url http://localhost:5001/api-keys \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "name": "Service Account",
     "owner": "owner_id", 
     "scopes": ["ledgers:read", "balances:write"],
     "expires_at": "2026-03-11T00:00:00Z"
-  }' \
-  https://YOUR_BLNK_INSTANCE_URL:5001/api-keys
+  }'
 ```
 
 | Parameter   | Description |
 | :--- | :--- |
 | `name`        | The name of the API key or service account. |
-| `owner`       | Unique identifier of the owner or service associated with the API key. |
+| `owner`       | Unique identifier of the owner or service associated with the API key, provided by you. You can use any string value that identifies the owner (e.g., team name, service name, user ID). |
 | `scopes`      | A list of permissions granted to the API key (e.g., `ledgers:read`, `balances:write`). |
 | `expires_at`  | The expiration date and time for the API key in ISO 8601 format. |
 
 <Tip>
-For managing API keys, see the [API Keys reference documentation](/reference/create-api-key): create, list, get, update, and delete API keys.
+For managing API keys, see the [API Keys reference documentation](/reference/create-api-key): create, list, and delete API keys.
 </Tip>
 
 #### Use the API key
 
 ```bash
-curl -H "X-Blnk-Key: your_api_key" https://YOUR_BLNK_INSTANCE_URL:5001/ledgers
+curl --request GET \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>'
 ```
 
 ---
@@ -100,6 +104,7 @@ Scopes define what resources an API key can access and what actions it can perfo
 | `*` | All resources |
 | `ledgers` | Ledger management |
 | `balances` | Balance operations |
+| `accounts` | Account operations |
 | `identities` | Identity management |
 | `transactions` | Transaction processing |
 | `balance-monitors` | Balance monitoring |
