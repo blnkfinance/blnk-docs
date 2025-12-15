@@ -3,93 +3,364 @@ title: "Load testing"
 sidebarTitle: "Load testing"
 description: "Learn to perform load testing on your Blnk server using k6."
 "og:title": "Load Testing • Blnk Developer Documentation"
-"og:description": "Learn to perform load testing on your Blnk server using k6."
+"og:description": "Learn to perform load testing on your Blnk server using k6. Test performance across multiple scenarios."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
 Use load testing to ensure that your Blnk deployment can handle expected traffic and maintain performance under various conditions. This is a critical step in setting up your Blnk server.
 
-Blnk uses [k6](https://k6.io), a modern load testing tool to manage this process. This guide will walk you through setting up and running a load test on your Blnk server using [k6](https://k6.io) with insights from a sample test result to help you understand and interpret your data.
+Blnk includes a comprehensive load testing suite built with [k6](https://k6.io), a modern load testing tool. This guide walks you through finding, configuring, and running load tests to validate your Blnk server's performance across different scenarios.
+
+---
 
 ## Before you start
 
 Make sure you have:
 
-1. Cloned the Blnk repository to your local machine;
-2. [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed, for running the Blnk server;
-3. k6 installed on your machine. Visit [k6.io](https://k6.io) for installation instructions.
+1. Cloned the Blnk repository to your local machine
+2. [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed, for running the Blnk server
+3. k6 installed on your machine. Visit [k6.io](https://k6.io) for installation instructions
+4. Your Blnk server running and accessible
 
-## Set up your load test
-<Steps>
-	<Step title="Clone the Blnk repository">
-		If the Blnk repository isn't already cloned:
+<Info>
+If you haven't deployed Blnk yet, follow the [installation guide](/home/install) first.
+</Info>
+
+---
+
+## Getting started
+
+You can find the load test files in the `tests/loadtest` directory of the Blnk repository. Navigate to this directory to access all available test scripts:
 		
 		```bash
-		git clone https://github.com/blnkfinance/blnk && cd blnk
-		```
-		
-		Deploy your Blnk server if you haven't done so yet:
-		<Card title="Deploy Blnk" icon="square-1" href="../home/install">
-        Start here to run your Blnk server
-		</Card>
-	</Step>
-	<Step title="Navigate to the load test directory">
-		Switch to the load test folder within the Blnk repository.
-		
-		```bash bash
-		cd tests/loadtest
-		```
-	</Step>
-	<Step title="Review the load test script">
-		The `script.js` file in the load test directory outlines the test:
-		
-		- It sends HTTP POST requests to the `/transactions` endpoint of the Blnk server.
-		- Each request simulates a transaction with a unique reference ID, generated using the `uuidv4` function.
-		- The script is set to run with 5 virtual users (VUs) for 30 seconds.
-	</Step>
-	<Step title="Load test script (script.js)">
-		```javascript script.js
-		import http from "k6/http";
-		import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
-		import { check, sleep } from "k6";
-		
-		export const options = {
-		    vus: 5,
-		    duration: '30s',
-		};
-		
-		export default function () {
-		    const url = 'http://localhost:5001/transactions';
-		    const payload = JSON.stringify({
-		        "amount": 100,
-		        "allow_over_draft": true,
-		        "reference": uuidv4(),
-		        "currency": "USD",
-		        "source": "@cash",
-		        "destination": "@interests"
-		    });
-		
-		    const params = {
-		        headers: {
-		            'Content-Type': 'application/json',
-		        },
-		    };
-		
-		    let response = http.post(url, payload, params);
-		    check(response, {
-		        'is status 201': r => r.status === 201,
-		    });
-		}
-		```
-	</Step>
-	<Step title="Run the load test">
-		Within the `tests/load` directory:
-		
-		```bash bash
-		k6 run script.js
-		```
-	</Step>
+cd tests/loadtest
+```
+
+---
+
+
+## Main test script
+
+The primary load test script (`script.js`) supports five configurable load-testing scenarios, each controlled via environment variables.
+Each scenario targets a specific aspect of your Blnk server’s transaction performance, allowing you to test different load patterns and system behaviors.
+
+- **Baseline**: Steady, constant load to measure normal performance.
+- **Ramp**: Gradually increasing load to find when your server struggles.
+- **Contention**: Tests when one balance gets most of the traffic.
+- **Soak**: Long-duration test (2 hours) to find memory leaks and stability issues.
+- **Spike**: Sudden traffic surge to test recovery behavior.
+
+<Warning>
+By default, tests target `http://localhost:5001`. Ensure your Blnk server is running and accessible at this address, or configure the URL using the `URL` environment variable.
+</Warning>
+
+Use the `SCENARIO` environment variable to select which scenario to run. Each scenario has specific configuration options:
+
+<Tabs>
+<Tab title="Baseline">
+Runs a steady, constant load to measure your server's normal performance. Use this to see how fast your server responds under normal conditions.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=baseline --env VUS=100 --env DURATION=5m script.js
+```
+
+<ParamField query="VUS" type="integer" default="100">
+Number of virtual users to run concurrently
+</ParamField>
+
+<ParamField query="DURATION" type="string" default="5m">
+Test duration (e.g., "5m", "30s", "1h")
+</ParamField>
+</Tab>
+
+<Tab title="Ramp">
+Slowly increases traffic over time to find when your server starts to struggle. Starts with 100 users and gradually increases to 1000 users across three stages.
+
+```bash wrap
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=ramp \
+  --env START_VUS=100 \
+  --env VUS1=300 --env STAGE1=5m \
+  --env VUS2=600 --env STAGE2=5m \
+  --env VUS3=1000 --env STAGE3=5m \
+  script.js
+```
+
+<ParamField query="START_VUS" type="integer" default="100">
+Initial number of virtual users at the start of the test
+</ParamField>
+
+<ParamField query="VUS1" type="integer" default="300">
+Target number of virtual users for the first ramp stage
+</ParamField>
+
+<ParamField query="STAGE1" type="string" default="5m">
+Duration of the first ramp stage
+</ParamField>
+
+<ParamField query="VUS2" type="integer" default="600">
+Target number of virtual users for the second ramp stage
+</ParamField>
+
+<ParamField query="STAGE2" type="string" default="5m">
+Duration of the second ramp stage
+</ParamField>
+
+<ParamField query="VUS3" type="integer" default="1000">
+Target number of virtual users for the third ramp stage
+</ParamField>
+
+<ParamField query="STAGE3" type="string" default="5m">
+Duration of the third ramp stage
+</ParamField>
+</Tab>
+
+<Tab title="Contention">
+Tests what happens when one balance gets most of the traffic while others get less. This simulates real-world scenarios where some accounts are much busier than others.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=contention \
+  --env HOT_DEST=@hot-balance-0001 \
+  --env HOT_RPS=308 \
+  --env RANDOM_RPS=132 \
+  --env DURATION=5m \
+  --env VUS=200 \
+  --env MAX_VUS=800 \
+  script.js
+```
+
+<ParamField query="HOT_DEST" type="string" default="@hot-balance-0001">
+The balance identifier that receives concentrated traffic (70% of requests)
+</ParamField>
+
+<ParamField query="HOT_RPS" type="integer" default="308">
+Requests per second targeting the hot balance
+</ParamField>
+
+<ParamField query="RANDOM_RPS" type="integer" default="132">
+Requests per second targeting random balances
+</ParamField>
+
+<ParamField query="DURATION" type="string" default="5m">
+Test duration (e.g., "5m", "30s", "1h")
+</ParamField>
+
+<ParamField query="VUS" type="integer" default="200">
+Number of pre-allocated virtual users
+</ParamField>
+
+<ParamField query="MAX_VUS" type="integer" default="800">
+Maximum number of virtual users that can be allocated
+</ParamField>
+</Tab>
+
+<Tab title="Soak">
+Runs a steady load for a long time (default: 2 hours) to check if your server has memory leaks or other problems that only show up after running for a while.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=soak --env VUS=200 --env DURATION=2h script.js
+```
+
+<ParamField query="VUS" type="integer" default="200">
+Number of virtual users to run concurrently
+</ParamField>
+
+<ParamField query="DURATION" type="string" default="2h">
+Test duration (e.g., "5m", "30s", "1h", "2h")
+</ParamField>
+
+<Warning>
+Soak tests run for extended periods. Monitor your server's resource usage during these tests.
+</Warning>
+</Tab>
+
+<Tab title="Spike">
+Simulates a sudden traffic spike to see if your server can handle the surge and recover afterward.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=spike \
+  --env BASE_RPS=200 \
+  --env SPIKE_RPS=600 \
+  --env WARM=2m \
+  --env PEAK=1m \
+  --env COOL=3m \
+  --env PRE_VUS=300 \
+  --env MAX_VUS=1200 \
+  script.js
+```
+
+<ParamField query="BASE_RPS" type="integer" default="200">
+Baseline requests per second during warm-up and recovery phases
+</ParamField>
+
+<ParamField query="SPIKE_RPS" type="integer" default="600">
+Peak requests per second during spike phase
+</ParamField>
+
+<ParamField query="WARM" type="string" default="2m">
+Duration of warm-up phase before spike
+</ParamField>
+
+<ParamField query="PEAK" type="string" default="1m">
+Duration of spike phase
+</ParamField>
+
+<ParamField query="COOL" type="string" default="3m">
+Duration of recovery phase after spike
+</ParamField>
+
+<ParamField query="PRE_VUS" type="integer" default="300">
+Number of pre-allocated virtual users
+</ParamField>
+
+<ParamField query="MAX_VUS" type="integer" default="1200">
+Maximum number of virtual users that can be allocated during the spike
+</ParamField>
+</Tab>
+</Tabs>
+
+---
+
+## Feature-specific tests
+
+Run targeted tests to verify specific Blnk features. Each test focuses on one capability to confirm it works correctly and performs as expected under load.
+
+<AccordionGroup>
+<Accordion title="Bulk transactions">
+Tests atomic bulk transaction processing with 1000 virtual users creating batches of 4 transactions each.
+
+```bash wrap tests/loadtest
+k6 run bulk.js
+```
+</Accordion>
+
+<Accordion title="Inflight transactions">
+Tests the inflight transaction workflow: creating an inflight transaction and committing it.
+
+```bash wrap tests/loadtest
+k6 run inflight.js
+```
+</Accordion>
+
+<Accordion title="Concurrent inflight commits">
+Tests race conditions by having 100 virtual users attempt to commit the same inflight transaction simultaneously.
+
+```bash wrap tests/loadtest
+k6 run inflight-concurrent-commit.js
+```
+</Accordion>
+
+<Accordion title="Multiple destinations">
+Tests transactions that split amounts across multiple destination accounts using percentage, fixed amount, and "left" distribution methods.
+
+```bash wrap tests/loadtest
+k6 run multi-destinations.js
+```
+</Accordion>
+
+<Accordion title="Multiple sources">
+Tests transactions that aggregate amounts from multiple source accounts.
+
+```bash wrap tests/loadtest
+k6 run multi-sources.js
+```
+</Accordion>
+
+<Accordion title="Refunds">
+Tests the refund workflow by creating transactions and immediately refunding them.
+
+```bash wrap tests/loadtest
+k6 run refund.js
+```
+</Accordion>
+
+<Accordion title="Scheduled transactions">
+Tests scheduled transaction creation with future execution times.
+
+```bash wrap tests/loadtest
+k6 run scheduled.js
+```
+</Accordion>
+</AccordionGroup>
+
+---
+
+## Understanding test results
+
+**k6** provides comprehensive metrics for each test run. Key metrics to monitor include:
+
+- **http_req_duration**: Request latency (p50, p95, p99 percentiles)
+- **http_req_failed**: Error rate (should be < 0.1%)
+- **http_reqs**: Total requests processed
+- **vus**: Virtual users active during the test
+
+<Steps titleSize>
+<Step title="Performance thresholds">
+The main test script (`script.js`) includes built-in performance thresholds that automatically fail tests if exceeded:
+
+- **Error rate**: Less than 0.1% (`http_req_failed < 0.001`)
+- **P95 latency**: Less than 300ms
+- **P99 latency**: Less than 600ms
+</Step>
+
+<Step title="Exporting results">
+The main test script automatically exports results to `summary.json`. Run any scenario:
+
+```bash wrap
+k6 run --env SCENARIO=baseline script.js
+```
+
+Results are automatically saved to `summary.json` in the current directory.
+</Step>
+
+<Step title="Analyze results with TPM tool">
+The test suite includes a utility script to convert k6 JSON output into transactions per minute (TPM) CSV format.
+
+First, export k6 results as JSON:
+
+```bash wrap
+k6 run --out json=results.json --env SCENARIO=baseline script.js
+```
+
+Then convert to CSV:
+
+```bash wrap
+python3 tools/k6_json_to_tpm.py results.json tpm_results.csv
+```
+
+<ParamField query="input.json" type="string" required>
+Path to k6 JSON output file (use `--out json=output.json` when running k6)
+</ParamField>
+
+<ParamField query="output.csv" type="string" required>
+Path to output CSV file
+</ParamField>
+
+The generated CSV includes: minute timestamp, requests, transactions per minute (tpm), success ratio, p50/p95/p99 latency, and apdex score.
+</Step>
 </Steps>
+
+---
+
+## Troubleshooting
+
+### Connection refused errors
+
+If you see connection errors, verify:
+
+1. Your Blnk server is running and accessible.
+2. The URL matches your server's address and port.
+3. Firewall rules allow connections to the Blnk server.
+
+### High error rates
+
+If error rates exceed thresholds:
+
+1. Check Blnk server logs for errors.
+2. Verify database connection pool settings.
+3. Review server resource usage (CPU, memory).
+4. Consider reducing virtual users or request rate.
+
+---
 
 <NeedHelp />
