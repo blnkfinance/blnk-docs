@@ -1,9 +1,9 @@
 ---
 title: "Handling notifications"
-sidebarTitle: "Notifications"
-description: "Configure real-time alerts for transaction events and handle error notifications through Slack. Stay updated with critical information."
-"og:title": "Notifications • Blnk Developer Documentation"
-"og:description": "Configure real-time alerts for transaction events and handle error notifications through Slack."
+sidebarTitle: "Webhooks"
+description: "Configure real-time alerts for transaction events and handle error notifications through webhooks. Stay updated with critical information."
+"og:title": "Webhooks • Blnk Developer Documentation"
+"og:description": "Configure real-time alerts for transaction events and handle error notifications through webhooks."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
@@ -149,6 +149,156 @@ Below is an example of a notifications configuration:
   }
 }
 ```
+
+---
+
+## Webhook security (signature verification)
+
+<Info>
+Available in version 0.13.0 and later.
+</Info>
+
+Blnk signs outbound webhook requests so you can verify they came from your Blnk Core and were not tampered with. Both **notification webhooks** and [transaction hooks](/hooks/overview) (PRE/POST) use the same signing scheme.
+
+<Note>
+Webhook signing requires **secure mode**: Set `server.secure` to `true` in `blnk.json` configuration.
+</Note>
+
+### Headers
+
+| Header | Description |
+| :-- | :-- |
+| `X-Blnk-Signature` | Hex-encoded HMAC-SHA256 of the signed payload. |
+| `X-Blnk-Timestamp` | Unix timestamp in seconds (string), used in the signed payload and for replay protection. |
+| `X-Hook-ID` | The hook identifier (hooks only). |
+| `X-Hook-Type` | `PRE_TRANSACTION` or `POST_TRANSACTION` (hooks only). |
+
+### Verifying signatures
+
+<Steps titleSize="h4">
+<Step title="Extract headers and raw body">
+  Read `X-Blnk-Signature` and `X-Blnk-Timestamp` from the request. Reject requests missing either header.
+
+  <Warning>
+  Preserve the **exact raw bytes** of the request body before JSON parsing. Do not use a parsed or re-serialized body—any whitespace or encoding changes will cause verification to fail.
+  </Warning>
+</Step>
+<Step title="Build signed payload">
+  Concatenate the timestamp and raw body:
+
+  ```
+  signed = timestamp + "." + rawRequestBody
+  ```
+</Step>
+<Step title="Compute expected signature">
+  Compute `HMAC-SHA256` using `server.secret_key` from your [Blnk configuration](/advanced/secure-blnk), then hex-encode:
+
+  ```
+  expected = hex( HMAC-SHA256(secret_key, signed) )
+  ```
+</Step>
+<Step title="Compare signatures">
+  Compare `expected` to `X-Blnk-Signature` using a **constant-time comparison** (e.g. `crypto.timingSafeEqual` in Node.js). If they match, the webhook is authentic.
+
+  <Tip>
+  For replay protection, also reject timestamps outside a small window (e.g. ±5 minutes).
+  </Tip>
+
+  <CodeGroup>
+  ```javascript Node.js
+  import express from "express";
+  import crypto from "crypto";
+
+  const app = express();
+  const SECRET = process.env.BLNK_SECRET; // must match server.secret_key
+
+  app.use(express.json({ verify: (req, _, buf) => { req.rawBody = buf; } }));
+
+  app.post("/webhook", (req, res) => {
+    const sig = req.header("x-blnk-signature");
+    const ts = req.header("x-blnk-timestamp");
+    if (!sig || !ts) return res.sendStatus(400);
+
+    const expected = crypto.createHmac("sha256", SECRET)
+      .update(`${ts}.${req.rawBody}`)
+      .digest("hex");
+
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)))
+      return res.sendStatus(401);
+
+    res.sendStatus(200);
+  });
+
+  app.listen(3000);
+  ```
+
+  ```go Go
+  package main
+
+  import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "encoding/hex"
+    "io"
+    "net/http"
+    "os"
+  )
+
+  var secret = []byte(os.Getenv("BLNK_SECRET")) // must match server.secret_key
+
+  func webhook(w http.ResponseWriter, r *http.Request) {
+    sig := r.Header.Get("X-Blnk-Signature")
+    ts := r.Header.Get("X-Blnk-Timestamp")
+    if sig == "" || ts == "" {
+      http.Error(w, "missing headers", http.StatusBadRequest)
+      return
+    }
+
+    body, _ := io.ReadAll(r.Body)
+    mac := hmac.New(sha256.New, secret)
+    mac.Write([]byte(ts + "." + string(body)))
+    expected := hex.EncodeToString(mac.Sum(nil))
+
+    if !hmac.Equal([]byte(sig), []byte(expected)) {
+      http.Error(w, "invalid signature", http.StatusUnauthorized)
+      return
+    }
+    w.WriteHeader(http.StatusOK)
+  }
+
+  func main() {
+    http.HandleFunc("/webhook", webhook)
+    http.ListenAndServe(":3000", nil)
+  }
+  ```
+
+  ```python Python
+  import hmac, hashlib, os
+  from flask import Flask, request, abort
+
+  app = Flask(__name__)
+  SECRET = os.environ.get("BLNK_SECRET").encode()  # must match server.secret_key
+
+  @app.route("/webhook", methods=["POST"])
+  def webhook():
+      sig = request.headers.get("X-Blnk-Signature")
+      ts = request.headers.get("X-Blnk-Timestamp")
+      if not sig or not ts:
+          abort(400)
+
+      signed = f"{ts}.".encode() + request.get_data()
+      expected = hmac.new(SECRET, signed, hashlib.sha256).hexdigest()
+
+      if not hmac.compare_digest(sig, expected):
+          abort(401)
+      return "", 200
+
+  if __name__ == "__main__":
+      app.run(port=3000)
+  ```
+  </CodeGroup>
+</Step>
+</Steps>
 
 ---
 
