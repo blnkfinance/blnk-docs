@@ -1,0 +1,68 @@
+---
+title: "View balance lineage"
+description: "See a balance’s provider breakdown (received, spent, available) when fund lineage is enabled."
+api: "GET /balances/{balance_id}/lineage"
+noindex: true
+"og:title": "View Balance Lineage • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import Key from "/snippets/key.mdx";
+
+<Key />
+
+### Path
+<ParamField path="balance_id" type="string" required>
+  Specifies the unique ID of the balance whose lineage you want to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="balance_id" type="string" required>
+  The ID of the balance being queried.
+</ResponseField>
+
+<ResponseField name="aggregate_balance_id" type="string" required>
+  The internal aggregate balance ID used to track combined provider funds.
+</ResponseField>
+
+<ResponseField name="total_with_lineage" type="string" required>
+  Total available funds tracked by lineage (in minor units, like `precise_amount`).
+</ResponseField>
+
+<ResponseField name="providers" type="array" required>
+  Provider-by-provider breakdown of received and spent funds.
+</ResponseField>
+
+<Info>
+All amounts are returned as **strings** in **minor units**.
+</Info>
+
+<RequestExample>
+```bash
+curl --request GET \
+  --url http://localhost:5001/balances/{balance_id}/lineage \
+  --header 'X-blnk-key: <api-key>'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "total_with_lineage": "7500",
+  "providers": [
+    {
+      "provider": "stripe",
+      "amount": "10000",
+      "available": "7500",
+      "spent": "2500",
+      "shadow_balance_id": "bln_shadow_balance_id"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+<NeedHelp />

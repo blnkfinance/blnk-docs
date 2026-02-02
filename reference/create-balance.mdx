@@ -22,6 +22,18 @@ import Key from "/snippets/key.mdx";
 <ParamField body="identity_id" type="string">
   Unique id of identity (if any) to be linked to the balance. Can be left out from the request body if there's no identity to be linked.
 </ParamField>
+<ParamField body="track_fund_lineage" type="boolean" default="false">
+  Enables fund lineage tracking on this balance.
+
+  <Warning>
+    Fund lineage requires `identity_id`.
+  </Warning>
+</ParamField>
+<ParamField body="allocation_strategy" type="string" default="FIFO">
+  Controls how Blnk allocates tagged provider funds when spending from this balance.
+
+  Supported values: `FIFO`, `LIFO`, `PROPORTIONAL`.
+</ParamField>
 <ParamField body="meta_data" type="object">
   Additional metadata for the request body. 
 </ParamField>
@@ -63,6 +75,12 @@ import Key from "/snippets/key.mdx";
 <ResponseField name="meta_data" type="User Object">
   Additional metadata of the balance.
 </ResponseField>
+<ResponseField name="track_fund_lineage" type="boolean">
+  Indicates whether fund lineage tracking is enabled for this balance.
+</ResponseField>
+<ResponseField name="allocation_strategy" type="string">
+  The allocation strategy used for fund lineage spending when `track_fund_lineage` is enabled.
+</ResponseField>
 
 <RequestExample>
 ```bash
@@ -72,7 +90,10 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --data '{
     "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
-    "currency": "USD"
+    "currency": "USD",
+    "identity_id": "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+    "track_fund_lineage": true,
+    "allocation_strategy": "FIFO"
   }'
 ```
 </RequestExample>

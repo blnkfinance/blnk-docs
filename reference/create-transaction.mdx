@@ -1,5 +1,5 @@
 ---
-title: "Record a transaction"
+title: "Create new transaction"
 description: "Post a transaction in your Blnk Ledger."
 api: "POST /transactions"
 noindex: true
@@ -14,8 +14,8 @@ import Key from "/snippets/key.mdx";
 
 ### Body
 
-<ParamField body="amount" type="integer | float">  
-  The transaction amount.
+<ParamField body="amount" type="float" required>  
+  The transaction amount. If you need to work with amounts that have more than 15 digits, use `precise_amount` instead. See also: [Precision](/transactions/precision).
 </ParamField>
 <ParamField body="precise_amount" type="integer">  
   The transaction amount with precision applied. Recommended for amounts with more than 15 digits. 
@@ -54,14 +54,22 @@ import Key from "/snippets/key.mdx";
 
   Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
 </ParamField>
-<ParamField body="inflight_expiry_date" type="string">
-  Specifies the actual date the transaction occurred. Learn more: [Backdated Transactions](/transactions/backdated-transactions).
+<ParamField body="effective_date" type="string">
+  Specifies the actual date the transaction occurred. Learn more: [Backdated transactions](/transactions/backdated-transactions).
 </ParamField>
 <ParamField body="skip_queue" type="boolean">
   When `true`, it bypasses the default transaction queuing system and processes transactions directly. See also: [Skip transaction queue](/transactions/introduction#skip-transaction-queue).
 </ParamField>
 <ParamField body="meta_data" type="object">
   Additional metadata of the transaction.
+
+  <Expandable title="Lineage metadata (optional)">
+    If the **destination** balance has `track_fund_lineage: true`, you can tag incoming funds by setting a provider in metadata. Learn more: [Fund lineage](/transactions/lineage).
+
+    <ParamField body="BLNK_LINEAGE_PROVIDER" type="string">
+      Provider tag used to classify incoming funds (for example: `"stripe"`, `"paypal"`, `"treasury"`).
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ### Response
@@ -92,9 +100,9 @@ import Key from "/snippets/key.mdx";
 </ResponseField>
 
 <RequestExample>
-```json
+```bash
 curl --request POST \
-  --url http://localhost:5001/balances \
+  --url http://localhost:5001/transactions \
   --header 'X-blnk-key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{

@@ -1,0 +1,65 @@
+---
+title: "View transaction lineage"
+description: "See how a transaction’s spend was allocated across providers and the internal shadow transactions created for lineage."
+api: "GET /transactions/{transaction_id}/lineage"
+noindex: true
+"og:title": "View Transaction Lineage • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import Key from "/snippets/key.mdx";
+
+<Key />
+
+### Path
+<ParamField path="transaction_id" type="string" required>
+  Specifies the unique ID of the transaction whose lineage you want to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="transaction_id" type="string" required>
+  The ID of the transaction being queried.
+</ResponseField>
+
+<ResponseField name="fund_allocation" type="array">
+  Fund allocation breakdown for debit transactions from a lineage-enabled balance.
+</ResponseField>
+
+<ResponseField name="shadow_transactions" type="array" required>
+  Internal shadow transactions created for lineage tracking (each item is a transaction object).
+</ResponseField>
+
+<Info>
+`fund_allocation[].amount` values are returned as **strings** in **minor units**.
+</Info>
+
+<RequestExample>
+```bash
+curl --request GET \
+  --url http://localhost:5001/transactions/{transaction_id}/lineage \
+  --header 'X-blnk-key: <api-key>'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "fund_allocation": [
+    { "provider": "stripe", "amount": "2500" }
+  ],
+  "shadow_transactions": [
+    {
+      "transaction_id": "txn_shadow_123",
+      "reference": "ref_002_release_stripe_0",
+      "precise_amount": "2500",
+      "currency": "USD",
+      "status": "APPLIED"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+<NeedHelp />
