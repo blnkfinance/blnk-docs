@@ -1,0 +1,265 @@
+---
+title: "Fund Lineage Tracking"
+sidebarTitle: "Fund lineage tracking"
+description: "Track where funds came from and how debits are allocated across providers."
+"og:title": "Fund Lineage • Blnk Developer Documentation"
+"og:description": "Track where funds came from and how debits are allocated across providers."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Warning>
+  This feature is experimental. Available in v0.13.0 and later.
+</Warning>
+
+Fund lineage lets you tag incoming funds into a balance and automatically track how those tagged funds are spent over time.
+
+Once enabled, every subsequent debit records exactly which tagged funds it used and how much came from each tag. You do not need to manage this yourself. Blnk does it automatically.
+
+This helps you answer questions like:
+
+- Where did the funds in this balance come from?
+- When you spend \$X, which funding sources did it come from?
+- How much of Provider A’s funds are still available vs already spent?
+
+---
+
+## How to think about lineage
+
+A normal balance tells you how much money you have. Lineage adds one extra dimension: what that money is made of. Think of a balance as having 2 layers:
+
+1. **The balance total:** This is what you already know: one number per currency.
+2. **The composition of the balance:** This is a breakdown of that total by tag (e.g. `stripe`, `paypal`, `treasury`, etc.)
+
+So instead of seeing only: `Balance = $150`, lineage shows you: `Balance = $150 (stripe: $100, paypal: $50)`.
+
+<img src="/images/transactions/lineage-example.png" alt="How to think about lineage" />
+
+<Accordion title="Example breakdown">
+  <Steps>
+    <Step title="Funds enter the system">
+      Two credits are made into Jack’s balance:
+
+      - \$100 from `stripe`
+      - \$50 from `paypal`
+
+      Jack's total balance is **\$150**. Because lineage is enabled, Blnk also records the composition of that balance internally: **\$100** from Stripe and **\$50** from PayPal.
+    </Step>
+    <Step title="Funds move between balances">
+      Jack sends $40 to Alice. Blnk automatically:
+
+      - Selects which tagged funds to spend from
+      - Records how much of the $40 came from each tag.
+      - Applies the same tag to the funds received by Alice
+
+      In our example, the entire $40 is taken from Stripe, leaving:
+
+      - Jack with **\$60** from Stripe and **\$50** from PayPal
+      - Alice with **\$40** tagged as `Stripe`
+    </Step>
+    <Step title="Funds leave the system">
+      Alice withdraws **\$20** to payouts.
+
+      Blnk records that the **\$20** leaving the system came from Alice’s Stripe-tagged funds. Alice now has **\$20** remaining from Stripe.
+    </Step>
+    <Step title="What this tells us">
+      With this, we can determine that:
+
+      - Out of the **\$100** that came in from Stripe, we now have only **\$80** total left in our system.
+      - Stripe should be used to process Alice's payout, since her funds came from Stripe.
+    </Step>
+  </Steps>
+</Accordion>
+
+---
+
+## What changes with lineage enabled
+
+Only one thing: Blnk starts recording fund composition automatically. 
+
+You still create the same credits and debits. Lineage just makes each spend explainable.
+
+1. When you credit a lineage-enabled balance, you attach a tag to that incoming money.
+2. When you debit the balance, Blnk decides which tagged funds were used and records the breakdown.
+3. When money moves to **another lineage-enabled balance**, the tag moves with it. Otherwise, lineage stops at that transfer.
+4. When money leaves the system, the tag attribution is preserved on the spend.
+
+---
+
+## Enable fund lineage
+
+Fund lineage is enabled at the balance level. You need to first ensure that the balances you want to track have lineage enabled.
+
+<Steps titleSize="h3">
+  <Step title="Create a balance with lineage enabled">
+    Blnk requires that the balance has an `identity_id` set to enable lineage tracking for a balance.
+
+    ```json Create balance (lineage enabled) wrap
+    {
+      "ledger_id": "ldg_049495...",
+      "identity_id": "idt_4dd128...",
+      "currency": "USD",
+      "track_fund_lineage": true,
+      "allocation_strategy": "FIFO"
+    }
+    ```
+
+    Allocation strategy defines how Blnk will allocate the funds when you spend from the balance. Supported allocation strategies are:
+
+    - `FIFO`: Spend oldest tagged funds first. This is the default strategy.
+    - `LIFO`: Spend newest tagged funds first.
+    - `PROPORTIONAL`: Spend proportionally across tags.
+  </Step>
+  <Step title="Tag incoming funds">
+    To initialize lineage for incoming funds, you must include a lineage provider. To do this, set the `meta_data.BLNK_LINEAGE_PROVIDER` field to the provider you want to tag the funds with.
+
+    ```json Tag incoming funds
+    {
+      "amount": 100,
+      "precision": 100,
+      "currency": "USD",
+      "reference": "ref_001",
+      "source": "@World",
+      "destination": "bln_5ce860...",
+      "description": "Top up via card",
+      "meta_data": {
+        "BLNK_LINEAGE_PROVIDER": "stripe"
+      }
+    }
+    ```
+
+    This tells Blnk how to classify the incoming funds. No other configuration is needed.
+
+    <Note>
+      If you omit `BLNK_LINEAGE_PROVIDER`, the transaction is recorded, but that credit will not participate in lineage tracking.
+    </Note>
+
+    Blnk tracks funds by auto-creating internal lineage balances derived from the provider and the destination identity.
+  </Step>
+  <Step title="Spend funds and see lineage tracked automatically">
+    To spend from a lineage-enabled balance, you create a normal debit transaction. You don’t need to specify a provider on debits.
+
+    Blnk will:
+    - Select which tagged funds to spend from based on the allocation strategy
+    - Record the provider-level breakdown automatically
+    - Attach the breakdown to the transaction metadata under `BLNK_FUND_ALLOCATION`
+
+    ```json Spend from a lineage-enabled balance
+    {
+      "amount": 25,
+      "precision": 100,
+      "currency": "USD",
+      "reference": "ref_002",
+      "source": "bln_5ce860...",
+      "destination": "@MerchantSettlement",
+      "description": "Purchase"
+    }
+    ```
+
+    You can then inspect the results using:
+
+    - `GET /transactions/:id/lineage` (allocation + shadow transactions)
+    - `GET /balances/:id/lineage` (provider breakdown on a balance)
+  </Step>
+  <Step title="Optional: Propagate lineage across balances">
+    If the destination balance of a transaction also has `track_fund_lineage: true` enabled:
+
+    - Blnk will propagate lineage automatically
+    - The destination balance will also have its own shadow balances created automatically if it doesn't already have them.
+
+    No additional steps are required.
+  </Step>
+</Steps>
+
+---
+
+## How Blnk names internal lineage balances
+
+When lineage is enabled, Blnk creates internal “shadow” and “aggregate” balances using **indicator** strings derived from the provider and the destination identity:
+
+- **Provider shadow balance**: `@PROVIDER_IDENTITY_IDENTIFIER_lineage`
+- **Aggregate balance (all providers)**: `@IDENTITY_IDENTIFIER_lineage`
+
+For example: provider `stripe` + identity `John Doe` (`identity_id: "idt_4dd12897-..."`) becomes:
+- Shadow balance: `@stripe_john_doe_idt_4dd1_lineage`
+- Aggregate balance: `@john_doe_idt_4dd1_lineage`
+
+---
+
+## Query lineage
+
+Once lineage is enabled, you can query it at two levels:
+
+1. Balance lineage to see what funds are available and spent per provider.
+2. Transaction lineage to see how a specific debit was allocated
+
+### Get balance lineage
+
+Use this to see the current provider breakdown for a balance.
+
+```bash wrap
+GET /balances/:id/lineage
+```
+
+This returns, per provider:
+- how much is still available
+- how much has already been spent
+
+```json Response structure
+{
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "total_with_lineage": "7500",
+  "providers": [
+    {
+      "provider": "stripe",
+      "amount": "10000",
+      "available": "7500",
+      "spent": "2500",
+      "shadow_balance_id": "bln_shadow_balance_id"
+    }
+  ]
+}
+```
+
+<Info>
+Amounts in lineage responses are returned in **minor units** (the same scale as `precise_amount`), so use your [precision](/transactions/precision) to convert for display.
+</Info>
+
+### Get transaction lineage
+
+Use this to see how a specific transaction was funded.
+
+```bash wrap
+GET /transactions/:id/lineage
+```
+
+This is most useful for debits from lineage-enabled balances. It returns:
+
+- the fund allocation (how much was taken from each provider)
+- any internal shadow transactions created for lineage tracking
+
+```json Response structure
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "fund_allocation": [
+    { "provider": "card_issuer", "amount": "2500" }
+  ],
+  "shadow_transactions": [
+    {
+      "transaction_id": "txn_shadow_123",
+      "reference": "ref_lineage_debit_001_release_card_issuer_0",
+      "precise_amount": "2500",
+      "currency": "USD"
+    }
+  ]
+}
+```
+
+<Note>
+You do not need to act on shadow transactions. They exist for auditability and tracing.
+</Note>
+
+---
+
+<NeedHelp />
