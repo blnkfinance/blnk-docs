@@ -1,0 +1,344 @@
+---
+title: "Advanced Filtering"
+sidebarTitle: "Advanced filtering"
+description: "Learn how to filter and query your data with precision using advanced filter operators."
+"og:title": "Advanced Filtering • Blnk Developer Documentation"
+"og:description": "Learn how to filter and query your data with precision using advanced filter operators on all list endpoints."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+Blnk's Advanced Filtering lets you retrieve exactly the data you need from any collection. Instead of fetching all records and filtering client-side, you can apply powerful server-side filters directly in your API requests.
+
+<Info>
+Advanced filtering is available on all list endpoints: ledgers, balances, transactions, and identities.
+</Info>
+
+---
+
+## How it works
+
+Filters are passed as query parameters in the format `field_operator=value`. Blnk parses these parameters and builds optimized SQL queries, ensuring fast responses even with large datasets.
+
+For example, the request below only returns transactions with status "APPLIED" and currency either "USD" or "EUR".
+```bash
+GET /transactions?status_eq=APPLIED&currency_in=USD,EUR
+```  
+
+---
+
+## Supported operators
+
+Blnk provides a range of operators to match, compare, and filter your data precisely. Append any operator to a field name to create your filter condition.
+
+| Operator | Description | Example usage |
+| :--- | :--- | :--- |
+| `eq` | Equal to | `status_eq=APPLIED` |
+| `ne` | Not equal to | `status_ne=VOID` |
+| `gt` | Greater than | `amount_gt=1000` |
+| `gte` | Greater than or equal | `amount_gte=1000` |
+| `lt` | Less than | `amount_lt=5000` |
+| `lte` | Less than or equal | `amount_lte=5000` |
+| `in` | In a set of values | `currency_in=USD,EUR,GBP` |
+| `between` | Between two values | `created_at_between=2024-01-01\|2024-12-31` |
+| `like` | Pattern match (case-sensitive) | `name_like=%savings%` |
+| `ilike` | Pattern match (case-insensitive) | `name_ilike=%USD%` |
+| `isnull` | Field is null | `identity_id_isnull=true` |
+| `isnotnull` | Field is not null | `identity_id_isnotnull=true` |
+
+<Tip>
+For `like` and `ilike` operators, use `%` as a wildcard. `%savings%` matches any value containing "savings".
+</Tip>
+
+---
+
+## Filterable fields by collection
+
+Each collection exposes specific fields you can filter on. Select a tab below to see the available fields for each collection.
+
+<Tabs>
+<Tab title="Transactions">
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `transaction_id` | string | Unique transaction identifier |
+| `reference` | string | Your custom reference |
+| `amount` | number | Transaction amount |
+| `currency` | string | Currency code |
+| `status` | string | QUEUED, APPLIED, INFLIGHT, VOID, etc. |
+| `source` | string | Source balance ID |
+| `destination` | string | Destination balance ID |
+| `created_at` | timestamp | When the transaction was created |
+| `effective_date` | timestamp | When the transaction takes effect |
+| `description` | string | Transaction description |
+| `meta_data` | json | Custom metadata fields |
+</Tab>
+
+<Tab title="Balances">
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `balance_id` | string | Unique balance identifier |
+| `ledger_id` | string | Parent ledger ID |
+| `identity_id` | string | Associated identity |
+| `indicator` | string | Balance indicator/alias |
+| `currency` | string | Currency code |
+| `balance` | number | Current balance |
+| `credit_balance` | number | Total credits |
+| `debit_balance` | number | Total debits |
+| `created_at` | timestamp | When the balance was created |
+| `meta_data` | json | Custom metadata fields |
+</Tab>
+
+<Tab title="Ledgers">
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `ledger_id` | string | Unique ledger identifier |
+| `name` | string | Ledger name |
+| `created_at` | timestamp | When the ledger was created |
+| `meta_data` | json | Custom metadata fields |
+</Tab>
+
+<Tab title="Identities">
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `identity_id` | string | Unique identity identifier |
+| `first_name` | string | First name |
+| `last_name` | string | Last name |
+| `email_address` | string | Email address |
+| `identity_type` | string | Type of identity |
+| `category` | string | Identity category |
+| `country` | string | Country |
+| `created_at` | timestamp | When the identity was created |
+| `meta_data` | json | Custom metadata fields |
+</Tab>
+
+<Tab title="Accounts">
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `account_id` | string | Unique account identifier |
+| `name` | string | Account name |
+| `number` | string | Account number |
+| `bank_name` | string | Bank name |
+| `currency` | string | Currency code |
+| `ledger_id` | string | Parent ledger ID |
+| `balance_id` | string | Associated balance ID |
+| `created_at` | timestamp | When the account was created |
+| `meta_data` | json | Custom metadata fields |
+</Tab>
+</Tabs>
+
+---
+
+## Filtering metadata
+
+You can filter on custom metadata fields using dot notation:
+
+```bash
+GET /transactions?meta_data.customer_type_eq=premium
+```
+
+<Warning>
+Metadata field names must start with a letter and contain only alphanumeric characters and underscores.
+</Warning>
+
+---
+
+## Common examples
+
+1. **Find high-value transactions:** Retrieve all applied transactions above $10,000:
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X GET "https://YOUR_BLNK_INSTANCE_URL/transactions?status_eq=APPLIED&amount_gte=10000" \
+      -H "X-Blnk-Key: YOUR_API_KEY"
+    ```
+
+    ```json Response
+    [
+      {
+        "transaction_id": "txn_abc123",
+        "amount": 15000,
+        "currency": "USD",
+        "status": "APPLIED",
+        "source": "bln_source123",
+        "destination": "bln_dest456",
+        "created_at": "2024-01-15T10:30:00Z"
+      }
+    ]
+    ```
+    </CodeGroup>
+
+2. **Find balances by currency: **Retrieve all USD balances with a positive balance:
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X GET "https://YOUR_BLNK_INSTANCE_URL/balances?currency_eq=USD&balance_gt=0" \
+      -H "X-Blnk-Key: YOUR_API_KEY"
+    ```
+
+    ```json Response
+    [
+      {
+        "balance_id": "bln_xyz789",
+        "currency": "USD",
+        "balance": 50000,
+        "credit_balance": 75000,
+        "debit_balance": 25000,
+        "ledger_id": "ldg_main001"
+      }
+    ]
+    ```
+    </CodeGroup>
+
+3. **Find transactions within a date range:** Retrieve transactions from Q1 2024:
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X GET "https://YOUR_BLNK_INSTANCE_URL/transactions?created_at_between=2024-01-01%7C2024-03-31" \
+      -H "X-Blnk-Key: YOUR_API_KEY"
+    ```
+
+    ```json Response
+    [
+      {
+        "transaction_id": "txn_q1_001",
+        "amount": 5000,
+        "currency": "USD",
+        "status": "APPLIED",
+        "created_at": "2024-02-14T09:00:00Z"
+      }
+    ]
+    ```
+    </CodeGroup>
+
+4. **Combine multiple filters:** Find pending USD or EUR transactions over $1,000:
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X GET "https://YOUR_BLNK_INSTANCE_URL/transactions?status_eq=QUEUED&currency_in=USD,EUR&amount_gt=1000" \
+      -H "X-Blnk-Key: YOUR_API_KEY"
+    ```
+
+    ```json Response
+    [
+      {
+        "transaction_id": "txn_pending_001",
+        "amount": 2500,
+        "currency": "EUR",
+        "status": "QUEUED",
+        "created_at": "2024-06-01T14:20:00Z"
+      }
+    ]
+    ```
+    </CodeGroup>
+
+5. **Search by pattern:** Find all ledgers with "savings" in the name:
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X GET "https://YOUR_BLNK_INSTANCE_URL/ledgers?name_ilike=%savings%" \
+      -H "X-Blnk-Key: YOUR_API_KEY"
+    ```
+
+    ```json Response
+    [
+      {
+        "ledger_id": "ldg_savings_001",
+        "name": "Customer Savings Accounts",
+        "created_at": "2024-01-01T00:00:00Z"
+      },
+      {
+        "ledger_id": "ldg_savings_002",
+        "name": "High-Yield Savings",
+        "created_at": "2024-03-15T00:00:00Z"
+      }
+    ]
+    ```
+    </CodeGroup>
+
+---
+
+## Pagination with filters
+
+When working with large datasets, combine filters with pagination parameters to retrieve results in manageable chunks. This improves response times and reduces memory usage on both client and server.
+
+We support the following pagination parameters:
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `limit` | 10 | Maximum records to return per request (max: 100) |
+| `offset` | 0 | Number of records to skip before returning results |
+
+For example, to retrieve the third page of applied transactions (50 records per page):
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://YOUR_BLNK_INSTANCE_URL/transactions?status_eq=APPLIED&limit=50&offset=100" \
+  -H "X-Blnk-Key: YOUR_API_KEY"
+```
+
+```json Response
+[
+  {
+    "transaction_id": "txn_page3_001",
+    "amount": 2500,
+    "currency": "USD",
+    "status": "APPLIED",
+    "created_at": "2024-03-10T14:30:00Z"
+  },
+  {
+    "transaction_id": "txn_page3_002",
+    "amount": 1800,
+    "currency": "EUR",
+    "status": "APPLIED",
+    "created_at": "2024-03-10T14:25:00Z"
+  }
+]
+```
+</CodeGroup>
+
+<Tip>
+To iterate through all pages, increment the `offset` by your `limit` value with each request. For example, with `limit=50`: page 1 uses `offset=0`, page 2 uses `offset=50`, page 3 uses `offset=100`, and so on.
+</Tip>
+
+---
+
+## Best practices
+
+1. **Use specific filters**: The more specific your filters, the faster your queries. Combine multiple filters to narrow results.
+
+2. **Paginate large results**: Always use pagination when expecting many results. This improves performance and reduces response times.
+
+3. **Index on filtered fields**: Frequently filtered fields are already indexed. Custom metadata filters may be slower on large datasets.
+
+4. **Use appropriate operators**: Use `eq` for exact matches, `ilike` for case-insensitive searches, and `in` for multiple values.
+
+5. **Use Search API for complex queries**: For advanced operations like grouping, joins, or full-text search, consider using the [Search API](/search/overview) instead.
+
+---
+
+## Error handling
+
+Invalid filters return a 400 Bad Request with details:
+
+```json
+{
+  "errors": [
+    {
+      "param": "invalid_field_eq",
+      "message": "invalid field 'invalid_field' for table 'transactions'"
+    }
+  ]
+}
+```
+
+Common errors:
+
+- **Invalid field**: The field doesn't exist or isn't filterable
+- **Invalid operator**: The operator isn't supported
+- **Value format**: The value doesn't match the expected type (e.g., non-numeric for `amount_gt`)
+
+---
+
+<NeedHelp />
