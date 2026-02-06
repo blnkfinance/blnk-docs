@@ -283,7 +283,7 @@ This is useful for simple queries, but the POST filter endpoints are recommended
 
 ## See Also
 
-- Search API: `/search/overview`
+- Search API: `/search/typesense/overview`
 - Transactions: `/transactions/overview`
 - Balances: `/balances/overview`
 - Ledgers: `/ledgers/overview`
@@ -316,7 +316,7 @@ Typesense is optimized for:
 - Faceted filtering with instant results
 - Sorting large datasets without custom indexes
 
-See **Search API** (`/search/overview`) for setup and usage.
+See **Search API** (`/search/typesense/overview`) for setup and usage.
 
 ## Adding custom indexes
 
