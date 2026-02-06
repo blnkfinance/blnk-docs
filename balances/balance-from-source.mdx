@@ -1,0 +1,60 @@
+---
+title: "Balance from Source"
+sidebarTitle: "Balance from source"
+description: "Compute balance directly from transactions instead of using the default running balance."
+"og:title": "Balance from Source • Blnk Developer Documentation"
+"og:description": "Compute balances directly from transactions in Blnk. Bypass balance snapshots and reconstruct balances from transaction history for accurate financial reporting."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.10.1 and later.</Info>
+
+## Overview
+
+The [Balance from Source](/reference/balance-from-source) endpoint allows you to compute a balance directly from its transactions instead of using the default running balance. 
+
+This is useful when you need to verify balance accuracy, perform audits, or ensure consistency by calculating balances independently from the stored balance values.
+
+```bash wrap
+GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?from_source=true
+```
+
+```json Example response
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": ""
+  }
+}
+```
+
+---
+
+## How it works
+
+When you call the balance from source endpoint, Blnk reconstructs the balance by:
+
+1. **Getting all applied transactions:** Blnk retrieves all applied transactions for the balance and aggregates them together. As a result, it may take longer to process for balances with extensive transaction history.
+
+2. **Calculating credits and debits:** It aggregates all credit transactions (money moving into the balance) and debit transactions (money moving out of the balance) to compute the total credit balance, debit balance, and net balance.
+
+3. **Returning the computed balance:** The final computed balance, reflecting the exact state based on transaction history, is returned in the response.
+
+---
+
+<Card title="Historical balances" icon="clock" href="/balances/historical-balances">
+  Learn how to retrieve balances at specific historical timestamps
+</Card>
+
+<Card title="Balance snapshots" icon="camera" href="/balances/balance-snapshots">
+  Learn how to create snapshots of your running balances
+</Card>
+
+---
+
+<NeedHelp />

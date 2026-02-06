@@ -1,0 +1,85 @@
+---
+sidebarTitle: "Balance from source"
+title: "Balance from Source"
+description: "How to compute balance directly from transactions."
+api: "GET /balances/{balance_id}"
+noindex: true
+"og:title": "Balance from Source • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+<Key />
+
+### Path
+<ParamField path="balance_id" type="string" required>
+  Specifies the unique ID of the balance whose balance should be computed from source transactions.
+</ParamField>
+
+### Query
+<ParamField query="from_source" type="boolean" required>
+  When set to `true`, indicates that the balance should be reconstructed directly from its transactions, bypassing balance snapshots and the default running balance.
+</ParamField>
+
+### Response
+<ResponseField name="balance" type="object" required>
+  The computed balance object containing all balance details.
+</ResponseField>
+
+<ResponseField name="balance.balance" type="integer" required>
+  The net amount computed from all transactions (credit_balance - debit_balance).
+</ResponseField>
+
+<ResponseField name="balance.balance_id" type="string" required>
+  The unique identifier of the balance.
+</ResponseField>
+
+<ResponseField name="balance.credit_balance" type="integer" required>
+  Total amount computed from all credit transactions (money moving into the balance).
+</ResponseField>
+
+<ResponseField name="balance.debit_balance" type="integer" required>
+  Total amount computed from all debit transactions (money moving out of the balance).
+</ResponseField>
+
+<ResponseField name="balance.currency" type="string" required>
+  The currency code of the balance.
+</ResponseField>
+
+<ResponseField name="balance.ledger_id" type="string" required>
+  The unique identifier of the ledger this balance belongs to.
+</ResponseField>
+
+<Info>
+This endpoint computes the balance by processing all transactions from genesis. For balances with extensive transaction history, this may take longer than the standard balance endpoint.
+</Info>
+
+<RequestExample>
+```bash
+curl --request GET \
+  --url 'http://localhost:5001/balances/{balance_id}?from_source=true' \
+  --header 'X-blnk-key: <api-key>'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+    "identity_id": "",
+    "created_at": "2024-11-26T08:36:36.238244338Z",
+    "meta_data": null
+  }
+}
+```
+</ResponseExample>
+
+<NeedHelp />
