@@ -1,0 +1,154 @@
+---
+title: "Performance Tuning"
+sidebarTitle: "Performance tuning"
+description: "Optimize filter queries with indexes and learn when to use Typesense for large-scale searches."
+"og:title": "Performance Tuning • Blnk Developer Documentation"
+"og:description": "Optimize filter queries with indexes and learn performance best practices for filtering large datasets."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+Blnk is optimized out of the box for most workloads. This guide is for teams processing millions of records who want to squeeze out extra performance when searching directly from the DB.
+
+---
+
+## Default indexes
+
+These fields are already indexed and optimized:
+
+| Table | Indexed fields |
+| --- | --- |
+| `transactions` | `transaction_id`, `reference`, `status`, `currency`, `source`, `destination`, `parent_transaction`, `created_at`, `meta_data` (GIN) |
+| `balances` | `balance_id`, `ledger_id`, `identity_id`, `indicator`, `currency`, `created_at` |
+| `ledgers` | `ledger_id`, `created_at` |
+| `identity` | `identity_id`, `country`, `created_at` |
+| `accounts` | `account_id`, `ledger_id`, `identity_id`, `balance_id`, `created_at` |
+
+<Tip>
+You can sort and filter efficiently on any of these indexed fields without additional configuration.
+</Tip>
+
+---
+
+## Use Typesense for large-scale queries
+
+For complex searches, filtering across millions of records, or when you need sub-millisecond response times, use Blnk's Typesense integration instead of database queries.
+
+Typesense is optimized for:
+
+- Full-text search across any field
+- Faceted filtering with instant results
+- Sorting large datasets without custom indexes
+
+<Info>
+See [Search API](/search/typesense/introduction) for setup and usage.
+</Info>
+
+---
+
+## Adding custom indexes
+
+If you're not using Typesense and frequently sort or filter by a specific field at scale, add an index.
+
+<Steps>
+<Step title="Create single column indexes">
+
+Create indexes for frequently filtered or sorted fields:
+
+```sql wrap
+-- Sort transactions by amount
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_amount 
+ON blnk.transactions (amount);
+
+-- Sort balances by current balance
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_balances_balance 
+ON blnk.balances (balance);
+```
+
+</Step>
+
+<Step title="Create composite indexes">
+
+For queries that filter and sort on multiple fields, composite indexes are more efficient:
+
+```sql wrap
+-- Filter + sort combo (most efficient for this pattern)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_status_amount 
+ON blnk.transactions (status, amount);
+```
+
+</Step>
+
+<Step title="Create metadata indexes">
+
+If you frequently filter on a specific metadata key, index that key directly:
+
+```sql wrap
+-- Index a specific metadata key
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_customer_type 
+ON blnk.transactions ((meta_data->>'customer_type'));
+```
+
+<Tip>
+The `meta_data` field already has a GIN index for general JSONB queries, but indexing specific keys provides better performance for frequent filters on those keys.
+</Tip>
+
+</Step>
+</Steps>
+
+<Warning>
+Use `CONCURRENTLY` when creating indexes on production databases to avoid locking tables. This allows the index to be built without blocking reads and writes.
+</Warning>
+
+---
+
+## Debugging slow queries
+
+Use `EXPLAIN ANALYZE` to see how Postgres executes a query:
+
+```sql wrap
+EXPLAIN ANALYZE
+SELECT *
+FROM blnk.transactions
+WHERE status = 'APPLIED'
+ORDER BY amount DESC
+LIMIT 50;
+```
+
+What to look for:
+- **`Seq Scan`** on large tables: strong signal you need an index
+- **High actual time values**: indicates slow query execution
+- **Large row counts being filtered down late**: suggests missing indexes
+
+```json Example Output wrap
+QUERY PLAN
+─────────────────────────────────────────────────────────────────────────────
+ Limit  (cost=0.00..1234.56 rows=50 width=200) (actual time=0.123..45.678 rows=50 loops=1)
+   ->  Seq Scan on transactions  (cost=0.00..12345.67 rows=50000 width=200) (actual time=0.120..45.600 rows=50000 loops=1)
+         Filter: (status = 'APPLIED'::text)
+         Rows Removed by Filter: 100000
+ Planning Time: 0.123 ms
+ Execution Time: 45.789 ms
+```
+
+In this example, a sequential scan is being performed, which suggests adding an index on `status` would improve performance.
+
+---
+
+## Best practices
+
+1. **Monitor query performance**: Use `EXPLAIN ANALYZE` regularly to identify slow queries.
+
+2. **Index strategically**: Only add indexes for fields you filter or sort on frequently. Too many indexes can slow down writes.
+
+3. **Use composite indexes**: When filtering and sorting on multiple fields together, create composite indexes.
+
+4. **Consider Typesense**: For complex queries or very large datasets, Typesense often provides better performance than database indexes.
+
+5. **Test in production-like environments**: Index performance can vary based on data distribution and query patterns.
+
+---
+
+<NeedHelp />

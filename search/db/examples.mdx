@@ -1,0 +1,206 @@
+---
+title: "Examples"
+sidebarTitle: "Examples"
+description: "Practical examples of using Blnk's Filter API to query transactions, balances, ledgers, and other collections."
+"og:title": "Examples • Blnk Developer Documentation"
+"og:description": "Learn how to use Blnk's Filter API with practical examples for common filtering scenarios."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+This page provides practical examples of using Blnk's Filter API. For information about filter syntax, operators, and available fields, see [Database Filtering](/search/db/filtering).
+
+---
+
+## High-value applied transactions
+
+Retrieve all applied transactions above $10,000, sorted by amount:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "amount", "operator": "gte", "value": 10000 }
+    ],
+    "sort_by": "amount",
+    "sort_order": "desc",
+    "limit": 50
+  }'
+```
+
+```json Response wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+---
+
+## USD balances with positive balance
+
+Find all USD balances with a positive balance and include the total count:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "https://YOUR_BLNK_INSTANCE_URL/balances/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "currency", "operator": "eq", "value": "USD" },
+      { "field": "balance", "operator": "gt", "value": 0 }
+    ],
+    "include_count": true
+  }'
+```
+
+```json Response wrap
+{
+  "data": [
+    {
+      "balance_id": "bln_xyz789",
+      "currency": "USD",
+      "balance": 50000,
+      "credit_balance": 75000,
+      "debit_balance": 25000,
+      "ledger_id": "ldg_main001"
+    }
+  ],
+  "total_count": 42
+}
+```
+</CodeGroup>
+
+---
+
+## Transactions in date range
+
+Retrieve transactions from Q1 2024:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "created_at", "operator": "gte", "value": "2024-01-01" },
+      { "field": "created_at", "operator": "lt", "value": "2024-04-01" }
+    ]
+  }'
+```
+
+```json Response wrap
+[
+  {
+    "transaction_id": "txn_q1_001",
+    "amount": 5000,
+    "currency": "USD",
+    "status": "APPLIED",
+    "created_at": "2024-02-14T09:00:00Z"
+  }
+]
+```
+</CodeGroup>
+
+---
+
+## Multiple currencies with pattern search
+
+Find all ledgers with "savings" in the name, sorted alphabetically:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "https://YOUR_BLNK_INSTANCE_URL/ledgers/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "name", "operator": "ilike", "value": "%savings%" }
+    ],
+    "sort_by": "name",
+    "sort_order": "asc"
+  }'
+```
+
+```json Response wrap
+[
+  {
+    "ledger_id": "ldg_savings_001",
+    "name": "Customer Savings Accounts",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "ledger_id": "ldg_savings_002",
+    "name": "High-Yield Savings",
+    "created_at": "2024-03-15T00:00:00Z"
+  }
+]
+```
+</CodeGroup>
+
+---
+
+## Transactions by balance
+
+Find all transactions for a specific balance with pagination:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "balance_id", "operator": "eq", "value": "bln_abc123" }
+    ],
+    "include_count": true,
+    "limit": 100
+  }'
+```
+
+```json Response wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_001",
+      "amount": 1000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "balance_id": "bln_abc123",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 250
+}
+```
+</CodeGroup>
+
+---
+
+## See also
+
+- [Database Filtering](/search/db/filtering) - Learn about filter syntax and operators
+- [Performance Tuning](/search/db/performance) - Optimize filter queries with indexes
+- [Search API](/search/typesense/introduction) - Use Typesense for complex searches
+
+---
+
+<NeedHelp />
