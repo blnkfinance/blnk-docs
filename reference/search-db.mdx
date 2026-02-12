@@ -1,0 +1,100 @@
+---
+title: "Search via DB"
+description: "Filter ledgers, balances, transactions, and identities using Blnk's Filter API with direct database queries."
+api: "POST /{collection}/filter"
+noindex: true
+"og:title": "Search via DB • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+The Filter API lets you retrieve records from any collection using server-side filters with a clean JSON interface. Use it when you need precise, composable queries without the overhead of Typesense.
+
+<Key />
+
+### Path Parameters
+<ParamField path="collection" type="string" required>
+  The collection to filter. Supported values:
+  - `ledgers` - Filter ledgers by name or metadata
+  - `balances` - Filter balance records across all ledgers
+  - `transactions` - Filter transaction records
+  - `identities` - Filter customer identity records
+</ParamField>
+
+### Body
+<ParamField body="filters" type="array" required>
+  Array of filter objects. Each object has `field`, `operator`, and optionally `value` or `values`. Learn more: [Search via DB docs](/search/db/filtering)
+  
+  Examples:
+  - `[{"field": "status", "operator": "eq", "value": "APPLIED"}]` - Exact match
+  - `[{"field": "currency", "operator": "in", "values": ["USD", "EUR"]}]` - Multiple values
+</ParamField>
+<ParamField body="sort_by" type="string">
+  Field to sort by. Only indexed fields are sortable. Default: `created_at`. Learn more: [Performance Tuning](/search/db/performance)
+</ParamField>
+<ParamField body="sort_order" type="string">
+  Sort direction: `asc` or `desc`. Default: `desc`.
+</ParamField>
+<ParamField body="include_count" type="boolean">
+  Include total count in response. May impact performance on large datasets. Default: `false`.
+</ParamField>
+<ParamField body="limit" type="integer">
+  Max records to return. Default: 20, max: 100.
+</ParamField>
+<ParamField body="offset" type="integer">
+  Records to skip for pagination. Default: 0.
+</ParamField>
+
+### Response
+<ResponseField name="data" type="array">
+  Array of matching records. Structure varies by collection type (ledger, balance, transaction, or identity).
+</ResponseField>
+<ResponseField name="total_count" type="integer">
+  Total number of matching records. Only present when `include_count` is `true`.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "currency", "operator": "in", "values": ["USD", "EUR"] }
+    ],
+    "sort_by": "created_at",
+    "sort_order": "desc",
+    "include_count": true,
+    "limit": 20,
+    "offset": 0
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
+}
+```
+</ResponseExample>
+
+<Tip>
+For full-text search, advanced faceting, or querying across millions of records, use [Search via Typesense](/reference/search-typesense) instead.
+</Tip>
+
+<NeedHelp />
