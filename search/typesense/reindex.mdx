@@ -1,0 +1,76 @@
+---
+title: "Reindex Typesense"
+sidebarTitle: "Reindex"
+description: "Reindex your ledger data when spinning up a new Typesense instance alongside an existing database."
+"og:title": "Reindex Typesense • Blnk Developer Documentation"
+"og:description": "Learn how to reindex your data when connecting a new Typesense instance to an existing Blnk database"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.13.2 and later.</Info>
+
+Reindexing is typically needed after deploying a fresh Typesense instance, migrating to a new Typesense cluster, or recovering from Typesense data loss while your primary database remains intact.
+
+In this scenario, Typesense is empty while your primary database holds transactions, balances, ledgers, and identities. Reindexing populates Typesense with all existing records so search works correctly.
+
+---
+
+## How it works
+
+<Steps titleSize="h3">
+<Step title="Trigger the reindex">
+Blnk reads all records from your database and indexes them into their respective Typesense collections (transactions, balances, ledgers, identities).
+
+<CodeGroup>
+```bash Request
+curl -X POST "http://localhost:5001/search/reindex"
+```
+```json Response
+{
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 2145709,
+    "processed_records": 2145709,
+    "started_at": "2026-02-12T12:13:10.448612096Z"
+}
+```
+</CodeGroup>
+</Step>
+
+<Step title="Monitor progress">
+Check the reindex status. Completion time depends on the size of your data.
+
+<CodeGroup>
+```bash Request
+curl -X GET "http://localhost:5001/search/reindex" 
+```
+```json Response
+{
+    "status": "completed",
+    "phase": "done",
+    "total_records": 3240705,
+    "processed_records": 3240705,
+    "started_at": "2026-02-12T12:13:10.448612096Z",
+    "completed_at": "2026-02-12T12:18:42.018420264Z"
+}
+```
+</CodeGroup>
+</Step>
+
+<Step title="Verify completeness">
+Once the reindex finishes, confirm that all records are in Typesense by searching each collection with `q: "*"` to return all records. 
+
+```bash wrap
+curl -X POST http://localhost:5001/search/{collection} \
+-H 'X-Blnk-Key: YOUR_API_KEY' \
+-d '{ "q": "*" }'
+```
+
+Compare `found` and `out_of` values with your expected record counts. If anything is missing, run the reindex again.
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
