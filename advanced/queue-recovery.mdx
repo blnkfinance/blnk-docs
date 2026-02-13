@@ -1,0 +1,37 @@
+---
+title: "Queue recovery"
+sidebarTitle: "Queue recovery"
+description: "Recover stuck queued transactions that failed to process."
+"og:title": "Queue Recovery • Blnk Developer Documentation"
+"og:description": "Recover stuck queued transactions in Blnk"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.13.2 and later.</Info>
+
+Transactions normally move from `QUEUED` to `APPLIED`, `INFLIGHT`, or `REJECTED`. 
+
+In rare occurrences, transactions may get stuck in `QUEUED` for example after a worker crash, Redis issues, or enqueue failures. Queue recovery finds these transactions and re-enqueues them for processing.
+
+---
+
+## How it works
+
+Blnk now automatically checks for and recovers any transactions stuck in queue due to any number of reasons. 
+
+You can also trigger recovery manually with the [Queue Recovery](/reference/queue-recovery) endpoint. 
+
+```bash wrap
+curl --request POST \
+  --url 'http://localhost:5001/transactions/recover?threshold=5m' \
+  --header 'X-blnk-key: <api-key>'
+```
+
+`threshold` defines how long a transaction must be QUEUED before it is considered stuck. With `threshold=5m`, Blnk recovers only transactions that have been waiting at least 5 minutes; anything newer is left alone. 
+
+<Tip>Minimum value allowed: 2 minutes.</Tip>
+
+---
+
+<NeedHelp />
