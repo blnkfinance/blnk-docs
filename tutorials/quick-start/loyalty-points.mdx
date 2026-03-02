@@ -30,55 +30,25 @@ For our loyalty points system, we have two workflows — awarding points and red
     Points are awarded to customers who qualify for the loyalty program. A customer purchase triggers the process: funds from the `Customer Main Wallet` are used for the purchase, contributing to `@RevenueUSD`. 
     
     Once the purchase is completed, points are awarded from the `@PointsPool` to the `Customer Points Wallet`.
-
+    
     * `@RevenueUSD`: An internal balance representing the business' revenue.
     * `@PointsPool`: An internal balance tracking the total points issued to customers.
+    
+    <Frame caption="Awarding loyalty points map">
+      <img src="/images/tutorials/loyalty-points/awarding-points-map.png" alt="Awarding loyalty points map" />
+    </Frame>
 
-    ```mermaid
-    flowchart LR
-        pool([@PointsPool])
-        customerPoints([Customer Points Wallet])
-        customerWallet([Customer Main Wallet])
-        revenue([@RevenueUSD])
-        
-        subgraph purchase [Customer Purchase]
-            customerWallet -- customer purchase --> revenue
-        end
-        subgraph awardPoints [Award Points]
-            pool -- customer purchase --> customerPoints
-        end
-
-        purchase -- completed purchase --> awardPoints
-
-    style purchase fill:#000
-    style awardPoints fill:#000
-    ```
+    [View the full map.](https://url-shortener.me/EPZD)
 
 2. **Redeeming points:**
 
     Customers can redeem points to receive discounts on purchases. When a customer applies points to a transaction, the discount is deducted from the original price. 
     
     Once the purchase is completed, the redeemed points are transferred from the `Customer Points Wallet` to `@PointsPool`.
-
-    ```mermaid
-    flowchart LR
-        pointsRevenue([@PointsPool])
-        customerWallet([Customer Main Wallet])
-        revenue([@RevenueUSD])
-        customerPoints([Customer Points Wallet])
-
-        subgraph cash [Customer Purchase]
-            customerWallet -- pays with \n discount --> revenue
-        end
-        subgraph points [Redeem Points]
-            customerPoints -- pay with points --> pointsRevenue
-        end
-
-        points -- purchase amount\ndiscounted --> cash
-
-    style cash fill:#000
-    style points fill:#000
-    ```
+    
+    <Frame caption="Redeeming loyalty points map">
+      <img src="/images/tutorials/loyalty-points/redeeming-points-map.png" alt="Redeeming loyalty points map" />
+    </Frame>
 
 <Tip>
   `@PointsPool` records all issued points using the `debit_balance` parameter and tracks all redeemed points using the `credit_balance` parameter.
