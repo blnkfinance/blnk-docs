@@ -1,14 +1,20 @@
 ---
-title: "A comprehensive guide to deploying Blnk"
-sidebarTitle: "Cloud Deployment"
-description: "Learn how to deploy your Blnk server on your cloud service." 
-"og:title": "Deploy Blnk on Your Cloud Infrastructure • Blnk Developer Documentation"
-"og:description": "Learn how to deploy your Blnk server on your cloud service of choice."
+title: "A comprehensive guide to self-hosting Blnk"
+sidebarTitle: "Self-hosting Blnk"
+description: "Learn how to self-host Blnk on your infrastructure with Docker or Kubernetes."
+"og:title": "Self-Host Blnk on Your Cloud Infrastructure • Blnk Developer Documentation"
+"og:description": "Learn how to self-host your Blnk server on your cloud service of choice."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Blnk is a modern financial software designed for scalability and reliability. This guide outlines deployment strategies for operations of all sizes, ranging from development setups to full-scale production systems.
+Blnk can run on your own infrastructure, but you can also skip self-hosting and deploy faster with Blnk Cloud.
+
+<Tip>
+  If you want the simplest path to production, use [Blnk Cloud](https://cloud.blnkfinance.com) instead of managing your own infrastructure.
+</Tip>
+
+Use this guide when you need full control over infrastructure, networking, and runtime configuration. It covers practical deployment paths for development and production environments.
 
 ---
 
@@ -20,7 +26,7 @@ Blnk operates as a distributed system with three core components:
 2. **Worker:** Processes background jobs and handles asynchronous tasks.
 3. **Migration Service:** Oversees database schema updates and management.
 
-Supporting Infrastructure:
+Supporting infrastructure:
 
 - **PostgreSQL:** Primary database.
 - **Redis:** Used for caching and message queues.
@@ -31,26 +37,24 @@ Supporting Infrastructure:
 
 ## Deployment options
 
-This guide covers two primary deployment strategies, each suited to different operational needs.
+Choose the deployment model that matches your scale and operational needs:
 
-1. **Single server deployment:**
-    - Development environments
-    - Small to medium-scale production deployments
-    - Teams with limited operational overhead
-    - Quick setup requirements
+1. **Single-server deployment**
+    - Best for development and smaller production workloads
+    - Lower operational overhead
+    - Faster setup and maintenance
 
-2. **Kubernetes deployment:**
-    - Large-scale production environments
-    - High availability requirements
-    - Teams with existing Kubernetes expertise
-    - Systems requiring sophisticated scaling capabilities
+2. **Kubernetes deployment**
+    - Best for large-scale production workloads
+    - High availability and horizontal scaling
+    - Teams with existing Kubernetes experience
 
 ---
 
-## 1: Single Server Deployment
+## 1: Single-server deployment
 <Steps titleSize="h3">
 <Step title="Prerequisites">
-  Ensure you have the following available or installed:
+  Make sure you have the following:
 
   - Linux server (Ubuntu 20.04 LTS or newer recommended)
   - Docker Engine 20.10+
@@ -59,7 +63,7 @@ This guide covers two primary deployment strategies, each suited to different op
   - Managed Redis instance
 </Step>
 <Step title="Configuration">
-  Create or update your `blnk.json` configuration file. Learn more: [Advanced configuration](/advanced/configuration)
+  Create or update your `blnk.json` file. For configuration details, see [Advanced configuration](/advanced/configuration).
 
   ```json blnk.json
   {
@@ -85,7 +89,7 @@ This guide covers two primary deployment strategies, each suited to different op
   ```
 </Step>
 <Step title='Create a "docker-compose.yml" file'>
-  Copy and paste the following configuration into your file to get started. This setup includes the API server, worker, and migration services for seamless deployment.
+  Add the following configuration. It includes the API server, worker, and supporting services.
 
   ```yaml docker-compose.yml [expandable]
   version: "3.8"
@@ -185,13 +189,10 @@ This guide covers two primary deployment strategies, each suited to different op
   ```
 </Step>
 <Step title="Start deployment">
-  Run the following docker commands:
+  Run these commands to start and validate your deployment:
   ```shell
-  # Initialize services
+  # Start all services
   docker-compose up -d
-
-  # Execute database migration
-  docker-compose run --rm migration
 
   # Verify deployment status
   docker-compose ps
@@ -204,17 +205,17 @@ This guide covers two primary deployment strategies, each suited to different op
 
 ---
 
-## 2: Kubernetes Deployment
+## 2: Kubernetes deployment
 
-Blnk provides comprehensive Kubernetes manifests for streamlined deployment and management in containerized environments. These manifests help you quickly set up, scale, and manage Blnk in production or development clusters.
+Blnk provides Kubernetes manifests to help you deploy and operate Blnk in containerized environments.
 
-You can find the official manifests and instructions here:
+Use the official manifests and instructions:
 
 <Card href="https://github.com/blnkfinance/blnk/tree/main/infrastructure/k8s-manifests" icon="github" title="infrastructure/k8s-manifests">
   Blnk Kubernetes Manifests
 </Card>
 
-Once kubctl is installed, run the following commands:
+After `kubectl` is installed, run:
 
 ```bash kubectl
 kubectl apply -f infrastructure/k8s-manifests/namespace.yaml
@@ -225,34 +226,34 @@ kubectl apply -f infrastructure/k8s-manifests
 
 ## Production considerations
 ### 1. Security
-1. Network Security
+1. Network security
     - Enable SSL/TLS for all external connections
     - Implement proper network policies
     - Use secret management solutions
     - Regular security updates
-2. Access Control
+2. Access control
     - Implement proper authentication
     - Use role-based access control
     - Regular audit of access patterns
 
 ### 2. Monitoring
-1. System Metrics
+1. System metrics
     - CPU utilization
     - Memory usage
     - Disk I/O
     - Network traffic
-2. Application Metrics
+2. Application metrics
     - Request latency
     - Error rates
     - Queue depths
     - Processing times
 
 ### 3. Backup and Recovery
-1. Database Backups
+1. Database backups
     - Regular automated backups
     - Point-in-time recovery capability
     - Backup testing procedures
-2. Configuration Management
+2. Configuration management
     - Version control for configurations
     - Documentation of deployment procedures
     - Disaster recovery planning
@@ -260,17 +261,17 @@ kubectl apply -f infrastructure/k8s-manifests
 ---
 
 ## Troubleshooting guide
-Here are common issues to check for if you encounter any problems during deployment:
+If you run into deployment issues, check these areas first:
 
-1. Database Connectivity
+1. Database connectivity
     - Verify network security groups
     - Check connection strings
     - Validate database credentials
-2. Worker Processing
+2. Worker processing
     - Monitor Redis connectivity
     - Check worker logs
     - Verify queue configuration
-3. Migration Issues
+3. Migration issues
     - Verify database permissions
     - Check migration logs
     - Validate schema versions
@@ -278,15 +279,15 @@ Here are common issues to check for if you encounter any problems during deploym
 ---
 
 ## Support resources
-1. Log Analysis
+1. Log analysis
     - Check application logs (`docker-compose logs` or `kubectl logs`)
     - Review system logs
     - Monitor error tracking systems
-2. Performance Issues
+2. Performance issues
     - Review resource utilization
     - Check database performance
     - Monitor network latency
-3. Additional Support
+3. Additional support
     - Technical documentation
     - Community forums
     - Support channels
