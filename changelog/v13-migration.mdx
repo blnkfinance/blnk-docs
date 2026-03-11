@@ -1,0 +1,104 @@
+---
+title: "0.13.6 Migration Guide"
+description: "Migration guide for upgrading to Blnk v0.13.6, covering the Update Metadata response field change from metadata to meta_data."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+## Overview
+
+This migration guide covers the breaking change introduced in Blnk v0.13.6 for the [Update Metadata](/reference/update-metadata) endpoint. The response now returns the field **`meta_data`** (with underscore) instead of the inconsistent **`metadata`**. 
+
+If your code reads the update-metadata response by key, you need to handle this change.
+
+---
+
+## Breaking changes summary
+
+- **From:** Response contains `metadata` (inconsistent with request body and other APIs)
+- **To:** Response uses `meta_data` (consistent with request body and other APIs)
+- **Impact:** Code that reads the update-metadata response using the key `metadata` will no longer find the object. Use `meta_data` or support both for compatibility.
+
+---
+
+## What changed
+
+1. **Update Metadata response:** `POST /{id}/metadata` responses now return the metadata object under the key **`meta_data`** only.
+2. **Consistency:** This aligns the response with the request body parameter name (`meta_data`) and with how metadata is exposed elsewhere in the API.
+
+---
+
+## Recommended approach: Expect both keys
+
+To support Blnk versions before and after 0.13.6, read the metadata from the response using either `meta_data` or `metadata`, with `meta_data` taking precedence when present.
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch(`${baseUrl}/${resourceId}/metadata`, {
+  method: 'POST',
+  headers: {
+    'X-blnk-key': apiKey,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ meta_data: { key: 'value' } }),
+});
+
+const data = await response.json();
+
+// Support both meta_data (0.13.6+) and metadata (pre-0.13.6)
+const metadata = data.meta_data ?? data.metadata ?? {};
+```
+
+```go Go
+var result struct {
+  MetaData  map[string]interface{} `json:"meta_data"`
+  Metadata map[string]interface{} `json:"metadata"` // pre-0.13.6
+}
+
+if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+  // handle error
+}
+
+metadata := result.MetaData
+
+if metadata == nil {
+  metadata = result.Metadata
+}
+
+if metadata == nil {
+  metadata = make(map[string]interface{})
+}
+```
+
+```python Python
+response = requests.post(
+    f"{base_url}/{resource_id}/metadata",
+    headers={"X-blnk-key": api_key, "Content-Type": "application/json"},
+    json={"meta_data": {"key": "value"}},
+)
+
+data = response.json()
+
+# Support both meta_data (0.13.6+) and metadata (pre-0.13.6)
+metadata = data.get("meta_data") or data.get("metadata") or {}
+```
+
+```php PHP
+$response = $client->post("{$baseUrl}/{$resourceId}/metadata", [
+    'headers' => [
+        'X-blnk-key' => $apiKey,
+        'Content-Type' => 'application/json',
+    ],
+    'json' => ['meta_data' => ['key' => 'value']],
+]);
+
+$data = json_decode($response->getBody()->getContents(), true);
+
+// Support both meta_data (0.13.6+) and metadata (pre-0.13.6)
+$metadata = $data['meta_data'] ?? $data['metadata'] ?? [];
+```
+</CodeGroup>
+
+---
+
+<NeedHelp />
