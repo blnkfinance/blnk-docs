@@ -1,0 +1,535 @@
+---
+sidebarTitle: "CLI"
+title: "Blnk CLI"
+description: "Use the Blnk CLI to manage your Core from your terminal."
+"og:title": "Blnk CLI • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to manage your Core from your terminal."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+The Blnk CLI is the official command-line tool to interact with your Blnk Core. Use the commands below to connect to an instance, manage ledgers, balances, transactions, identities, and reconciliations.
+
+<Note>
+Ensure your Blnk server is running and that you have connected the CLI to an instance before using resource commands. Run `blnk connect [url]` then `blnk info` to verify.
+</Note>
+
+---
+
+## install/update
+
+<Info>Current version: 1.8.0</Info>
+
+To use the Blnk CLI, you need [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/package/blnk-cli) on your machine.
+
+Install and update the Blnk CLI globally:
+
+```bash
+npm i -g @blnkfinance/blnk-cli
+```
+
+Confirm your installation:
+
+<CodeGroup>
+```bash bash
+blnk --version
+```
+```bash latest version
+Blnk CLI:
+  1.8.0
+```
+</CodeGroup>
+
+---
+
+## connect
+
+Use the `connect` command to connect to a Blnk Core instance and verify that the instance is reachable.
+
+```bash
+blnk connect [url]
+```
+
+You can also use the alias `c`, e.g. `blnk c https://api.example.com`
+
+```bash Options
+Description:
+  This command connects to a Blnk Core instance and verifies that
+  the instance is reachable.
+
+Usage:
+  blnk connect [url]
+
+Options:
+  -h, --help            Show help information
+
+Examples:
+  $ blnk connect
+  $ blnk c https://api.example.com
+```
+
+---
+
+## info
+
+Use the `info` command to show the current server URL and whether the CLI is connected.
+
+```bash
+blnk info
+```
+
+Alias: `blnk i`
+
+```bash Options
+Description:
+  Shows the current server URL and whether it is connected.
+
+Usage:
+  blnk info
+
+Options:
+  -h, --help            Show help information
+```
+
+---
+
+## ledgers
+
+Use the `ledgers` command to make requests (create, list, etc.) on ledgers.
+
+```bash
+blnk ledgers [command] [options]
+```
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | View all ledgers |
+| create | c | Create a new ledger |
+
+### View ledgers
+
+View a list of your ledgers.
+
+```bash
+blnk ledgers list [options]
+```
+
+```bash Options
+Description:
+  View a list of your ledgers.
+
+Usage:
+  blnk ledgers list [options]
+
+Options:
+Single list:
+      --id <ledger-id>            Get a ledger by ID
+      --json                      Print full JSON output for single fetch
+
+Group list:
+      --<field> <value>           Filter by any field (quote comma-separated values, e.g. --currency "USD,EUR")
+  -p, --page <number>             Page number (default: 1, e.g. 2)
+      --per-page <number>         Results per page (default: 10, e.g. 25)
+  -h, --help                      Show help information
+
+Examples:
+  $ blnk ledgers list
+  $ blnk ledgers l --page 2 --per-page 20
+  $ blnk ledgers l --ledger-id ldg_abc123
+```
+
+### Create a ledger
+
+Create a new ledger interactively.
+
+```bash
+blnk ledgers create
+```
+
+```bash Options
+Description:
+  This command creates a new ledger interactively.
+
+Usage:
+  blnk ledgers create
+
+Options:
+      --json            Print full JSON output
+  -h, --help            Show help information
+
+Examples:
+  $ blnk ledgers create
+  $ blnk ledgers c
+  $ blnk ledgers create --json
+```
+
+---
+
+## balances
+
+Use the `balances` command to make requests (create, list, update) on balances.
+
+```bash
+blnk balances [command] [options]
+```
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | View all balances |
+| create | c | Create a new balance |
+| update | u | Link a balance to an identity |
+
+### View balances
+
+View a list of your balances.
+
+```bash
+blnk balances list [options]
+```
+
+```bash Options
+Description:
+  View a list of your balances.
+
+Usage:
+  blnk balances list [options]
+
+Options:
+Single list:
+      --id <balance-id>           Get a balance by ID
+      --json                      Print full JSON output for single fetch
+
+Group list:
+      --<field> <value>           Filter by any field (quote comma-separated values, e.g. --currency "USD,EUR")
+  -p, --page <number>             Page number (default: 1, e.g. 2)
+      --per-page <number>         Results per page (default: 10, e.g. 25)
+  -h, --help                      Show help information
+
+Examples:
+  $ blnk balances list
+  $ blnk balances l --page 2 --per-page 15
+  $ blnk balances l --currency "USD,EUR" --indicator World
+```
+
+### Create a balance
+
+Create a new balance interactively.
+
+```bash
+blnk balances create
+```
+
+```bash Options
+Description:
+  This command creates a new balance interactively.
+
+Usage:
+  blnk balances create
+
+Options:
+      --json            Print full JSON output
+  -h, --help            Show help information
+
+Examples:
+  $ blnk balances create
+  $ blnk balances c
+  $ blnk balances create --json
+```
+
+### Link a balance to an identity
+
+Link a balance to an identity.
+
+```bash
+blnk balances update <balance-id>
+```
+
+```bash Options
+Description:
+  Link a balance to an identity.
+
+Usage:
+  blnk balances update <balance-id>
+
+Options:
+  -h, --help            Show help information
+
+Examples:
+  $ blnk balances update bln_abc123
+  $ blnk balances u bln_abc123
+```
+
+---
+
+## transactions
+
+Use the `transactions` command to make requests (create, list, update) on transactions.
+
+```bash
+blnk transactions [command] [options]
+```
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | View all transactions |
+| create | c | Create a new transaction |
+| update | u | Commit, void, or refund a transaction |
+
+### View transactions
+
+View a list of your transactions.
+
+```bash
+blnk transactions list [options]
+```
+
+```bash Options
+Description:
+  View a list of your transactions.
+
+Usage:
+  blnk transactions list [options]
+
+Options:
+Single list:
+      --id <transaction-id>       Get a transaction by ID
+      --json                      Print full JSON output for single fetch
+
+Group list:
+      --<field> <value>           Filter by any field (quote comma-separated values, e.g. --currency "USD,EUR")
+  -p, --page <number>             Page number (default: 1, e.g. 2)
+      --per-page <number>         Results per page (default: 10, e.g. 25)
+  -h, --help                      Show help information
+
+Examples:
+  $ blnk transactions list
+  $ blnk transactions l --page 3 --per-page 25
+  $ blnk transactions l --status APPLIED --currency "USD,EUR"
+  $ blnk transactions l --balance-id bln_abc123 --status APPLIED
+```
+
+### Create a transaction
+
+Create a new transaction interactively.
+
+```bash
+blnk transactions create
+```
+
+<Tip>
+For creating more complex transactions, use the API. See the [API documentation](https://docs.blnkfinance.com).
+</Tip>
+
+```bash Options
+Description:
+  This command creates a new transaction interactively.
+
+Usage:
+  blnk transactions create
+
+Options:
+      --json            Print full JSON output
+  -h, --help            Show help information
+
+Examples:
+  $ blnk transactions create
+  $ blnk transactions c
+  $ blnk transactions create --json
+
+Note:
+  For creating more complex transactions, please use the API. Refer to the API documentation at https://docs.blnkfinance.com
+```
+
+### Commit, void, or refund a transaction
+
+Commit, void, or refund a transaction.
+
+```bash
+blnk transactions update [options] <transaction-id>
+```
+
+```bash Options
+Description:
+  Commit, void, or refund a transaction.
+
+Usage:
+  blnk transactions update [options] <transaction-id>
+
+Options:
+      --commit         Fully commit an inflight transaction
+      --void           Void an inflight transaction
+      --refund         Refund a transaction
+  -h, --help           Show help information
+
+Examples:
+  $ blnk transactions update --commit txn_abc123
+  $ blnk transactions u --void txn_abc123
+  $ blnk transactions u --refund txn_abc123
+```
+
+---
+
+## identities
+
+Use the `identities` command to make requests (create, list) on identities.
+
+```bash
+blnk identities [command] [options]
+```
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | View all identities |
+| create | c | Create a new identity |
+
+### View identities
+
+View a list of your identities.
+
+```bash
+blnk identities list [options]
+```
+
+```bash Options
+Description:
+  View a list of your identities.
+
+Usage:
+  blnk identities list [options]
+
+Options:
+Single list:
+      --id <identity-id>           Get an identity by ID
+      --json                       Print full JSON output for single fetch
+
+Group list:
+      --<field> <value>            Filter by any field (quote comma-separated values, e.g. --currency "USD,EUR")
+  -p, --page <number>              Page number (default: 1, e.g. 2)
+      --per-page <number>          Results per page (default: 10, e.g. 25)
+  -h, --help                       Show help information
+
+Examples:
+  $ blnk identities list
+  $ blnk identities l --page 2 --per-page 20
+  $ blnk identities l --email-address jane@example.com
+  $ blnk identities l --first-name Jane --last-name Doe
+```
+
+### Create an identity
+
+Create a new identity interactively.
+
+```bash
+blnk identities create
+```
+
+```bash Options
+Description:
+  This command creates a new identity interactively.
+
+Usage:
+  blnk identities create
+
+Options:
+      --json            Print full JSON output
+  -h, --help            Show help information
+
+Examples:
+  $ blnk identities create
+  $ blnk identities c
+  $ blnk identities create --json
+```
+
+---
+
+## reconciliations
+
+Use the `reconciliations` command to view reconciliations.
+
+```bash
+blnk reconciliations [command] [options]
+```
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | View all reconciliations |
+
+### View reconciliations
+
+View a list of your reconciliations.
+
+```bash
+blnk reconciliations list [options]
+```
+
+```bash Options
+Description:
+  View a list of your reconciliations.
+
+Usage:
+  blnk reconciliations list [options]
+
+Options:
+Group list:
+      --<field> <value>           Filter by any field (quote comma-separated values, e.g. --currency "USD,EUR")
+  -p, --page <number>             Page number (default: 1, e.g. 2)
+      --per-page <number>         Results per page (default: 10, e.g. 25)
+  -h, --help                      Show help information
+
+Examples:
+  $ blnk reconciliations list
+  $ blnk reconciliations l -p 2 --per-page 20
+  $ blnk reconciliations l --status COMPLETED --upload-id upl_abc123
+```
+
+---
+
+## community
+
+Use the `community` command to open community resources (Discord) in your browser.
+
+```bash
+blnk community
+```
+
+```bash Options
+Description:
+  Open community resources in your browser.
+
+Usage:
+  blnk community
+
+Options:
+  -h, --help            Show help information
+
+Examples:
+  $ blnk community
+```
+
+---
+
+## docs
+
+Use the `docs` command to open Blnk developer documentation in your browser.
+
+```bash
+blnk docs
+```
+
+```bash Options
+Description:
+  Open Blnk documentation in your browser.
+
+Usage:
+  blnk docs
+
+Options:
+  -h, --help            Show help information
+
+Examples:
+  $ blnk docs
+```
+
+---
+
+<NeedHelp />
