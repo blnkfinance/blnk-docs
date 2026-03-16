@@ -11,7 +11,7 @@ Every transaction in your system carries signals that indicate risk. A payment m
 
 Blnk Watch [evaluates those signals](#evaluation-workflow) using [rules you define](#rule-evaluation) and returns a [risk verdict](#final-verdict) for each transaction. It runs alongside your Blnk Ledger and allows you to apply checks before, during, or after a transaction is processed.
 
-When a transaction occurs, Watch evaluates it against your rules and produces a verdict such as `allow`, `review`, `block`, etc.
+When a transaction occurs, Watch evaluates it against your rules and produces a verdict such as `allow`, `approve`, `alert`, `review`, `deny`, or `block`.
 
 With Watch, it becomes easier to enforce controls like:
 
@@ -58,7 +58,7 @@ The result is a consistent risk assessment that your system can use to determine
 
 Rules define the decision logic used by Watch. They determine how transactions are evaluated and ultimately classified.
 
-You define and manage these rules using the [Watch DSL](/watch/rules). Every rule contains two main parts:
+You define and manage these rules using the [Rules Language](/watch/rules/rule-structure). Every rule contains two main parts:
 
 1. A `when` condition that describes the pattern Watch should look for in a transaction.
 2. A `then` action that defines the outcome when the condition triggers, including the verdict, score, and reason.
@@ -100,9 +100,12 @@ After collecting all rule outcomes, Watch produces one consolidated result for t
 Your app can then act in a deterministic way:
 
 1. Continue normal processing for `allow`.
-2. Route the transaction for additional checks for `review`.
-3. Stop or reject the transaction for `block`.
+2. Explicitly accept trusted transactions for `approve`.
+3. Notify or log mild anomalies for `alert`.
+4. Route the transaction for additional checks for `review`.
+5. Reject policy-violating transactions for `deny`.
+6. Stop or reject the transaction for `block`.
 
 <Note>
-**Keep in mind:** Watch supports more verdicts than these three. You can define custom actions in your rules to match your workflow. 
+Watch supports the verdicts `allow`, `approve`, `alert`, `review`, `deny`, and `block`.
 </Note>

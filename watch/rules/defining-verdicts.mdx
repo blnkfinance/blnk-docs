@@ -1,0 +1,187 @@
+---
+sidebarTitle: "Defining verdicts"
+title: "Defining verdicts"
+description: "Define the outcome of a matching rule: verdict, score, and reason."
+noindex: true
+---
+
+## Overview
+
+When a rule matches, the `then` block tells Watch what outcome to produce. In practice it answers three questions: what should happen, how strong the signal is, and why the rule matched. Those are expressed as **verdict**, **score**, and **reason**.
+
+---
+
+## Verdicts
+
+Watch supports six verdicts. Choose the one that matches the action your system should take after the rule fires.
+
+| Verdict | When to use it | Example use case |
+| --- | --- | --- |
+| `allow` | Transaction is acceptable; you still want an explicit outcome recorded. | Low-risk internal transfer |
+| `approve` | Explicitly mark as approved by rule logic. | Trusted partner payout flow |
+| `alert` | Notify or log without a hard stop. | Mild anomaly to monitor |
+| `review` | Transaction needs more scrutiny before you trust it. | Suspicious but not definitive fraud signal |
+| `deny` | Explicitly deny via rule logic. | Policy-based rejection |
+| `block` | Stop the transaction immediately. | Sanctioned destination or known fraud pattern |
+
+Example of each:
+
+```bash
+then allow
+  score 0.0
+  reason "Trusted internal transaction"
+```
+
+```bash
+then approve
+  score 0.1
+  reason "Transaction matches a trusted partner policy"
+```
+
+```bash
+then alert
+  score 0.3
+  reason "Transaction should be monitored"
+```
+
+```bash
+then review
+  score 0.6
+  reason "Transaction requires manual review"
+```
+
+```bash
+then deny
+  score 0.9
+  reason "Transaction violates policy"
+```
+
+```bash
+then block
+  score 1.0
+  reason "Destination matches blocked entity"
+```
+
+Pick the verdict that reflects the operational action your system should take after the rule matches.
+
+### Verdict block quick reference
+
+| Part | Purpose | Example |
+| --- | --- | --- |
+| `then <verdict>` | Sets the outcome | `then review` |
+| `score <number>` | Rule's risk weight | `score 0.6` |
+| `reason "<text>"` | Explains the match | `reason "Large transfer from new account"` |
+
+---
+
+## Score
+
+`score` is the rule's risk weight. Watch doesn't impose a risk policy for you—you define the scale based on your risk appetite, review process, and threshold model. So a score of `0.3` might be a weak signal in one system and a review threshold in another; `1.0` is often reserved for hard-stop conditions.
+
+```bash
+rule HighValueReview {
+  when amount > 10000
+
+  then review
+    score 0.5
+    reason "Large transaction exceeds review threshold"
+}
+```
+
+Consistency matters: similar patterns should use similar scores so your rule set behaves predictably.
+
+---
+
+## Reason
+
+`reason` is the human-readable explanation for why the rule triggered. It shows up in debugging, analyst workflows, audit trails, webhook payloads, and logs. Write reasons so they stand on their own when someone reads them later—specific, short, and tied to the actual condition.
+
+```bash
+rule SuspiciousKeywordTransfer {
+  when description regex "(?i)(gift.?card|crypto)" and amount > 1000
+
+  then review
+    score 0.7
+    reason "Suspicious keywords found in a high-value transaction description"
+}
+```
+
+Avoid vague reasons like "Rule matched" or "Looks risky."
+
+---
+
+## Full rule examples by verdict
+
+**Allow** — e.g. trusted channel:
+
+```bash
+rule TrustedSystemFlow {
+  when meta_data.channel == "internal_ops"
+
+  then allow
+    score 0.0
+    reason "Internal operations channel"
+}
+```
+
+**Alert** — e.g. monitor without blocking:
+
+```bash
+rule MonitorPromoReuse {
+  when meta_data.promo_code != ""
+    and count(when source == $current.source, "PT24H") >= 2
+
+  then alert
+    score 0.25
+    reason "Repeated promo usage from the same source"
+}
+```
+
+**Review** — e.g. new account, large transfer:
+
+```bash
+rule NewAccountLargeTransfer {
+  when meta_data.account_age_days < 7 and amount > 3000
+
+  then review
+    score 0.65
+    reason "Large transfer from a recently created account"
+}
+```
+
+**Approve** — e.g. trusted partner:
+
+```bash
+rule ApproveTrustedPartner {
+  when meta_data.partner_tier == "trusted"
+    and currency == "USD"
+
+  then approve
+    score 0.1
+    reason "Trusted partner flow approved by policy"
+}
+```
+
+**Deny** — e.g. restricted channel:
+
+```bash
+rule DenyRestrictedChannel {
+  when meta_data.channel == "restricted"
+
+  then deny
+    score 0.85
+    reason "Transaction came through a restricted channel"
+}
+```
+
+**Block** — e.g. sanctioned destination:
+
+```bash
+rule BlockSanctionedDestination {
+  when meta_data.destination_country in ("IR", "KP", "SY")
+
+  then block
+    score 1.0
+    reason "Destination country is blocked by policy"
+}
+```

@@ -1,0 +1,272 @@
+---
+sidebarTitle: "Setting conditions"
+title: "Setting conditions"
+description: "Write conditions in the Blnk Watch DSL: comparisons, logical operators, aggregates, and time-based checks."
+noindex: true
+---
+
+## Overview
+
+The `when` clause describes the transaction pattern Watch should detect. You start with simple field comparisons, then combine them with logical operators, add aggregates for activity over time, and use time-based checks when the transaction timestamp matters.
+
+Rules still evaluate **transactions only**. If you need extra context, include it in `meta_data` on the transaction first.
+
+---
+
+## Basic conditions
+
+Basic conditions compare transaction fields to literal values. You can compare numeric fields (e.g. `amount`), string fields (e.g. `currency`, `source`, `destination`), and metadata (e.g. `meta_data.kyc_tier`).
+
+Example: a simple amount threshold.
+
+```bash
+rule LargeTransfer {
+  when amount > 10000
+
+  then review
+    score 0.6
+    reason "Transaction amount exceeds 10,000"
+}
+```
+
+Example: combining metadata and amount.
+
+```bash
+rule LowKYCLargeTransfer {
+  when meta_data.kyc_tier == 1 and amount > 5000
+
+  then review
+    score 0.7
+    reason "Large transfer from tier-1 KYC account"
+}
+```
+
+### Comparison operators
+
+| Operator | Meaning | Example |
+| --- | --- | --- |
+| `==` | equal to | `currency == "USD"` |
+| `!=` | not equal to | `source != destination` |
+| `>` | greater than | `amount > 4000` |
+| `>=` | greater than or equal to | `amount >= 4000` |
+| `<` | less than | `amount < 100` |
+| `<=` | less than or equal to | `amount <= 100` |
+| `in` | value is in a list | `meta_data.channel in ("card", "bank_transfer")` |
+| `regex` | matches a regular expression | `description regex "(?i)(gift.?card|crypto)"` |
+| `not_regex` | does not match a regular expression | `description not_regex "(?i)test"` |
+
+---
+
+## Logical operators
+
+Use logical operators to combine multiple checks in the same `when` clause. You can put `and` and `or` on the next line for readability when the condition is long.
+
+**and** — Use when **every** condition must be true.
+
+```bash
+rule HighValueUSDTransfer {
+  when amount > 4000 and currency == "USD"
+
+  then review
+    score 0.5
+    reason "USD transaction exceeds 4,000"
+}
+```
+
+**or** — Use when **either** condition is enough to match.
+
+```bash
+rule HighRiskRoute {
+  when meta_data.source_country != meta_data.destination_country
+    or meta_data.destination_country in ("IR", "KP", "SY")
+
+  then review
+    score 0.7
+    reason "Cross-border or high-risk destination detected"
+}
+```
+
+You can break after `and` or `or` so each condition sits on its own line:
+
+```bash
+rule LowKycDailyLimit {
+  when meta_data.kyc_tier == 1
+    and amount > meta_data.daily_limit
+    or meta_data.kyc_tier == 2
+
+  then review
+    score 0.5
+    reason "Transaction amount exceeds daily limit for tier-1 user"
+}
+```
+
+**Negation** — The DSL doesn't have a standalone `not` operator. Express negative checks with `!=` for inequality, `not_regex` for inverse pattern matching, or by rewriting the condition so the unwanted case is excluded.
+
+```bash
+rule NonProductionTraffic {
+  when meta_data.environment != "production"
+
+  then allow
+    score 0.0
+    reason "Non-production transaction"
+}
+```
+
+---
+
+## Dynamic references
+
+Dynamic references let a rule reuse values from the transaction currently being evaluated.
+
+The main form is:
+
+```text
+$current.<field>
+```
+
+Common examples:
+
+- `$current.source`
+- `$current.destination`
+- `$current.amount`
+- `$current.currency`
+- `$current.meta_data.promo_code`
+
+Use dynamic references when the comparison should adapt to the transaction being checked rather than compare against a fixed literal.
+
+```bash
+rule SameSourceAndDestination {
+  when source == $current.destination
+
+  then review
+    score 0.45
+    reason "Source and destination resolve to the same account"
+}
+```
+
+They are most useful in aggregate filters and repeated-pattern rules:
+
+```bash
+rule RepeatDestinationActivity {
+  when count(when destination == $current.destination, "PT1H") > 3
+
+  then review
+    score 0.6
+    reason "Repeated transactions to the same destination in one hour"
+}
+```
+
+You can also use them with metadata fields:
+
+```bash
+rule RepeatPromoCode {
+  when meta_data.promo_code == $current.meta_data.promo_code
+
+  then alert
+    score 0.2
+    reason "Current transaction repeats the same promo code"
+}
+```
+
+---
+
+## Aggregate operators
+
+Aggregate conditions look at transaction activity over a time window. That's how you detect patterns like repeated transactions from the same source, burst activity to the same destination, or cumulative spend over a period.
+
+**count** — Use when you care about how many matching transactions occurred.
+
+```bash
+rule BurstToSameDestination {
+  when count(when destination == $current.destination, "PT30M") >= 5
+
+  then review
+    score 0.65
+    reason "Five or more transactions to the same destination in 30 minutes"
+}
+```
+
+**sum** — Use when you care about total value over a window.
+
+```bash
+rule HighSourceOutflow {
+  when sum(amount when source == $current.source, "PT24H") > 25000
+
+  then review
+    score 0.75
+    reason "Source account exceeded 24-hour outflow threshold"
+}
+```
+
+Aggregate windows use ISO 8601 durations:
+
+| Window | Meaning |
+| --- | --- |
+| `PT30M` | 30 minutes |
+| `PT1H` | 1 hour |
+| `PT24H` | 24 hours |
+| `P7D` | 7 days |
+
+`$current` lets the rule compare historical activity to the transaction being evaluated. For example, `$current.source` means "the source on this transaction."
+
+### Aggregate quick reference
+
+| Pattern | Syntax | Example |
+| --- | --- | --- |
+| Dynamic reference | `$current.<field>` | `destination == $current.destination` |
+| Count in window | `count(when <filter>, "<window>")` | `count(when source == $current.source, "PT1H") > 3` |
+| Sum in window | `sum(amount when <filter>, "<window>")` | `sum(amount when source == $current.source, "PT24H") > 5000` |
+
+---
+
+## Date and time operators
+
+Time-based checks use the transaction timestamp Watch evaluates (in practice, the event time you pass in; when you inject via the API, that's typically `created_at`). You can restrict by hour, weekday, or calendar date.
+
+For `day_of_week(timestamp)`, use `0` for Sunday and `6` for Saturday.
+
+**Hour of day:**
+
+```bash
+rule LateNightLargeTransfer {
+  when hour_of_day(timestamp) >= 22 and amount > 3000
+
+  then review
+    score 0.6
+    reason "Large transaction during late-night hours"
+}
+```
+
+**Weekend:**
+
+```bash
+rule WeekendCashout {
+  when day_of_week(timestamp) in (0, 6) and amount > 5000
+
+  then review
+    score 0.55
+    reason "Large weekend cashout"
+}
+```
+
+**Calendar date:**
+
+```bash
+rule ChristmasTransfers {
+  when month_of_year(timestamp) == 12 and day_of_month(timestamp) == 25
+
+  then review
+    score 0.4
+    reason "Transaction occurred on December 25"
+}
+```
+
+Time-based conditions are often more effective when combined with amount, metadata, or aggregate activity.
+
+### Time quick reference
+
+| Check | Syntax | Example |
+| --- | --- | --- |
+| Hour | `hour_of_day(timestamp)` | `hour_of_day(timestamp) >= 22` |
+| Weekday | `day_of_week(timestamp)` | `day_of_week(timestamp) in (0, 6)` |
+| Calendar | `month_of_year(timestamp)`, `day_of_month(timestamp)` | `month_of_year(timestamp) == 12` |

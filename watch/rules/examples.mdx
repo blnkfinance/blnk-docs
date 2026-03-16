@@ -1,0 +1,113 @@
+---
+sidebarTitle: "Examples"
+title: "Examples"
+description: "Copy-ready Blnk Watch DSL examples for common transaction monitoring patterns."
+noindex: true
+---
+
+## Overview
+
+This page collects complete rules you can copy and adapt. Each example focuses on a common pattern and keeps the explanation short so you can scan and tweak quickly.
+
+---
+
+## High value transaction detection
+
+Use a simple amount threshold for a specific currency:
+
+```bash
+rule HighValueUSD {
+  when amount > 4000 and currency == "USD"
+
+  then review
+    score 0.5
+    reason "USD transaction exceeds 4,000"
+}
+```
+
+---
+
+## Velocity and burst activity
+
+Detect rapid small transactions from the same source that a single-transaction rule would miss:
+
+```bash
+rule RapidSmallBurst {
+  when amount < 500
+    and count(when source == $current.source, "PT30M") >= 5
+
+  then review
+    score 0.65
+    reason "Rapid succession of small transactions from the same source"
+}
+```
+
+---
+
+## Time-based restrictions
+
+When transaction timing is part of your risk model:
+
+```bash
+rule LateNightLargeTransfer {
+  when hour_of_day(timestamp) >= 22
+    and amount > 3000
+
+  then review
+    score 0.6
+    reason "Large transaction during late-night hours"
+}
+```
+
+---
+
+## Suspicious transaction patterns
+
+Useful when free-form descriptions carry behavioral clues:
+
+```bash
+rule SuspiciousDescriptionPattern {
+  when description regex "(?i)(gift.?card|crypto|wallet|western.?union)"
+    and amount > 1000
+
+  then review
+    score 0.7
+    reason "Suspicious keywords found in a high-value transaction description"
+}
+```
+
+---
+
+## Promo abuse detection
+
+Assumes your app passes promo information in `meta_data`:
+
+```bash
+rule PromoCodeReuseBurst {
+  when meta_data.promo_code != ""
+    and count(when source == $current.source, "PT24H") >= 3
+    and sum(amount when source == $current.source, "PT24H") < 200
+
+  then review
+    score 0.55
+    reason "Repeated low-value transactions with promo usage in 24 hours"
+}
+```
+
+---
+
+## Cross-border risk
+
+Use metadata-driven rules when the transaction needs extra business or compliance context:
+
+```bash
+rule CrossBorderHighRiskRoute {
+  when meta_data.source_country != meta_data.destination_country
+    and meta_data.destination_country in ("IR", "KP", "SY")
+    and amount > 1000
+
+  then block
+    score 1.0
+    reason "High-value transfer to a blocked destination country"
+}
+```
