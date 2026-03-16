@@ -1,0 +1,115 @@
+---
+sidebarTitle: "Configuration file"
+title: "Configuration"
+description: "Configure Blnk Watch with environment variables."
+noindex: true
+---
+
+## Overview
+
+Blnk Watch is configured with environment variables, usually through a `.env` file.
+
+The minimum configuration depends on how you run Watch:
+
+- If you run `watch` only and inject transactions through the API, configure where Watch should load rules from.
+- If you run `start`, `sync`, or `sync-once`, add `DB_URL` so Watch can read transactions from Blnk Core.
+
+Watch loads `.env` by default. 
+
+```bash Default .env
+# Default rules directory in your project root
+WATCH_SCRIPT_DIR=watch_scripts
+
+# If using start, sync, or sync-once
+DB_URL=postgres://user:password@localhost:5432/blnk?sslmode=disable
+```
+
+---
+
+## Core connection configuration
+
+Use these settings when Watch needs to read transactions from Blnk Core. This is required for `start`, `sync`, and `sync-once`. It is not required if you run `watch` in API-only mode and inject transactions manually.
+
+```bash .env
+DB_URL=postgres://user:password@localhost:5432/blnk?sslmode=disable
+```
+
+| Variable | Description | Default | Required |
+| --- | --- | --- | --- |
+| `DB_URL` | PostgreSQL connection string for the Blnk Core database. Watch uses this for watermark sync and historical transaction processing. | None | Conditional |
+
+---
+
+## Rule source configuration
+
+These settings control where Watch loads rules from. You can load rules from a local directory or point Watch at a Git repository that contains `.ws` rule files.
+
+If you set `WATCH_SCRIPT_GIT_REPO`, Watch clones the repository into `WATCH_SCRIPT_DIR`, processes the rules there, and keeps that local copy in sync.
+
+```bash .env
+# Local directory only (default)
+WATCH_SCRIPT_DIR=watch_scripts
+
+# With Git-based rule loading
+WATCH_SCRIPT_GIT_REPO=https://github.com/your-org/watch-rules.git
+WATCH_SCRIPT_GIT_BRANCH=main
+```
+
+| Variable | Description | Default | Required |
+| --- | --- | --- | --- |
+| `WATCH_SCRIPT_DIR` | Local directory Watch reads for `.ws` rule files. This is also the destination directory when Git-based rule loading is enabled. | `watch_scripts` | No |
+| `WATCH_SCRIPT_GIT_REPO` | Git repository URL containing Watch rules. When set, Watch pulls rules from this repository instead of relying only on local files. | None | No |
+| `WATCH_SCRIPT_GIT_BRANCH` | Git branch Watch should track when `WATCH_SCRIPT_GIT_REPO` is set. | `main` | No |
+
+<Note>
+Git-based rule loading requires `git` to be installed on the machine running Watch. For private repositories, Git authentication (e.g. SSH keys, credential helper, or personal access token) must be set up on that machine so Watch can clone and pull the repo.
+</Note>
+
+---
+
+## Core sync configuration
+
+These settings apply when Watch **syncs** transaction data from Blnk Core (e.g. with `start`, `sync`, or `sync-once`). They control where the initial sync starts when there is no saved sync progress yet. They do not control rule evaluation.
+
+Use `SYNC_TRANSACTION_LOOKBACK` when you want Watch to start from a relative window (e.g. the last 48 hours). Use `SYNC_TRANSACTION_START_TIME` when you want a fixed start time. If both are set, `SYNC_TRANSACTION_START_TIME` takes precedence.
+
+{/* Sync interval and batch size are runtime settings too, but they are configured with CLI flags such as `-sync-interval` and `-batch-size`, not environment variables. See [Commands](/watch/commands) for those options. */}
+
+```bash .env
+# Relative lookback (e.g. last 48 hours)
+SYNC_TRANSACTION_LOOKBACK=48h
+
+# Or fixed start time (overrides lookback when set)
+SYNC_TRANSACTION_START_TIME=2026-03-11T00:00:00Z
+```
+
+| Variable | Description | Default | Required |
+| --- | --- | --- | --- |
+| `SYNC_TRANSACTION_LOOKBACK` | How far back to sync when starting (e.g. `48h`, `168h`). Go duration format. | `48h` | No |
+| `SYNC_TRANSACTION_START_TIME` | Absolute starting point for the initial sync. Accepted formats are `2026-03-11T00:00:00Z`, `2026-03-11 15:04:05`, or `2026-03-11`. | None | No |
+
+---
+
+## Alert webhook configuration
+
+These settings control alert webhook delivery when one or more rules are triggered by a transaction within Watch.
+
+Watch can send alerts to a primary webhook and fall back to secondary or backup endpoints if needed.
+
+```bash .env
+ALERT_WEBHOOK_URL=https://your-server.com/alerts
+ALERT_WEBHOOK_SECONDARY_URL=https://your-server.com/alerts-secondary
+ALERT_WEBHOOK_BACKUP_URL=https://your-server.com/alerts-backup
+ALERT_WEBHOOK_API_KEY=your_api_key_here
+ALERT_WEBHOOK_RISK_THRESHOLD=0.5
+ALERT_WEBHOOK_ENABLED=true
+```
+
+| Variable | Description | Default | Required |
+| --- | --- | --- | --- |
+| `ALERT_WEBHOOK_URL` | Primary alert webhook URL. | None | No |
+| `ALERT_WEBHOOK_SECONDARY_URL` | Secondary fallback alert webhook URL. Watch uses it if the primary webhook fails. | None | No |
+| `ALERT_WEBHOOK_BACKUP_URL` | Final fallback alert webhook URL. Watch uses it if earlier webhook attempts fail. | None | No |
+| `ALERT_WEBHOOK_API_KEY` | Bearer token sent in the `Authorization` header for alert webhook requests. | None | No |
+| `ALERT_WEBHOOK_RISK_THRESHOLD` | Minimum risk score that should trigger an alert. | `0.5` | No |
+| `ALERT_WEBHOOK_ENABLED` | Enables or disables alert webhook delivery. Set it to `false` to disable. | `true` | No |

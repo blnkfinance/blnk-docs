@@ -1,0 +1,74 @@
+---
+sidebarTitle: "Inject transaction"
+title: "Inject Transaction"
+description: "Inject a transaction into the watch system for real-time risk evaluation."
+api: "POST http://localhost:8081/inject"
+noindex: true
+"og:title": "Inject Transaction • Watch API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+When using Watch, use this endpoint to inject a transaction into the service for real-time risk evaluation.
+
+<Note>Any extra Blnk attributes you want rules to use should be sent inside `meta_data`.</Note>
+
+<Info>The field names match Blnk transaction naming — `transaction_id`, `amount`, `currency`, `source`, `destination`, `created_at`, `meta_data` — so mapping from Blnk Core stays predictable. </Info>
+
+### Body
+
+<ParamField body="amount" type="number">
+  The transaction amount to evaluate.
+</ParamField>
+<ParamField body="currency" type="string">
+  The three-letter ISO currency code. For example, `USD`.
+</ParamField>
+<ParamField body="transaction_id" type="string">
+  A unique identifier for the transaction. If not provided, Watch generates a UUID.
+</ParamField>
+<ParamField body="source" type="string">
+  The source balance identifier.
+</ParamField>
+<ParamField body="destination" type="string">
+  The destination balance identifier.
+</ParamField>
+<ParamField body="description" type="string">
+  A free-form description of the transaction.
+</ParamField>
+<ParamField body="created_at" type="string">
+  The transaction timestamp in ISO 8601 format. If not provided, Watch uses the current server time.
+</ParamField>
+<ParamField body="meta_data" type="object">
+  Additional metadata as key-value pairs. Use this to pass Blnk attributes needed by your rules.
+</ParamField>
+
+<RequestExample>
+```bash
+curl -X POST http://localhost:8081/inject \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 5000.00,
+    "currency": "USD",
+    "transaction_id": "txn_ref_001",
+    "source": "balance_123",
+    "destination": "balance_456",
+    "description": "High-value transfer",
+    "created_at": "2026-03-16T09:00:00Z",
+    "meta_data": {
+      "merchant_category": "finance",
+      "country": "US"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "transaction_id": "0f81a4e1-2b8d-496b-8d5d-a4e1e980f1a6",
+  "message": "Call GET /transactions/{id} to fetch the processed transaction or set ALERT_WEBHOOK_URL to get webhooks when a rule triggers for the transaction."
+}
+```
+</ResponseExample>
+
+<NeedHelp />
