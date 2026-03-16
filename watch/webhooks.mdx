@@ -1,0 +1,100 @@
+---
+sidebarTitle: "Webhooks"
+title: "Managing Alert Webhooks"
+description: "Configure and use alert webhooks to receive risk alerts when Watch rules are triggered."
+---
+
+Alert webhooks let you send risk alerts to your own endpoints when one or more rules trigger for a transaction. 
+
+You configure webhook URLs and options with environment variables; Watch sends a POST request with the consolidated verdict, score, and evaluation data whenever the alert criteria are met.
+
+---
+
+## How alert webhooks work
+
+Enable alert webhooks by setting the webhook URL and turning delivery on in your [`.env` file](/watch/configuration#alert-webhook-configuration):
+
+```bash .env
+# Where to send alert payloads (required for delivery)
+ALERT_WEBHOOK_URL=https://your-server.com/alerts
+
+# Set to false to disable alert delivery; default is true
+ALERT_WEBHOOK_ENABLED=true
+```
+
+Watch sends an alert webhook only when all of these conditions are met:
+
+1. **At least one rule triggered** for the transaction during evaluation.
+2. **Alert webhooks are enabled** — `ALERT_WEBHOOK_ENABLED` is not set to `false`.
+3. **Alert criteria are met** — either:
+   - The consolidated **risk score** is greater than or equal to `ALERT_WEBHOOK_RISK_THRESHOLD` (default is `0.5`), or
+   - The consolidated **verdict** is `block` or `review`.
+
+If no webhook URLs are set, Watch skips delivery and does not retry.
+
+---
+
+## Delivery behavior
+
+Watch sends a `POST` request with `Content-Type: application/json` and the [payload structure](#webhook-payload-structure) below. 
+
+If you set `ALERT_WEBHOOK_API_KEY`, Watch includes `Authorization: Bearer <value>` on each request. Your endpoint should return a 2xx status code to indicate success.
+
+---
+
+## Webhook payload structure
+
+Here's the alert payload sent when a transaction triggers one or more rules:
+
+```json wrap
+{
+  "transaction_id": "txn_abc123",
+  "description": "Transaction amount exceeds 10,000 in any currency.",
+  "risk_level": "medium",
+  "risk_score": 0.65,
+  "verdict": "review",
+  "source_count": 2,
+  "evaluation_data": {
+    "final_risk_score": 0.65,
+    "final_verdict": "review",
+    "final_reason": "Transaction amount exceeds 10,000 in any currency.",
+    "source_count": 2,
+    "transaction_amount": 15000,
+    "transaction_reference": "ref_001",
+    "dsl_verdicts": [
+      { "rule": "HighValueCheck", "verdict": "review", "reason": "Amount > 10000" },
+      { "rule": "VelocityCheck", "verdict": "allow", "reason": "" }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `transaction_id` | string | ID of the transaction that was evaluated. |
+| `description` | string | Human-readable summary; usually the consolidated reason. |
+| `risk_level` | string | One of `very_low`, `low`, `medium`, `high` (derived from risk score). |
+| `risk_score` | number | Consolidated risk score (0–1). |
+| `verdict` | string | Consolidated verdict (e.g. `allow`, `review`, `block`). |
+| `source_count` | integer | Number of rules that triggered for this transaction. |
+| `evaluation_data` | object | Detailed evaluation output (see below). |
+
+The `evaluation_data` object contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `final_risk_score` | number | Same as top-level `risk_score`. |
+| `final_verdict` | string | Same as top-level `verdict`. |
+| `final_reason` | string | Same as top-level `description`. |
+| `source_count` | integer | Same as top-level `source_count`. |
+| `transaction_amount` | number | Transaction amount. |
+| `transaction_reference` | string | Transaction reference, if set. |
+| `dsl_verdicts` | array | Per-rule verdicts and reasons when available. |
+
+---
+
+## Security considerations
+
+- Use HTTPS for all webhook URLs in production.
+- Set `ALERT_WEBHOOK_API_KEY` and validate the `Authorization: Bearer <token>` header in your endpoint to ensure requests are from Watch.
+- Do not log or store the API key in plain text.

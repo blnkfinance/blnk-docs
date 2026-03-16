@@ -4,10 +4,214 @@ title: "Commands"
 description: "Reference for Blnk Watch CLI commands and options."
 ---
 
-## Overview
+Blnk Watch exposes a small set of CLI commands for running the service and syncing transactions from Blnk Core.
 
-Content coming soon.
+<Info>
+The `make` targets run the default command shape only. 
 
-## Command reference
+If you need to change flags such as `-port`, `-sync-interval`, or `-batch-size`, use the `blnk-watch` binary directly.
+</Info>
 
-Placeholder for commands reference.
+---
+
+## start
+
+Use `start` to run Watch in continuous mode. It starts the Watch HTTP service and, when `DB_URL` is set, starts the watermark syncer in the same process.
+
+This is the simplest way to run Watch against Blnk Core in one process. New transactions are continuously pulled from Blnk Core on a schedule, written into Watch, and evaluated against your active rules as they flow in.
+
+Use `start` when you want the API and automatic Core ingestion together. If you only need the API (e.g. you send transactions via the inject API), use `watch`. If you only need to sync from Core without the API, use `sync` or `sync-once`.
+
+<Tabs>
+<Tab title="Using make">
+Runs the default command only. 
+```bash wrap
+make start
+```
+</Tab>
+<Tab title="Using Go binary">
+Use the binary to run with custom flags (port, sync interval, batch size).
+```bash wrap
+# Default: API on 8081, sync every 10s, batch size 1000
+./blnk-watch -command=start
+
+# Custom port, sync interval, and batch size
+./blnk-watch -command=start -port=9090 -sync-interval=5s -batch-size=500
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-port` | Port used by the Watch HTTP service | `8081` |
+| `-sync-interval` | How often Watch pulls new transactions from Core | `10s` |
+| `-batch-size` | Number of transactions to process per sync batch | `1000` |
+</Tab>
+</Tabs>
+
+---
+
+## install
+
+Use `install` to build and install the `blnk-watch` binary in your system.
+
+This is useful when you want to run `blnk-watch` directly from your shell instead of invoking it from the project directory.
+
+<Tabs>
+<Tab title="Using make">
+Builds the binary and installs it into `$(go env GOPATH)/bin`.
+```bash wrap
+make install
+```
+</Tab>
+<Tab title="Using Go binary">
+From the blnk-watch project root, build and install the binary into your Go path:
+```bash wrap
+go install ./cmd/blnk-watch
+```
+</Tab>
+</Tabs>
+
+> To make sure you can run `blnk-watch`, add the Go bin directory to your `PATH`. Follow the steps below for your OS:
+ 
+<Accordion title="Add Go bin to PATH" icon="terminal">
+<Tabs>
+<Tab title="macOS / Linux">
+Add to PATH for the current session:
+```bash wrap
+export PATH="$(go env GOPATH)/bin:$PATH"
+
+# Make it permanent and reload the shell (e.g. `~/.zshrc` or `~/.bashrc`)
+source ~/.zshrc
+```
+Confirm the binary is available:
+```bash wrap
+blnk-watch -command=start
+```
+</Tab>
+<Tab title="Windows">
+Add to PATH for the current session (PowerShell):
+```powershell wrap
+$env:Path += ";$(go env GOPATH)\bin"
+```
+
+To make it permanent:
+
+1. Press **Win + R**, type `sysdm.cpl`, press Enter to open System Properties.
+2. Open the **Advanced** tab → **Environment Variables**.
+3. Under **User variables**, select **Path** → **Edit**.
+4. Click **New**, then add `%USERPROFILE%\go\bin`
+5. Click **OK** on each dialog to save.
+6. Close and reopen your terminal so the updated PATH is loaded.
+
+Confirm the binary is available:
+```powershell wrap
+blnk-watch -command=start
+```
+</Tab>
+</Tabs>
+</Accordion>
+
+---
+
+## watch
+
+Use `watch` to run only the Watch service. This starts the HTTP API used to inject transactions, retrieve evaluation results, and serve the endpoints used during transaction evaluation.
+
+Use `watch` when you only need the HTTP API (e.g. you inject transactions) and do not need to pull from Blnk Core. To run both the API and Core ingestion, use `start` instead.
+
+<Tabs>
+<Tab title="Using make">
+Starts the default service command only. Use the binary if you need custom flags.
+```bash wrap
+make watch
+```
+</Tab>
+<Tab title="Using Go binary">
+Use the binary to run with a custom port or other flags.
+```bash wrap
+# Default: API on port 8081
+./blnk-watch -command=watch
+
+# Custom port
+./blnk-watch -command=watch -port=9090
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-port` | Port used by the Watch HTTP service | `8081` |
+</Tab>
+</Tabs>
+
+---
+
+## sync
+
+<Info>
+`sync` requires `DB_URL` so Watch can connect to the Blnk Core database.
+</Info>
+
+Use `sync` to run the watermark sync service continuously. This command reads transactions from Blnk Core in batches, stores them in Watch, and keeps moving forward from the current watermark.
+
+In practice, `sync` is useful for backfills, historical evaluation, or when you only need to pull transactions from Core (no HTTP API). On a fresh setup, it can process older transactions from the configured sync start point. After that, it continues syncing new transactions as they appear.
+
+`sync` does not start the Watch HTTP server. To run both the API and sync from Core, use `start` instead—you cannot run `watch` and `sync` as separate services.
+
+<Tabs>
+<Tab title="Using make">
+Runs the default continuous sync command only. Use the binary to change sync settings.
+```bash wrap
+make sync
+```
+</Tab>
+<Tab title="Using Go binary">
+Use the binary to run with a custom sync interval or batch size.
+```bash wrap
+# Default: sync every 10s, batch size 1000
+./blnk-watch -command=sync
+
+# Custom sync interval and batch size
+./blnk-watch -command=sync -sync-interval=5s -batch-size=500
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-sync-interval` | How often Watch runs the next watermark sync cycle | `10s` |
+| `-batch-size` | Number of transactions to process per sync batch | `1000` |
+</Tab>
+</Tabs>
+
+---
+
+## sync-once
+
+<Info>
+`sync-once` requires `DB_URL` so Watch can connect to the Blnk Core database.
+</Info>
+
+Use `sync-once` to run a single watermark synchronization pass and then exit. It processes available historical transactions from Blnk Core up to the current watermark and stops when that run completes.
+
+This is useful for backfills, one-off reprocessing, CI or maintenance jobs, and scheduled tasks such as cron jobs where you do not want a long-running process.
+
+Unlike `sync`, this command does not keep polling for new transactions.
+
+<Tabs>
+<Tab title="Using make">
+Runs the default one-time sync only. Use the binary if you need to change the batch size.
+```bash wrap
+make sync-once
+```
+</Tab>
+<Tab title="Using Go binary">
+Use the binary to run with a custom batch size.
+```bash wrap
+# Default: batch size 1000
+./blnk-watch -command=sync-once
+
+# Custom batch size
+./blnk-watch -command=sync-once -batch-size=2000
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-batch-size` | Number of transactions to process in the one-time sync batch loop | `1000` |
+</Tab>
+</Tabs>

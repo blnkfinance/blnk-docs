@@ -1,13 +1,107 @@
 ---
 sidebarTitle: "Core integration"
 title: "Core Integration"
-description: "Integrate Blnk Watch with Blnk Core and your transaction flow."
+description: "Connect Blnk Watch to Blnk Core so your ledger transactions start being evaluated against your rules."
 ---
 
-## Overview
+Watch becomes useful once it is connected to your Blnk Core instance. 
 
-Content coming soon.
+Connecting Watch allows transactions created in Core to be evaluated automatically against those rules as part of your transaction flow.
 
-## Integration patterns
+<Info>
+We recommend having at least one rule set up before you connect your live Blnk Core to Watch. Without rules, every transaction is evaluated as a non-match.
+</Info>
 
-Placeholder for core integration content.
+There are two ways to integrate Watch with Core:
+
+1. Sync directly from the Core database (recommended)
+2. Push transactions into Watch through the API
+
+In most setups, the recommended approach is to simply let Watch read transactions directly from the Core database as they are created.
+
+---
+
+## Sync from the Core database
+
+<Info>Ensure that `DB_URL` is set in your `.env` file.</Info>
+
+Watch connects directly to the Blnk Core database and continuously evaluates transactions as they appear. To run this, use the `start` command.
+
+```bash
+blnk-watch -command=start
+```
+
+When Watch starts, it first synchronizes historical transactions. After that initial sync, Watch keeps reading new transactions from the database. Each transaction is picked up and evaluated against your configured rules automatically.
+
+This is the simplest way to connect Watch to Core because you do not need to register webhooks or manually send transactions into Watch.
+
+In practice, the main thing you usually need to handle is what happens after evaluation. Most teams do that by consuming Watch results through [alert webhooks](/watch/webhooks).
+
+> **Use this approach when:**
+>
+>- Watch should stay aligned with the transactions already written by Blnk Core.
+>- You want historical transactions evaluated on startup before live processing continues.
+>- You want the least operational overhead between Core and Watch.
+>- You do not want to build or maintain a separate ingestion pipeline.
+
+---
+
+## Push transactions into Watch through the API
+
+Watch can also run as a pure evaluation service.
+
+In this mode, Watch exposes HTTP endpoints and expects transactions to be sent to it. Core does not get read directly from the database. Instead, something forwards transactions into Watch as they happen.
+
+You have two ways to push transactions via the API:
+
+<Tabs>
+<Tab title="Via inbound webhooks">
+Blnk Core can send transaction events directly to Watch through the `/webhook` endpoint.
+
+<Steps>
+<Step title="Run the Watch service">
+Start the Watch service 
+```bash
+blnk-watch -command=watch
+```
+</Step>
+<Step title="Register the webhook in Core">
+Register the hook in Core using the [hooks endpoint](/hooks/overview) — you can use a PRE or POST hook. 
+
+Point the hook URL to Watch's `/blnkwebhook` endpoint:
+
+```bash wrap
+curl -X POST "http://YOUR_BLNK_CORE_URL/hooks" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Watch risk evaluation",
+    "url": "http://localhost:8081/blnkwebhook",
+    "type": "POST_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3
+  }'
+```
+
+Replace `http://localhost:8081` with your Watch base URL if it runs elsewhere.
+</Step>
+<Step title="Receive and evaluate transactions">
+Once registered, every time new transactions are created, Blnk fires a webhook to Watch. Watch receives it and injects the transaction for evaluation.
+</Step>
+</Steps>
+
+This approach is useful when you want event-driven delivery into Watch without giving Watch direct database access.
+</Tab>
+<Tab title="Manual ingestion">
+You can also submit transactions directly to the Watch API using the [`/inject` endpoint](/watch/api/inject-transaction).
+
+This is useful when you want to:
+
+- test rules quickly
+- build a custom ingestion pipeline
+- send transactions from non-Core systems
+
+This gives you the most control over how transactions reach Watch, but it also means your system is responsible for sending them.
+</Tab>
+</Tabs>
