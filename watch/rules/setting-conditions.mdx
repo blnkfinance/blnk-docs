@@ -268,3 +268,115 @@ The **time window** is written as an ISO 8601 duration string in quotes.
 <Note>
 Use `PT` for time units (hours, minutes, seconds) and `P` for days. Weeks and months are not supported. Use days instead (for example `"P7D"` for one week or `"P30D"` for roughly a month).
 </Note>
+
+---
+
+## Time-based functions
+
+Time-based functions let you write rules that depend on when a transaction occurs. 
+
+For example, you might want to review large transactions late at night:
+
+```bash lateNightLargeTransfer.ws {2-4}
+rule lateNightLargeTransfer {
+  when hour_of_day(timestamp) >= 22 
+    and amount > 3000
+
+  then review
+    score 0.6
+    reason "Large USD transaction during late-night hours"
+}
+```
+
+In this rule, Watch checks the transaction timestamp and evaluates whether it occurred after 10 PM.
+
+Watch evaluates time using the timestamp provided with the transaction event. In practice this is the event time you send to Watch. 
+
+<Info>When transactions are injected through the API, this is typically the `created_at` value.</Info>
+
+You can write time-based conditions using helper functions that extract parts of the timestamp.
+
+| Function | Description | Example |
+| --- | --- | --- |
+| `hour_of_day(timestamp)` | Hour of day (0-23) | `hour_of_day(timestamp) >= 22` |
+| `day_of_week(timestamp)` | Weekday: 0 = Sunday, 6 = Saturday. With `in`, you can use day names | `day_of_week(timestamp) in (0, 6)` or `day_of_week(timestamp) in ("Saturday", "Sunday")` |
+| `day_of_month(timestamp)` | Day of month (1-31) | `day_of_month(timestamp) == 17` |
+| `day_of_year(timestamp)` | Day of year (1-366) | `day_of_year(timestamp) <= 31` |
+| `month_of_year(timestamp)` | Month (1-12) | `month_of_year(timestamp) == 3` |
+| `week_of_year(timestamp)` | ISO week number (1-53) | `week_of_year(timestamp) == 12` |
+| `year(timestamp)` | Year (e.g. 2026) | `year(timestamp) == 2026` |
+
+> **Also note:** Time-based conditions support standard comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`.
+
+> For `day_of_week`, when using the `in` operator, you can use day names instead of numbers. So `day_of_week(timestamp) in ("Saturday", "Sunday")` is equivalent to `day_of_week(timestamp) in (0, 6)`.
+
+For example, to flag high value transactions that occur on a weekend:
+
+```bash weekendHighValueTransactions.ws {2-4}
+rule weekendHighValueTransactions {
+  when day_of_week(timestamp) in ("Saturday", "Sunday")
+    and amount > 10000
+    and currency == "USD"
+
+  then review
+    score 0.45
+    reason "Transaction occurred on a weekend"
+}
+```
+
+---
+
+## "Previous transaction" function
+
+`previous_transaction` checks if any transaction in a past time window matches specific criteria. It returns `true` if at least one matching transaction exists, otherwise `false`.
+
+Use it to detect patterns like:
+
+- This source had a failed transaction recently
+- This destination already received a transaction in the last hour
+
+To use this function:
+
+```text
+previous_transaction(within: "<duration>", match: { <field>: <value>, ... })
+```
+
+- **within** — How far back to look. Uses ISO 8601 duration strings, e.g. `"PT1H"` (1 hour), `"P1D"` (1 day).
+
+- **match** — A set of fields that must all match for a transaction to count. You can use literal values, e.g. `meta_data.status: "failed"` or dynamic references, `source: $current.source`.
+
+For example, to flag and block when the same source has had a failed transaction in the last hour:
+
+```bash blockIfPreviousFailed.ws {2-6}
+rule blockIfPreviousFailed {
+  when previous_transaction(
+      within: "PT1H",
+      match: { source: "$current.source", status: "failed" }
+    )
+    and amount > 700000
+
+  then block
+    score 1.0
+    reason "Previous transaction from this source failed; blocking high amount"
+}
+```
+
+Here's another example that checks if a transaction has received at least one transaction in the last 30 minutes:
+
+```bash burstToSameDestination.ws {2-5}
+rule burstToSameDestination {
+  when previous_transaction(
+      within: "PT30M",
+      match: { destination: "$current.destination" }
+    )
+
+  then review
+    score 0.5
+    reason "Another transaction to this destination in the last 30 minutes"
+}
+```
+
+>**Note:**
+>
+>- This is a boolean check, not a count. It only answers: “Did at least one matching transaction occur?”
+>- Uses the same transaction store and time window format as aggregate conditions.
