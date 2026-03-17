@@ -24,17 +24,31 @@ This is the simplest way to run Watch against Blnk Core in one process. New tran
 Use `start` when you want the API and automatic Core ingestion together. If you only need the API (e.g. you send transactions via the inject API), use `watch`. If you only need to sync from Core without the API, use `sync` or `sync-once`.
 
 <Tabs>
-<Tab title="Using make">
+<Tab title="Direct download" icon="download">
+When `blnk-watch` is on your PATH (for example after [direct download](/watch/deployment#standard-deployment) or `make install`):
+
+```bash wrap
+# Default: API on 8081, sync every 10s, batch size 1000
+blnk-watch start
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-port` | Port used by the Watch HTTP service | `8081` |
+| `-sync-interval` | How often Watch pulls new transactions from Core | `10s` |
+| `-batch-size` | Number of transactions to process per sync batch | `1000` |
+</Tab>
+<Tab title="Using make" icon="square-terminal">
 Runs the default command only. 
 ```bash wrap
 make start
 ```
 </Tab>
-<Tab title="Using Go binary">
-Use the binary to run with custom flags (port, sync interval, batch size).
+<Tab title="Using Go binary" icon="square-terminal">
+Use the binary from the project directory with custom flags (port, sync interval, batch size).
 ```bash wrap
 # Default: API on 8081, sync every 10s, batch size 1000
-./blnk-watch -command=start
+./blnk-watch start
 
 # Custom port, sync interval, and batch size
 ./blnk-watch -command=start -port=9090 -sync-interval=5s -batch-size=500
@@ -120,14 +134,29 @@ Use `watch` to run only the Watch service. This starts the HTTP API used to inje
 Use `watch` when you only need the HTTP API (e.g. you inject transactions) and do not need to pull from Blnk Core. To run both the API and Core ingestion, use `start` instead.
 
 <Tabs>
-<Tab title="Using make">
+<Tab title="Direct download" icon="download">
+When `blnk-watch` is on your PATH:
+
+```bash wrap
+# Default: API on port 8081
+blnk-watch -command=watch
+
+# Custom port
+blnk-watch -command=watch -port=9090
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-port` | Port used by the Watch HTTP service | `8081` |
+</Tab>
+<Tab title="Using make" icon="square-terminal">
 Starts the default service command only. Use the binary if you need custom flags.
 ```bash wrap
 make watch
 ```
 </Tab>
-<Tab title="Using Go binary">
-Use the binary to run with a custom port or other flags.
+<Tab title="Using Go binary" icon="square-terminal">
+Use the binary from the project directory with a custom port or other flags.
 ```bash wrap
 # Default: API on port 8081
 ./blnk-watch -command=watch
@@ -157,14 +186,30 @@ In practice, `sync` is useful for backfills, historical evaluation, or when you 
 `sync` does not start the Watch HTTP server. To run both the API and sync from Core, use `start` instead.
 
 <Tabs>
-<Tab title="Using make">
+<Tab title="Direct download" icon="download">
+When `blnk-watch` is on your PATH:
+
+```bash wrap
+# Default: sync every 10s, batch size 1000
+blnk-watch -command=sync
+
+# Custom sync interval and batch size
+blnk-watch -command=sync -sync-interval=5s -batch-size=500
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-sync-interval` | How often Watch runs the next watermark sync cycle | `10s` |
+| `-batch-size` | Number of transactions to process per sync batch | `1000` |
+</Tab>
+<Tab title="Using make" icon="square-terminal">
 Runs the default continuous sync command only. Use the binary to change sync settings.
 ```bash wrap
 make sync
 ```
 </Tab>
-<Tab title="Using Go binary">
-Use the binary to run with a custom sync interval or batch size.
+<Tab title="Using Go binary" icon="square-terminal">
+Use the binary from the project directory with a custom sync interval or batch size.
 ```bash wrap
 # Default: sync every 10s, batch size 1000
 ./blnk-watch -command=sync
@@ -195,14 +240,29 @@ This is useful for backfills, one-off reprocessing, CI or maintenance jobs, and 
 Unlike `sync`, this command does not keep polling for new transactions.
 
 <Tabs>
-<Tab title="Using make">
+<Tab title="Direct download" icon="download">
+When `blnk-watch` is on your PATH:
+
+```bash wrap
+# Default: batch size 1000
+blnk-watch -command=sync-once
+
+# Custom batch size
+blnk-watch -command=sync-once -batch-size=2000
+```
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `-batch-size` | Number of transactions to process in the one-time sync batch loop | `1000` |
+</Tab>
+<Tab title="Using make" icon="square-terminal">
 Runs the default one-time sync only. Use the binary if you need to change the batch size.
 ```bash wrap
 make sync-once
 ```
 </Tab>
-<Tab title="Using Go binary">
-Use the binary to run with a custom batch size.
+<Tab title="Using Go binary" icon="square-terminal">
+Use the binary from the project directory with a custom batch size.
 ```bash wrap
 # Default: batch size 1000
 ./blnk-watch -command=sync-once
