@@ -1,113 +1,540 @@
 ---
-sidebarTitle: "Examples"
-title: "Examples"
+sidebarTitle: "Rule examples"
+title: "Design patterns and examples"
 description: "Copy-ready Blnk Watch DSL examples for common transaction monitoring patterns."
 noindex: true
 ---
 
-## Overview
+You can find every example on this page in the repository's `/blnk-watch/examples` folder. Use them as starting points, then tweak the thresholds, watchlists, and metadata keys to fit your own transaction payload and risk policy.
 
-This page collects complete rules you can copy and adapt. Each example focuses on a common pattern and keeps the explanation short so you can scan and tweak quickly.
+Each example below is a full watch script you can drop into your rules directory. 
 
----
+<Note>
+**Keep in mind:**
 
-## High value transaction detection
-
-Use a simple amount threshold for a specific currency:
-
-```bash
-rule HighValueUSD {
-  when amount > 4000 and currency == "USD"
-
-  then review
-    score 0.5
-    reason "USD transaction exceeds 4,000"
-}
-```
+When a rule depends on extra context such as KYC tier, watchlists, or precomputed time fields, make sure your ingestion flow adds those values to the transaction metadata before Watch evaluates the transaction.
+</Note>
 
 ---
 
-## Velocity and burst activity
+## Basic conditions
 
-Detect rapid small transactions from the same source that a single-transaction rule would miss:
+These examples trigger on a single comparison or a simple list check. They are useful when you want a rule to react to one clear signal without needing historical context.
 
-```bash
-rule RapidSmallBurst {
-  when amount < 500
-    and count(when source == $current.source, "PT30M") >= 5
+### Block black listed accounts
 
-  then review
-    score 0.65
-    reason "Rapid succession of small transactions from the same source"
-}
-```
+This rule blocks a transaction when the source account appears in a blacklist supplied on the current transaction. It works well when your application already maintains a denylist and passes it into Watch as metadata.
 
----
+```bash BlockBlackListedAccounts.ws
+rule BlockBlackListedAccounts {
+  description "Blocks transactions from accounts on an internal blacklist."
 
-## Time-based restrictions
-
-When transaction timing is part of your risk model:
-
-```bash
-rule LateNightLargeTransfer {
-  when hour_of_day(timestamp) >= 22
-    and amount > 3000
-
-  then review
-    score 0.6
-    reason "Large transaction during late-night hours"
-}
-```
-
----
-
-## Suspicious transaction patterns
-
-Useful when free-form descriptions carry behavioral clues:
-
-```bash
-rule SuspiciousDescriptionPattern {
-  when description regex "(?i)(gift.?card|crypto|wallet|western.?union)"
-    and amount > 1000
-
-  then review
-    score 0.7
-    reason "Suspicious keywords found in a high-value transaction description"
-}
-```
-
----
-
-## Promo abuse detection
-
-Assumes your app passes promo information in `meta_data`:
-
-```bash
-rule PromoCodeReuseBurst {
-  when meta_data.promo_code != ""
-    and count(when source == $current.source, "PT24H") >= 3
-    and sum(amount when source == $current.source, "PT24H") < 200
-
-  then review
-    score 0.55
-    reason "Repeated low-value transactions with promo usage in 24 hours"
-}
-```
-
----
-
-## Cross-border risk
-
-Use metadata-driven rules when the transaction needs extra business or compliance context:
-
-```bash
-rule CrossBorderHighRiskRoute {
-  when meta_data.source_country != meta_data.destination_country
-    and meta_data.destination_country in ("IR", "KP", "SY")
-    and amount > 1000
+  when source in $current.metadata.blacklisted_accounts
 
   then block
-    score 1.0
-    reason "High-value transfer to a blocked destination country"
+       score   1.0
+       reason  "Source account is on the blacklist"
+}
+```
+
+### Category BTC check
+
+This rule sends cryptocurrency-tagged activity to review. It is a lightweight pattern for routing a known transaction category into a tighter manual workflow.
+
+```bash CategoryBTCCheck.ws
+rule CategoryBTCCheck {
+  description "Cryptocurrency transactions require manual verification."
+
+  when metadata.category == "cryptocurrency"
+
+  then review
+       score   0.6
+       reason  "Transaction category is cryptocurrency"
+}
+```
+
+### High risk destination country
+
+This rule blocks transactions headed to countries that your system has already marked as high risk. It keeps the country list outside the DSL so you can update it without rewriting the rule.
+
+```bash HighRiskDestinationCountry.ws
+rule HighRiskDestinationCountry {
+  description "Blocks transactions headed to a high-risk destination country."
+
+  when metadata.destination_country in $current.metadata.high_risk_countries
+
+  then block
+       score   0.5
+       reason  "Destination country is classified as high risk"
+}
+```
+
+### High value transaction check
+
+This rule reviews any transaction above a fixed value threshold. It is a good baseline control for catching unusually large transactions before you layer on more specific checks.
+
+```bash HighValueTransactionCheck.ws
+rule HighValueTransactionCheck {
+  description "Monitors for unusually large transactions requiring review."
+
+  when amount > 10000
+
+  then review
+       score   0.5
+       reason  "Transaction amount exceeds 10,000"
+}
+```
+
+### Known fraud entity check
+
+This rule blocks transactions sent to known bad counterparties that are provided on the current transaction. It is useful when your fraud system or case-management tooling already maintains a live list of risky entities.
+
+```bash KnownFraudEntityCheck.ws
+rule KnownFraudEntityCheck {
+  description "Blocks transactions sent to known fraud entities."
+
+  when destination in $current.metadata.known_fraud_entities
+
+  then block
+       score   1.0
+       reason  "Destination is on the known fraud entities list"
+}
+```
+
+### Sanctioned country check
+
+This rule blocks transactions going to countries that appear on a sanctions list supplied in metadata. It is a direct pattern for policy-driven controls where the list itself changes more often than the rule logic.
+
+```bash SanctionedCountryCheck.ws
+rule SanctionedCountryCheck {
+  description "Blocks transactions sent to sanctioned countries."
+
+  when metadata.destination_country in $current.metadata.sanctioned_countries
+
+  then block
+       score   1.0
+       reason  "Destination country is on the sanctions list"
+}
+```
+
+### Suspicious MCC check
+
+This rule reviews transactions whose merchant category code falls inside a known high-risk list. It is useful for fast controls around gambling, quasi-cash, or other categories that deserve extra scrutiny.
+
+```bash SuspiciousMCCCheck.ws
+rule SuspiciousMCCCheck {
+  description "Flags transactions with high-risk merchant category codes."
+
+  when metadata.mcc in ("7995", "5912")
+
+  then review
+       score   0.5
+       reason  "Transaction involves a high-risk merchant category code"
+}
+```
+
+---
+
+## Compound conditions
+
+These examples combine multiple checks in one rule. They are helpful when one field on its own is not enough, but a combination of amount, account type, or metadata creates a stronger signal.
+
+### Block if previous failed
+
+This rule blocks a very large transaction when the previous transaction status for the same flow was already marked as failed. It assumes your upstream system writes the prior status into metadata before the transaction reaches Watch.
+
+```bash BlockIfPreviousFailed.ws
+rule BlockIfPreviousFailed {
+  description "Blocks a large transaction when the previous related transaction failed."
+
+  when metadata.previous_transaction_status == "failed"
+   and amount > 700000
+
+  then block
+       score   1.0
+       reason  "Previous related transaction failed and the current amount is high"
+}
+```
+
+### Business account personal spending
+
+This rule reviews business-account transactions that land in merchant categories commonly associated with personal spending. It is useful for expense, card, and treasury programs that want to catch obvious policy misuse early.
+
+```bash BusinessAccountPersonalSpending.ws
+rule BusinessAccountPersonalSpending {
+  description "Flags likely personal spending from a business account."
+
+  when metadata.account_type == "business"
+   and metadata.merchant_category in ("retail", "entertainment", "restaurant", "personal_services")
+
+  then review
+       score   0.4
+       reason  "Potential personal spending from a business account"
+}
+```
+
+### Cross border transaction check
+
+This rule reviews higher-value transactions when the source and destination countries do not match. It is a good example of comparing one metadata field against another value from the current transaction.
+
+```bash CrossBorderTransactionCheck.ws
+rule CrossBorderTransactionCheck {
+  description "Reviews high-value transactions that cross borders."
+
+  when metadata.source_country != $current.metadata.destination_country
+   and amount > 1000
+
+  then review
+       score   0.5
+       reason  "Large cross-border transaction requires review"
+}
+```
+
+### Dormant account activity
+
+This rule reviews transactions from accounts that have been inactive for a long time and suddenly become active again. It is useful for spotting account takeover, mule activity, or stale credentials being reused.
+
+```bash DormantAccountActivity.ws
+rule DormantAccountActivity {
+  description "Flags high-value activity after a long period of dormancy."
+
+  when metadata.days_since_last_transaction > 90
+   and amount > 1000
+
+  then review
+       score   0.7
+       reason  "High-value transaction after extended account inactivity"
+}
+```
+
+### Foreign currency transaction
+
+This rule reviews larger transactions when the transaction currency differs from the account's base currency. It is a practical pattern for detecting unusual cross-currency behavior without blocking normal low-value activity.
+
+```bash ForeignCurrencyTx.ws
+rule ForeignCurrencyTx {
+  description "Flags large transactions in a currency different from the account base currency."
+
+  when currency != $current.metadata.account_base_currency
+   and amount > 1000
+
+  then review
+       score   0.4
+       reason  "Large transaction in a foreign currency"
+}
+```
+
+### Low KYC daily limit
+
+This rule reviews a transaction when a low-tier KYC customer exceeds the per-transaction or daily limit assigned to them. It relies on your application passing the limit into metadata so the threshold can differ by customer.
+
+```bash LowKycDailyLimit.ws
+rule LowKycDailyLimit {
+  description "Flags low-tier KYC customers that exceed their configured limit."
+
+  when metadata.kyc_tier == 1
+   and amount > $current.metadata.daily_limit
+
+  then review
+       score   0.5
+       reason  "Transaction amount exceeds the configured limit for a tier-1 user"
+}
+```
+
+### Low KYC high risk
+
+This rule reviews lower-KYC customers when they transact in a high-risk merchant category and the amount is material. It is a common pattern for tightening controls on newer or less verified accounts.
+
+```bash LowKycHighRisk.ws
+rule LowKycHighRisk {
+  description "Flags high-risk category activity from a low-tier KYC customer."
+
+  when metadata.kyc_tier == 1
+   and metadata.merchant_category in ("gambling", "cryptocurrency", "adult", "high_value_goods")
+   and amount > 500
+
+  then review
+       score   0.8
+       reason  "Low-KYC account is transacting in a high-risk category"
+}
+```
+
+### Merchant issuer mismatch
+
+This rule reviews card transactions when the merchant country does not match the issuer country. It is a simple geo-mismatch control that can be combined with other travel, device, or authentication signals.
+
+```bash MerchantIssuerMismatch.ws
+rule MerchantIssuerMismatch {
+  description "Flags country mismatches between the merchant and card issuer."
+
+  when metadata.merchant_country != $current.metadata.card_issuer_country
+
+  then review
+       score   0.4
+       reason  "Merchant country does not match card issuer country"
+}
+```
+
+### New account first day
+
+This rule reviews larger transactions from very new accounts. It helps catch abuse patterns where bad actors create a fresh account and immediately try to move significant value.
+
+```bash NewAccountFirstDay.ws
+rule NewAccountFirstDay {
+  description "Flags high-value activity on the first day of a new account."
+
+  when metadata.account_age_days < 1
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction from a newly created account"
+}
+```
+
+### Self transfer check
+
+This rule reviews large self-transfers by checking whether the source and destination are the same. It is useful for spotting circular movement, layering, or attempts to manipulate downstream controls.
+
+```bash SelfTransferCheck.ws
+rule SelfTransferCheck {
+  description "Flags large transfers where the source and destination are the same."
+
+  when source == $current.destination
+   and amount > 3000
+
+  then review
+       score   0.45
+       reason  "Large self-transfer detected"
+}
+```
+
+### Suspicious description check
+
+This rule reviews high-value transactions when an upstream process has already normalized the free-form description into a suspicious keyword. It is a good fit when you want predictable rule logic without relying on complex text parsing inside the DSL.
+
+```bash SuspiciousDescriptionCheck.ws
+rule SuspiciousDescriptionCheck {
+  description "Flags high-value transactions tagged with suspicious description keywords."
+
+  when metadata.description_keyword in ("btc", "bitcoin", "crypto", "gift_card", "western_union")
+   and amount > 1000
+
+  then review
+       score   0.7
+       reason  "Suspicious description keyword found on a high-value transaction"
+}
+```
+
+---
+
+## Aggregate conditions
+
+These examples look at patterns over a rolling window instead of only the current transaction. They are useful for detecting bursts, velocity spikes, repeated amounts, or cumulative exposure that a single transaction would not reveal.
+
+### Destination high inflow
+
+This rule reviews a destination that has received more than a threshold amount in the last 24 hours. It is a straightforward inflow monitoring pattern for merchants, wallets, or payout endpoints.
+
+```bash DestinationHighInflow.ws
+rule DestinationHighInflow {
+  description "Flags destinations with high inflow over the last 24 hours."
+
+  when sum(amount where destination == $current.destination, "PT24H") > 100
+
+  then review
+       score   0.5
+       reason  "High inflow to the same destination in 24 hours"
+}
+```
+
+### High amount velocity source
+
+This rule reviews a source account when its total sent amount in the last hour crosses a threshold. It is useful for spotting rapid-value movement even if each individual transaction looks normal on its own.
+
+```bash HighAmountVelocitySource.ws
+rule HighAmountVelocitySource {
+  description "Flags high-velocity spending from a single source over one hour."
+
+  when sum(amount where source == $current.source, "PT1H") > 3000
+
+  then review
+       score   0.7
+       reason  "Source account shows a high-velocity spending pattern"
+}
+```
+
+### High frequency destination
+
+This rule reviews repeat traffic to the same destination when the count becomes unusually high. It is helpful for detecting burst payment behavior to one merchant, beneficiary, or wallet.
+
+```bash HighFrequencyDestination.ws
+rule HighFrequencyDestination {
+  description "Flags unusually frequent payments to the same destination."
+
+  when count(destination == $current.destination, "PT24H") > 10
+   and amount > 100
+
+  then review
+       score   0.5
+       reason  "High transaction frequency to the same destination in 24 hours"
+}
+```
+
+### Low KYC daily total
+
+This rule reviews a tier-1 customer when their cumulative outbound amount in the last 24 hours crosses a threshold. It is a common companion rule to per-transaction limits because structuring often happens through many smaller transfers.
+
+```bash LowKycDailyTotal.ws
+rule LowKycDailyTotal {
+  description "Flags low-tier KYC customers that exceed a 24-hour total threshold."
+
+  when metadata.kyc_tier == 1
+   and sum(amount where source == $current.source, "PT24H") > 5000
+
+  then review
+       score   0.5
+       reason  "Total transacted amount exceeds the tier-1 threshold"
+}
+```
+
+### Rapid small burst
+
+This rule reviews a source when several small transactions happen in a short period. It is a useful anti-structuring pattern because bad actors often split activity into smaller amounts to avoid single-transaction thresholds.
+
+```bash RapidSmallBurst.ws
+rule RapidSmallBurst {
+  description "Flags bursts of small transactions from the same source."
+
+  when amount < 500
+   and count(source == $current.source, "PT30M") >= 5
+
+  then review
+       score   0.65
+       reason  "Rapid succession of small transactions from the same source"
+}
+```
+
+### Repeated identical amount
+
+This rule reviews transactions when the same amount repeats several times within an hour. It is a simple pattern for catching scripted behavior, installment abuse, or naïve structuring attempts.
+
+```bash RepeatedIdenticalAmount.ws
+rule RepeatedIdenticalAmount {
+  description "Flags repeated transactions with the same amount within one hour."
+
+  when count(amount == $current.amount, "PT1H") > 2
+
+  then review
+       score   0.6
+       reason  "Multiple identical-amount transactions in a short period"
+}
+```
+
+### Repeated identical amount 2
+
+This rule reviews a source when both the transaction count and the repeated amount count stay elevated across a full week. It is a broader pattern for detecting repeated payment habits that may not look suspicious in a shorter window.
+
+```bash RepeatedIdenticalAmount2.ws
+rule RepeatedIdenticalAmount2 {
+  description "Flags repeated identical-amount activity from the same source over seven days."
+
+  when count(source == $current.source, "P7D") >= 3
+   and count(amount == $current.amount, "P7D") >= 3
+
+  then review
+       score   0.55
+       reason  "Repeated identical-amount transactions detected from the same source"
+}
+```
+
+### Source high outflow
+
+This rule reviews a source account once its total outflow in the last 24 hours becomes unusually high. It works well as a general-purpose velocity control for wallets, current accounts, or card programs.
+
+```bash SourceHighOutflow.ws
+rule SourceHighOutflow {
+  description "Flags sources with high cumulative outflow over 24 hours."
+
+  when sum(amount where source == $current.source, "PT24H") > 5000
+
+  then review
+       score   0.5
+       reason  "High cumulative outflow from the source in 24 hours"
+}
+```
+
+---
+
+## Time-based conditions
+
+These examples depend on time context that your application has already added to metadata, such as hour of day or day of week. That approach keeps the rules portable while letting you localize time logic upstream when needed.
+
+### Late night transactions
+
+This rule reviews larger transactions that occur late at night. It is useful for flagging activity that lands outside a customer's normal operating window without blocking all after-hours traffic.
+
+```bash LateNightTransactions.ws
+rule LateNightTransactions {
+  description "Flags large transactions that occur late at night."
+
+  when metadata.hour_of_day >= 21
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction during late-night hours"
+}
+```
+
+### Review Christmas transactions
+
+This rule reviews transactions that occur on Christmas Day. It is a simple seasonal pattern you can adapt for holidays, maintenance windows, or business-specific blackout periods.
+
+```bash ReviewChristmasTransactions.ws
+rule ReviewChristmasTransactions {
+  description "Flags transactions that occur on Christmas Day."
+
+  when metadata.month_of_year == 12
+   and metadata.day_of_month == 25
+
+  then review
+       score   0.6
+       reason  "Transaction occurred on Christmas Day"
+}
+```
+
+### Unusual transaction time
+
+This rule reviews large transactions that happen in the early-morning window between 1 AM and 5 AM. It is a good template when you want to tune thresholds based on hours that are uncommon for a customer segment or product line.
+
+```bash UnusualTransactionTime.ws
+rule UnusualTransactionTime {
+  description "Flags large transactions during unusual early-morning hours."
+
+  when metadata.hour_of_day >= 1
+   and metadata.hour_of_day < 5
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction during unusual early-morning hours"
+}
+```
+
+### Weekend transaction check
+
+This rule reviews large transactions that occur on a weekend. It is a practical pattern for products where genuine activity is mostly weekday-driven and weekend spikes deserve a closer look.
+
+```bash WeekendTransactionCheck.ws
+rule WeekendTransactionCheck {
+  description "Flags large transactions that occur on weekends."
+
+  when metadata.day_of_week in (0, 6)
+   and amount > 5000
+
+  then review
+       score   0.4
+       reason  "Large weekend transaction flagged for review"
 }
 ```

@@ -5,15 +5,29 @@ description: "Define the outcome of a matching rule: verdict, score, and reason.
 noindex: true
 ---
 
-## Overview
+When a rule matches, the `then` block tells Watch what outcome to produce. In practice, it answers three questions: 
 
-When a rule matches, the `then` block tells Watch what outcome to produce. In practice it answers three questions: what should happen, how strong the signal is, and why the rule matched. Those are expressed as **verdict**, **score**, and **reason**.
+- what should happen, `verdict` 
+- how strong the signal is, `score`
+- why the rule matched, `reason`
+
+For example, here's an `allow` verdict for a valid discount transaction:
+
+```bash redeemDiscountCode.ws {4-6}
+rule redeemDiscountCode {
+  when meta_data.discount_code in ("WELCOME10", "BFCM70", "TRIAL100")
+
+  then allow
+    score 0.1
+    reason "Discount code is valid and supported."
+}
+```
 
 ---
 
-## Verdicts
+## Supported verdicts
 
-Watch supports six verdicts. Choose the one that matches the action your system should take after the rule fires.
+Watch allows you to set one of six supported verdicts. Choose the one that closely matches the action your system should take after the rule fires.
 
 | Verdict | When to use it | Example use case |
 | --- | --- | --- |
@@ -24,62 +38,22 @@ Watch supports six verdicts. Choose the one that matches the action your system 
 | `deny` | Explicitly deny via rule logic. | Policy-based rejection |
 | `block` | Stop the transaction immediately. | Sanctioned destination or known fraud pattern |
 
-Example of each:
-
-```bash
-then allow
-  score 0.0
-  reason "Trusted internal transaction"
-```
-
-```bash
-then approve
-  score 0.1
-  reason "Transaction matches a trusted partner policy"
-```
-
-```bash
-then alert
-  score 0.3
-  reason "Transaction should be monitored"
-```
-
-```bash
-then review
-  score 0.6
-  reason "Transaction requires manual review"
-```
-
-```bash
-then deny
-  score 0.9
-  reason "Transaction violates policy"
-```
-
-```bash
-then block
-  score 1.0
-  reason "Destination matches blocked entity"
-```
-
-Pick the verdict that reflects the operational action your system should take after the rule matches.
-
-### Verdict block quick reference
-
-| Part | Purpose | Example |
-| --- | --- | --- |
-| `then <verdict>` | Sets the outcome | `then review` |
-| `score <number>` | Rule's risk weight | `score 0.6` |
-| `reason "<text>"` | Explains the match | `reason "Large transfer from new account"` |
-
 ---
 
-## Score
+## Defining scores
 
-`score` is the rule's risk weight. Watch doesn't impose a risk policy for you—you define the scale based on your risk appetite, review process, and threshold model. So a score of `0.3` might be a weak signal in one system and a review threshold in another; `1.0` is often reserved for hard-stop conditions.
+`score` represents the risk weight assigned by the rule.
 
-```bash
-rule HighValueReview {
+Watch does not enforce a fixed risk policy. Instead, you define what different score values mean based on your risk appetite, review workflow, and decision thresholds. The same score can therefore mean different things depending on the system you are building.
+
+For example, a score of `0.3` might be treated as a weak signal that still results in `allow` in one system, while another system may treat it as a signal that requires `review`. Many teams reserve a score of `1.0` for rules that should always result in a hard stop, such as a `block`.
+
+<Note>
+If you omit `score` in the `then` block, Watch defaults it to `0.0`. 
+</Note>
+
+```bash highValueReview.ws {5}
+rule highValueReview {
   when amount > 10000
 
   then review
@@ -88,17 +62,24 @@ rule HighValueReview {
 }
 ```
 
-Consistency matters: similar patterns should use similar scores so your rule set behaves predictably.
+It is recommended to keep scores consistent across similar rules. 
+
+If similar rules receive very different scores, the overall rule set becomes harder to work with and manage. Using similar scores for similar risks helps your decisions remain predictable.
+
+<Tip>
+You can [configure Watch](/watch/configuration#alert-webhook-configuration) to only send webhooks when the score is above a certain threshold, e.g. `ALERT_WEBHOOK_RISK_THRESHOLD=0.5` will send webhooks when the score is 0.5 or higher.
+</Tip>
 
 ---
 
-## Reason
+## Writing reasons
 
-`reason` is the human-readable explanation for why the rule triggered. It shows up in debugging, analyst workflows, audit trails, webhook payloads, and logs. Write reasons so they stand on their own when someone reads them later—specific, short, and tied to the actual condition.
+`reason` is a human-readable explanation for why a rule triggered. It appears in debugging output, analyst workflows, audit trails, webhook payloads, and logs.
 
-```bash
-rule SuspiciousKeywordTransfer {
-  when description regex "(?i)(gift.?card|crypto)" and amount > 1000
+```bash suspiciousKeywordTransfer.ws {7}
+rule suspiciousKeywordTransfer {
+  when description regex "(?i)(gift.?card|crypto)" 
+    and amount > 1000
 
   then review
     score 0.7
@@ -106,82 +87,67 @@ rule SuspiciousKeywordTransfer {
 }
 ```
 
-Avoid vague reasons like "Rule matched" or "Looks risky."
+Write reasons so they stand on their own when read later. They should be short, specific, and clearly tied to the condition that triggered the rule.
+
+Avoid vague explanations such as "Rule matched" or "Looks risky". Instead, describe what triggered the rule and why it matters.
+
+<Note>
+If you omit `reason`, Watch defaults it to `"No reason provided"`.
+</Note>
 
 ---
 
-## Full rule examples by verdict
+## How consolidation works
 
-**Allow** — e.g. trusted channel:
+A transaction can match multiple rules. When this happens, Watch combines the results of those rules into a single consolidated risk assessment. This gives your system one score and one verdict per transaction, even if several rules fired.
 
-```bash
-rule TrustedSystemFlow {
-  when meta_data.channel == "internal_ops"
-
-  then allow
-    score 0.0
-    reason "Internal operations channel"
+```json Response
+{
+    "meta_data": {
+        "consolidated_risk_assessment": {
+            "final_reason": "USD transaction exceeds 4,000",
+            "final_risk_score": 0.5,
+            "final_verdict": "review",
+            "source_count": 1
+        },
+        "dsl_verdicts": [
+            {
+                "reason": "USD transaction exceeds 4,000",
+                "rule_id": 0,
+                "score": 0.5,
+                "verdict": "review"
+            }
+        ],
+        "evaluation_status": "completed",
+        "risk_evaluation_timestamp": "2026-03-15T22:12:00.99813+01:00"
+    }
 }
 ```
 
-**Alert** — e.g. monitor without blocking:
+1. `final_risk_score`:
+    The final score is the average of the `score` values from all rules that matched. The result is always clamped between 0 and 1.
 
-```bash
-rule MonitorPromoReuse {
-  when meta_data.promo_code != ""
-    and count(when source == $current.source, "PT24H") >= 2
+2. `final_verdict`:
+    Individual rule verdicts (allow, review, block, etc.) are not merged. Instead, Watch determines the final verdict from the consolidated score:
 
-  then alert
-    score 0.25
-    reason "Repeated promo usage from the same source"
-}
-```
+    - If the final score is 0.7 or higher, the verdict is `block`.
+    - Otherwise, the verdict is `review`.
 
-**Review** — e.g. new account, large transfer:
+    This means a single high-risk rule can push the outcome to block, while several low-risk signals may still result in review.
 
-```bash
-rule NewAccountLargeTransfer {
-  when meta_data.account_age_days < 7 and amount > 3000
+3. `final_reason`:
+    The `reason` values from all matching rules are combined into a single string, separated by "; ". This allows you to see every rule that contributed to the decision.
 
-  then review
-    score 0.65
-    reason "Large transfer from a recently created account"
-}
-```
+4. `source_count`:
+    The number of rules that matched the transaction.
 
-**Approve** — e.g. trusted partner:
+If no rules are triggered on a transaction, the consolidated assessment defaults to:
 
-```bash
-rule ApproveTrustedPartner {
-  when meta_data.partner_tier == "trusted"
-    and currency == "USD"
-
-  then approve
-    score 0.1
-    reason "Trusted partner flow approved by policy"
-}
-```
-
-**Deny** — e.g. restricted channel:
-
-```bash
-rule DenyRestrictedChannel {
-  when meta_data.channel == "restricted"
-
-  then deny
-    score 0.85
-    reason "Transaction came through a restricted channel"
-}
-```
-
-**Block** — e.g. sanctioned destination:
-
-```bash
-rule BlockSanctionedDestination {
-  when meta_data.destination_country in ("IR", "KP", "SY")
-
-  then block
-    score 1.0
-    reason "Destination country is blocked by policy"
+```json No rules triggered
+{
+  "final_risk_score": 0.0,
+  "final_verdict": "indeterminate",
+  "final_reason": "No risk information found to consolidate.",
+  "source_count": 0
 }
 ```
