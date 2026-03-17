@@ -1,0 +1,86 @@
+---
+sidebarTitle: "Deployment"
+title: "Deploy Blnk Watch"
+description: "Deploy Blnk Watch for production using the compiled binary and the start command."
+noindex: true
+---
+
+For production deployments, build the Watch binary and run it with the `start` command. That gives you the standard long-running Watch process: the HTTP service starts, and when `DB_URL` is set, Watch also runs continuous Core sync in the same process.
+
+---
+
+## Standard deployment
+
+<Steps titleSize="h3">
+<Step title="Build the binary">
+From the Watch project root, build the binary:
+
+```bash build
+go build -o blnk-watch ./cmd/blnk-watch
+```
+
+This produces a `blnk-watch` binary you can ship in your production image or runtime environment.
+</Step>
+
+<Step title="Set environment variables">
+Set the environment variables Watch needs. At minimum, if you use `start` and sync from Blnk Core, set `DB_URL`:
+
+```bash .env wrap
+DB_URL=postgres://user:password@localhost:5432/blnk?sslmode=disable
+```
+
+See [Configuration](/watch/configuration) for the full list.
+</Step>
+
+<Step title="Start Watch">
+Run the compiled binary with the `start` command:
+
+```bash start
+./blnk-watch -command=start
+```
+</Step>
+</Steps>
+
+---
+
+## PaaS deployments
+
+If you deploy Watch on a PaaS (e.g. Railway, Render, Fly.io), attach a persistent volume mounted at `./blnk_watch_db` so that Watch’s local databases and sync state survive restarts and redeploys.
+
+<Warning>
+**Important to note:** Watch stores its data on disk. On most PaaS platforms, that disk is temporary, so a redeploy can wipe your database unless you attach a persistent volume.
+</Warning>
+
+<Steps titleSize="h3">
+<Step title="Build the binary">
+Use the same build command as above (or your platform's build step):
+
+```bash build
+go build -o blnk-watch ./cmd/blnk-watch
+```
+</Step>
+
+<Step title="Set environment variables">
+In your PaaS project or service, set the environment variables Watch needs. At minimum, if you use `start` and sync from Blnk Core, set `DB_URL`:
+
+```bash .env wrap
+DB_URL=postgres://user:password@localhost:5432/blnk?sslmode=disable
+```
+
+See [Configuration](/watch/configuration) for the full list.
+</Step>
+
+<Step title="Attach a volume">
+Watch stores its data on disk. On most PaaS platforms, that disk is temporary, so a redeploy can wipe your database unless you attach a persistent volume.
+</Step>
+
+<Step title="Set the start command">
+Use a start command that creates the data directory (if needed) and then starts Watch:
+
+```bash start
+mkdir -p blnk_watch_db && ./blnk-watch -command=start
+```
+
+Creating the directory before starting ensures the volume mount point exists and Watch can write into it.
+</Step>
+</Steps>
