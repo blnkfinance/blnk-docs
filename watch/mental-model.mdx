@@ -11,37 +11,20 @@ Every transaction in your system carries signals that indicate risk. A payment m
 
 Blnk Watch [evaluates those signals](#evaluation-workflow) using [rules you define](#rule-evaluation) and returns a [risk verdict](#final-verdict) for each transaction. It runs alongside your Blnk Ledger and allows you to apply checks before, during, or after a transaction is processed.
 
-When a transaction occurs, Watch evaluates it against your rules and produces a verdict such as `allow`, `review`, `block`, etc.
+When a transaction occurs, Watch evaluates it against your rules and produces a verdict such as `allow`, `approve`, `alert`, `review`, `deny`, or `block`.
 
-With Watch, it becomes easier to enforce controls like:
+With Watch, it becomes easier to enforce controls within your application such as:
 
-1. Fraud and compliance checks  
-2. Transaction limits  
-3. Velocity monitoring  
-4. Payout or withdrawal checks  
-5. Promo abuse prevention  
-6. Operational guardrails
+1. Detecting and acting on transactions that show patterns of fraud or compliance risk
+2. Enforcing transaction limits by blocking, reviewing, or tracking threshold breaches
+3. Monitoring transaction velocity to spot spikes or unusual activity patterns
+4. Reviewing or tracking payouts and withdrawals based on defined conditions
+5. Tracking how discount codes or promotions are used to detect abuse or measure usage
+6. Enforcing operational guardrails like identifying duplicates, missing fields, or unexpected flows
 
 ---
 
 ## Evaluation workflow
-
-```mermaid
-flowchart LR
-    A[Blnk Core webhook]
-    B["start (continuous mode)"]
-    C["sync (historical mode)"]
-    D["API inject (manual)"]
-
-    A --> E[Watch evaluation pipeline]
-    B --> E
-    C --> E
-    D --> E
-
-    E --> F[Rules evaluated]
-    F --> G[Risk scores produced]
-    G --> H[Final verdict]
-```
 
 Once a transaction enters Watch, it follows the same lifecycle every time:
 
@@ -50,7 +33,7 @@ Once a transaction enters Watch, it follows the same lifecycle every time:
 3. Each triggered rule contributes a score and a reason.
 4. Watch consolidates all triggered rules into a single final decision.
 
-The result is a consistent risk assessment that your system can use to determine what should happen next.
+The result is a [consolidated risk assessment](/watch/rules/defining-verdicts#how-consolidation-works) that your system can use to determine what should happen next.
 
 ---
 
@@ -58,23 +41,23 @@ The result is a consistent risk assessment that your system can use to determine
 
 Rules define the decision logic used by Watch. They determine how transactions are evaluated and ultimately classified.
 
-You define and manage these rules using the [Watch DSL](/watch/rules). Every rule contains two main parts:
+You define and manage these rules using watch scripts `.ws`, our DSL. Every rule contains two main parts:
 
 1. A `when` condition that describes the pattern Watch should look for in a transaction.
 2. A `then` action that defines the outcome when the condition triggers, including the verdict, score, and reason.
 
-```text wrap
-rule <RuleName> {
+```bash ruleName.ws wrap
+rule RuleName {
 
-  when <condition>                
+  when condition                
 
-  then <verdict>                 
-       score   <value>
-       reason  "<explanation>"
+  then verdict                 
+       score   value
+       reason  "explanation"
 }
 ```
 
-During evaluation, Watch runs every transaction through the active rule set and records only the rules that trigger.
+During evaluation, Watch runs every transaction through the active rule set and updates the transaction result with only the rules that trigger.
 
 The evaluation process follows a few simple principles:
 
@@ -83,9 +66,9 @@ The evaluation process follows a few simple principles:
 3. Multiple rules can trigger for the same transaction during a single evaluation cycle.
 4. All triggered signals are preserved and later consolidated into the final decision.
 
-Because of this evaluation model, rule design works best when rules are **small and focused**. Each rule should capture a single risk pattern or control. 
+Because of this evaluation model, rule design works best when rules are **small and focused**. 
 
-Watch then combines the signals from multiple rules to form a broader transaction-level assessment.
+We recommend creating each rule to capture a single risk pattern or control. 
 
 ---
 
@@ -100,9 +83,8 @@ After collecting all rule outcomes, Watch produces one consolidated result for t
 Your app can then act in a deterministic way:
 
 1. Continue normal processing for `allow`.
-2. Route the transaction for additional checks for `review`.
-3. Stop or reject the transaction for `block`.
-
-<Note>
-**Keep in mind:** Watch supports more verdicts than these three. You can define custom actions in your rules to match your workflow. 
-</Note>
+2. Explicitly accept trusted transactions for `approve`.
+3. Notify or log mild anomalies for `alert`.
+4. Route the transaction for additional checks for `review`.
+5. Reject policy-violating transactions for `deny`.
+6. Stop or reject the transaction for `block`.

@@ -1,0 +1,108 @@
+---
+sidebarTitle: "Rule structure"
+title: "Rule structure"
+description: "How Blnk Watch rules are structured and what each part of a rule does."
+noindex: true
+---
+
+Blnk Watch rules define how transactions are evaluated. Each rule describes a pattern to look for and what should happen when that pattern matches.
+
+Rules operate only on **transactions**. They don't monitor balances, ledgers, or identities. 
+
+If you need extra business context (e.g. KYC tier, promo code), pass it on the transaction as `meta_data` and reference it in the rule.
+
+---
+
+## Watch scripts
+
+Rules are written as **watch scripts**: plain-text files with the `.ws` extension. 
+
+Watch loads these scripts from a designated folder (by default `watch_scripts`), compiles them, and turns them into the rules that run against each transaction. 
+
+When you add or change a `.ws` file in that folder, Watch picks up the change and updates the active rule set.
+
+<Tip>
+Keep all watch scripts in that folder so Watch can find and load them. 
+
+For easier management, name files descriptively: camelCase or snake_case both work (e.g. `HighValueUSD.ws`, `burst_to_same_destination.ws`). 
+
+That way you can tell what each script does from the filename alone.
+</Tip>
+
+---
+
+## Rule anatomy
+
+Every rule has two core parts: **when** (the pattern) and **then** (the outcome). The rest of this section walks through each piece and where to learn more.
+
+A simple, complete rule looks like this:
+
+```bash HighValueUSD.ws
+rule HighValueUSD {                           # Rule name
+  when amount > 4000 and currency == "USD"    # Condition
+
+  then review                                 # Verdict
+    score 0.5                                 # Score
+    reason "USD transaction exceeds 4,000"    # Reason
+}
+```
+
+| Part | What it does | Example |
+| --- | --- | --- |
+| `rule` | Stable identifier for the rule; use a name that describes the pattern | `HighValueUSD` |
+| `when` | Condition to look for in the transaction. | `amount > 4000 and currency == "USD"` |
+| `then` | Outcome when the condition is met. | `review` |
+| `score` | Rule-level risk weight; you define the scale. | `0.5` |
+| `reason` | Human-readable explanation for why the rule triggered; used for debugging and audits. | `"USD transaction exceeds 4,000"` |
+
+<Note>
+**Keep in mind:** When you need information that isn't part of the transaction payload, include it in `meta_data` first. A rule can use `meta_data.kyc_tier` or `meta_data.promo_code` only if your app sends those values with the transaction.
+</Note>
+
+---
+
+## Rule syntax
+
+**First, you declare the rule.** The name after `rule` must be a single identifier in camelCase or snake_case (e.g. `HighValueUSD`, `burst_to_same_destination`) and should describe the pattern or control so it’s clear in logs and audits.
+
+```bash ruleName.ws {1}
+rule ruleName {
+
+}
+```
+
+**Next, you define the condition.** Aim for one goal per rule: the condition should describe a single pattern or check. If you need to flag several different cases, use a separate rule for each so evaluation and debugging stay clear.
+
+```bash ruleName.ws {2,3}
+rule ruleName {
+  when currency == "USD" 
+    and amount > 4000
+
+  •••
+}
+```
+
+**Then, you define the verdict** if the condition is triggered:
+
+```bash ruleName.ws {5}
+rule ruleName {
+  when currency == "USD" 
+    and amount > 4000
+
+  then review
+    •••
+}
+```
+
+**Finally, you add more information about the verdict.** Score and reason are usually what the next part of your workflow uses: they tell you how serious the signal is and why the rule fired, so you know what to do with an alert from Watch.
+
+```bash ruleName.ws {6,7}
+rule ruleName {
+  when currency == "USD" 
+    and amount > 4000
+
+  then review
+    score 0.5
+    reason "USD transaction exceeds 4,000"
+}
+```

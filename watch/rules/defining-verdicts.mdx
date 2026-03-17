@@ -1,0 +1,153 @@
+---
+sidebarTitle: "Defining verdicts"
+title: "Defining verdicts"
+description: "Define the outcome of a matching rule: verdict, score, and reason."
+noindex: true
+---
+
+When a rule matches, the `then` block tells Watch what outcome to produce. In practice, it answers three questions: 
+
+- what should happen, `verdict` 
+- how strong the signal is, `score`
+- why the rule matched, `reason`
+
+For example, here's an `allow` verdict for a valid discount transaction:
+
+```bash redeemDiscountCode.ws {4-6}
+rule redeemDiscountCode {
+  when meta_data.discount_code in ("WELCOME10", "BFCM70", "TRIAL100")
+
+  then allow
+    score 0.1
+    reason "Discount code is valid and supported."
+}
+```
+
+---
+
+## Supported verdicts
+
+Watch allows you to set one of six supported verdicts. Choose the one that closely matches the action your system should take after the rule fires.
+
+| Verdict | When to use it | Example use case |
+| --- | --- | --- |
+| `allow` | Transaction is acceptable; you still want an explicit outcome recorded. | Low-risk internal transfer |
+| `approve` | Explicitly mark as approved by rule logic. | Trusted partner payout flow |
+| `alert` | Notify or log without a hard stop. | Mild anomaly to monitor |
+| `review` | Transaction needs more scrutiny before you trust it. | Suspicious but not definitive fraud signal |
+| `deny` | Explicitly deny via rule logic. | Policy-based rejection |
+| `block` | Stop the transaction immediately. | Sanctioned destination or known fraud pattern |
+
+---
+
+## Defining scores
+
+`score` represents the risk weight assigned by the rule.
+
+Watch does not enforce a fixed risk policy. Instead, you define what different score values mean based on your risk appetite, review workflow, and decision thresholds. The same score can therefore mean different things depending on the system you are building.
+
+For example, a score of `0.3` might be treated as a weak signal that still results in `allow` in one system, while another system may treat it as a signal that requires `review`. Many teams reserve a score of `1.0` for rules that should always result in a hard stop, such as a `block`.
+
+<Note>
+If you omit `score` in the `then` block, Watch defaults it to `0.0`. 
+</Note>
+
+```bash highValueReview.ws {5}
+rule highValueReview {
+  when amount > 10000
+
+  then review
+    score 0.5
+    reason "Large transaction exceeds review threshold"
+}
+```
+
+It is recommended to keep scores consistent across similar rules. 
+
+If similar rules receive very different scores, the overall rule set becomes harder to work with and manage. Using similar scores for similar risks helps your decisions remain predictable.
+
+<Tip>
+You can [configure Watch](/watch/configuration#alert-webhook-configuration) to only send webhooks when the score is above a certain threshold, e.g. `ALERT_WEBHOOK_RISK_THRESHOLD=0.5` will send webhooks when the score is 0.5 or higher.
+</Tip>
+
+---
+
+## Writing reasons
+
+`reason` is a human-readable explanation for why a rule triggered. It appears in debugging output, analyst workflows, audit trails, webhook payloads, and logs.
+
+```bash suspiciousKeywordTransfer.ws {7}
+rule suspiciousKeywordTransfer {
+  when description regex "(?i)(gift.?card|crypto)" 
+    and amount > 1000
+
+  then review
+    score 0.7
+    reason "Suspicious keywords found in a high-value transaction description"
+}
+```
+
+Write reasons so they stand on their own when read later. They should be short, specific, and clearly tied to the condition that triggered the rule.
+
+Avoid vague explanations such as "Rule matched" or "Looks risky". Instead, describe what triggered the rule and why it matters.
+
+<Note>
+If you omit `reason`, Watch defaults it to `"No reason provided"`.
+</Note>
+
+---
+
+## How consolidation works
+
+A transaction can match multiple rules. When this happens, Watch combines the results of those rules into a single consolidated risk assessment. This gives your system one score and one verdict per transaction, even if several rules fired.
+
+```json Response
+{
+    "meta_data": {
+        "consolidated_risk_assessment": {
+            "final_reason": "USD transaction exceeds 4,000",
+            "final_risk_score": 0.5,
+            "final_verdict": "review",
+            "source_count": 1
+        },
+        "dsl_verdicts": [
+            {
+                "reason": "USD transaction exceeds 4,000",
+                "rule_id": 0,
+                "score": 0.5,
+                "verdict": "review"
+            }
+        ],
+        "evaluation_status": "completed",
+        "risk_evaluation_timestamp": "2026-03-15T22:12:00.99813+01:00"
+    }
+}
+```
+
+1. `final_risk_score`:
+    The final score is the average of the `score` values from all rules that matched. The result is always clamped between 0 and 1.
+
+2. `final_verdict`:
+    Individual rule verdicts (allow, review, block, etc.) are not merged. Instead, Watch determines the final verdict from the consolidated score:
+
+    - If the final score is 0.7 or higher, the verdict is `block`.
+    - Otherwise, the verdict is `review`.
+
+    This means a single high-risk rule can push the outcome to block, while several low-risk signals may still result in review.
+
+3. `final_reason`:
+    The `reason` values from all matching rules are combined into a single string, separated by "; ". This allows you to see every rule that contributed to the decision.
+
+4. `source_count`:
+    The number of rules that matched the transaction.
+
+If no rules are triggered on a transaction, the consolidated assessment defaults to:
+
+```json No rules triggered
+{
+  "final_risk_score": 0.0,
+  "final_verdict": "indeterminate",
+  "final_reason": "No risk information found to consolidate.",
+  "source_count": 0
+}
+```
