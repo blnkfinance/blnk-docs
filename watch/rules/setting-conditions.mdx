@@ -271,9 +271,9 @@ Use `PT` for time units (hours, minutes, seconds) and `P` for days. Weeks and mo
 
 ---
 
-## Time-based conditions
+## Time-based functions
 
-Time-based conditions let you write rules that depend on when a transaction occurs. 
+Time-based functions let you write rules that depend on when a transaction occurs. 
 
 For example, you might want to review large transactions late at night:
 
@@ -323,3 +323,60 @@ rule weekendHighValueTransactions {
     reason "Transaction occurred on a weekend"
 }
 ```
+
+---
+
+## "Previous transaction" function
+
+`previous_transaction` checks if any transaction in a past time window matches specific criteria. It returns `true` if at least one matching transaction exists, otherwise `false`.
+
+Use it to detect patterns like:
+
+- This source had a failed transaction recently
+- This destination already received a transaction in the last hour
+
+To use this function:
+
+```text
+previous_transaction(within: "<duration>", match: { <field>: <value>, ... })
+```
+
+- **within** — How far back to look. Uses ISO 8601 duration strings, e.g. `"PT1H"` (1 hour), `"P1D"` (1 day).
+
+- **match** — A set of fields that must all match for a transaction to count. You can use literal values, e.g. `meta_data.status: "failed"` or dynamic references, `source: $current.source`.
+
+For example, to flag and block when the same source has had a failed transaction in the last hour:
+
+```bash blockIfPreviousFailed.ws {2-6}
+rule blockIfPreviousFailed {
+  when previous_transaction(
+      within: "PT1H",
+      match: { source: "$current.source", status: "failed" }
+    )
+    and amount > 700000
+
+  then block
+    score 1.0
+    reason "Previous transaction from this source failed; blocking high amount"
+}
+```
+
+Here's another example that checks if a transaction has received at least one transaction in the last 30 minutes:
+
+```bash burstToSameDestination.ws {2-5}
+rule burstToSameDestination {
+  when previous_transaction(
+      within: "PT30M",
+      match: { destination: "$current.destination" }
+    )
+
+  then review
+    score 0.5
+    reason "Another transaction to this destination in the last 30 minutes"
+}
+```
+
+>**Note:**
+>
+>- This is a boolean check, not a count. It only answers: “Did at least one matching transaction occur?”
+>- Uses the same transaction store and time window format as aggregate conditions.
