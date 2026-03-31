@@ -43,3 +43,37 @@ import Key from "/snippets/key.mdx";
   }
   ```
 </ParamField>
+
+### Response
+
+<ResponseField name="batch_id" type="string" required>
+  Identifier for the bulk batch. Use this value as `parent_transaction` when [searching for child transactions](/transactions/bulk-transactions#retrieving-transactions-in-a-batch), or when [committing or voiding](/transactions/bulk-transactions#commit-or-void-bulk-inflight) an inflight batch.
+</ResponseField>
+<ResponseField name="status" type="string" required>
+  When `run_async` is false, value is `applied` if transactions posted immediately, or `inflight` if the batch was created in inflight status. When `run_async` is true, value is `queued` while the batch runs in the background.
+</ResponseField>
+<ResponseField name="transaction_count" type="integer">
+  Number of transactions in the batch. Present when processing finished synchronously and the batch succeeded (or when reported in webhooks for async success).
+</ResponseField>
+<ResponseField name="message" type="string">
+  Human-readable status message. Included on the immediate response when `run_async` is `true` (for example, confirming that background processing started).
+</ResponseField>
+
+<ResponseExample>
+```json run_async = false
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 4
+}
+```
+```json run_async = true
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+</ResponseExample>
+
+<NeedHelp />
