@@ -1,0 +1,214 @@
+---
+title: "Configuration Reference"
+sidebarTitle: "Reference"
+description: "Review required fields and default values for Blnk configuration."
+"og:title": "Configuration Reference • Blnk Developer Documentation"
+"og:description": "Review required fields and default values for Blnk configuration."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+This page is the complete reference for Blnk configuration. It lists every supported setting and shows the runtime default value where applicable. 
+
+Fields with no default are left blank.
+
+<CodeGroup>
+```bash blnk.env
+# Project
+# Defaults to "Blnk Server" when not set.
+BLNK_PROJECT_NAME=Blnk Server
+
+# Server
+# Port defaults to 5001. SSL and secure mode are off by default.
+BLNK_SERVER_SSL=false
+BLNK_SERVER_SECURE=false
+BLNK_CERT_STORAGE_PATH=
+BLNK_SERVER_SECRET_KEY=
+BLNK_SERVER_SSL_DOMAIN=
+BLNK_SERVER_SSL_EMAIL=
+BLNK_SERVER_PORT=5001
+BLNK_METRICS_BEARER_TOKEN=
+
+# Database
+# DNS is required for Blnk to start successfully. Docker default shown below.
+BLNK_DATA_SOURCE_DNS=postgres://postgres:password@postgres:5432/blnk?sslmode=disable
+BLNK_DATABASE_MAX_OPEN_CONNS=25
+BLNK_DATABASE_MAX_IDLE_CONNS=10
+BLNK_DATABASE_CONN_MAX_LIFETIME=30m
+BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
+
+# Redis
+# DNS is required for Blnk to start successfully. Docker default shown below.
+BLNK_REDIS_DNS=redis:6379
+BLNK_REDIS_SKIP_TLS_VERIFY=false
+BLNK_REDIS_POOL_SIZE=100
+BLNK_REDIS_MIN_IDLE_CONNS=20
+
+# Typesense
+# Docker default shown for the Typesense endpoint. The API key defaults to "blnk-api-key".
+BLNK_TYPESENSE_DNS=http://typesense:8108
+BLNK_TYPESENSE_KEY=blnk-api-key
+
+# Transactions
+# Duration values use Go duration format.
+BLNK_TRANSACTION_BATCH_SIZE=1000
+BLNK_TRANSACTION_MAX_QUEUE_SIZE=1000
+BLNK_TRANSACTION_MAX_WORKERS=10
+BLNK_TRANSACTION_LOCK_DURATION=30m
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+BLNK_TRANSACTION_INDEX_QUEUE_PREFIX=transactions
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
+BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK=false
+
+# Queue
+BLNK_QUEUE_TRANSACTION=new:transaction
+BLNK_QUEUE_WEBHOOK=new:webhook
+BLNK_QUEUE_INDEX=new:index
+BLNK_QUEUE_INFLIGHT_EXPIRY=new:inflight-expiry
+BLNK_QUEUE_NUMBER_OF_QUEUES=20
+BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES=false
+BLNK_QUEUE_MAX_RETRY_ATTEMPTS=5
+BLNK_QUEUE_MONITORING_PORT=5004
+BLNK_QUEUE_WEBHOOK_CONCURRENCY=20
+
+# Hot-lane and worker tuning
+# Duration values use Go duration format.
+BLNK_QUEUE_ENABLE_HOT_LANE=false
+BLNK_QUEUE_HOT_QUEUE_NAME=hot_transactions
+BLNK_QUEUE_HOT_QUEUE_CONCURRENCY=1
+BLNK_QUEUE_HOT_PAIR_TTL=5m
+BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD=3
+BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY=false
+BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=1
+
+# Rate limiting
+# These are the runtime defaults used when rate limiting is not configured.
+BLNK_RATE_LIMIT_RPS=5000000
+BLNK_RATE_LIMIT_BURST=10000000
+BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC=10800
+
+# Reconciliation
+# Retry delay uses Go duration format.
+BLNK_RECONCILIATION_DEFAULT_STRATEGY=one_to_one
+BLNK_RECONCILIATION_PROGRESS_INTERVAL=100
+BLNK_RECONCILIATION_MAX_RETRIES=3
+BLNK_RECONCILIATION_RETRY_DELAY=5s
+
+# Notifications
+# Leave these blank until you are ready to send Slack alerts or webhooks.
+BLNK_SLACK_WEBHOOK_URL=
+BLNK_WEBHOOK_URL=
+BLNK_WEBHOOK_HEADERS={}
+
+# Observability
+BLNK_ENABLE_TELEMETRY=false
+BLNK_ENABLE_OBSERVABILITY=false
+
+# Tokenization
+BLNK_TOKENIZATION_SECRET=
+
+# Backups
+BLNK_BACKUP_DIR=
+BLNK_AWS_ACCESS_KEY_ID=
+BLNK_AWS_SECRET_ACCESS_KEY=
+BLNK_S3_ENDPOINT=
+BLNK_S3_BUCKET_NAME=
+BLNK_S3_REGION=
+```
+
+```json blnk.json
+{
+  "project_name": "Blnk Server",
+  "server": {
+    "ssl": false,
+    "cert_storage_path": "",
+    "secure": false,
+    "secret_key": "",
+    "domain": "",
+    "email": "",
+    "port": "5001",
+    "metrics_bearer_token": ""
+  },
+  "data_source": {
+    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable",
+    "max_open_conns": 25,
+    "max_idle_conns": 10,
+    "conn_max_lifetime": "30m",
+    "conn_max_idle_time": "5m"
+  },
+  "redis": {
+    "dns": "redis:6379",
+    "skip_tls_verify": false,
+    "pool_size": 100,
+    "min_idle_conns": 20
+  },
+  "typesense": {
+    "dns": "http://typesense:8108"
+  },
+  "type_sense_key": "blnk-api-key",
+  "transaction": {
+    "batch_size": 1000,
+    "max_queue_size": 1000,
+    "max_workers": 10,
+    "lock_duration": "30m",
+    "lock_wait_timeout": "3s",
+    "index_queue_prefix": "transactions",
+    "enable_coalescing": true,
+    "enable_queued_checks": false,
+    "disable_batch_reference_check": false
+  },
+  "queue": {
+    "transaction_queue": "new:transaction",
+    "webhook_queue": "new:webhook",
+    "index_queue": "new:index",
+    "inflight_expiry_queue": "new:inflight-expiry",
+    "number_of_queues": 20,
+    "insufficient_fund_retries": false,
+    "max_retry_attempts": 5,
+    "monitoring_port": "5004",
+    "webhook_concurrency": 20,
+    "enable_hot_lane": false,
+    "hot_queue_name": "hot_transactions",
+    "hot_queue_concurrency": 1,
+    "hot_pair_ttl": "5m",
+    "hot_pair_lock_contention_threshold": 3,
+    "reject_lock_contention_immediately": false,
+    "transaction_worker_concurrency": 1
+  },
+  "rate_limit": {
+    "requests_per_second": 5000000,
+    "burst": 10000000,
+    "cleanup_interval_sec": 10800
+  },
+  "reconciliation": {
+    "default_strategy": "one_to_one",
+    "progress_interval": 100,
+    "max_retries": 3,
+    "retry_delay": "5s"
+  },
+  "notification": {
+    "slack": {
+      "webhook_url": ""
+    },
+    "webhook": {
+      "url": "",
+      "headers": {}
+    }
+  },
+  "enable_telemetry": false,
+  "enable_observability": false,
+  "tokenization_secret": "",
+  "backup_dir": "",
+  "aws_access_key_id": "",
+  "aws_secret_access_key": "",
+  "s3_endpoint": "",
+  "s3_bucket_name": "",
+  "s3_region": ""
+}
+```
+</CodeGroup>
+
+---
+
+<NeedHelp />

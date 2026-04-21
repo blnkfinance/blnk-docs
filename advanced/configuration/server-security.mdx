@@ -1,0 +1,103 @@
+---
+title: "Server and Security Configuration"
+sidebarTitle: "Server & security"
+description: "Configure server runtime, SSL, secure mode, and secrets in Blnk."
+"og:title": "Server and Security Configuration • Blnk Developer Documentation"
+"og:description": "Configure server runtime, SSL, secure mode, and secrets in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+---
+
+## Overview
+
+Use these settings to configure the Blnk server itself, including its port, TLS behavior, secure mode, and tokenization secret.
+
+---
+
+## Server configuration
+
+The server configuration controls how Blnk listens for traffic and how it handles core security settings.
+
+<CodeGroup>
+```json blnk.json
+{
+  "server": {
+    "ssl": false,
+    "secure": false,
+    "secret_key": "",
+    "domain": "",
+    "email": "",
+    "port": "5001"
+  }
+}
+```
+
+```bash .env
+BLNK_SERVER_SSL=false
+BLNK_SERVER_SECURE=false
+BLNK_SERVER_SECRET_KEY=
+BLNK_SERVER_SSL_DOMAIN=
+BLNK_SERVER_SSL_EMAIL=
+BLNK_SERVER_PORT=5001
+```
+</CodeGroup>
+
+<Tabs>
+  <Tab title="Definitions">
+    | Attribute | Type | Description | Environment variable |
+    | :-- | :-- | :-- | :-- |
+    | `ssl` | boolean | Enables SSL or TLS for server traffic. | `BLNK_SERVER_SSL` |
+    | `secure` | boolean | Enables additional secure-mode protections for the server. | `BLNK_SERVER_SECURE` |
+    | `secret_key` | string | Secret used for signing and other cryptographic operations. | `BLNK_SERVER_SECRET_KEY` |
+    | `domain` | string | Domain used for SSL configuration. | `BLNK_SERVER_SSL_DOMAIN` |
+    | `email` | string | Contact email used for SSL certificate setup. | `BLNK_SERVER_SSL_EMAIL` |
+    | `port` | string | Port the server listens on. | `BLNK_SERVER_PORT` |
+  </Tab>
+  <Tab title="Security considerations">
+    1. Enable both `ssl` and `secure` in production.
+    2. Use a strong `secret_key` and rotate it carefully.
+    3. Set a valid domain and email before enabling automatic certificate flows.
+    4. Restrict exposed ports to the minimum required by your deployment.
+  </Tab>
+</Tabs>
+
+---
+
+## Tokenization secret
+
+Use `tokenization_secret` to protect tokenization and detokenization operations.
+
+<CodeGroup>
+```json blnk.json
+{
+  "tokenization_secret": ""
+}
+```
+
+```bash .env
+BLNK_TOKENIZATION_SECRET=
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `tokenization_secret` | string | Secret key used to secure tokenization operations. | `BLNK_TOKENIZATION_SECRET` |
+
+<Warning>
+  Keep `secret_key` and `tokenization_secret` out of version control. Store them in a
+  secret manager or inject them through environment variables in production.
+</Warning>
+
+---
+
+## Related guides
+
+- [Enable HTTPS](/advanced/enable-https)
+- [Secure Blnk](/advanced/secure-blnk)
+- [Self hosting](/advanced/self-hosting)
+
+---
+
+<NeedHelp />

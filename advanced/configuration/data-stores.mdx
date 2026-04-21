@@ -1,0 +1,126 @@
+---
+title: "Data Store Configuration"
+sidebarTitle: "Data stores"
+description: "Set up PostgreSQL, Redis, and Typesense for your Blnk deployment."
+"og:title": "Data Store Configuration • Blnk Developer Documentation"
+"og:description": "Set up PostgreSQL, Redis, and Typesense for your Blnk deployment."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+---
+
+## Overview
+
+Use these settings to connect Blnk to PostgreSQL, Redis, and Typesense.
+
+---
+
+## Database configuration
+
+The data source configuration defines how Blnk connects to PostgreSQL and how it manages database connection pooling.
+
+<CodeGroup>
+```json blnk.json
+{
+  "data_source": {
+    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable",
+    "max_open_conns": 25,
+    "max_idle_conns": 10,
+    "conn_max_lifetime": "30m",
+    "conn_max_idle_time": "5m"
+  }
+}
+```
+
+```bash .env
+BLNK_DATA_SOURCE_DNS=postgres://postgres:password@postgres:5432/blnk?sslmode=disable
+BLNK_DATABASE_MAX_OPEN_CONNS=25
+BLNK_DATABASE_MAX_IDLE_CONNS=10
+BLNK_DATABASE_CONN_MAX_LIFETIME=30m
+BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `dns` | string | Database connection string. Required for startup. | `BLNK_DATA_SOURCE_DNS` |
+| `max_open_conns` | integer | Maximum number of open database connections. | `BLNK_DATABASE_MAX_OPEN_CONNS` |
+| `max_idle_conns` | integer | Maximum number of idle connections in the pool. | `BLNK_DATABASE_MAX_IDLE_CONNS` |
+| `conn_max_lifetime` | duration | Maximum lifetime for a reused connection. | `BLNK_DATABASE_CONN_MAX_LIFETIME` |
+| `conn_max_idle_time` | duration | Maximum idle time before a connection is closed. | `BLNK_DATABASE_CONN_MAX_IDLE_TIME` |
+
+<Tip>
+  A typical database DNS string looks like
+  `[driver]://[username]:[password]@[host]:[port]/[database]`.
+</Tip>
+
+---
+
+## Redis configuration
+
+Redis is used for distributed locking, queueing, and related runtime behavior.
+
+<CodeGroup>
+```json blnk.json
+{
+  "redis": {
+    "dns": "redis:6379",
+    "skip_tls_verify": false
+  }
+}
+```
+
+```bash .env
+BLNK_REDIS_DNS=redis:6379
+BLNK_REDIS_SKIP_TLS_VERIFY=false
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `dns` | string | Redis connection string. Required for Redis-backed features. | `BLNK_REDIS_DNS` |
+| `skip_tls_verify` | boolean | Skips TLS certificate verification for Redis connections. | `BLNK_REDIS_SKIP_TLS_VERIFY` |
+
+<Warning>
+  Only use `skip_tls_verify` when you understand the certificate risk, such as in a
+  trusted environment with self-signed certificates.
+</Warning>
+
+---
+
+## Typesense configuration
+
+Use Typesense when you want fast search features backed by a separate search engine.
+
+<CodeGroup>
+```json blnk.json
+{
+  "typesense": {
+    "dns": "http://typesense:8108"
+  },
+  "type_sense_key": ""
+}
+```
+
+```bash .env
+BLNK_TYPESENSE_DNS=http://typesense:8108
+BLNK_TYPESENSE_KEY=
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `typesense.dns` | string | URL for the Typesense server. | `BLNK_TYPESENSE_DNS` |
+| `type_sense_key` | string | API key used to authenticate with Typesense. | `BLNK_TYPESENSE_KEY` |
+
+---
+
+## Related guides
+
+- [Self hosting](/advanced/self-hosting)
+- [Search with Typesense](/search/typesense/introduction)
+
+---
+
+<NeedHelp />

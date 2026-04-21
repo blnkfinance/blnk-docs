@@ -1,0 +1,263 @@
+---
+title: "Transaction and Queue Configuration"
+sidebarTitle: "Transactions"
+description: "Configure transaction processing, queues, rate limits, and reconciliation in Blnk."
+"og:title": "Transaction and Queue Configuration • Blnk Developer Documentation"
+"og:description": "Configure transaction processing, queues, rate limits, and reconciliation in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+---
+
+## Overview
+
+Use these settings to tune transaction processing, queue behavior, retries, hot-balance handling, rate limits, and reconciliation.
+
+---
+
+## Transaction configuration
+
+The transaction configuration controls how Blnk batches work, processes queued transactions, and applies lock-related settings.
+
+<CodeGroup>
+```json blnk.json
+{
+  "transaction": {
+    "batch_size": 100000,
+    "max_queue_size": 1000,
+    "max_workers": 10,
+    "lock_duration": 1800,
+    "index_queue_prefix": "transactions",
+    "enable_queued_checks": false
+  }
+}
+```
+
+```bash .env
+BLNK_TRANSACTION_BATCH_SIZE=100000
+BLNK_TRANSACTION_MAX_QUEUE_SIZE=1000
+BLNK_TRANSACTION_MAX_WORKERS=10
+BLNK_TRANSACTION_LOCK_DURATION=1800
+BLNK_TRANSACTION_INDEX_QUEUE_PREFIX=transactions
+BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `batch_size` | number or null | Maximum number of items to process in one transaction batch. | `BLNK_TRANSACTION_BATCH_SIZE` |
+| `max_queue_size` | number or null | Maximum number of transactions that can be queued. | `BLNK_TRANSACTION_MAX_QUEUE_SIZE` |
+| `max_workers` | number | Maximum number of concurrent transaction workers. | `BLNK_TRANSACTION_MAX_WORKERS` |
+| `lock_duration` | number | How long a transaction lock is held, in seconds. | `BLNK_TRANSACTION_LOCK_DURATION` |
+| `index_queue_prefix` | string | Prefix for transaction queue names in the indexing system. | `BLNK_TRANSACTION_INDEX_QUEUE_PREFIX` |
+| `enable_queued_checks` | boolean | Runs extra validation checks before queued transactions are processed. | `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` |
+
+---
+
+## Queue configuration
+
+The queue configuration defines the queue names and queue-level worker settings used across the server.
+
+<CodeGroup>
+```json blnk.json
+{
+  "queue": {
+    "transaction_queue": "new:transaction",
+    "webhook_queue": "new:webhook",
+    "index_queue": "new:index",
+    "inflight_expiry_queue": "new:inflight-expiry",
+    "number_of_queues": 20,
+    "insufficient_fund_retries": true,
+    "max_retry_attempts": 3,
+    "monitoring_port": "5004",
+    "webhook_concurrency": 20
+  }
+}
+```
+
+```bash .env
+BLNK_QUEUE_TRANSACTION=new:transaction
+BLNK_QUEUE_WEBHOOK=new:webhook
+BLNK_QUEUE_INDEX=new:index
+BLNK_QUEUE_INFLIGHT_EXPIRY=new:inflight-expiry
+BLNK_QUEUE_NUMBER_OF_QUEUES=20
+BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES=true
+BLNK_QUEUE_MAX_RETRY_ATTEMPTS=3
+BLNK_QUEUE_MONITORING_PORT=5004
+BLNK_QUEUE_WEBHOOK_CONCURRENCY=20
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `transaction_queue` | string | Queue name for transaction processing. | `BLNK_QUEUE_TRANSACTION` |
+| `webhook_queue` | string | Queue name for webhook delivery. | `BLNK_QUEUE_WEBHOOK` |
+| `index_queue` | string | Queue name for search indexing work. | `BLNK_QUEUE_INDEX` |
+| `inflight_expiry_queue` | string | Queue name for inflight expiry processing. | `BLNK_QUEUE_INFLIGHT_EXPIRY` |
+| `number_of_queues` | number | Total number of transaction queue shards. | `BLNK_QUEUE_NUMBER_OF_QUEUES` |
+| `insufficient_fund_retries` | boolean | Retries queued transactions that fail because of insufficient funds. | `BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES` |
+| `max_retry_attempts` | number | Maximum number of retry attempts for queued transactions. | `BLNK_QUEUE_MAX_RETRY_ATTEMPTS` |
+| `monitoring_port` | string | Port used by the monitoring server. | `BLNK_QUEUE_MONITORING_PORT` |
+| `webhook_concurrency` | number | Number of concurrent webhook workers. | `BLNK_QUEUE_WEBHOOK_CONCURRENCY` |
+
+---
+
+## Hot-lane routing
+
+Use hot-lane routing when a small number of balance pairs keep causing repeated contention in the queue.
+
+```json blnk.json
+{
+  "queue": {
+    "enable_hot_lane": true
+  }
+}
+```
+
+```bash .env
+BLNK_QUEUE_ENABLE_HOT_LANE=true
+```
+
+| Attribute | Description |
+| :-- | :-- |
+| `queue.enable_hot_lane` | Turns hot-lane routing on or off. |
+| `queue.hot_queue_name` | Sets the dedicated queue name for hot traffic. |
+| `queue.hot_queue_concurrency` | Controls worker concurrency for the hot queue. |
+| `queue.hot_pair_ttl` | Defines how long hot-pair state stays active. |
+| `queue.hot_pair_lock_contention_threshold` | Sets how many contention events are needed before a pair is promoted. |
+| `queue.reject_lock_contention_immediately` | Fails fast on lock contention instead of waiting for later handling. |
+| `queue.transaction_worker_concurrency` | Controls concurrency available to transaction workers in the queue subsystem. |
+
+<Tip>
+  For strategy guidance and examples, see [Handling hot balances](/guides/hot-balances#hot-lane-routing).
+</Tip>
+
+---
+
+## Queued coalescing
+
+Queued coalescing improves throughput by combining compatible queued transactions into a single balance commit.
+
+<CodeGroup>
+```json blnk.json
+{
+  "transaction": {
+    "enable_coalescing": true,
+    "batch_size": 1000,
+    "enable_queued_checks": false,
+    "disable_batch_reference_check": false
+  }
+}
+```
+
+```bash .env
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_BATCH_SIZE=1000
+```
+</CodeGroup>
+
+| Attribute | Description |
+| :-- | :-- |
+| `transaction.enable_coalescing` | Turns queued coalescing on or off. |
+| `transaction.batch_size` | Controls how many transactions Blnk tries to coalesce in one batch. |
+| `transaction.enable_queued_checks` | Runs extra checks before queued work is processed. |
+| `transaction.disable_batch_reference_check` | Disables duplicate-reference checks inside queued batches. |
+
+<Tip>
+  For workload guidance, see [Handling hot balances](/guides/hot-balances#coalescing).
+</Tip>
+
+---
+
+## Lock wait timeout
+
+Use lock wait timeout when you process transactions with `skip_queue=true` and want Blnk to wait briefly for locks before failing.
+
+```bash .env
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+```
+
+| Attribute | Description |
+| :-- | :-- |
+| `transaction.lock_wait_timeout` | Controls how long Blnk waits for locks before failing a `skip_queue=true` transaction. |
+
+<Note>
+  A shorter timeout reduces latency but increases the chance of failure during contention.
+  A longer timeout gives contention more time to clear but keeps the caller blocked for longer.
+</Note>
+
+---
+
+## Rate limiting
+
+Rate limiting protects the API from abuse and helps you manage traffic spikes more predictably.
+
+<CodeGroup>
+```json blnk.json
+{
+  "rate_limit": {
+    "requests_per_second": 1000,
+    "burst": 1000,
+    "cleanup_interval_sec": 60
+  }
+}
+```
+
+```bash .env
+BLNK_RATE_LIMIT_RPS=1000
+BLNK_RATE_LIMIT_BURST=1000
+BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC=60
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `requests_per_second` | number or null | Maximum requests allowed per second per client. | `BLNK_RATE_LIMIT_RPS` |
+| `burst` | number or null | Maximum short burst allowed above the RPS limit. | `BLNK_RATE_LIMIT_BURST` |
+| `cleanup_interval_sec` | number | Cleanup interval for expired rate-limit data. | `BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC` |
+
+---
+
+## Reconciliation configuration
+
+Use reconciliation settings to control matching strategy and retry behavior for reconciliation jobs.
+
+<CodeGroup>
+```json blnk.json
+{
+  "reconciliation": {
+    "default_strategy": "one_to_one",
+    "progress_interval": 100,
+    "max_retries": 3,
+    "retry_delay": 5
+  }
+}
+```
+
+```bash .env
+BLNK_RECONCILIATION_DEFAULT_STRATEGY=one_to_one
+BLNK_RECONCILIATION_PROGRESS_INTERVAL=100
+BLNK_RECONCILIATION_MAX_RETRIES=3
+BLNK_RECONCILIATION_RETRY_DELAY=5
+```
+</CodeGroup>
+
+| Attribute | Type | Description | Environment variable |
+| :-- | :-- | :-- | :-- |
+| `default_strategy` | string | Default matching strategy. | `BLNK_RECONCILIATION_DEFAULT_STRATEGY` |
+| `progress_interval` | number | Number of records processed before a progress update is emitted. | `BLNK_RECONCILIATION_PROGRESS_INTERVAL` |
+| `max_retries` | number | Maximum number of retry attempts for failed reconciliation work. | `BLNK_RECONCILIATION_MAX_RETRIES` |
+| `retry_delay` | string | Time to wait between retry attempts, in seconds. | `BLNK_RECONCILIATION_RETRY_DELAY` |
+
+---
+
+## Related guides
+
+- [Handling hot balances](/guides/hot-balances)
+- [Handling concurrency](/guides/concurrency)
+- [Queue recovery](/advanced/queue-recovery)
+
+---
+
+<NeedHelp />
