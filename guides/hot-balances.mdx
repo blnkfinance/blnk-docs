@@ -9,128 +9,158 @@ description: "Strategies for managing high-traffic balances and preventing lock 
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-## Overview
+<Info>Supported in version 0.14.0 and later.</Info>
 
-"Hot balances" are ledger balances that perform high volumes of concurrent transactions. These balances can experience lock contention when using immediate processing (`skip_queue: true`), leading to transaction failures and poor user experience.
+**Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience. 
 
-This guide covers strategies for handling hot balances effectively in Blnk, ensuring reliable transaction processing even under high load.
+Most hot balance scenarios fall into one of the following patterns:
+
+1. **A → N:** one source balance funds many destination balances at the same time.
+2. **N → A:** many source balances fund one destination balance at the same time.
+3. **A → B and B → A:** the same two balances move funds back and forth at the same time.
+
+This guide explains the different strategies Blnk natively supports to handle these patterns safely. We'll cover:
+
+1. Hot-lane routing
+2. Coalescing
+3. Hot-lane routing + Coalescing
+4. Lock wait timeout
 
 ---
 
-## Understanding the problem
+## Hot-lane routing
 
-When multiple transactions target the same balance simultaneously using `skip_queue: true`, they must acquire distributed locks to maintain balance integrity. If a lock isn't acquired, the transaction fails with a  `Failed to acquire lock` error.
+Consider a workflow where a small number of balance pairs keep receiving heavy concurrent traffic, while the rest of the queue is relatively normal, i.e. `A → B and B → A`.
 
-This becomes problematic for hot balances that receive:
-- High-frequency payments from multiple customers
-- Batch processing operations
-- Real-time transaction streams
-- Popular accounts with frequent activity
+With **hot-lane routing**, Blnk identifies queued transactions for a specific source, destination, and currency pair that is showing repeated lock contention, and routes new traffic for that exact pair into a dedicated hot queue.
+
+This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
+
+<Check> **Please note:** Hot-lane routing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
+
+### How to use
+
+To enable hot-lane routing, update your Blnk configuration file to include the following settings:
+
+```bash .env
+BLNK_QUEUE_ENABLE_HOT_LANE=true
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_QUEUE_ENABLE_HOT_LANE` | Turns hot-lane routing on or off. |
+
+### When to use
+
+Choose hot-lane routing when contention is concentrated around a small number of balance pairs and you want to isolate that traffic from the rest of the queue.
+
+It is a good fit when:
+
+- A few specific balance pairs repeatedly cause lock contention.
+- A small number of hot pairs are slowing down otherwise healthy queue traffic.
+- You want to isolate the worst offenders without changing correctness behavior.
+- Your normal queue works well overall, but certain balance pairs keep colliding.
+
+It is less useful when:
+
+- Traffic is broadly distributed with no clear hot pairs.
+- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) instead.
+- Most of your traffic is synchronous and bypasses the queue. Consider [Lock wait timeout](#lock-wait-timeout) instead.
 
 ---
 
-## Solution strategies
+## Coalescing
 
-### Option 1: Use the queue (recommended)
+Consider a deposit workflow involving one internal source balance funding 1000+ destination balances at the same time, or vice versa, e.g. `A → N` or `N → A`.
 
-The most reliable approach for hot balances is to use Blnk's built-in queuing system:
+**With Coalescing**, Blnk identifies the queued transactions based on if they share the same `source`, `destination`, and `currency`, batches them in-memory, and applies them in a single commit. 
 
-<Frame caption="With queue, Blnk gracefully handles concurrency and race conditions for your financial system">
-<img src="/images/hot-balances-option-1.png" alt="Diagram showing concurrent transactions entering a queue system and being processed sequentially" />
-</Frame>
+This reduces the number of balance lookups and commits required, improving throughput and performance overall.
 
-<Steps>
-<Step title="Remove skip_queue parameter">
-  When creating transactions for hot balances, omit the `skip_queue` parameter or set it to `false`. This routes transactions through the queue system.
+<Check> **Please note:** Coalescing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
 
-  <Tip>
-    Queue-based processing eliminates lock contention by serializing transactions for the same balance, ensuring all transactions eventually succeed without manual intervention.
-  </Tip>
-</Step>
+### How to use
 
-<Step title="Listen for webhook events">
-  Set up [webhooks](/advanced/notifications) to receive real-time updates when transaction status changes:
-  
-  Common webhook events:
-  * `transaction.applied` - Transaction successfully processed
-  * `transaction.rejected` - Transaction rejected (insufficient funds, etc.)
-  * `transaction.inflight` - Transaction held in inflight state
-</Step>
+To enable Coalescing, update your Blnk configuration file to include the following settings:
 
-<Step title="Track transaction status">
-  Alternatively, use the Search API to actively query transaction status via `parent_transaction` or `reference`:
-  
-  <CodeGroup>
-    ```json Via parent transaction
-    {
-      "q": "queued-transaction-id",
-      "query_by": "parent_transaction"
-    }
-    ```
+```bash .env
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_BATCH_SIZE=1000
+```
 
-    ```json Via reference
-    {
-      "q": "queued-txn-reference",
-      "query_by": "reference"
-    }
-    ```
-  </CodeGroup>
-</Step>
-</Steps>
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_TRANSACTION_ENABLE_COALESCING` | Turns queued coalescing on or off. |
+| `BLNK_TRANSACTION_BATCH_SIZE` | Controls how many transactions Blnk will try to coalesce in one batch. |
 
-### Option 2: Handle concurrency on your end
+### When to use
 
-If you must use `skip_queue: true` for hot balances, implement your own concurrency controls to prevent race conditions:
+As a rule of thumb, choose Coalescing when you have traffic bursts with repeated balance overlap and want the queue to drain more efficiently.
 
-<Frame caption="Client-side sequential processing ensures only one transaction is in flight at a time to prevent lock contention">
-<img src="/images/hot-balances-option-2.png" alt="Handling concurrency client-side" />
-</Frame>
+It is a good fit when:
 
-<Steps>
-<Step title="Implement sequential processing">
-  Ensure transactions are sent one after another, not simultaneously. Avoid sending all transactions at once and instead process them sequentially to prevent lock contention.
+- It takes too long for your queue to finish processing the transactions.
+- You see repeated contention on the same balance pair, source, or destination.
+- Your system experiences frequent bursts, with many similar transactions happening at the same time.
+- You want to reduce repeated lock contention errors in the queue and improve throughput.
 
-  <Warning>
-    Client-side concurrency management requires careful implementation and testing. Consider using the Blnk's queueing system instead for better reliability.
-  </Warning>
-</Step>
+Coalescing is less useful when:
 
-<Step title="Add retry logic">
-  Implement exponential backoff for failed transactions. When a transaction fails due to lock acquisition, wait a bit before retrying to reduce contention.
-</Step>
-</Steps>
+- Traffic is low-volume and spread across many balances. 
+- You use `skip_queue: true` to process transactions immediately.
 
-### Option 3: Use intermediary balances
+---
 
-Introduce intermediary balances in your [money movement map](/ledgers/money-movement-map) to reduce load on hot balances:
+## Hot-lane routing + Coalescing
 
-**Instead of:** `Customer balance → GL Balance`
+If you need Blnk to isolate hot balance pairs (i.e. A → B and B → A) and also improve the throughput of the queue, we recommend combining the **Hot-lane routing** and **Coalescing** strategies.
 
-**Use:** `Customer balance → Customer hold balance → GL Balance`
+### When to use
 
-<Frame caption="Intermediary balances isolate customer transactions and reduce load on the main GL balance">
-<img src="/images/hot-balances-option-3.png" alt="Diagram showing how to skip queues with intermediary balances while reducing lock contention errors" />
-</Frame>
+Choose both when you see the following signs happening simultaneously:
 
-<Steps>
-<Step title="Create customer hold balances">
-  Each customer gets their own hold balance that acts as a buffer. Create separate hold balances for each customer to isolate their transactions.
-</Step>
+- lock contention concentrated on specific source and destination pairs
+- queue backlogs that take longer to drain during bursts
+- repeated retries on queued transactions
+- traffic patterns where many queued transactions hit the same source, destination, or pair within a short period
 
-<Step title="Process customer transactions immediately">
-  Customer transactions can safely use `skip_queue: true` since each customer has their own hold balance, eliminating competition for locks.
-</Step>
+---
 
-<Step title="Settle to GL balance via queue">
-  Periodically settle hold balances to the main GL balance using queue processing to move pressure away from the GL balance. This reduces lock contention and improves performance.
-</Step>
-</Steps>
+## Lock wait timeout
 
-**Benefits of this approach:**
-* Each customer gets their own hold balance, eliminating competition for locks;
-* Customer transactions process immediately for better UX;
-* GL balance receives fewer, larger transactions via queue;
-* Provides flexibility in processing high-traffic transactions.
+Lock wait timeout is Blnk's lock-contention strategy for `skip_queue=true` transactions. When a transaction bypasses the queue, Blnk still needs to [acquire locks](/guides/concurrency#distributed-redis-balance-locks) for the source and destination balances before processing the transaction. 
+ 
+`BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` controls how long Blnk will wait for those locks before failing the transaction.
+
+<Check> **Please note:** Lock wait timeout only works when `skip_queue=true`.</Check>
+
+### How to use
+
+To configure lock wait timeout, update your Blnk configuration with:
+
+```bash .env
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | Controls how long Blnk will wait for locks before failing the transaction. |
+
+<Note>
+A shorter timeout keeps requests more responsive, but increases the chance of failing during contention.
+
+However, a longer timeout gives contention more time to clear, but increases request latency and the time the caller may spend blocked.
+
+</Note>
+
+### When to use
+
+Choose lock wait timeout when:
+
+- you use `skip_queue: true` 
+- you want synchronous requests to succeed through short spikes
+- lock contention is usually brief and predictable
+- slightly higher latency is acceptable
 
 ---
 

@@ -9,67 +9,70 @@ description: "Learn how Blnk handles concurrency with queues and optimistic lock
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-When multiple users interact with a financial system simultaneously, ensuring accurate and consistent transaction processing becomes crucial. Blnk handles this challenge through a concurrency control system that combines two key mechanisms: transaction queuing and optimistic locking.
+Concurrency is a normal part of financial systems, where multiple transactions can try to read from or write to the same balance at the same time. Without the right controls, this can lead to race conditions, lock contention, and incorrect balance updates.
 
-In this guide, you'll learn how these mechanisms work together to streamline transaction processing, prevent data conflicts and maintain system integrity.
+This guide explains the main mechanisms Blnk uses to handle concurrent transaction processing safely. We'll cover:
 
----
-
-## Architectural insights
-
-Blnk's architecture incorporates queuing and optimistic locking to manage concurrency as illustrated below:
-
-<Frame caption="Simplified overview of how Blnk manages concurrency">
-    <img src="/images/queuing-transactions.png" alt="Blnk Architecture" />
-</Frame>
-
-This diagram illustrates Blnk's layered architecture where transactions enter through the API layer and are then routed to the appropriate service based on the details of the transaction. 
-
-Queuing transactions act as a buffer to manage the flow of transactions to ensure sequential processing for similar operations. The database layer, equipped with optimistic locking, is where the final check for version consistency occurs, ensuring that only transactions based on the current state of the data are applied.
+1. [Queueing transactions](#queueing-transactions)
+2. [Distributed Redis balance locks](#distributed-redis-balance-locks)
+3. [Optimistic locking at the DB layer](#optimistic-locking-at-the-db-layer)
 
 ---
 
-## Queuing transactions
+## Queueing transactions
 
-The queuing system manages transaction flow through partition-based processing. When transactions enter the system, they are routed to specific queue partitions based on their characteristics. Similar transactions affecting the same balance are grouped in a single partition, ensuring sequential processing order.
+Queueing means a transaction is first recorded as work to be processed, instead of being applied to the ledger immediately in the same request.
 
-Key aspects of the queuing system:
+**Here is how it works:** Blnk first saves the transaction in a `QUEUED` state. After that, a worker picks it up and applies it to the ledger. Transactions that affect the same balance are routed in a way that reduces them clashing with each other, while transactions for unrelated balances can still move in parallel.
 
-* **Partition Assignment:** Incoming transactions are assigned to available partitions. If one partition is busy, new transactions are routed to other free partitions.
-* **Worker Processing:** Worker processes pull transactions from the queue partitions. The number of simultaneously processed transactions depends on available workers.
-* **Sequential Consistency:** Transactions within the same partition are processed sequentially, maintaining order for related operations.
+<Check>
+By default, Blnk uses the queue when receiving a transaction request. Learn more: [Transaction lifecycle](/transactions/transaction-lifecycle)
+</Check>
 
----
+### Skipping the queue
 
-## Idempotency in transaction processing
+Blnk also supports skipping the queue and processing a transaction immediately in the same request by setting `skip_queue=true`.
 
-Blnk's transaction system ensures idempotency through reference value tracking. When multiple instances of the same transaction occur due to network or system errors, the system:
-
-1. Identifies duplicate transactions using their `reference` value
-2. Processes only one instance of the transaction
-3. Discards additional duplicate requests
-
-This mechanism prevents double processing and ensures consistent ledger entries, eliminating the risk of duplicate debits or credits.
+In this mode, Blnk no longer relies on the queue and uses the other safeguards to keep balance updates correct.
 
 ---
 
-## Optimistic locking for conflict resolution
+## Distributed Redis balance locks
 
-The optimistic locking mechanism complements the queuing system by providing conflict resolution at the data layer. Instead of locking resources preemptively, the system:
+In Blnk, distributed locks are used to make sure two conflicting transactions don't update the same balance at the same time.
 
-1. Allows transactions to proceed concurrently.
-2. Performs conflict detection at commit time.
-3. Checks if data has been modified since the transaction started.
-4. Rolls back and retries transactions if conflicts are detected.
+Here's how it works:
 
-This approach maximizes throughput while maintaining data consistency. When conflicts occur, indicating that another transaction has modified the data since it was last read, the system initiates a rollback and retry process.
+1. Blnk identifies the balance IDs involved in a transaction request. Next, it acquires Redis-backed locks for those balances before processing begins.
 
-### How optimistic locking works in Blnk
+2. Blnk locks balances in a consistent order to prevent deadlocks. Without this, one transaction could lock Balance A and wait for Balance B, while another locks Balance B and waits for Balance A creating a deadlock.
 
-1. **Version tracking:** Each record in the database is associated with a version number. When a transaction reads a record, it notes the version number.
-2. **Update attempt:** When the transaction attempts to update the record, it specifies the version number it originally read.
-3. **Conflict detection:** If the current version in the database does not match the version number noted by the transaction in #2, a conflict is detected (indicating that another transaction has updated the record). If no conflict is detected, the transaction moves to queue for processing.
-4. **Resolution:** Upon conflict detection, the transaction is rolled back. Blnk may automatically retry the transaction, depending on the scenario and the conflict's nature.
+3. If Blnk cannot acquire all the locks it needs, it releases any locks already acquired, then either waits and retries or fails, depending on your configuration.
+
+4. Once the locks are held, Blnk reads the latest balance state, validates the transaction, applies the update, and commits it atomically.
+
+5. After the commit, the locks are released.
+
+---
+
+## Optimistic locking at the DB layer
+
+Blnk also uses optimistic locking to make sure that a balance is only updated if it has not changed since it was last read.
+
+Instead of holding a database lock from the start, Blnk reads the balance, computes the new value in memory, and then tries to write that update back only if the balance is still in the same version it originally read. If another transaction updated the balance first, the write is rejected.
+
+Blnk does this using a `version` field on each balance. When a new transaction is recorded:
+
+1. Blnk reads the balances and their current `version`.
+2. Blnk computes the new balance value in memory, and then tries to update the balance only if the `version` is still the same.
+3. If the update succeeds, the `version` is incremented.
+4. If no row is updated, Blnk treats it as an optimistic locking conflict, which means the balance was changed by another transaction before this write could be applied.
+
+<Check>
+In Blnk, optimistic locking acts as the database-level safety net. 
+
+**Distributed locks** prevent conflicting transactions from running at the same time, while **optimistic locking** checks at write time that the balance has not changed since Blnk last read it.
+</Check>
 
 ---
 
