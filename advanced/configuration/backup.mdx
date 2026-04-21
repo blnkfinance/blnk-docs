@@ -1,6 +1,6 @@
 ---
 title: "Backup Configuration"
-sidebarTitle: "Backup"
+sidebarTitle: "Backups"
 description: "Configure backup paths and S3 settings for Blnk backups."
 "og:title": "Backup Configuration • Blnk Developer Documentation"
 "og:description": "Configure backup paths and S3 settings for Blnk backups."
@@ -8,19 +8,24 @@ description: "Configure backup paths and S3 settings for Blnk backups."
 
 import NeedHelp from "/snippets/need-help.mdx";
 
----
-
-## Overview
-
-Use these settings to configure local backup paths and S3-compatible backup storage.
+This page covers the settings Blnk uses for backup storage, including the local backup path and the credentials needed for S3-compatible object storage.
 
 ---
 
-## S3 backup configuration
+## Backup settings
 
-These settings control where backups are stored and how Blnk authenticates to S3 or an S3-compatible service.
+Use these settings to choose where backup files are written and how Blnk connects to S3 or another S3-compatible service.
 
 <CodeGroup>
+```bash blnk.env
+BLNK_BACKUP_DIR=
+BLNK_AWS_ACCESS_KEY_ID=
+BLNK_AWS_SECRET_ACCESS_KEY=
+BLNK_S3_ENDPOINT=
+BLNK_S3_BUCKET_NAME=
+BLNK_S3_REGION=
+```
+
 ```json blnk.json
 {
   "backup_dir": "",
@@ -31,41 +36,26 @@ These settings control where backups are stored and how Blnk authenticates to S3
   "s3_region": ""
 }
 ```
-
-```bash .env
-BLNK_BACKUP_DIR=
-BLNK_AWS_ACCESS_KEY_ID=
-BLNK_AWS_SECRET_ACCESS_KEY=
-BLNK_S3_ENDPOINT=
-BLNK_S3_BUCKET_NAME=
-BLNK_S3_REGION=
-```
 </CodeGroup>
 
-| Attribute | Type | Description | Environment variable |
-| :-- | :-- | :-- | :-- |
-| `backup_dir` | string | Directory path used for backup storage. | `BLNK_BACKUP_DIR` |
-| `aws_access_key_id` | string | AWS access key ID for authentication. | `BLNK_AWS_ACCESS_KEY_ID` |
-| `aws_secret_access_key` | string | AWS secret access key for authentication. | `BLNK_AWS_SECRET_ACCESS_KEY` |
-| `s3_endpoint` | string | Custom endpoint for S3-compatible services. | `BLNK_S3_ENDPOINT` |
-| `s3_bucket_name` | string | Name of the S3 bucket used for backups. | `BLNK_S3_BUCKET_NAME` |
-| `s3_region` | string | AWS region for the S3 bucket. | `BLNK_S3_REGION` |
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_BACKUP_DIR` | Local directory path Blnk uses when writing backup files. | None |
+| `BLNK_AWS_ACCESS_KEY_ID` | Access key ID used to authenticate with S3. | None |
+| `BLNK_AWS_SECRET_ACCESS_KEY` | Secret access key used to authenticate with S3. | None |
+| `BLNK_S3_ENDPOINT` | Custom S3 endpoint, usually used for S3-compatible storage providers. | None |
+| `BLNK_S3_BUCKET_NAME` | Bucket name where backup files are stored. | None |
+| `BLNK_S3_REGION` | Region for the S3 bucket. | None |
 
-<Tabs>
-  <Tab title="Best practices">
-    1. Separate backup storage from your main application runtime.
-    2. Use retention rules so old backups do not accumulate without limits.
-    3. Verify restore flows regularly, not just backup creation.
-    4. Use least-privilege IAM credentials for S3 access.
-  </Tab>
-</Tabs>
+<Warning>
+**Important:** Store `BLNK_AWS_ACCESS_KEY_ID` and `BLNK_AWS_SECRET_ACCESS_KEY` as secrets. Do not commit them to version control.
+</Warning>
 
----
+### `BLNK_BACKUP_DIR`
 
-## Related guides
+Use this to tell Blnk where backup files should be written before they are stored or uploaded.
 
-- [Backup to Disk](/advanced/backup-disk)
-- [Backup to S3](/advanced/backup-s3)
+Set a path that your Blnk process can read from and write to. If you are running Blnk in containers, make sure the directory is backed by a mounted volume instead of short-lived container storage.
 
 ---
 

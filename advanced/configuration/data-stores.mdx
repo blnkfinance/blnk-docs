@@ -8,23 +8,30 @@ description: "Set up PostgreSQL, Redis, and Typesense for your Blnk deployment."
 
 import NeedHelp from "/snippets/need-help.mdx";
 
----
-
-## Overview
-
-Use these settings to connect Blnk to PostgreSQL, Redis, and Typesense.
+Blnk relies on PostgreSQL and Redis to run core ledger operations, and can optionally use TypeSense for search and indexing. This page explains the settings used to connect and tune each service.
 
 ---
 
-## Database configuration
+## Database settings
 
-The data source configuration defines how Blnk connects to PostgreSQL and how it manages database connection pooling.
+Use these settings to configure Blnk’s PostgreSQL connection and connection pool.
+
+<Note>
+**Note:** Blnk only supports PostgreSQL as its database engine. You cannot use other database engines like MySQL or SQLite with Blnk.
+</Note>
 
 <CodeGroup>
+```bash blnk.env
+BLNK_DATA_SOURCE_DNS="postgres://user:pass@postgres:5432/blnk?sslmode=disable"
+BLNK_DATABASE_MAX_OPEN_CONNS=25
+BLNK_DATABASE_MAX_IDLE_CONNS=10
+BLNK_DATABASE_CONN_MAX_LIFETIME=30m
+BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
+```
 ```json blnk.json
 {
   "data_source": {
-    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable",
+    "dns": "postgres://user:pass@postgres:5432/blnk?sslmode=disable",
     "max_open_conns": 25,
     "max_idle_conns": 10,
     "conn_max_lifetime": "30m",
@@ -32,94 +39,114 @@ The data source configuration defines how Blnk connects to PostgreSQL and how it
   }
 }
 ```
-
-```bash .env
-BLNK_DATA_SOURCE_DNS=postgres://postgres:password@postgres:5432/blnk?sslmode=disable
-BLNK_DATABASE_MAX_OPEN_CONNS=25
-BLNK_DATABASE_MAX_IDLE_CONNS=10
-BLNK_DATABASE_CONN_MAX_LIFETIME=30m
-BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
-```
 </CodeGroup>
 
-| Attribute | Type | Description | Environment variable |
-| :-- | :-- | :-- | :-- |
-| `dns` | string | Database connection string. Required for startup. | `BLNK_DATA_SOURCE_DNS` |
-| `max_open_conns` | integer | Maximum number of open database connections. | `BLNK_DATABASE_MAX_OPEN_CONNS` |
-| `max_idle_conns` | integer | Maximum number of idle connections in the pool. | `BLNK_DATABASE_MAX_IDLE_CONNS` |
-| `conn_max_lifetime` | duration | Maximum lifetime for a reused connection. | `BLNK_DATABASE_CONN_MAX_LIFETIME` |
-| `conn_max_idle_time` | duration | Maximum idle time before a connection is closed. | `BLNK_DATABASE_CONN_MAX_IDLE_TIME` |
+|                                    | Description                                                                       | Default |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ------- |
+| `BLNK_DATA_SOURCE_DNS`             | PostgreSQL connection string used by Blnk. This is required.                      | None    |
+| `BLNK_DATABASE_MAX_OPEN_CONNS`     | Maximum number of open database connections in the pool.                          | `25`    |
+| `BLNK_DATABASE_MAX_IDLE_CONNS`     | Maximum number of idle database connections kept ready.                           | `10`    |
+| `BLNK_DATABASE_CONN_MAX_LIFETIME`  | Maximum amount of time a database connection can be reused before it is recycled. | `30m`   |
+| `BLNK_DATABASE_CONN_MAX_IDLE_TIME` | Maximum amount of time an idle database connection is kept before it is recycled. | `5m`    |
+
+### `BLNK_DATA_SOURCE_DNS`
+
+This is the PostgreSQL connection string Blnk uses to connect to its database. **This setting is required.** Blnk will not start without it.
+
+1. Make sure the database is reachable from the environment where Blnk is running. This includes verifying the hostname, port, credentials, and network access rules before starting the server.
+
+2. You should also make sure the `sslmode` in the connection string matches what your database provider expects. If this is set incorrectly, Blnk may fail to connect even when the rest of the connection string is valid.
 
 <Tip>
-  A typical database DNS string looks like
-  `[driver]://[username]:[password]@[host]:[port]/[database]`.
+Some hosted PostgreSQL providers expose more than one connection URL. For application workloads, use the direct PostgreSQL connection string that is intended for normal client connections.
 </Tip>
+
+### Best practices
+
+1. Always set `BLNK_DATA_SOURCE_DNS` explicitly.
+2. Start with the default pool settings unless you already know your database limits.
+3. Increase `BLNK_DATABASE_MAX_OPEN_CONNS` only if your PostgreSQL instance can handle more concurrent connections. 
+4. Use the connection lifetime and idle time settings to recycle stale connections in long-running deployments.
 
 ---
 
 ## Redis configuration
 
-Redis is used for distributed locking, queueing, and related runtime behavior.
-
 <CodeGroup>
+```bash blnk.env
+BLNK_REDIS_DNS=redis://:password@redis:6379/0
+BLNK_REDIS_SKIP_TLS_VERIFY=false
+```
+
 ```json blnk.json
 {
   "redis": {
-    "dns": "redis:6379",
+    "dns": "redis://:password@redis:6379/0",
     "skip_tls_verify": false
   }
 }
 ```
-
-```bash .env
-BLNK_REDIS_DNS=redis:6379
-BLNK_REDIS_SKIP_TLS_VERIFY=false
-```
 </CodeGroup>
 
-| Attribute | Type | Description | Environment variable |
-| :-- | :-- | :-- | :-- |
-| `dns` | string | Redis connection string. Required for Redis-backed features. | `BLNK_REDIS_DNS` |
-| `skip_tls_verify` | boolean | Skips TLS certificate verification for Redis connections. | `BLNK_REDIS_SKIP_TLS_VERIFY` |
+|                              | Description                                                     | Default |
+| ---------------------------- | --------------------------------------------------------------- | ------- |
+| `BLNK_REDIS_DNS`             | Redis address or connection URL used by Blnk. This is required. | None    |
+| `BLNK_REDIS_SKIP_TLS_VERIFY` | Disables TLS certificate verification for Redis connections.    | `false` |
 
-<Warning>
-  Only use `skip_tls_verify` when you understand the certificate risk, such as in a
-  trusted environment with self-signed certificates.
-</Warning>
+### `BLNK_REDIS_DNS`
+
+`BLNK_REDIS_DNS` is the Redis address or connection URL Blnk uses for queueing and coordination. **This setting is required.**
+
+Why? Because Blnk uses Redis for distributed balance locks, transaction and webhook queues, hot-pair state, and other worker coordination. If Redis is unavailable, queue processing and lock coordination are affected even if PostgreSQL is healthy.
+
+<Tip>
+Use a full Redis URL when authentication or TLS is involved. For TLS-enabled Redis connections, make sure the URL starts with `rediss://`.
+</Tip>
+
+### `BLNK_REDIS_SKIP_TLS_VERIFY`
+
+This disables certificate verification for TLS Redis connections.
+
+Only set to `true` when you are working in a controlled environment and understand the risk. Disabling certificate verification weakens transport security and should not be the default for production deployments.
 
 ---
 
 ## Typesense configuration
 
-Use Typesense when you want fast search features backed by a separate search engine.
+Use these settings to enable Blnk search and indexing via Typesense.
 
 <CodeGroup>
+```bash blnk.env
+BLNK_TYPESENSE_DNS=http://typesense:8108
+BLNK_TYPESENSE_KEY=blnk-api-key
+```
+
 ```json blnk.json
 {
   "typesense": {
     "dns": "http://typesense:8108"
   },
-  "type_sense_key": ""
+  "type_sense_key": "blnk-api-key"
 }
-```
-
-```bash .env
-BLNK_TYPESENSE_DNS=http://typesense:8108
-BLNK_TYPESENSE_KEY=
 ```
 </CodeGroup>
 
-| Attribute | Type | Description | Environment variable |
-| :-- | :-- | :-- | :-- |
-| `typesense.dns` | string | URL for the Typesense server. | `BLNK_TYPESENSE_DNS` |
-| `type_sense_key` | string | API key used to authenticate with Typesense. | `BLNK_TYPESENSE_KEY` |
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_TYPESENSE_DNS` | TypeSense server address. If unset, Blnk disables search and indexing features via Typesense. | Disabled when unset |
+| `BLNK_TYPESENSE_KEY` | API key used to connect to TypeSense. | `blnk-api-key` |
 
----
+### When to use Typesense
 
-## Related guides
+TypeSense is optional. If it is not configured, Blnk starts just fine, but search and indexing features via Typesense are disabled.
 
-- [Self hosting](/advanced/self-hosting)
-- [Search with Typesense](/search/typesense/introduction)
+For most search use cases, start with the [Direct DB filter API](/search/db/filtering). It is a better fit when you need precise database-backed filtering, sorting, and pagination without running a separate search service.
+
+Use Typesense when you need full-text search, faceted filtering, faster queries across very large datasets, or search-oriented workflows that benefit from a dedicated index.
+
+<Tip>
+**Tip:** If you are using TypeSense, we recommend `BLNK_TYPESENSE_KEY` explicitly instead of relying on the default key.
+</Tip>
 
 ---
 

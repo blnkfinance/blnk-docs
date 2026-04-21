@@ -1,102 +1,155 @@
 ---
 title: "Server and Security Configuration"
 sidebarTitle: "Server & security"
-description: "Configure server runtime, SSL, secure mode, and secrets in Blnk."
+description: "Configure server runtime, secure mode, tokenization, and rate limiting in Blnk."
 "og:title": "Server and Security Configuration • Blnk Developer Documentation"
-"og:description": "Configure server runtime, SSL, secure mode, and secrets in Blnk."
+"og:description": "Configure server runtime, secure mode, tokenization, and rate limiting in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
----
-
-## Overview
-
-Use these settings to configure the Blnk server itself, including its port, TLS behavior, secure mode, and tokenization secret.
+This page covers the configuration used to control how the Blnk server listens for requests, protects access to the API, and enables tokenization for sensitive identity fields.
 
 ---
 
-## Server configuration
+## Server settings
 
-The server configuration controls how Blnk listens for traffic and how it handles core security settings.
+Use the server settings below to configure how Blnk exposes its API and enforces authentication.
 
 <CodeGroup>
+```bash blnk.env
+BLNK_SERVER_SECURE=false
+BLNK_SERVER_SECRET_KEY=
+BLNK_SERVER_PORT=5001
+```
+
 ```json blnk.json
 {
   "server": {
-    "ssl": false,
     "secure": false,
     "secret_key": "",
-    "domain": "",
-    "email": "",
     "port": "5001"
   }
 }
 ```
-
-```bash .env
-BLNK_SERVER_SSL=false
-BLNK_SERVER_SECURE=false
-BLNK_SERVER_SECRET_KEY=
-BLNK_SERVER_SSL_DOMAIN=
-BLNK_SERVER_SSL_EMAIL=
-BLNK_SERVER_PORT=5001
-```
 </CodeGroup>
 
-<Tabs>
-  <Tab title="Definitions">
-    | Attribute | Type | Description | Environment variable |
-    | :-- | :-- | :-- | :-- |
-    | `ssl` | boolean | Enables SSL or TLS for server traffic. | `BLNK_SERVER_SSL` |
-    | `secure` | boolean | Enables additional secure-mode protections for the server. | `BLNK_SERVER_SECURE` |
-    | `secret_key` | string | Secret used for signing and other cryptographic operations. | `BLNK_SERVER_SECRET_KEY` |
-    | `domain` | string | Domain used for SSL configuration. | `BLNK_SERVER_SSL_DOMAIN` |
-    | `email` | string | Contact email used for SSL certificate setup. | `BLNK_SERVER_SSL_EMAIL` |
-    | `port` | string | Port the server listens on. | `BLNK_SERVER_PORT` |
-  </Tab>
-  <Tab title="Security considerations">
-    1. Enable both `ssl` and `secure` in production.
-    2. Use a strong `secret_key` and rotate it carefully.
-    3. Set a valid domain and email before enabling automatic certificate flows.
-    4. Restrict exposed ports to the minimum required by your deployment.
-  </Tab>
-</Tabs>
+|  | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_SERVER_SECURE` | Enables additional secure-mode protections for the server. | `false` |
+| `BLNK_SERVER_SECRET_KEY` | Secret used for signing and other cryptographic operations. | None |
+| `BLNK_SERVER_PORT` | The port Blnk listens on for incoming HTTP requests. | `5001` |
 
----
+### `BLNK_SERVER_SECURE`
 
-## Tokenization secret
+This controls whether API authentication is enforced when you make requests to the server. When set to `false`, Blnk skips authentication checks. 
 
-Use `tokenization_secret` to protect tokenization and detokenization operations.
+When set to `true`, requests must authenticate via `X-Blnk-Key` header using one of the following:
 
-<CodeGroup>
-```json blnk.json
-{
-  "tokenization_secret": ""
-}
-```
+- the master key, `BLNK_SERVER_SECRET_KEY`
+- a stored API key
 
-```bash .env
-BLNK_TOKENIZATION_SECRET=
-```
-</CodeGroup>
+    <Card title="API keys" icon="key" href="/advanced/secure-blnk#api-keys">
+      Learn how to create and manage API keys with custom permissions for secure requests.
+    </Card>
 
-| Attribute | Type | Description | Environment variable |
-| :-- | :-- | :-- | :-- |
-| `tokenization_secret` | string | Secret key used to secure tokenization operations. | `BLNK_TOKENIZATION_SECRET` |
+### `BLNK_SERVER_SECRET_KEY`
+
+This is required for any secure Blnk deployment. It is used in two places in Blnk:
+
+1. As the master API key for authenticated requests to the server
+2. As the HMAC signing secret for outgoing webhooks and hook callbacks.
+
+    <Card title="Webhook security" icon="shield" href="/advanced/notifications#webhook-security-signature-verification">
+      Learn how to verify webhook signatures and protect webhook consumers.
+    </Card>
+
+This means the same secret affects both request authentication and webhook signature validation on systems receiving Blnk webhooks.
 
 <Warning>
-  Keep `secret_key` and `tokenization_secret` out of version control. Store them in a
-  secret manager or inject them through environment variables in production.
+Make sure to keep `BLNK_SERVER_SECRET_KEY` out of version control. Store it in a secret manager or inject it through environment variables in production.
 </Warning>
+
+### Best practices
+
+1. Set `BLNK_SERVER_SECURE=true` in any real deployment.
+2. Use a strong secret for `BLNK_SERVER_SECRET_KEY`, and make sure to store secrets outside version control.
+3. Keep the server secret stable within an environment unless you are prepared to update any systems that verify webhook signatures.
 
 ---
 
-## Related guides
+## Tokenization settings
 
-- [Enable HTTPS](/advanced/enable-https)
-- [Secure Blnk](/advanced/secure-blnk)
-- [Self hosting](/advanced/self-hosting)
+Use tokenization settings to enable encryption and token generation when using the [PII Tokenization](/identities/pii-tokenization) feature.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TOKENIZATION_SECRET="blnk-pii-secret"
+```
+
+```json blnk.json
+{
+  "tokenization_secret": "blnk-pii-secret"
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_TOKENIZATION_SECRET` | Enables tokenization for sensitive identity fields. Must be exactly 32 bytes long. Used as the cryptographic secret for tokenization operations. | Disabled when unset |
+
+### Tokenization behaviour
+
+Tokenization is only enabled when `BLNK_TOKENIZATION_SECRET` is set and is exactly 32 bytes long. If the secret is missing, tokenization is disabled. If the secret is set but not 32 bytes long, Blnk does not fail startup, but tokenization operations may fail when called.
+
+When enabled, Blnk uses this secret for AES-GCM encryption in standard tokenization and HMAC-based seeding for format-preserving tokenization.
+
+<Note>
+**Note:** Store this secret securely and keep it stable for each environment. If you change it after data has already been tokenized, previously tokenized values may no longer detokenize correctly.
+</Note>
+
+---
+
+## Rate limiting
+
+Use rate limiting settings to protect the API from abuse and to control traffic spikes more predictably.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_RATE_LIMIT_RPS=5000000
+BLNK_RATE_LIMIT_BURST=10000000
+BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC=10800
+```
+
+```json blnk.json
+{
+  "rate_limit": {
+    "requests_per_second": 5000000,
+    "burst": 10000000,
+    "cleanup_interval_sec": 10800
+  }
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_RATE_LIMIT_RPS` | Maximum requests allowed per second per client. | `5000000` |
+| `BLNK_RATE_LIMIT_BURST` | Maximum short burst allowed above the RPS limit. | `10000000` |
+| `BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC` | Cleanup interval for expired rate-limit data, in seconds. | `10800` |
+
+### Rate limiting behaviour
+
+If both `BLNK_RATE_LIMIT_RPS` and `BLNK_RATE_LIMIT_BURST` are unset, Blnk applies its built-in defaults.
+
+If you set only one of those two values, Blnk derives the other automatically:
+
+- if only `BLNK_RATE_LIMIT_RPS` is set, `burst` defaults to `2 * RPS`
+- if only `BLNK_RATE_LIMIT_BURST` is set, `requests_per_second` defaults to `burst / 2`
+
+<Tip>
+**Tip:** Start with the defaults unless you have a clear traffic policy or abuse-prevention requirement.
+</Tip>
 
 ---
 
