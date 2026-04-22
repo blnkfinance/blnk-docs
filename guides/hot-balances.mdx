@@ -13,6 +13,8 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 **Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience. 
 
+A queued transaction is **not** guaranteed to eventually succeed. Outcomes depend on the error, your [retry and rejection settings](/advanced/configuration/transactions#queue-settings) (for example `BLNK_QUEUE_MAX_RETRY_ATTEMPTS` and `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY`), and business validation.
+
 Most hot balance scenarios fall into one of the following patterns:
 
 1. **A → N:** one source balance funds many destination balances at the same time.
@@ -21,53 +23,24 @@ Most hot balance scenarios fall into one of the following patterns:
 
 This guide explains the different strategies Blnk natively supports to handle these patterns safely. We'll cover:
 
-1. Hot-lane routing
+1. Using the queue
 2. Coalescing
-3. Hot-lane routing + Coalescing
-4. Lock wait timeout
+3. Lock wait timeout
+4. Hot-lane routing
 
 ---
 
-## Hot-lane routing
+## Using the queue
 
-Consider a workflow where a small number of balance pairs keep receiving heavy concurrent traffic, while the rest of the queue is relatively normal, i.e. `A → B and B → A`.
+For high traffic or overlapping balances, we recommend using the default queue-based flow (`skip_queue: false`). 
 
-With **hot-lane routing**, Blnk identifies queued transactions for a specific source, destination, and currency pair that is showing repeated lock contention, and routes new traffic for that exact pair into a dedicated hot queue.
+The queue helps Blnk handle contention more effectively and reduces the chance of lock errors by allowing retries, hot-lane routing, and coalescing. Learn more: [Queue configuration](/advanced/configuration/transactions#queue-settings).
 
-This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
+<Note>
+**Note:** Lock contention can still happen in queued processing. Workers also [acquire distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) when applying transactions.
 
-<Check> **Please note:** Hot-lane routing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
-
-### How to use
-
-To enable hot-lane routing, update your Blnk configuration file to include the following settings:
-
-```bash .env
-BLNK_QUEUE_ENABLE_HOT_LANE=true
-```
-
-| Settings | Description |
-| :-- | :-- |
-| `BLNK_QUEUE_ENABLE_HOT_LANE` | Turns hot-lane routing on or off. |
-
-For the full Hot-lane routing settings, see [queue configuration](/advanced/configuration/transactions#hot-lane-routing).
-
-### When to use
-
-Choose hot-lane routing when contention is concentrated around a small number of balance pairs and you want to isolate that traffic from the rest of the queue.
-
-It is a good fit when:
-
-- A few specific balance pairs repeatedly cause lock contention.
-- A small number of hot pairs are slowing down otherwise healthy queue traffic.
-- You want to isolate the worst offenders without changing correctness behavior.
-- Your normal queue works well overall, but certain balance pairs keep colliding.
-
-It is less useful when:
-
-- Traffic is broadly distributed with no clear hot pairs.
-- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) instead.
-- Most of your traffic is synchronous and bypasses the queue. Consider [Lock wait timeout](#lock-wait-timeout) instead.
+The difference is that the queue gives Blnk more ways to manage that contention and lower the likelihood of lock-related failures.
+</Note>
 
 ---
 
@@ -115,23 +88,6 @@ Coalescing is less useful when:
 
 ---
 
-## Hot-lane routing + Coalescing
-
-If you need Blnk to isolate hot balance pairs (i.e. A → B and B → A) and also improve the throughput of the queue, we recommend combining the **Hot-lane routing** and **Coalescing** strategies.
-
-For the combined queue tuning options, see [transaction configuration](/advanced/configuration/transactions).
-
-### When to use
-
-Choose both when you see the following signs happening simultaneously:
-
-- lock contention concentrated on specific source and destination pairs
-- queue backlogs that take longer to drain during bursts
-- repeated retries on queued transactions
-- traffic patterns where many queued transactions hit the same source, destination, or pair within a short period
-
----
-
 ## Lock wait timeout
 
 Lock wait timeout is Blnk's lock-contention strategy for `skip_queue=true` transactions. When a transaction bypasses the queue, Blnk still needs to [acquire locks](/guides/concurrency#distributed-redis-balance-locks) for the source and destination balances before processing the transaction. 
@@ -169,6 +125,49 @@ Choose lock wait timeout when:
 - you want synchronous requests to succeed through short spikes
 - lock contention is usually brief and predictable
 - slightly higher latency is acceptable
+
+---
+
+## Hot-lane routing
+
+Consider a workflow where a small number of balance pairs keep receiving heavy concurrent traffic, while the rest of the queue is relatively normal, i.e. `A → B and B → A`.
+
+With **hot-lane routing**, Blnk identifies queued transactions for a specific source, destination, and currency pair that is showing repeated lock contention, and routes new traffic for that exact pair into a dedicated hot queue.
+
+This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
+
+<Check> **Please note:** Hot-lane routing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
+
+### How to use
+
+To enable hot-lane routing, update your Blnk configuration file to include the following settings:
+
+```bash .env
+BLNK_QUEUE_ENABLE_HOT_LANE=true
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_QUEUE_ENABLE_HOT_LANE` | Turns hot-lane routing on or off. |
+
+For the full Hot-lane routing settings, see [queue configuration](/advanced/configuration/transactions#hot-lane-routing).
+
+### When to use
+
+Choose hot-lane routing when contention is concentrated around a small number of balance pairs and you want to isolate that traffic from the rest of the queue.
+
+It is a good fit when:
+
+- A few specific balance pairs repeatedly cause lock contention.
+- A small number of hot pairs are slowing down otherwise healthy queue traffic.
+- You want to isolate the worst offenders without changing correctness behavior.
+- Your normal queue works well overall, but certain balance pairs keep colliding.
+
+It is less useful when:
+
+- Traffic is broadly distributed with no clear hot pairs.
+- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) instead.
+- Most of your traffic is synchronous and bypasses the queue. Consider [Lock wait timeout](#lock-wait-timeout) instead.
 
 ---
 
