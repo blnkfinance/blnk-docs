@@ -8,9 +8,13 @@ description: "Review required fields and default values for Blnk configuration."
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-This page is the complete reference for Blnk configuration. It lists every supported setting and shows the runtime default value where applicable. 
+This page is a **broad** reference for common Blnk settings and typical defaults. The Blnk `config` package in the application repository is the source of truth; when in doubt, confirm keys and defaults in source.
 
-Fields with no defaults are left blank.
+Fields with no defaults are left blank in the examples.
+
+<Note>
+**Note:** All duration settings are integer seconds.
+</Note>
 
 <CodeGroup>
 ```bash blnk.env
@@ -26,11 +30,12 @@ BLNK_SERVER_PORT=5001
 
 # Database
 # DNS is required for Blnk to start successfully. Docker default shown below.
+# CONNECTION_MAX_LIFETIME and CONNECTION_MAX_IDLE_TIME are integer seconds.
 BLNK_DATA_SOURCE_DNS=postgres://postgres:password@postgres:5432/blnk?sslmode=disable
 BLNK_DATABASE_MAX_OPEN_CONNS=25
 BLNK_DATABASE_MAX_IDLE_CONNS=10
-BLNK_DATABASE_CONN_MAX_LIFETIME=30m
-BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
+BLNK_DATABASE_CONN_MAX_LIFETIME=1800
+BLNK_DATABASE_CONN_MAX_IDLE_TIME=300
 
 # Redis
 # DNS is required for Blnk to start successfully. Docker default shown below.
@@ -43,12 +48,12 @@ BLNK_TYPESENSE_DNS=http://typesense:8108
 BLNK_TYPESENSE_KEY=blnk-api-key
 
 # Transactions
-# Duration values use Go duration format.
+# LOCK_DURATION and LOCK_WAIT_TIMEOUT are integer seconds.
 BLNK_TRANSACTION_BATCH_SIZE=1000
 BLNK_TRANSACTION_MAX_QUEUE_SIZE=1000
 BLNK_TRANSACTION_MAX_WORKERS=10
-BLNK_TRANSACTION_LOCK_DURATION=30m
-BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+BLNK_TRANSACTION_LOCK_DURATION=1800
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3
 BLNK_TRANSACTION_INDEX_QUEUE_PREFIX=transactions
 BLNK_TRANSACTION_ENABLE_COALESCING=true
 BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
@@ -66,17 +71,17 @@ BLNK_QUEUE_MONITORING_PORT=5004
 BLNK_QUEUE_WEBHOOK_CONCURRENCY=20
 
 # Hot-lane and worker tuning
-# Duration values use Go duration format.
+# HOT_PAIR_TTL is integer seconds.
 BLNK_QUEUE_ENABLE_HOT_LANE=false
 BLNK_QUEUE_HOT_QUEUE_NAME=hot_transactions
 BLNK_QUEUE_HOT_QUEUE_CONCURRENCY=1
-BLNK_QUEUE_HOT_PAIR_TTL=5m
+BLNK_QUEUE_HOT_PAIR_TTL=300
 BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD=3
 BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY=false
 BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=1
 
 # Rate limiting
-# These are the runtime defaults used when rate limiting is not configured.
+# These are the runtime defaults used when rate limiting is not configured. Values are integer seconds.
 BLNK_RATE_LIMIT_RPS=5000000
 BLNK_RATE_LIMIT_BURST=10000000
 BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC=10800
@@ -139,8 +144,8 @@ BLNK_S3_REGION=
     "batch_size": 1000,
     "max_queue_size": 1000,
     "max_workers": 10,
-    "lock_duration": "30m",
-    "lock_wait_timeout": "3s",
+    "lock_duration": 1800,
+    "lock_wait_timeout": 3,
     "index_queue_prefix": "transactions",
     "enable_coalescing": true,
     "enable_queued_checks": false,
@@ -159,7 +164,7 @@ BLNK_S3_REGION=
     "enable_hot_lane": false,
     "hot_queue_name": "hot_transactions",
     "hot_queue_concurrency": 1,
-    "hot_pair_ttl": "5m",
+    "hot_pair_ttl": 300,
     "hot_pair_lock_contention_threshold": 3,
     "reject_lock_contention_immediately": false,
     "transaction_worker_concurrency": 1
