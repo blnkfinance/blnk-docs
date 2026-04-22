@@ -11,8 +11,6 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 **Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience. 
 
-A queued transaction is **not** guaranteed to eventually succeed. Outcomes depend on the error, your [retry and rejection settings](/advanced/configuration/transactions#queue-settings) (for example `BLNK_QUEUE_MAX_RETRY_ATTEMPTS` and `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY`), and business validation.
-
 Most hot balance scenarios fall into one of the following patterns:
 
 1. **A → N:** one source balance funds many destination balances at the same time.
@@ -32,7 +30,7 @@ This guide explains the different strategies Blnk natively supports to handle th
 
 For high traffic or overlapping balances, we recommend using the default queue-based flow (`skip_queue: false`). 
 
-The queue helps Blnk handle contention more effectively and reduces the chance of lock errors by allowing retries, hot-lane routing, and coalescing. Learn more: [Queue configuration](/advanced/configuration/transactions#queue-settings).
+The queue helps Blnk handle contention more effectively and reduces the chance of lock errors by allowing retries, hot-lane routing, and coalescing. Learn more: [How Queueing Works](/guides/concurrency#queueing-transactions).
 
 <Note>
 **Note:** Lock contention can still happen in queued processing. Workers also [acquire distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) when applying transactions.
@@ -44,7 +42,7 @@ The difference is that the queue gives Blnk more ways to manage that contention 
 
 ## Coalescing
 
-<Note>**Note:** Blnk enables coalescing by default for normal queued processing in version 0.14 and later. If you are using an earlier version, update your Core to use this behavior.</Note>
+<Info>Available in version 0.14 and later.</Info>
 
 Consider a deposit workflow involving one internal source balance funding 1000+ destination balances at the same time, or vice versa, e.g. `A → N` or `N → A`.
 
@@ -92,41 +90,40 @@ Coalescing is less useful when:
 
 <Info>Available in version 0.14 and later.</Info>
 
-Lock wait timeout is Blnk's lock-contention strategy for `skip_queue=true` transactions. When a transaction bypasses the queue, Blnk still needs to [acquire locks](/guides/concurrency#distributed-redis-balance-locks) for the source and destination balances before processing the transaction. 
- 
-`BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` controls how long Blnk will wait for those locks before failing the transaction.
+**Lock wait timeout** lets you set how long Blnk should wait to [acquiring distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) before returning a lock error.
 
-<Check> **Please note:** Lock wait timeout only works when `skip_queue=true`.</Check>
+This applies to both queued and immediate processing. In queued processing, it affects how long a worker waits before that attempt fails. In immediate processing (`skip_queue: true`), it affects how long the request waits in the request path before failing.
+
+This is especially important for immediate processing. If no timeout is set, a lock conflict can fail the request immediately. Setting a timeout gives the lock time to clear, which can reduce lock errors, but it also means the caller may wait longer for a response.
+
+<Note>
+**Note:** A **shorter timeout** keeps requests more responsive, but makes lock errors more likely during contention, while **a longer timeout** gives contention more time to clear, but increases request latency and how long the caller may remain blocked.
+</Note>
 
 ### How to use
 
 To configure lock wait timeout, update your Blnk configuration with:
 
 ```bash .env
-BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3
 ```
 
 | Settings | Description |
 | :-- | :-- |
-| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | Controls how long Blnk will wait for locks before failing the transaction. |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | Controls how long Blnk will wait for locks before failing the transaction with a lock error, in integer seconds. |
 
 For more lock and queue tuning options, see [transaction configuration](/advanced/configuration/transactions#lock-wait-timeout).
 
-<Note>
-A shorter timeout keeps requests more responsive, but increases the chance of failing during contention.
-
-However, a longer timeout gives contention more time to clear, but increases request latency and the time the caller may spend blocked.
-
-</Note>
-
 ### When to use
 
-Choose lock wait timeout when:
+This setting matters most when you want to control how long Blnk waits to acquire a lock before failing. Use it when you need to tune lock wait behavior across your deployment, especially if you expect occasional contention.
 
-- you use `skip_queue: true` 
-- you want synchronous requests to succeed through short spikes
-- lock contention is usually brief and predictable
-- slightly higher latency is acceptable
+It is a good fit when:
+
+- you use `skip_queue: true` and want a bounded wait time before returning a lock error
+- you want requests to survive short contention spikes
+- lock waits are usually brief and predictable
+- slightly higher latency is acceptable in exchange for fewer lock errors
 
 ---
 
