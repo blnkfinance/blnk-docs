@@ -9,8 +9,6 @@ description: "Strategies for managing high-traffic balances and preventing lock 
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-<Info>Supported in version 0.14.0 and later.</Info>
-
 **Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience. 
 
 A queued transaction is **not** guaranteed to eventually succeed. Outcomes depend on the error, your [retry and rejection settings](/advanced/configuration/transactions#queue-settings) (for example `BLNK_QUEUE_MAX_RETRY_ATTEMPTS` and `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY`), and business validation.
@@ -45,6 +43,8 @@ The difference is that the queue gives Blnk more ways to manage that contention 
 ---
 
 ## Coalescing
+
+<Note>**Note:** Blnk enables coalescing by default for normal queued processing in version 0.14 and later. If you are using an earlier version, update your Core to use this behavior.</Note>
 
 Consider a deposit workflow involving one internal source balance funding 1000+ destination balances at the same time, or vice versa, e.g. `A → N` or `N → A`.
 
@@ -90,6 +90,8 @@ Coalescing is less useful when:
 
 ## Lock wait timeout
 
+<Info>Available in version 0.14 and later.</Info>
+
 Lock wait timeout is Blnk's lock-contention strategy for `skip_queue=true` transactions. When a transaction bypasses the queue, Blnk still needs to [acquire locks](/guides/concurrency#distributed-redis-balance-locks) for the source and destination balances before processing the transaction. 
  
 `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` controls how long Blnk will wait for those locks before failing the transaction.
@@ -129,6 +131,8 @@ Choose lock wait timeout when:
 ---
 
 ## Hot-lane routing
+
+<Info>Available in version 0.14 and later.</Info>
 
 Consider a workflow where a small number of balance pairs keep receiving heavy concurrent traffic, while the rest of the queue is relatively normal, i.e. `A → B and B → A`.
 
