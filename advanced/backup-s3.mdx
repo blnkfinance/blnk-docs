@@ -57,19 +57,18 @@ After configuring access to Amazon S3, the next step is to automate the backup p
 
 <Steps>
   <Step title="Create a backup script">
-    Create a script named `backup_to_s3.sh` that triggers the Blnk server to back up to S3 using the `/backup-s3` route.
+    Create a script named `backup_to_s3.sh` that triggers the Blnk server to back up to S3:
 
-    ```bash backup_to_s3.sh
-    #!/bin/bash
-    curl -X POST http://yourdomain.com:5001/backup-s3
+    ```bash Create backup to S3 script
+    curl -X GET http://localhost:5001/backup-s3 \
+    -H 'X-blnk-key: <api-key>'
     ```
-
-    Ensure to replace `http://yourdomain.com:5001` with your actual Blnk server domain and port.
   </Step>
   <Step title="Schedule the backup with Cron">
-    Use cron (Linux/macOS) or Task Scheduler (Windows) to schedule your backup script. For example, to run the backup daily at 2 AM:
+    Use cron (Linux/macOS) or Task Scheduler (Windows) to schedule the `backup_to_s3.sh` script. For example, to run the backup daily at 2 AM:
 
-    ```cron cron
+    ```bash Schedule S3 backup with Cron
+    chmod +x /path/to/backup_to_s3.sh
     0 2 * * * /path/to/backup_to_s3.sh
     ```
   </Step>
