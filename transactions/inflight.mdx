@@ -11,11 +11,15 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 <Info>Available in version 0.6.0 and later.</Info>
 
+---
+
 ## Overview
 
 An inflight transaction keeps your transaction on hold until you take further action. When enabled using the `inflight` parameter, transactions follow a specialized workflow that maintains separate balances for pending operations.
 
 It is best used when you want to wait for feedback or authorization before a transaction is applied in your ledger.
+
+---
 
 ## Before we start,
 
@@ -28,9 +32,17 @@ Remember that all ledger balances in Blnk have 6 main balance parameters:
 5. `inflight_credit_balance`: This is the total sum of all amount waiting to be received by a ledger balance.
 6. `inflight_debit_balance`: This is the total sum of all amount waiting to be deducted from a ledger balance.
 
+---
+
 ## How Inflight works
 
-### 1. Record transaction with Inflight
+This is how inflight transactions work in Blnk:
+
+<Steps titleSize="h3">
+<Step id="record-transaction-with-inflight" title="Record transaction with Inflight">
+
+First, specify that the transaction should be held inflight by setting `inflight: true`.
+
 ```json Record inflight {9}
 {
     "amount": 100,
@@ -50,22 +62,23 @@ When recording a new transaction with Inflight, the system, by default, will:
 2. Processes and moves the transaction to `INFLIGHT`.
 3. Maintains the original balances while tracking the pending amounts in inflight balance parameters.
 
-### 2. Balance management
-![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
+</Step>
 
-Blnk uses three balance parameters for accurate tracking of inflight amounts:
+<Step id="balance-management" title="Balance management">
 
-```
+Next, understand how Blnk tracks inflight amounts. We use these three balance parameters:
+
+```text wrap
 inflight_credit_balance: Pending credits awaiting processing
 inflight_debit_balance:  Pending debits awaiting processing
-inflight_balance:        Net inflight amount (credit - debit)
+inflight_balance:        inflight (credit - debit)
 ```
 
-### 3. Balance tracking example
+![Step 1: How a transaction is processed in Inflight](/images/step-01-02-using-inflight.png)
 
-Consider an inflight transaction where $100 is transferred from balance_A to balance_B:
+**For example:** consider an inflight transaction where $100 is transferred from balance_A to balance_B:
 
-```
+```text wrap
 Initial State:
 balance_A: $200 available funds
 balance_B: $0 available funds
@@ -84,28 +97,34 @@ In this scenario:
 * `balance_B` shows a positive inflight balance (100) because funds are pending inflow.
 * The main balances remain unchanged until the transaction is committed.
 
-### 4. Updating Inflight
-![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
+</Step>
 
-To act on an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
+<Step id="updating-inflight" title="Updating Inflight">
+
+Updating an inflight transaction means telling Blnk what to do with it next: commit or void?
+
+To update an inflight transaction, use the [Update Inflight](/reference/update-inflight) endpoint: 
+
+![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
 ```
 PUT /transactions/inflight/{transaction_id}
 ```
 
-There are two ways to act on an inflight transaction: commit or void.
+<Tabs>
+<Tab title="Commit inflight" icon="circle-check">
+1. Indicates transaction conditions are met.
+2. Triggers balance updates, and clears the inflight balances.
+3. Creates new transaction record with `APPLIED` status.
 
-#### i. Commit inflight
-
-```json Request
-{
+```bash cURL {5} wrap
+curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
+  -H 'X-Blnk-Key: <api-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "status": "commit"
-}
+  }'
 ```
-
-* Indicates transaction conditions are met.
-* Triggers balance updates, and clears the inflight balances.
-* Creates new transaction record with `APPLIED` status.
 
 In our example, after commit:
 
@@ -114,17 +133,23 @@ In our example, after commit:
 | `balance_A` | 100 | 0 | 0 | 0 |
 | `balance_B` | 100 | 0 | 0 | 0 |
 
-#### ii. Partial commits
+</Tab>
+<Tab title="Partial commits" icon="percent">
 
-```json Request
-{
+1. Only the specified amount is applied to the main balances.
+2. The remaining amount is left inflight.
+
+<span id="partial-commits" />
+
+```bash cURL {5-6} wrap
+curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
+  -H 'X-Blnk-Key: <api-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "status": "commit",
     "amount": 40
-}
+  }'
 ```
-
-* Only the specified amount is applied to the main balances.
-* The remaining amount is left inflight.
 
 <Note>Partial commit amount must not exceed remaining inflight amount.</Note>
 
@@ -135,25 +160,71 @@ Our example after a partial commit:
 | `balance_A` | 160 | -60 | 0 | 60 |
 | `balance_B` | 40 | 60 | 60 | 0 |
 
-#### iii. Void inflight
+</Tab>
+<Tab title="Void inflight" icon="circle-x">
 
-```json Request
-{
+```bash cURL {5} wrap
+curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
+  -H 'X-Blnk-Key: <api-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "status": "void"
-}
+  }'
 ```
 
 * Indicates transaction conditions were not met.
 * Creates new transaction record with `VOID` status.
 * Resets inflight balances without affecting actual balances.
 
-#### iv. Expired inflight
+</Tab>
+</Tabs>
 
-A transaction will stay inflight indefinitely unless it gets committed, void, or gets expired. To set a time limit on an inflight transaction, include the `inflight_expiry_date` parameter in the request body.
+</Step>
+</Steps>
 
-* Indicates transaction remained `INFLIGHT` past specified expiry date.
-* Creates new record with a `VOID` status.
-* Discards the transaction and resets the inflight balances.
+---
+
+## Schedule inflight commits
+
+<Info>Available in version 0.14.1 and later.</Info>
+
+When you create an inflight transaction, Blnk reserves the balance immediately but waits until you tell it to commit or void.
+
+With `inflight_commit_date`, you can specify in your request when you want Blnk to automatically commit an inflight transaction for you.
+
+This is useful when the inflight transaction starts now, but the final commit should happen at a known future time. 
+
+<Check>
+For example, you can reserve funds for a hotel booking today and have Blnk commit the transaction automatically on the check-in date.
+</Check>
+
+```json Record inflight with commit date {10}
+{
+    "amount": 100,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For vacation",
+    "inflight": true,
+    "inflight_commit_date": "2024-12-21T01:36:46+01:00"
+}
+```
+
+<Tip>
+    Always format the `inflight_commit_date` date input as `YYYY-MM-DDTHH:MM:SS+00:00` (for example, `2024-04-22T15:28:03+00:00`), where `+00:00` is the timezone offset. UTC is used by default when you use `+00:00`.
+</Tip>
+
+---
+
+## Schedule inflight expiry
+
+A transaction stays inflight until you commit it, void it manually, or it **expires**. To cap how long funds can remain held inflight, include **`inflight_expiry_date`** when you record the transaction.
+
+* If the transaction is still `INFLIGHT` after the expiry time, Blnk **voids** it automatically (same outcome as [Update Inflight](/reference/update-inflight) with **`void`**).
+* Creates a new record with **`VOID`** status.
+* Resets inflight balances without changing your settled balances.
 
 ```json Record inflight with expiry date {10}
 {
@@ -170,14 +241,17 @@ A transaction will stay inflight indefinitely unless it gets committed, void, or
 ```
 
 <Tip>
-    Always format the `inflight_expiry_date` date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+    Always format the `inflight_expiry_date` date input as `YYYY-MM-DDTHH:MM:SS+00:00` (e.g., `2024-04-22T15:28:03+00:00`), where `+00:00` specifies the timezone. It is UTC by default.
 </Tip>
 
+<Note>
+    If you use both **`inflight_commit_date`** and **`inflight_expiry_date`**, set the commit time **before** the expiry time so Blnk can commit the hold before it would auto-void.
+</Note>
 ---
 
 ## Verifying inflight statuses
 
-### 1. Via Search API
+### Via Search API
 
 You can verify transaction status using the Search API by querying with the appropriate transaction ID:
 
@@ -185,7 +259,7 @@ You can verify transaction status using the Search API by querying with the appr
 <Tab title="When skip_queue = false (default)">
 Use the **queued transaction ID** to search for its child transactions.
 
-```bash
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -200,7 +274,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 <Tab title="When skip_queue = true">
 Use the **inflight transaction ID** and search for its child transactions:
 
-```bash
+```bash cURl wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -212,7 +286,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 </Tab>
 </Tabs>
 
-### 2. Via webhooks
+### Via webhooks
 
 The most reliable way to verify if an inflight transaction has been committed or voided is through webhooks. This approach allows you to receive real-time notifications when the transaction status changes:
 
@@ -244,7 +318,7 @@ When the inflight transaction is committed or voided, Blnk sends a webhook notif
 
 <Tip> Blnk also adds `inflight: true` to the transaction's metadata. </Tip>
 
-```json transaction.applied
+```json transaction.applied expandable
 {
     "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
     "hook_type": "POST_TRANSACTION",
@@ -269,6 +343,7 @@ When the inflight transaction is committed or voided, Blnk sends a webhook notif
         "created_at": "2025-02-23T09:43:49.623494+01:00",
         "scheduled_for": "0001-01-01T00:00:00Z",
         "inflight_expiry_date": "0001-01-01T00:00:00Z",
+        "inflight_commit_date": "0001-01-01T00:00:00Z",
         "meta_data": {
             "verification_ref": "verify_abc123xyz",
             "inflight": true
@@ -309,13 +384,20 @@ Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Des
         However, these transactions are linked together through a `parent_transaction` attribute, which you'll receive in the response to your transaction request. This `parent_transaction` helps you track and manage related transactions as a single unit.
     </Step>
     <Step title="Update Inflight">
-        To commit or void all transactions at once, call the [Update Inflight endpoint](/reference/update-inflight) and pass the `transaction_id` from your response.
+        To commit or void all transactions at once, call the [Update Inflight endpoint](/reference/update-inflight) and pass the root-level `transaction_id` from your API response as the path parameter.
 
-        ```
-        PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction}
+        ```bash cURL wrap
+        curl -X PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction} \
+          -H 'X-Blnk-Key: <api-key>' \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "status": "commit"
+          }'
         ```
     </Step>
 </Steps>
+
+---
 
 ## Use cases
 

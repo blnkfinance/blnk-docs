@@ -45,7 +45,10 @@ Consider an inflight transaction of \$100. Its lifecycle looks like this:
 3. The initial `QUEUED` transaction becomes the parent of the new `INFLIGHT` transaction.
 4. Once the inflight transaction is committed, a new transaction is created in the `APPLIED` state.
 5. If the inflight transaction is voided instead, a new transaction is created in the `VOID` state.
-5. The `INFLIGHT` transaction becomes the parent of the `APPLIED` and/or `VOID` transactions.
+
+When you use **`inflight_commit_date`**, Blnk commits automatically at that time; the resulting **`APPLIED`** transaction still uses the inflight record as its **`parent_transaction`**, just like a manual commit via [Update Inflight](/reference/update-inflight).
+
+6. The `INFLIGHT` transaction becomes the parent of the `APPLIED` and/or `VOID` transactions.
 
 With the `INFLIGHT` record as the parent, you can retrieve the complete outcome of that transaction by querying for all transactions whose `parent_transaction` field matches the `INFLIGHT` transaction ID:
 
