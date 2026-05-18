@@ -1,0 +1,114 @@
+---
+title: "Bulk commit inflight"
+description: "Commit multiple independently-created inflight transactions."
+api: "POST /transactions/inflight/bulk/commit"
+noindex: true
+"og:title": "Bulk Commit Inflight Transactions • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+
+<Key />
+
+<Info>Available in version 0.14.2 and later.</Info>
+
+### Body
+
+<ParamField body="transactions" type="object[]" required>
+  Inflight transactions to commit. The request accepts up to 100 items.
+
+  <ParamField body="transaction_id" type="string" required>
+    The unique id of the independently-created inflight transaction.
+  </ParamField>
+
+  <ParamField body="amount" type="float">
+    Optional amount to commit for a partial commit. When omitted or zero, Blnk commits the full remaining inflight amount.
+  </ParamField>
+
+  <ParamField body="precise_amount" type="integer">
+    Optional precision-applied amount for a partial commit. When set, `precise_amount` takes precedence over `amount`.
+  </ParamField>
+</ParamField>
+
+### Response
+
+<ResponseField name="succeeded" type="integer" required>
+  Number of transactions committed successfully.
+</ResponseField>
+
+<ResponseField name="failed" type="integer" required>
+  Number of transactions that failed.
+</ResponseField>
+
+<ResponseField name="results" type="object[]" required>
+  Per-transaction result in the same order as the request.
+
+  <ResponseField name="transaction_id" type="string" required>
+    Transaction id from the request item.
+  </ResponseField>
+
+  <ResponseField name="status" type="string" required>
+    `succeeded` or `failed`.
+  </ResponseField>
+
+  <ResponseField name="code" type="string">
+    Stable failure code, such as `NOT_FOUND`, `ALREADY_VOIDED`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`, `INVALID_AMOUNT`, `LOCKED`, or `INTERNAL_ERROR`.
+  </ResponseField>
+
+  <ResponseField name="message" type="string">
+    Human-readable failure message.
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl --request POST \
+  --url http://localhost:5001/transactions/inflight/bulk/commit \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "transactions": [
+      {
+        "transaction_id": "txn_11111111-1111-4111-8111-111111111111"
+      },
+      {
+        "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+        "amount": 40
+      },
+      {
+        "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+        "precise_amount": 125034
+      }
+    ]
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "succeeded": 2,
+  "failed": 1,
+  "results": [
+    {
+      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "status": "failed",
+      "code": "INVALID_AMOUNT",
+      "message": "cannot commit more than inflight amount"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+<NeedHelp />
