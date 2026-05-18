@@ -6,6 +6,22 @@ description: "Latest features, releases, and improvements."
 "og:description": "Explore the Blnk Core changelog. Track our releases, fixes, enhancements, and version history for Blnk's core platform"
 ---
 
+<Update label="0.14.2" description="May 18, 2026">
+  ## Bulk inflight updates
+
+  Blnk Core now supports bulk commit and bulk void operations for independently-created inflight transactions.
+
+  Use **`POST /transactions/inflight/bulk/commit`** to commit multiple inflight transactions in one request, including partial commits with `amount` or `precise_amount` per transaction. Use **`POST /transactions/inflight/bulk/void`** to void multiple inflight transactions in one request.
+
+  Bulk requests accept up to **100** items and return per-transaction results, so one failed transaction does not stop the rest of the batch. The response includes `succeeded`, `failed`, and a `results` array with each transaction's status, error code, and message when applicable.
+
+  ## Fixes & improvements
+
+  1. **Synchronous refunds:** The [Refund transaction](/reference/refund-transaction) endpoint now accepts an optional `{"skip_queue": true}` body to process refunds synchronously. Requests without a body keep the existing queued behavior.
+  2. **Deterministic identity creation:** The [Create new identity](/reference/create-identity) endpoint now honors caller-supplied `identity_id` values when they use the `idt_` prefix and a valid UUID suffix. Duplicate deterministic identity ids now return a conflict response, making concurrent create flows easier to handle.
+  3. **Filter validation:** [Search via Direct DB](/search/db/filtering) now rejects unknown filter operators instead of silently dropping those filters and running a broader query.
+</Update>
+
 <Update label="0.14.1" description="May 6, 2026">
   ## Scheduled inflight commits
 
