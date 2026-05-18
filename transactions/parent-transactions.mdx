@@ -8,8 +8,11 @@ description: "Learn how parent transactions work in Blnk and how to use them in 
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import ProSupportCta from "/snippets/pro-support-cta.mdx";
 
 In simple terms, a parent transaction is a transaction that generates another transaction in your ledger.
+
+Because transactions in Blnk are immutable, each status change creates a new transaction record. This new record references the previous one as its "parent".
 
 Blnk records the ID of this parent transaction in the `parent_transaction` field of the new (child) transaction. This creates a clear lineage of transactions, allowing you to trace a transaction back to its origin, see how it evolved, and connect it to any related siblings.
 
@@ -20,9 +23,11 @@ Blnk records the ID of this parent transaction in the `parent_transaction` field
 }
 ```
 
-<Note>Because transactions in Blnk are immutable, each status change creates a new transaction record. This new record references the previous one through the `parent_transaction` field, preserving the full history.</Note>
+<ProSupportCta />
 
-### Single transaction
+---
+
+## Single transaction
 
 Consider a single \$100 transaction in your ledger. Its lifecycle might look like this:
 
@@ -32,7 +37,9 @@ Consider a single \$100 transaction in your ledger. Its lifecycle might look lik
 2. Once Blnk processes it, a new transaction is created in the `APPLIED` state.
 3. The initial `QUEUED` transaction becomes the parent of the new `APPLIED` transaction.
 
-### Inflight transaction
+---
+
+## Inflight transaction
 
 Consider an inflight transaction of \$100. Its lifecycle looks like this:
 
@@ -44,7 +51,7 @@ Consider an inflight transaction of \$100. Its lifecycle looks like this:
 4. Once the inflight transaction is committed, a new transaction is created in the `APPLIED` state.
 5. If the inflight transaction is voided instead, a new transaction is created in the `VOID` state.
 
-When you use **`inflight_commit_date`**, Blnk commits automatically at that time; the resulting **`APPLIED`** transaction still uses the inflight record as its **`parent_transaction`**, just like a manual commit via [Update Inflight](/reference/update-inflight).
+    <Check>When you use **`inflight_commit_date`**, Blnk commits automatically at that time; the resulting **`APPLIED`** transaction still uses the inflight record as its **`parent_transaction`**, just like a manual commit via [Update Inflight](/reference/update-inflight).</Check>
 
 6. The `INFLIGHT` transaction becomes the parent of the `APPLIED` and/or `VOID` transactions.
 
@@ -84,7 +91,7 @@ Blnk automatically creates this field whenever you use the queue system to proce
 
 In the case of split or bulk transactions, it becomes particularly useful, as it lets you trace the entire chain and identify the final outcome of each branch.
 
-### Bulk/split transaction
+### Queued parent for bulk/split transactions
 
 Consider a split transaction of \$100. Half to person A and half to person B. The lifecycle of this transaction would be as follows:
 
@@ -96,7 +103,9 @@ Consider a split transaction of \$100. Half to person A and half to person B. Th
 4. As Blnk processes the two individual transactions, it creates two new transactions in the `APPLIED` state.
 5. Each individual child `QUEUED` transaction becomes the parent of its corresponding `APPLIED` transaction.
 
-Unlike the [inflight transaction](#inflight-transaction) example above, you can’t query by `parent_transaction` to get the final outcome of a split transaction. This is because the final `APPLIED` transactions aren’t directly linked to the original split transaction. Instead, they’re linked to the two individual `QUEUED` transactions created from it — each representing a separate outcome for Person A and Person B. 
+Unlike the [inflight transaction](#inflight-transaction) example above, you can’t query by `parent_transaction` to get the final outcome of a split transaction. 
+
+This is because the final `APPLIED` transactions aren’t directly linked to the original split transaction. Instead, they’re linked to the two individual `QUEUED` transactions created from it — each representing a separate outcome for Person A and Person B. 
 
 Instead you'll need to query by the `meta_data.QUEUED_PARENT_TRANSACTION` field, which is present in all related transactions, regardless of their parent.
 

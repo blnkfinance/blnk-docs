@@ -8,6 +8,7 @@ description: "Learn how to migrate financial data from external systems to your 
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import { CtaCallout } from "/snippets/cta-callout.jsx";
 
 <Info>Available in version 0.9.0 and later.</Info>
 
@@ -15,11 +16,20 @@ This guide explains how to efficiently migrate existing financial data into your
 
 Designed for developers and financial administrators, it ensures accurate historical records and a smooth migration process, whether you’re switching systems or importing historical data.
 
+<CtaCallout
+  title="Planning a ledger migration?"
+  href="mailto:support@blnkfinance.com?subject=Interested%20in%20Pro%20Support"
+  buttonLabel="Get Pro Support"
+  trackingEvent="clicked_pro_support"
+>
+  Get hands-on support for migrating from your existing system to Blnk: migration planning, on-prem deployment guidance, reconciliation setup, and production cutover support.
+</CtaCallout>
+
 ---
 
 ## Key features for migration
 
-### Effective date (backdating)
+### 1. Effective date (backdating)
 
 The `effective_date` feature allows you to record transactions with their original financial date, rather than the current system date. This ensures accurate financial timelines during migration.
 
@@ -32,7 +42,7 @@ The `effective_date` feature allows you to record transactions with their origin
 
 Learn more: [Backdating Transactions →](/transactions/backdated-transactions).
 
-### Bulk transactions
+### 2. Bulk transactions
 
 The Bulk Transaction API allows you to process multiple transactions in one request, with options like atomic, independent, asynchronous, and inflight processing to fit your migration needs:
 
@@ -54,34 +64,37 @@ Learn more: [Bulk Transactions →](/transactions/bulk-transactions).
 
 ## Migration strategy
 
-### Step 1: Prepare your historical data
+<Steps titleSize="h3">
+<Step id="prepare-historical-data" title="Prepare your historical data">
 
 1. Sort transactions chronologically by their original `effective_date` values to maintain a clear timeline.
 2. Format your data to match the [Blnk transaction structure](/transactions/overview) for compatibility.
 3. Validate your data (e.g., check for duplicates using unique references).
 4. Divide transactions into manageable batches (recommended: 1,000–5,000 per batch) to simplify processing.
 
-### Step 2: Choose your migration approach
+</Step>
+<Step id="choose-migration-approach" title="Choose your migration approach">
 
-#### Option A: Full historical migration
+1. **Full historical migration**
 
-Import all historical transactions with their original dates to maintain a complete financial history, preserving every detail for accurate reporting.
+    Import all historical transactions with their original dates to maintain a complete financial history, preserving every detail for accurate reporting.
 
-#### Option B: Balance-forward migration
+2. **Balance-forward migration**
 
-Import only the current balance as a starting point using a balance adjustment transaction, then add recent transactions with backdating.
+    Import only the current balance as a starting point using a balance adjustment transaction, then add recent transactions with backdating.
 
->**Important to note:** 
->
->In this approach, set the initial balance adjustment’s `effective_date` before all subsequent transactions.
->
->This sets the correct starting point without being affected by backdated transactions that follow, while backdated transactions will impact the running balance, ensuring the initial balance adjustment is accurate keeps the overall balance correct.
+    >**Important to note:** 
+    >
+    >In this approach, set the initial balance adjustment’s `effective_date` before all subsequent transactions.
+    >
+    >This sets the correct starting point without being affected by backdated transactions that follow, while backdated transactions will impact the running balance, ensuring the initial balance adjustment is accurate keeps the overall balance correct.
 
-#### Option C: Hybrid approach
+3. **Hybrid approach**
 
-Import summary transactions for older periods and detailed transactions for more recent periods to balance accuracy with efficiency.
+    Import summary transactions for older periods and detailed transactions for more recent periods to balance accuracy with efficiency.
 
-### Step 3: Execute the migration
+</Step>
+<Step id="execute-migration" title="Execute the migration">
 
 For each batch of transactions:
 
@@ -90,11 +103,15 @@ For each batch of transactions:
 3. Monitor webhook notifications for completion status to stay informed about progress and issues.
 4. Validate balances after each batch to ensure accuracy and catch errors early.
 
+</Step>
+</Steps>
+
 ---
 
 ## Implementation guide
 
-### Creating bulk backdated transactions
+<Steps titleSize="h3">
+<Step id="creating-bulk-backdated-transactions" title="Creating bulk backdated transactions">
 
 ```
 POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
@@ -141,7 +158,8 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
 
 <Tip>You can add as many transactions as you want (recommended: 1000 - 5000) in the `transactions` array.</Tip>
 
-### Webhook notification upon successful completion
+</Step>
+<Step id="bulk-transaction-webhook" title="Webhook notification upon successful completion">
 
 ```json
 {
@@ -156,6 +174,9 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
 ```
 
 Learn more: [Bulk Transactions Webhooks →](/transactions/bulk-transactions#webhook-notifications)
+
+</Step>
+</Steps>
 
 ---
 

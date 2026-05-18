@@ -1,55 +1,177 @@
 ---
-title: "Create, Edit, and Manage Hooks"
+title: "Create, edit, and manage hooks"
 sidebarTitle: "Manage hooks"
 icon: "plug-zap"
-description: "Learn how Hooks work in the Blnk Ledger."
-"og:title": "Introduction to Hooks • Blnk Developer Documentation"
-"og:description": "Learn to create hooks in Blnk. Step-by-step guide for registering webhooks, handling events, and integrating real-time notifications"
+description: "Use the Hooks API to register PRE_TRANSACTION and POST_TRANSACTION endpoints, inspect hook configuration, and manage delivery settings."
+"og:title": "Manage transaction hooks • Blnk Developer Documentation"
+"og:description": "Register and manage PRE_TRANSACTION and POST_TRANSACTION hooks with the Blnk Hooks API, including request payloads and delivery behavior."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import Key from "/snippets/key.mdx";
+import ProSupportCta from "/snippets/pro-support-cta.mdx";
 
 <Info>Available in version 0.8.4 and later.</Info>
 
-Efficiently manage hooks through our dedicated hook endpoints. These endpoints seamlessly integrate with the hook manager, providing robust validation, comprehensive error handling, and consistent response delivery.
+Transaction hooks let Blnk call **your** HTTP endpoint when a transaction reaches a lifecycle stage. This page covers the **Hooks management API**: how to create hooks, update timeouts and URLs, list them, fetch one by id, and delete them.
+
+For what hooks are for, when `PRE_TRANSACTION` vs `POST_TRANSACTION` runs, and product-level guidance, start with [Introduction to hooks](/hooks/overview). For patterns like fraud checks or KYC, see [Hook examples](/hooks/examples).
 
 ---
 
-## Register a new hook
+## Prerequisites
 
-```
-POST http://YOUR_BLNK_INSTANCE_URL/hooks
-```
-<CodeGroup>
-```bash Create pre-transaction hook
+- **Blnk Core base URL** — e.g. `http://localhost:5001` or your deployed instance (replace `YOUR_BLNK_INSTANCE_URL` in the examples).
+- **API key** — required if your server enforces API key auth (see below).
+- **HTTPS in production** — your hook `url` should use TLS in live environments.
+
+---
+
+## Authentication
+
+<Key />
+
+<Note>
+Header name is case-insensitive; examples on this page use `X-Blnk-Key` for readability. The value must match the key configured for your Blnk instance.
+</Note>
+
+---
+
+## Register a hook
+
+Blnk sends an HTTP **POST** to your `url` when a transaction matches the hook `type`. Delivery is **asynchronous**: hook failures are isolated from the core transaction (see [Introduction to hooks](/hooks/overview)).
+
+<RequestExample>
+```bash cURL
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Pre-transaction validation",
-    "url": "https://api.example.com/webhook",
+    "url": "https://api.example.com/blnk/hooks/pre",
     "type": "PRE_TRANSACTION",
     "active": true,
     "timeout": 30,
     "retry_count": 3
   }'
 ```
-```bash Create post-transaction hook
+</RequestExample>
+
+### Request body
+
+<ParamField body="name" type="string" required>
+  Human-readable label for operators and logs. Use something you can recognize in dashboards and audits.
+</ParamField>
+<ParamField body="url" type="string" required>
+  Absolute HTTPS (recommended) or HTTP URL that accepts **POST** requests from Blnk.
+</ParamField>
+<ParamField body="type" type="string" required>
+  Either `PRE_TRANSACTION` (before the transaction is applied) or `POST_TRANSACTION` (after).
+</ParamField>
+<ParamField body="active" type="boolean" required>
+  When `false`, Blnk skips this hook until you enable it again.
+</ParamField>
+<ParamField body="timeout" type="number" required>
+  Maximum time in **seconds** Blnk waits for your endpoint to respond per attempt.
+</ParamField>
+<ParamField body="retry_count" type="number" required>
+  Maximum **additional** attempts after a failed delivery (network error, timeout, or non-success HTTP status). Tune this with your idempotency strategy on the receiver side.
+</ParamField>
+
+<ResponseExample>
+```json Success
+{
+  "hook_id": "hoo_2vN9KxQpA1wM4rL6yB8cD0eF",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/blnk/hooks/pre",
+  "type": "PRE_TRANSACTION",
+  "active": true,
+  "timeout": 30,
+  "retry_count": 3
+}
+```
+</ResponseExample>
+
+<Note>
+Exact JSON keys may vary slightly by Blnk version. Use the hook identifier returned by **your** instance for update, get, and delete calls.
+</Note>
+
+<Check>
+After a successful response, store `hook_id`. You need it for **Get**, **Update**, and **Delete**.
+</Check>
+
+### Quick start: two hooks
+
+<Steps>
+<Step title="Pick endpoints in your app">
+  Implement `POST` handlers that read JSON, return `2xx` quickly, and do heavy work asynchronously if needed. Your server must be reachable from Blnk Core.
+</Step>
+<Step title="Register each hook with POST /hooks">
+  Create one hook with `"type": "PRE_TRANSACTION"` and one with `"type": "POST_TRANSACTION"` if you need both lifecycle stages.
+</Step>
+<Step title="Verify signatures on inbound traffic">
+  Blnk signs hook deliveries. Follow [Webhook security (signature verification)](/advanced/notifications#webhook-security-signature-verification) so you only process genuine callbacks.
+</Step>
+</Steps>
+
+---
+
+## Create examples (PRE and POST)
+
+<CodeGroup>
+```bash PRE_TRANSACTION
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Post-transaction validation",
-    "url": "https://api.example.com/webhook",
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/blnk/hooks/pre",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3
+  }'
+```
+```bash POST_TRANSACTION
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Post-transaction notifications",
+    "url": "https://api.example.com/blnk/hooks/post",
     "type": "POST_TRANSACTION",
     "active": true,
     "timeout": 30,
     "retry_count": 3
   }'
 ```
-```json Payload (Pre-transaction)
+</CodeGroup>
+
+---
+
+## What Blnk sends to your `url`
+
+Each delivery is a **POST** whose JSON body includes the transaction context. Typical top-level fields:
+
+| Field | Description |
+| --- | --- |
+| `transaction_id` | Ledger transaction identifier |
+| `hook_type` | `PRE_TRANSACTION` or `POST_TRANSACTION` |
+| `timestamp` | When Blnk built the payload |
+| `data` | Transaction object (amount, balances identifiers, status, `meta_data`, etc.) |
+
+`PRE_TRANSACTION` deliveries usually see an early status such as `QUEUED`. `POST_TRANSACTION` deliveries reflect the transaction after application (for example `APPLIED`), depending on your flow.
+
+<Tip>
+  Compare `hook_type` and headers like `X-Hook-Type` with the documented signing flow in [Webhook security](/advanced/notifications#webhook-security-signature-verification).
+</Tip>
+
+### Sample delivery bodies
+
+<CodeGroup>
+```json PRE_TRANSACTION payload
 {
-  "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+  "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
   "hook_type": "PRE_TRANSACTION",
   "timestamp": "2025-02-23T09:43:49.627239+01:00",
   "data": {
@@ -57,27 +179,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
     "amount": 200,
     "rate": 1,
     "precision": 100,
-    "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+    "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
     "parent_transaction": "",
     "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
     "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
-    "reference": "4rdddd3dd3rredddddddddde3sddddsdddeddeed",
+    "reference": "INV-2025-0008912",
     "currency": "GBP",
-    "description": "Testing inflight/rates issue",
+    "description": "Wallet top-up",
     "status": "QUEUED",
     "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
     "allow_overdraft": true,
     "inflight": false,
-    "skip_queue": true,
+    "skip_queue": false,
     "created_at": "2025-02-23T09:43:49.623494+01:00",
     "scheduled_for": "0001-01-01T00:00:00Z",
     "inflight_expiry_date": "0001-01-01T00:00:00Z"
   }
 }
 ```
-```json Payload (Post-transaction)
+```json POST_TRANSACTION payload
 {
-  "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+  "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
   "hook_type": "POST_TRANSACTION",
   "timestamp": "2025-02-23T09:43:49.636219+01:00",
   "data": {
@@ -85,18 +207,18 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
     "amount": 200,
     "rate": 1,
     "precision": 100,
-    "transaction_id": "txn_e0f5ab98-bb87-4b09-aefe-839ddb11598b",
+    "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
     "parent_transaction": "",
     "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
     "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
-    "reference": "4rdddd3dd3rredddddddddde3sddddsdddeddeed",
+    "reference": "INV-2025-0008912",
     "currency": "GBP",
-    "description": "Testing inflight/rates issue",
+    "description": "Wallet top-up",
     "status": "APPLIED",
     "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
     "allow_overdraft": true,
     "inflight": false,
-    "skip_queue": true,
+    "skip_queue": false,
     "created_at": "2025-02-23T09:43:49.623494+01:00",
     "scheduled_for": "0001-01-01T00:00:00Z",
     "inflight_expiry_date": "0001-01-01T00:00:00Z"
@@ -105,47 +227,94 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
 ```
 </CodeGroup>
 
-| **Field** | **Type** | **Description** |
-| :-- | :-- | :-- |
-| `name` | string | Name of the hook |
-| `url` | string | Endpoint URL where the hook will send requests |
-| `type` | string | Type of the hook — `PRE_TRANSACTION` or `POST_TRANSACTION` |
-| `active` | boolean | Indicates whether the hook is enabled or disabled |
-| `timeout` | number | Maximum time (in seconds) allowed for the hook to execute |
-| `retry_count` | number | Maximum number of retry attempts if the hook fails |
+<Warning>
+  Treat `data` as the contract for your integration; fields depend on the transaction type and Blnk version. Always handle unknown keys safely when parsing JSON.
+</Warning>
 
 ---
 
-## Update an existing hook
+## Update a hook
 
+Send the same JSON shape as **Register a hook** to replace settings for an existing hook.
+
+<ParamField path="hook_id" type="string" required>
+  Identifier returned when the hook was created.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/blnk/hooks/pre-v2",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 45,
+    "retry_count": 5
+  }'
 ```
-PUT http://YOUR_BLNK_INSTANCE_URL/hooks/{hook_id}
-```
+</RequestExample>
 
 ---
 
-## Retrieve a specific hook
+## Retrieve a hook
 
+<RequestExample>
+```bash cURL
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
+  -H "X-Blnk-Key: YOUR_API_KEY"
 ```
-GET http://YOUR_BLNK_INSTANCE_URL/hooks/{hook_id}
-```
+</RequestExample>
 
 ---
 
 ## List hooks by type
 
+Returns hooks filtered to one lifecycle type.
+
+<ParamField query="type" type="string" required>
+  `PRE_TRANSACTION` or `POST_TRANSACTION`.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks?type=PRE_TRANSACTION" \
+  -H "X-Blnk-Key: YOUR_API_KEY"
 ```
-GET http://YOUR_BLNK_INSTANCE_URL/hooks?type=PRE_TRANSACTION
-```
+</RequestExample>
 
 ---
 
 ## Delete a hook
 
+<RequestExample>
+```bash cURL
+curl -X DELETE "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
+  -H "X-Blnk-Key: YOUR_API_KEY"
 ```
-DELETE http://YOUR_BLNK_INSTANCE_URL/hooks/{hook_id}
-```
+</RequestExample>
+
+<ProSupportCta />
 
 ---
+
+## Related documentation
+
+<CardGroup cols={2}>
+<Card title="Hooks overview" icon="webhook" href="/hooks/overview">
+  Lifecycle, async behavior, and when to use each hook type.
+</Card>
+<Card title="Webhook security" icon="shield" href="/advanced/notifications#webhook-security-signature-verification">
+  Verify `X-Blnk-Signature`, timestamps, and hook-specific headers.
+</Card>
+<Card title="Hook examples" icon="clipboard-list" href="/hooks/examples">
+  Fraud, KYC, loyalty, and reconciliation-style patterns.
+</Card>
+<Card title="Secure your Blnk server" icon="lock" href="/advanced/secure-blnk">
+  API keys, `server.secret_key`, and operational hardening.
+</Card>
+</CardGroup>
 
 <NeedHelp />
