@@ -1,9 +1,9 @@
 ## Introduction
 
-This is the official developer documentation for the [open-source Blnk Ledger](https://github.com/blnkfinance/blnk). 
+This is the official developer documentation for the [open-source Blnk Ledger](https://github.com/blnkfinance/blnk).
 
 ## Quick Links
-- [Visit the Blnk Website](https://blnkfinance.com)
+- [Visit the Blnk Website](https://blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=README)
 - [Read our developer documentation](https://docs.blnkfinance.com)
 
 ## Open-source fintech ledger for the internet
