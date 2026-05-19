@@ -1,0 +1,180 @@
+---
+title: "Set Up Install and Uninstall Events"
+sidebarTitle: "Managing installs"
+description: "Handle install and uninstall events for your Custom App."
+icon: "package-plus"
+og:title: "Install and Uninstall Events for Custom Apps | Blnk Cloud Guide"
+og:description: "Handle install and uninstall events for your Custom App."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+A user finds your app in the Apps library, reviews the permissions it requests, and confirms the install. After that, Blnk Cloud sends an event to your app so you can provision the installation on your side.
+
+Here's what happens during installation:
+
+1. The user clicks **Install** from the app details page.
+2. The user reviews and approves the permissions.
+3. Blnk Cloud creates a scoped API key for the installation.
+4. Blnk Cloud sends the install event to your backend via the [callback URL](/cloud/apps/codebase-setup#set-up-app-routes).
+5. Your app stores the install details and returns a `2xx` response.
+6. If the response succeeds, the app becomes active in Cloud.
+
+---
+
+## Handling the install event
+
+An install event tells your app that a user has connected it to a specific organization and instance.
+
+Blnk Cloud sends a payload like this:
+
+```json install_payload.json {9}
+{
+  "installed_app_id": "instapp_...",
+  "app_id": "app_...",
+  "organization_id": "org_...",
+  "instance_id": "inst_...",
+  "api_key": "blnk_...",
+  "api_key_prefix": "blnk_abc",
+  "granted_permissions": ["data:read", "data:write"],
+  "idempotency_key": "install:instapp_..."
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `installed_app_id` | The ID for this specific app installation. |
+| `app_id` | The ID of the app that was installed. |
+| `organization_id` | The organization where the app was installed. |
+| `instance_id` | The Cloud instance where the app was installed. |
+| `api_key` | The scoped API key your backend uses to call Cloud APIs for this install. |
+| `api_key_prefix` | A safe prefix for identifying the key without exposing the full secret. |
+| `granted_permissions` | The permissions the user approved during installation. |
+| `idempotency_key` | A unique key for this install event. Use it to avoid processing the same event twice. |
+
+Once you receive the install event, you need to save the install details so your backend can use them later.
+
+<Note>
+**Note:** If your app does not return a `2xx` response within 10 seconds, Blnk cancels the installation, revokes the API key, and the install fails.
+</Note>
+
+For our Stripe Sync app, our install handler looks like this:
+
+```js routes.ts wrap
+app.post("/api/callback", async (req, res) => {
+  const event = req.body;
+
+  if (event.idempotency_key?.startsWith("install:")) {
+
+    // Never persist the raw `api_key` in your database — encrypt it at rest (see Codebase setup).
+    await installs.save({
+      installed_app_id: event.installed_app_id,
+      app_id: event.app_id,
+      organization_id: event.organization_id,
+      instance_id: event.instance_id,
+      api_key_encrypted: encryptSecret(event.api_key),
+      api_key_prefix: event.api_key_prefix,
+      granted_permissions: event.granted_permissions,
+      status: "active",
+      idempotency_key: event.idempotency_key
+    });
+
+    return res.status(200).json({ ok: true });
+  } 
+});
+```
+
+<Note>
+Use whatever encryption or key-management approach fits your stack before you write the secret to your database.
+</Note>
+
+---
+
+## Handling the uninstall event
+
+When a user uninstalls your app, Blnk Cloud revokes the app's API key and sends an uninstall event to the same [callback URL](/cloud/apps/codebase-setup#set-up-app-routes).
+
+Your app should use this event to stop treating the installation as active. You can also clean up any resources you created for that organization or instance.
+
+```json uninstall_payload.json {7}
+{
+  "installed_app_id": "instapp_...",
+  "app_id": "app_...",
+  "organization_id": "org_...",
+  "instance_id": "inst_...",
+  "uninstalled_at": "2026-04-21T12:00:00Z",
+  "idempotency_key": "uninstall:instapp_..."
+}
+```
+
+For the Stripe Sync app, uninstalling should mark the installation as inactive so the backend stops using the stored install record.
+
+```js routes.ts wrap
+app.post("/api/callback", async (req, res) => {
+  const event = req.body;
+
+  if (event.idempotency_key?.startsWith("uninstall:")) {
+    await installs.update({
+      installed_app_id: event.installed_app_id,
+      status: "inactive"
+    });
+
+    return res.status(200).json({ ok: true });
+  }
+});
+```
+
+<Note>
+You can also choose to delete encrypted keys, remove portal sessions, or clean up instance-specific resources.
+</Note>
+
+---
+
+## Handling retries
+
+Cloud may retry an install or uninstall event if it does not receive a successful response.
+
+Your handler should be safe to run more than once. Use the `idempotency_key` to check whether you have already processed the event:
+
+```js routes.ts wrap
+app.post("/api/callback", async (req, res) => {
+  const event = req.body;
+
+  const existingEvent = await checkIfEventProcessed(event.idempotency_key);
+
+  if (existingEvent) {
+    return res.status(200).json({ ok: true });
+  }
+
+  // Process the event
+});
+```
+
+---
+
+## Test the installation flow
+
+Before moving to app development, test the install and uninstall flow from Cloud.
+
+1. [Register your app](/cloud/apps/register-app).
+2. [Install the app](/cloud/apps/install-app) from the Apps library.
+3. Confirm your callback URL receives the install event.
+4. Confirm your callback URL returns a `2xx` response.
+5. Confirm the install is active in your database.
+6. Uninstall the app from Cloud.
+7. Confirm your callback URL receives the uninstall event.
+8. Confirm the install is no longer active in your database.
+
+---
+
+<Card title="Run the example Stripe Sync app" icon="github" href="https://github.com/blnkfinance/apps-demo">
+  Open the demo repository and follow its README to run the Stripe Sync example app this documentation is built around.
+</Card>
+
+---
+
+<NeedHelp />

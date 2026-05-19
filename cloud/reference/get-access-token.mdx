@@ -1,0 +1,80 @@
+---
+title: "Get access token"
+api: "POST /oauth/token"
+description: "Exchange an authorization code for an access token using the OAuth authorization code flow."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Exchange an authorization code for an access token. Use this endpoint after the user authorizes your app and you receive an authorization code.
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.cloud.blnkfinance.com/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET" \
+  -d "grant_type=authorization_code" \
+  -d "code=THE_CODE_FROM_REDIRECT" \
+  -d "redirect_uri=https://your-app.com/oauth/callback"
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Basic authentication using your OAuth client ID and client secret. Format: `Basic base64(client_id:client_secret)` or use `-u` flag in cURL.
+</ParamField>
+
+<ParamField body="grant_type" type="string" required>
+Must be `authorization_code` for this flow.
+</ParamField>
+
+<ParamField body="code" type="string" required>
+The authorization code received from the OAuth redirect after user authorization.
+</ParamField>
+
+<ParamField body="redirect_uri" type="string" required>
+The redirect URI that was used in the authorization request. Must match exactly.
+</ParamField>
+
+---
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "access_token": "blnk_at_...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "blnk_rt_...",
+  "scope": "data:read data:write proxy:write"
+}
+```
+</ResponseExample>
+
+<ResponseField name="access_token" type="string" required>
+The access token to use for authenticating API requests. Include in the `Authorization: Bearer <access_token>` header.
+</ResponseField>
+
+<ResponseField name="token_type" type="string" required>
+Always `Bearer` for access tokens.
+</ResponseField>
+
+<ResponseField name="expires_in" type="integer" required>
+Number of seconds until the access token expires.
+</ResponseField>
+
+<ResponseField name="refresh_token" type="string" required>
+Token used to obtain a new access token when the current one expires.
+</ResponseField>
+
+<ResponseField name="scope" type="string" required>
+Space-separated list of scopes granted to this token.
+</ResponseField>
+
+---
+
+<NeedHelp />

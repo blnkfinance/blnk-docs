@@ -1,0 +1,75 @@
+---
+title: "Refresh access token"
+api: "POST /oauth/token"
+description: "Obtain a new access token using a refresh token when the current access token expires."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Refresh an expired access token using the refresh token you received when obtaining the original access token.
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.cloud.blnkfinance.com/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=blnk_rt_YOUR_REFRESH_TOKEN_HERE"
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Basic authentication using your OAuth client ID and client secret. Format: `Basic base64(client_id:client_secret)` or use `-u` flag in cURL.
+</ParamField>
+
+<ParamField body="grant_type" type="string" required>
+Must be `refresh_token` for this flow.
+</ParamField>
+
+<ParamField body="refresh_token" type="string" required>
+The refresh token received when obtaining the original access token.
+</ParamField>
+
+---
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "access_token": "blnk_at_...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "blnk_rt_...",
+  "scope": "data:read data:write proxy:write"
+}
+```
+</ResponseExample>
+
+<ResponseField name="access_token" type="string" required>
+The new access token to use for authenticating API requests. Include in the `Authorization: Bearer <access_token>` header.
+</ResponseField>
+
+<ResponseField name="token_type" type="string" required>
+Always `Bearer` for access tokens.
+</ResponseField>
+
+<ResponseField name="expires_in" type="integer" required>
+Number of seconds until the access token expires.
+</ResponseField>
+
+<ResponseField name="refresh_token" type="string" required>
+A new refresh token. Use this token for future refresh requests.
+</ResponseField>
+
+<ResponseField name="scope" type="string" required>
+Space-separated list of scopes granted to this token.
+</ResponseField>
+
+---
+
+<NeedHelp />

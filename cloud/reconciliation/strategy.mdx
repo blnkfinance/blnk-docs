@@ -1,0 +1,75 @@
+---
+title: "Reconciliation Strategy"
+sidebarTitle: "Reconciliation strategy"
+icon: "target"
+description: "Learn about different reconciliation strategies and how to use them."
+og:title: "Reconciliation Strategies | Blnk Cloud Guide"
+og:description: "Learn about different reconciliation strategies and how to use them in reconciliation runs."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+## Overview
+
+Your reconciliation strategy specifies how transactions are distributed between the two sets of records. This is important because it affects how Blnk matches the records and how you interpret the results.
+
+Blnk supports three strategies:
+
+1. **One-to-one:** Each external transaction is matched with exactly one internal transaction.
+2. **One-to-many:** Each external transaction is matched with one or more internal transactions.
+3. **Many-to-one:** One or more external transactions are matched with exactly one internal transaction.
+
+---
+
+## Choosing a strategy
+
+Pick the strategy that best reflects how money groups or splits between your ledger and your external source.
+
+1. If nothing is split or combines, **use one-to-one**, e.g. a customer pays \$25 with their card; your ledger records a \$25 transaction and your processor statement also shows a single \$25 charge.
+2. If one record on the external side triggers multiple records on the internal side, use **one-to-many**, e.g. A payment processor reports a single \$100 charge, but your ledger records it as separate entries for the gross amount, the processing fee, and the net amount deposited.
+3. If multiple records on the external side and combined into one record on the internal side, use **many-to-one**, e.g. a processor reports a transaction in multiple parts, for example fee breakdowns or split authorizations, but your ledger stores it as a single $120 charge.
+
+<Tip>**Simply ask**, does this transaction split, combine or stay the same between the two sides? The answer will guide your choice.</Tip>
+
+---
+
+## Applying your strategy
+
+To apply your strategy, select it from the **Strategy** dropdown field when creating a new reconciliation run.
+
+<img src="/cloud/img/reconciliation/recon-strategy.png" alt="Select strategy" className="rounded-lg" />
+
+Next, you'll need to select a **grouping criteria**. 
+
+This field determines how Blnk groups the records on the `many` side for reconciliation. Here are the available grouping options for each strategy:
+
+1. **One-to-many**: 
+
+    | Grouping criteria    | What it does                                                        |
+    | :------------------- | :------------------------------------------------------------------ |
+    | `transaction_id`     | Groups internal records that share the same transaction ID.         |
+    | `parent_transaction` | Groups internal records that belong to the same parent transaction. |
+    | `source`             | Groups internal records with the same source balance.               |
+    | `destination`        | Groups internal records with the same destination balance.          |
+    | `reference`          | Groups internal records that share the same reference.              |
+    | `currency`           | Groups internal records by currency.                                |
+    | `status`             | Groups internal records by status.                                  |
+    | `created_at`         | Groups internal records created at the same time or date.           |
+
+
+2. **Many-to-one**:
+
+    | Grouping criteria | What it does                                           |
+    | :---------------- | :----------------------------------------------------- |
+    | `id`              | Groups external records by their ID.                   |
+    | `amount`          | Groups external records that share the same amount.    |
+    | `currency`        | Groups external records by currency.                   |
+    | `reference`       | Groups external records that share the same reference. |
+    | `description`     | Groups external records by description.                |
+    | `date`            | Groups external records by their date.                 |
+
+<Note>Grouping criteria is not required for one-to-one strategy.</Note>
+
+---
+
+<NeedHelp />

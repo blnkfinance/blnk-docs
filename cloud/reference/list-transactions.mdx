@@ -1,0 +1,126 @@
+---
+title: "List transactions"
+api: "GET /data/transactions"
+description: "List all transactions from your Blnk Core instance with pagination support."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Retrieve a paginated list of transactions from your Blnk Core instance.
+
+<Note>
+For in-depth information about Blnk's ledger, balance, transaction, and identity APIs, see the [Blnk Core docs](https://docs.blnkfinance.com).
+</Note>
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for authentication. Format: `Bearer <access_token>`. Your OAuth key must include `data:read` scope (or `*`).
+</ParamField>
+
+---
+
+### Query parameters
+
+<ParamField query="instance_id" type="string" required>
+The Blnk Core instance ID to read from. Find this in Blnk Cloud under Instances.
+</ParamField>
+
+<ParamField query="page" type="integer">
+Page number to retrieve. Defaults to `1`.
+</ParamField>
+
+<ParamField query="pageSize" type="integer">
+Number of results per page. Defaults to `20` for transactions.
+</ParamField>
+
+---
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "destination": "bln_ANOTHER_BALANCE_ID",
+      "status": "APPLIED",
+      "created_at": "2024-11-26T08:40:00.000000000Z",
+      "precision": 100,
+      "meta_data": {
+        "myApp": {
+          "channel": "web",
+          "approval_status": "approved"
+        }
+      }
+    }
+  ],
+  "total": 42
+}
+```
+</ResponseExample>
+
+<ResponseField name="data" type="array" required>
+Array of transaction objects.
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+Total number of transactions available.
+</ResponseField>
+
+<Note>
+Transactions may also include a `"stats"` field in the response for aggregate views.
+</Note>
+
+<Expandable title="Transaction object properties">
+<ResponseField name="transaction_id" type="string" required>
+Unique identifier for the transaction.
+</ResponseField>
+
+<ResponseField name="amount" type="number" required>
+Transaction amount.
+</ResponseField>
+
+<ResponseField name="currency" type="string" required>
+Currency code for the transaction.
+</ResponseField>
+
+<ResponseField name="source" type="string" required>
+Balance ID debited from.
+</ResponseField>
+
+<ResponseField name="destination" type="string" required>
+Balance ID credited to.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+Current status of the transaction (e.g., `QUEUED`, `APPLIED`, `FAILED`).
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp" required>
+ISO 8601 formatted timestamp of when the transaction was created.
+</ResponseField>
+</Expandable>
+
+---
+
+<Info>
+For filters and supported fields, see the [Data API docs](/cloud/proxy/data-api).
+</Info>
+
+---
+
+<NeedHelp />

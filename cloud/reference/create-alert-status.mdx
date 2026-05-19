@@ -1,0 +1,80 @@
+---
+title: "Create alert status"
+api: "POST /cloud/alerts/statuses"
+description: "Create a custom alert status with a display name and colour."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Create a custom alert status with a display name and colour. Statuses are per organization and can be used when updating an alert's status.
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.cloud.blnkfinance.com/alerts/statuses' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Pending Review",
+    "colour": "#3B82F6"
+  }'
+```
+</RequestExample>
+
+<ParamField body="name" type="string" required>
+Display name for the status (e.g. "Pending Review", "In Progress"). If key is omitted, a key is derived from this (e.g. "Pending Review" → PENDING_REVIEW). Names must be unique per org when key is auto-derived.
+</ParamField>
+
+<ParamField body="colour" type="string" required>
+Hex colour code for the status. Must be one of the values in allowed_colours from the list statuses response.
+</ParamField>
+
+<ParamField body="key" type="string">
+Optional. Custom key for the status (e.g. PENDING_REVIEW). If omitted, a key is derived from name. Must be unique per organization.
+</ParamField>
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "organization_id": "org_01ABC123",
+  "key": "PENDING_REVIEW",
+  "name": "Pending Review",
+  "colour": "#3B82F6",
+  "created_at": "2025-01-29T14:00:00Z",
+  "updated_at": "2025-01-29T14:00:00Z"
+}
+```
+</ResponseExample>
+
+<ResponseField name="organization_id" type="string" required>
+Organization ID that owns the status.
+</ResponseField>
+
+<ResponseField name="key" type="string" required>
+The status key (supplied or derived from name).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Display name of the status.
+</ResponseField>
+
+<ResponseField name="colour" type="string" required>
+Hex colour code of the status.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp" required>
+ISO 8601 timestamp when the status was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp" required>
+ISO 8601 timestamp when the status was last updated.
+</ResponseField>
+
+---
+
+<NeedHelp />

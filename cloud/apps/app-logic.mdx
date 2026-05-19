@@ -1,0 +1,245 @@
+---
+title: "Building Your App Logic"
+sidebarTitle: "App development"
+description: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
+icon: "workflow"
+og:title: "Building Your App Logic | Blnk Cloud Guide"
+og:description: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+After installation, your app now has what it needs to work with the selected Cloud instance. The important values come from the install record you saved earlier:
+
+- `api_key`
+- `instance_id`
+- `granted_permissions`
+
+Your backend should use those values to decide which instance to call, what key to use, and what actions the app is allowed to perform.
+
+**For our Stripe Sync app,** this is where the backend starts doing the work: importing pay-ins from Stripe, sending them to Blnk as transactions, and saving the sync details locally.
+
+---
+
+## Choose the right Cloud API
+
+Custom Apps usually use three classes of Cloud APIs.
+
+| API | When to use it |
+| --- | --- |
+| Data API | Read and filter ledger data through Cloud. |
+| Proxy API | Perform Core actions through Cloud. |
+| Other Cloud features | Use Cloud features that are not Core endpoints, such as alerts. |
+
+All requests use the Cloud base URL:
+
+```bash
+https://api.cloud.blnkfinance.com
+```
+
+The installed app API key goes in the `Authorization` header:
+
+```bash
+Authorization: Bearer <api_key>
+```
+
+For Proxy and Data API requests, include the selected `instance_id` in the URL:
+
+```bash
+?instance_id=<instance_id>
+```
+
+---
+
+## Quick reference
+
+<Tabs>
+<Tab title="Using the Proxy API">
+  Use the proxy when your app wants to call Blnk Core through Cloud. The format is:
+
+  ```bash wrap
+  https://api.cloud.blnkfinance.com/proxy/<core-endpoint>?instance_id=<instance_id>
+  ```
+
+  The `<core-endpoint>` is the same endpoint you would normally call on Core, but with `/proxy` in front of it. 
+
+  For example, on Core, the request would look like this:
+
+  <CodeGroup>
+  ```bash List ledgers
+  GET http://localhost:5001/ledgers
+  ```
+  ```bash Create transactions
+  POST http://localhost:5001/transactions
+  ```
+  </CodeGroup>
+
+  With the Cloud Proxy, it becomes:
+
+  <CodeGroup>
+  ```bash List ledgers wrap
+  GET https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=inst_...
+  ```
+  ```bash Create transactions wrap
+  POST https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_...
+  ```
+  </CodeGroup>
+
+  A complete request via the Cloud Proxy would look like:
+
+  ```bash bash wrap
+  curl -X GET "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=inst_..." \
+    -H "Authorization: Bearer blnk_..." \
+    -H "Content-Type: application/json"
+  ```
+
+  <Card title="Using the proxy" icon="send" href="/cloud/proxy/proxy-api">
+    Learn more about how the proxy works and see all the available endpoints.
+  </Card>
+</Tab>
+<Tab title="Using the Data API">
+  Use the Data API when your app needs to read or filter ledger data through Cloud.
+
+  The format is:
+
+  ```bash wrap
+  https://api.cloud.blnkfinance.com/data/<resource>?instance_id=<instance_id>
+  ```
+
+  For example, to read transactions:
+
+  ```bash wrap
+  curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=inst_..." \
+    -H "Authorization: Bearer blnk_..." \
+    -H "Content-Type: application/json"
+  ```
+
+  You can also add filters to the query string:
+
+  ```bash wrap
+  curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=inst_...&status_eq=APPLIED&currency_eq=USD" \
+    -H "Authorization: Bearer blnk_..." \
+    -H "Content-Type: application/json"
+  ```
+
+  <Card title="Using the data API" icon="database" href="/cloud/proxy/data-api">
+    Learn more about how the data API works and see all the available operations.
+  </Card>
+</Tab>
+<Tab title="Other Cloud features">
+  Use other Cloud endpoints for features that belong to Cloud itself.
+
+  Alerts are a good example. You do not call alerts through `/proxy` or `/data`. You call the Alerts API directly.
+
+  ```bash wrap
+  https://api.cloud.blnkfinance.com/alerts/flag/<resource_id>
+  ```
+</Tab>
+</Tabs>
+
+---
+
+## Example application
+
+Let's apply this to build the [Stripe Sync workflow](/cloud/apps/define-workflow#map-your-workflow) we mapped earlier.
+
+<Steps titleSize="h3">
+  <Step title="Fetch pay-ins from Stripe">
+    First, we'll list pay-ins from Stripe and keep only the ones that have actually settled (`status === "succeeded"`):
+
+    ```typescript fetchStripePayIns.ts wrap
+    import Stripe from "stripe";
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+    async function fetchStripePayIns() {
+      const paymentIntents = await stripe.paymentIntents.list({ limit: 100 });
+
+      return paymentIntents.data
+        .filter((pi) => pi.status === "succeeded")
+        .map((pi) => ({
+          id: pi.id,
+          amount: pi.amount_received,
+          currency: pi.currency.toUpperCase(),
+          customer: pi.customer as string,
+          created_at: new Date(pi.created * 1000).toISOString(),
+        }));
+    }
+    ```
+
+    Filtering on `status === "succeeded"` ensures we only import pay-ins that have actually settled into your Stripe balance — anything still pending, requiring action, or canceled is skipped.
+  </Step>
+  <Step title="Send the pay-in to Blnk">
+    Next, we'll mirror the Stripe pay-in as a transaction in the selected Blnk Cloud instance through the Proxy API:
+
+    ```typescript sendPayInToBlnk.ts wrap
+    async function sendPayInToBlnk(instance_id: string, payIn) {
+      const headers = {
+        Authorization: `Bearer ${api_key}`,
+        "Content-Type": "application/json",
+      };
+
+      const response = await axios.post(
+        `https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=${instance_id}`,
+        {
+          precise_amount: payIn.amount,
+          precision: 100,
+          reference: payIn.id,
+          currency: payIn.currency,
+          source: "@stripe",
+          destination: `@${payIn.customer}`,
+          description: "Imported pay-in from Stripe",
+          effective_date: payIn.created_at,
+          meta_data: {
+            stripe_payment_intent_id: payIn.id,
+            stripe_customer_id: payIn.customer,
+          },
+        },
+        { headers }
+      );
+
+      return response.data;
+    }
+    ```
+
+    We'll use the Stripe payment intent ID directly as the `reference` in Blnk. Re-syncing the same payment intent will not create a duplicate transaction in Blnk because Blnk handles idempotency internally.
+  </Step>
+  <Step title="Save the sync details in your app">
+    Finally, we'll record the sync run in the app's local database so we know when the sync ran, how many pay-ins it processed, and whether it succeeded:
+
+    ```typescript saveSyncRecord.ts wrap
+    async function saveSyncRecord(payIns, started_at) {
+      await db.run(
+        `INSERT INTO stripe_syncs (
+          sync_id,
+          records_found,
+          started_at,
+          completed_at
+        ) VALUES (?, ?, ?, ?, ?)`,
+        [
+          crypto.randomUUID(),
+          payIns.length,
+          started_at,
+          new Date().toISOString(),
+        ]
+      );
+    }
+    ```
+
+    Call this once per sync run (after Step 2 completes for the whole batch) so each row represents one end-to-end sync, not each individual pay-in. The link back to specific Blnk transactions is already preserved by the `meta_data.stripe_payment_intent_id` written in Step 2.
+  </Step>
+</Steps>
+
+---
+
+<Card title="Run the example Stripe Sync app" icon="github" href="https://github.com/blnkfinance/apps-demo">
+  Open the demo repository and follow its README to run the Stripe Sync example app this documentation is built around.
+</Card>
+
+---
+
+<NeedHelp />

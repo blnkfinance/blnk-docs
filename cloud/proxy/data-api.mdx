@@ -1,0 +1,246 @@
+---
+title: "Retrieving Data"
+sidebarTitle: "Retrieving data"
+icon: "database"
+description: "Read data from a Blnk Core instance via the Blnk Cloud Data API."
+og:title: "Retrieving data | Blnk Cloud Guide"
+og:description: "Read data from a Blnk Core instance via the Blnk Cloud Data API."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+## Overview
+
+The Data API lets you read, query, and filter data stored in a Blnk Core instance through Blnk Cloud.
+
+It provides read-only access to Core data and is commonly used for dashboards, analytics, reporting, and back-office operations.
+
+### How it works
+
+- All requests go through Blnk Cloud, not directly to Core.
+- Every request must target a specific Core instance using instance_id.
+- You authenticate using a Cloud access token.
+- Blnk Cloud routes the request to the correct Core instance and returns the response.
+
+### URL structure
+
+**Base URL:**
+```bash 
+https://api.cloud.blnkfinance.com/data
+```
+
+**Required headers:**
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Every request must always include `instance_id` as a query parameter.
+```bash
+?instance_id=YOUR_INSTANCE_ID
+```
+
+---
+
+## Listing resources
+
+To list ledgers, balances, transactions, or identities, the general pattern is:
+
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/data/{resource}?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+
+<Info>
+  `page` and `pageSize` are optional. If you omit them, defaults apply:
+    - `page=1`
+    - `pageSize=30` for ledgers, `pageSize=20` for balances, transactions, and identities.
+</Info>
+
+| Resource     | Path            |
+| ------------ | --------------- |
+| Ledgers      | `/ledgers`      |
+| Balances     | `/balances`     |
+| Transactions | `/transactions` |
+| Identities   | `/identities`   |
+
+For example, to list transactions:
+
+<CodeGroup>
+```bash Example — List all transactions wrap
+curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+```json 200 OK
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "destination": "bln_ANOTHER_BALANCE_ID_FROM_STEP_2",
+      "status": "APPLIED",
+      "created_at": "2024-11-26T08:40:00.000000000Z",
+      "precision": 100,
+      "meta_data": {
+        "myApp": {
+          "channel": "web",
+          "approval_status": "approved"
+        }
+      }
+    }
+  ],
+  "total": 42
+}
+```
+</CodeGroup>
+
+---
+
+## Fetch resource details
+
+To retrieve details for a single ledger, balance, transaction, or identity by ID, use the detail routes. The general pattern is:
+
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/data/{resource}/{resource_id}?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+
+| Resource     | Path                                  |
+| ------------ | ------------------------------------- |
+| Ledger       | `/data/ledgers/:ledger_id`            |
+| Balance      | `/data/balances/:balance_id`          |
+| Transaction  | `/data/transactions/:transaction_id`  |
+| Identity     | `/data/identities/:identity_id`       |
+
+<CodeGroup>
+```bash Example — Transaction details wrap
+curl -X GET "https://api.cloud.blnkfinance.com/data/transactions/txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c?instance_id=YOUR_INSTANCE_ID" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+
+```bash Example — Balance details wrap
+ curl -X GET "https://api.cloud.blnkfinance.com/data/balances/bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f?instance_id=YOUR_INSTANCE_ID" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN"
+```
+</CodeGroup>
+
+---
+
+## Working with filters
+
+The Data API uses suffixes on field names to express filter operators.
+
+Instead of sending operators as separate parameters, you append a suffix to the field name to indicate how the value should be compared.
+
+```
+{field}_{operator}=value
+```
+
+For example:
+
+```bash
+currency_eq=USD
+amount_gte=50
+status_ne=PENDING
+```
+
+Each filter is passed as a query parameter. Multiple filters can be combined in a single request.
+
+<Warning>
+  The following parameters are reserved for pagination, sorting, or routing and must not be used as filter fields:
+
+  - `page`, `pageSize`, `per_page`, `limit`, `offset`
+  - `sort`, `order`, `order_by`, `order_dir`
+  - `instance_id`, `org_id`
+</Warning>
+
+### Supported operators
+
+| Operator     | Suffix    | Meaning          | Example                               |
+| ------------ | --------- | ---------------- | ------------------------------------- |
+| Equal        | `_eq`     | equals           | `currency_eq=USD`                     |
+| Not equal    | `_ne`     | not equals       | `status_ne=PENDING`                   |
+| Greater than | `_gt`     | `>`              | `amount_gt=100`                       |
+| Greater/eq   | `_gte`    | `≥`              | `amount_gte=50`                       |
+| Less than    | `_lt`     | `<`              | `amount_lt=500`                       |
+| Less/eq      | `_lte`    | `≤`              | `amount_lte=500`                      |
+| In           | `_in`     | in list          | `status_in=APPLIED,SCHEDULED`         |
+| Between      | `_between`| between          | `created_at_between=2025-01-01T00:00:00Z\|2025-01-31T23:59:59Z` |
+| Like         | `_like`   | pattern match    | `reference_like=ref_%`                |
+| ILike        | `_ilike`  | case-insensitive | `description_ilike=%fee%`             |
+
+### Operator-specific rules
+
+1. **BETWEEN:** 
+    - Provide two values separated by a single pipe `|`
+    - Encode the pipe as `%7C` in URLs
+
+    ```bash Example
+    created_at_between=2025-01-01T00:00:00%7C2025-01-31T23:59:59Z
+    ```
+
+2. **IN:** 
+    - Provide comma-separated values
+    
+    ```bash Example
+    currency_in=USD,EUR,GBP`
+    ```
+
+3. **LIKE / ILIKE:** 
+    - Use SQL-style wildcards.
+    - `%` matches any sequence of characters.
+    - `_` matches a single character.
+    
+    ```bash Example
+    reference_like=ref_%
+    description_ilike=%fee%
+    ```
+
+### Example: Filtering transactions
+
+Here's an example of how filter operators can be used together in a request:
+
+<CodeGroup>
+```bash Example request URL wrap
+GET /data/transactions?
+  instance_id=YOUR_INSTANCE_ID&
+  currency_eq=USD&
+  amount_gte=50&
+  amount_lte=500&
+  created_at_between=2025-01-01T00:00:00%7C2025-01-31T23:59:59Z
+```
+
+```json Success
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "status": "APPLIED",
+      "created_at": "2025-01-15T10:00:00.000000000Z"
+    }
+  ],
+  "total": 12
+}
+``` 
+</CodeGroup>
+
+### Filterable fields by resource
+
+The table below lists the fields you can use for filtering on each Data API resource.
+
+| Resource | Fields |
+| --- | --- |
+| Ledgers | `ledger_id`, `name`, `created_at`, `meta_data`, `meta_data.<path>` |
+| Balances | `balance_id`, `ledger_id`, `identity_id`, `indicator`, `currency`<br />`balance`, `credit_balance`, `debit_balance`<br />`inflight_balance`, `inflight_credit_balance`, `inflight_debit_balance`<br />`created_at`, `meta_data` |
+| Transactions | `transaction_id`, `parent_transaction`, `amount`, `currency`<br />`source`, `destination`, `balance_id`, `reference`<br />`status`, `created_at`, `effective_date`, `precision`, `meta_data` |
+| Identities | `identity_id`, `first_name`, `last_name`, `other_names`, `gender`, `dob`<br />`email_address`, `phone_number`, `nationality`, `street`, `country`<br />`state`, `organization_name`, `category`, `identity_type`<br />`post_code`, `city`, `created_at`, `meta_data` |
+
+> Nested `meta_data` keys use dot notation, and the operator suffix goes at the end. Example: `meta_data.myApp.channel_eq=web`.
+
+---
+
+<NeedHelp />

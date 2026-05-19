@@ -1,0 +1,56 @@
+---
+title: "Delete alert status"
+api: "DELETE /cloud/alerts/statuses/{key}"
+description: "Delete a custom alert status by key."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Delete a custom alert status by key. The request fails if any alerts in the organization still use this status; reassign those alerts to another status first.
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.cloud.blnkfinance.com/alerts/statuses/PENDING_REVIEW' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+<ParamField path="key" type="string" required>
+The status key to delete (e.g. PENDING_REVIEW). Case-insensitive.
+</ParamField>
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "message": "Status deleted"
+}
+```
+</ResponseExample>
+
+<ResponseField name="message" type="string" required>
+Confirmation message when the status is deleted.
+</ResponseField>
+
+### Error when status is in use
+
+If one or more alerts still use this status, the API returns an error and does not delete the status:
+
+<ResponseExample>
+```json Error
+{
+  "error": "cannot delete status: 3 alert(s) use this status — reassign them to another status first"
+}
+```
+</ResponseExample>
+
+Reassign those alerts (e.g. via Update alert) to another status, then call delete again.
+
+---
+
+<NeedHelp />

@@ -1,0 +1,97 @@
+---
+title: "Register your Custom App"
+sidebarTitle: "App registration"
+description: "Add your Custom App to the Apps library and configure the manifest, callbacks, portal URL, and permissions."
+icon: "clipboard-list"
+og:title: "Register your Custom App | Blnk Cloud Guide"
+og:description: "Add your Custom App to the Apps library and configure the manifest, callbacks, portal URL, and permissions."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+Now that you have your routes set up in your codebase, you can now add your app to Blnk Cloud. Your app needs to be registered before it can be installed by users.
+
+To register your app:
+
+<Steps titleSize="h3">
+  <Step id="register-add-app" title="Add a new app">
+    1. In the Blnk Cloud dashboard, open **Apps** from the side navigation (bottom left).
+    2. Click **New app** on the right side of the Apps page.
+
+    <Check>
+       This opens the manifest form, where you’ll enter the app details in the next step.
+    </Check>
+  </Step>
+  <Step id="register-enter-app-manifest" title="Upload your app manifest">
+    The manifest tells Blnk Cloud how to display, install, and launch your app. Fill in the manifest form with the details below.
+
+    | Field | Description |
+    |---|---|
+    | Display name | The name users will see in the Apps library. |
+    | Description | A short explanation of what your app does. |
+    | Logo URL | A public URL for your app logo. |
+    | Developer name | The company, team, or person that built the app. |
+    | Registration callback URL | The `https` endpoint Blnk calls when the app is installed or uninstalled. [Learn more](/cloud/apps/codebase-setup#set-up-app-routes) |
+    | Portal generator URL | The endpoint Blnk calls to create a short-lived URL for opening the app inside Cloud. [Learn more](/cloud/apps/codebase-setup#set-up-app-routes) |
+    | Permissions | The scopes your app needs to work. [Learn more](#supported-permissions) |
+
+    **For our Stripe Sync app,** using our routes from the [codebase setup](/cloud/apps/codebase-setup) step, our manifest looks like this:
+
+    <Frame>
+    <img src="/cloud/img/apps/register-manifest.png" alt="Example manifest for the Stripe Sync demo app showing display name, callback URL, portal URL, and permissions" className="rounded-lg" />
+    </Frame>
+
+    <Note>
+    Make sure that your base URL is accessible from the internet. If localhost, you can use a service like ngrok to create a public URL in place of `localhost:5002`.
+    </Note>
+
+  </Step>
+  <Step id="register-submit-workspace" title="Submit to your workspace">
+    Submit the manifest, and you're done! The app will be added to your organization's Apps library. 
+    
+    Only team members in your workspace can [see and install it](/cloud/apps/install-app) on whichever Cloud instances they use there. 
+  </Step>
+</Steps>
+
+---
+
+## Supported permissions
+
+Permissions define what your app can access or change in the selected Cloud instance.
+
+Your app can request any combination of these scopes:
+
+| Scope | What it allows |
+|---|---|
+| `data:read` | Read transactions, ledgers, identities, and balances. |
+| `data:write` | Create and update ledger data. |
+| `alerts:read` | Read alert configurations and events. |
+| `alerts:write` | Create and update alert configurations. |
+
+<Note>
+**Remember:** Users can update the permissions granted during installation. Always read `granted_permissions` from the install payload and only use what was granted.
+</Note>
+
+For the example Stripe Sync app, the permission model may look like this:
+
+| Action | Required permission |
+| --- | --- |
+| Read ledgers, transactions, and balances for reconciliation | `data:read` |
+| Create or update imported Stripe activity as Blnk transactions | `data:write` |
+| Create alerts when sync or reconciliation finds a problem | `alerts:write` |
+
+If a permission is missing, the app should show a clear error or hide the action from the portal.
+
+---
+
+<Card title="Run the example Stripe Sync app" icon="github" href="https://github.com/blnkfinance/apps-demo">
+  Open the demo repository and follow its README to run the Stripe Sync example app this documentation is built around.
+</Card>
+
+---
+
+<NeedHelp />
