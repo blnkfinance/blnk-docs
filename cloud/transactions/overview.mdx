@@ -1,0 +1,129 @@
+---
+title: "Transactions"
+sidebarTitle: "Overview"
+icon: "arrow-left-right"
+description: "Learn how transactions work in Blnk Cloud."
+og:title: "Transactions | Blnk Cloud Guide"
+og:description: "Explore all transaction types in Blnk Cloud, including credits, debits, holds, and how each operation works"
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+## Overview
+
+Transactions record the movement of money between balances. Blnk uses double-entry accounting by default, so every transaction must have both a source and a destination.
+
+To learn more about how transactions work in Blnk, see our [Transactions | Developer Docs](https://docs.blnkfinance.com/transactions/introduction).
+
+---
+
+## Create transactions
+
+To create a new transaction:
+
+<img src="/cloud/img/transactions/create-transaction-form.png" alt="Create transaction form with all required fields" className="rounded-lg" />
+
+1. Click **Create transaction** in the top-right corner of the **Transactions** table or press **⌥ + T** (`Alt + T` for Windows).
+2. Enter the required details:
+    - **Amount:** The amount of the transaction.
+    - **Currency:** The currency the transaction will use.
+    - **Precision:** The multiplier that converts the amount into the currency's smallest unit.
+    - **Source:** The balance from which funds will be debited.
+    - **Destination:** The balance to which funds will be credited.
+    - **Description:** A short note describing the purpose of the transaction.
+
+3. Blnk Cloud automatically generates a reference number for the transaction.
+4. Click **Create transaction** to complete.
+
+### Understanding precision
+
+Balances are stored and calculated as integers to maintain accuracy. For example, a balance of **\$1,000.00** is stored as **100000** in Core.
+
+When creating transactions, apply precision by converting the amount into the currency’s smallest unit. For most fiat currencies this value is 100, while for cryptocurrencies like BTC it is 10^8.
+
+<Warning>
+  To prevent rounding errors, we recommend using a consistent precision value for all transactions within the same currency. 
+
+  Learn more in our [Precision | Developer Docs](https://docs.blnkfinance.com/transactions/precision).
+</Warning>
+
+### Applying overdrafts
+
+Overdrafts let you create transactions even when the source balance does not have sufficient funds. This is commonly used in funding workflows, where one balance needs to act as the counterparty for the balance being funded.
+
+<img src="/cloud/img/transactions/overdraft-option.png" alt="Apply overdraft checkbox option" className="rounded-lg" />
+
+> To apply an overdraft, check the **Apply overdraft** option before creating the transaction.
+
+### Applying inflight
+
+Inflight lets you create and hold transactions until certain conditions are met. This is commonly used in workflows that require a delay, such as payment processing, escrow releases, or order fulfillment.
+
+<img src="/cloud/img/transactions/inflight-option.png" alt="Apply inflight checkbox option" className="rounded-lg" />
+
+> To apply inflight, check the **Apply inflight** option before creating the transaction.
+
+### Scheduling transactions
+
+Scheduling lets you create transactions to be processed at a specific time in the future. 
+
+<img src="/cloud/img/transactions/schedule-transaction-form.png" alt="Schedule transaction form with date and time selection" className="rounded-lg" />
+
+> To schedule a transaction:
+>
+> 1. Select **Schedule transaction** at the bottom of the transaction form.
+> 2. Provide the date and time for the transaction to be scheduled.
+> 3. Click **Create transaction** to complete.
+
+<Note>Scheduled transactions are shown with `@SCHEDULED` status in your Transactions table. On the specified date, transactions with this status will be processed automatically and added to the Core ledger.</Note>
+
+---
+
+## Working with transactions
+
+All records in Blnk are immutable. Once a transaction is created, it cannot be deleted or altered.
+
+Any status change is captured as a new transaction entry, which references the original transaction through the `parent_transaction` field.
+
+### Transactions table
+
+The ** Transactions ** table shows a list of all transactions in your workspace. For each transaction, you can see:
+
+<img src="/cloud/img/transactions/transactions-table.png" alt="Transactions table showing all transaction information" className="rounded-lg" />
+
+- **Currency:** The currency the transaction is in.
+- **Amount:** The amount of the transaction.
+- **Status:** The status of the transaction.
+- **Source:** The balance from which funds were debited.
+- **Destination:** The balance to which funds were credited.
+- **Effective date:** The date and time the transaction was created.
+
+<Tip>Use the **Add filters** and **Refresh** buttons to customize your view and get the latest transaction data from your instance.</Tip>
+
+### Transaction statuses
+
+Transactions can exist in different states throughout their lifecycle:
+
+<img src="/cloud/img/transactions/transaction-statuses.png" alt="Visual representation of different transaction statuses: APPLIED, INFLIGHT, VOIDED, etc." className="rounded-lg" />
+
+- **APPLIED:** The transaction has been completed and the balances updated.
+- **INFLIGHT:** The transaction is pending and held in-flight until you commit or void it.
+- **VOIDED:** The inflight transaction was canceled and rolled back.
+- **REJECTED:** The transaction was not processed, typically due to issues like insufficient funds.
+- **SCHEDULED:** The transaction is queued for processing at a future time.
+
+### View transaction details
+
+Click a transaction to see its summary details, including the amount, currency, status, source, destination, and effective date.
+
+<img src="/cloud/img/transactions/transaction-details-summary.png" alt="Transaction details summary view" className="rounded-lg" />
+
+For a complete view, select **Full info** in the top-right corner of the summary or press **E** to expand the details.
+
+To view all transactions performed on the balance, go to the **Quick Actions** section at the bottom of the summary and click **View transactions**.
+
+<Tip>Click the **Refresh** button on the Transactions table to get the latest transaction data from your instance.</Tip>
+
+---
+
+<NeedHelp />

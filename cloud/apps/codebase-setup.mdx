@@ -1,0 +1,139 @@
+---
+title: "Setting Up Your Codebase"
+sidebarTitle: "Codebase setup"
+description: "Set up the routes, secrets, and app structure you need to build a Custom App."
+icon: "git-branch"
+og:title: "Setting Up Your Codebase for Custom Apps | Blnk Cloud Guide"
+og:description: "Set up the routes, secrets, and app structure you need to build a Custom App."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+There is no required framework, language, or folder structure for building a Custom App.
+
+You can use any stack that works for your team. What matters is that your app has the right pieces for Blnk Cloud to install it, launch it, and let it talk to the selected Cloud instance safely.
+
+This page explains how to set up your codebase before you start building the full workflow, using the Stripe Sync app as an example:
+
+---
+
+## What your codebase needs
+
+Every Custom App is made up of four parts:
+
+| Part | What it does |
+| --- | --- |
+| App routes | Endpoints Blnk Cloud calls during install, uninstall, and launch. |
+| Persistent storage | Where the app saves install records, encrypted API keys, and portal sessions. |
+| Backend logic | Server-side code that calls Cloud APIs and any external services the app needs. |
+| App portal | The user-facing UI that opens inside the Cloud dashboard when the app is launched. |
+
+The backend is the only part that holds your secrets. Ideally, the portal UI should never talks to Blnk directly; it should always go through your backend.
+
+---
+
+## Set up app routes
+
+Your app needs routes that Cloud can call to install, uninstall, and launch your app.
+
+You can name the routes however you want. The important thing is that each route exists and returns a response.
+
+| Route type | Example route | What it does |
+| --- | --- | --- |
+| Install and uninstall callback | `POST /api/callback` | Receives install and uninstall events from Blnk Cloud. |
+| Portal generator | `POST /api/portal` | Creates a short-lived portal URL when a user launches the app. |
+
+**For our demo Stripe Sync app,** we'll use Express to set up the routes:
+
+```js routes.ts wrap
+import express from "express";
+
+const router = express.Router();
+
+router.post("/api/callback", async (req, res) => {
+  // Handle install and uninstall events
+});
+
+router.post("/api/portal", async (req, res) => {
+  // Create a short-lived portal URL
+});
+```
+
+---
+
+## Store app install data
+
+When a user installs your app, Blnk Cloud sends installation details to your callback route.
+
+Your app needs a persistent place to store that data because it will need it later when the app is launched or when it makes API calls. 
+
+<Note>
+**Note:** You can use any database you want. For our Stripe Sync example, we'll go with a simple SQLite instance. 
+</Note>
+
+At minimum, your app should store the following data from the [install payload](/cloud/apps/installation):
+
+| Field | Why you need it |
+| --- | --- |
+| `installed_app_id` | Identifies this specific app installation. |
+| `app_id` | Identifies the app that was installed. |
+| `organization_id` | Tells you which organization installed the app. |
+| `instance_id` | Tells you which Cloud instance the app should work with. |
+| `api_key` | Lets your backend call Cloud APIs for this installation. Store it encrypted. |
+| `api_key_prefix` | Helps you identify the key without exposing the full secret. |
+| `granted_permissions` | Tells your app what the user allowed it to do. |
+| `status` | Tracks whether the install is active or uninstalled. |
+
+<Warning>
+Do not store install data only in memory. If your server restarts, the app still needs to know which instance it is connected to and which key to use.
+</Warning>
+
+---
+
+## Security and best practices
+
+Custom Apps receive scoped access to a Cloud instance during installation. 
+
+Design your app so that access is stored safely, used only on the server, and checked before every action.
+
+1. **Keep the API keys on the server:** The `api_key` from the install payload should only be used by your backend. 
+
+    Do not expose it in browser code, local storage, cookies, portal URLs, client-side responses, or logs.
+
+2. **Let your backend call Cloud:** When the app portal needs data, it should not make requests to Blnk directly. 
+
+    Instead, it should call your backend first, then your backend speaks to Blnk.
+
+3. **Encrypt API keys at rest:**  Store the full `api_key` encrypted. 
+
+    You can store `api_key_prefix` in plain text because it only helps identify the key. Do not use the prefix to authenticate requests.
+
+4. **Use short-lived portal sessions:** When Cloud launches your app, return a fresh `portal_url`. 
+
+    Do not return a permanent URL that always opens the app. If a session expires, ask the user to launch the app again from Cloud.
+
+5. **Sign portal sessions:** Use a `SESSION_SECRET` to sign portal sessions.
+
+    ```env
+    SESSION_SECRET="replace-with-a-long-random-string"
+    ```
+
+6. **Check permissions before actions:** Store `granted_permissions` from the install payload. 
+
+    Before your app performs an action, check that the required permission was granted. For example, an app with only `data:read` should not perform write  actions.
+
+7. **Validate the install before launch:** Before creating a portal session, confirm that the install exists, is active, and matches the `organization_id` and `instance_id` in the request.
+
+---
+
+<Card title="Run the example Stripe Sync app" icon="github" href="https://github.com/blnkfinance/apps-demo">
+  Open the demo repository and follow its README to run the Stripe Sync example app this documentation is built around.
+</Card>
+
+---
+
+<NeedHelp />

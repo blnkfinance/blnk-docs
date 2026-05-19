@@ -1,0 +1,239 @@
+---
+title: "MCP"
+sidebarTitle: "MCP"
+icon: "cpu"
+description: "Connect to Blnk MCP to interact with your core data directly from AI assistants."
+og:title: "MCP | Blnk Cloud Guide"
+og:description: "Connect to Blnk MCP to interact with your core data directly from AI assistants like Cursor, Claude Desktop, ChatGPT, and other MCP-compatible tools."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+## Overview
+
+Use Blnk's MCP (Model Context Protocol) to interact with your Blnk Core & Cloud workspace directly from AI assistants like Cursor, Claude Desktop, ChatGPT, and other MCP-compatible tools.
+
+<Info>
+**Architecture and security:** AI does not have direct access to your Core. All communication flows through Blnk Cloud, which securely connects to your Core and ensures proper security, validation, and access control. 
+</Info>
+
+You can authenticate MCP requests using either an API key or OAuth credentials. Both must have `mcp:read` and/or `mcp:write` scopes to use MCP functionality.
+
+- **`mcp:read`**: Allows read-only access to your data through MCP
+- **`mcp:write`**: Allows read and write access to your data through MCP
+
+<Tip>
+For most use cases, you'll want both `mcp:read` and `mcp:write` scopes to fully interact with your Blnk data.
+</Tip>
+
+---
+
+## Your MCP endpoint
+
+Your Blnk MCP endpoint follows this structure. Your MCP endpoint is automatically generated from the Blnk Core instance currently open in your Blnk Cloud workspace.
+
+```
+https://api.cloud.blnkfinance.com/mcp/{instance_id}
+```
+
+---
+
+## Setting up your MCP
+
+<Steps>
+<Step title="Create authentication credentials">
+Choose either an API key or OAuth credentials for authentication. Both require MCP scopes: `mcp:read` and `mcp:write`.
+
+<Tabs>
+<Tab title="API Key" icon="key">
+Create an API key with MCP scopes.
+
+<Tip>
+You can create API keys in [Settings > API Keys](/cloud/auth/api-keys/#create-an-api-key) in your Blnk dashboard.
+</Tip>
+</Tab>
+
+<Tab title="OAuth Credentials" icon="lock">
+Create OAuth client credentials with MCP scopes.
+
+<Tip>
+You can create OAuth clients in [Settings > API Keys](/cloud/auth/oauth/#create-an-oauth-client) in your Blnk dashboard. Select **OAuth** as the type when creating.
+</Tip>
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Get your MCP endpoint">
+Go to **Settings > MCP** to get your MCP endpoint URL and copy the configuration to use in your app.
+
+<Tabs>
+<Tab title="API Key" icon="key">
+Copy this configuration using your API key:
+
+```json wrap
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+</Tab>
+
+<Tab title="OAuth Credentials" icon="lock">
+Copy your MCP endpoint URL:
+
+```
+https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID
+```
+
+<Info>
+For OAuth authentication, you only need the MCP endpoint URL. Your OAuth Client ID and Client Secret will be used for authentication.
+</Info>
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Configure your MCP client">
+Add the configuration to your MCP-compatible tool:
+
+<Tabs>
+<Tab title="Cursor" icon="code">
+To add this configuration in Cursor:
+1. Open Cursor Settings
+2. Navigate to **Features > MCP Servers**
+3. Click **Add Server**
+4. Paste the configuration from the previous step (full JSON for API keys, or endpoint URL for OAuth)
+</Tab>
+
+<Tab title="Claude Desktop" icon="bot">
+Add the configuration from the previous step to your `claude_desktop_config.json` file (full JSON for API keys, or endpoint URL for OAuth):
+
+<CodeGroup>
+```bash MacOS wrap
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+```bash Windows wrap
+%APPDATA%\Claude\claude_desktop_config.json
+```
+</CodeGroup>
+</Tab>
+
+<Tab title="ChatGPT" icon="bot">
+1. Go to **Settings > Apps.**
+      <img src="/cloud/img/organization/chatgpt-setup.png" alt="ChatGPT MCP app configuration form showing fields for Name, MCP Server URL, and OAuth authentication settings" />
+2. Open **Advanced settings** and enable **Developer mode**.
+3. Click on the **Create app** button to start configuring your MCP.
+4. Fill in the app details
+      - **Name:** Use a clear name like Blnk MCP.
+      - **MCP Server URL:** Paste the MCP endpoint URL from the previous step.
+      - **Authentication type:** Select OAuth, then enter your Client ID and Client Secret.
+5. Click **Create** to save the app.
+6. You'll be redirected to sign in with **Blnk Cloud.**
+7. After successful login, you'll return to ChatGPT with your MCP app fully configured.
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Start chatting with your ledger">
+You can now chat directly with your ledger to query, explore, and interact with your Blnk data.
+</Step>
+</Steps>
+
+---
+
+## What you can ask your AI assistant
+
+1. **Monitor activity**
+   - "Show me all transactions from the last 24 hours"
+   - "What changed since yesterday?"
+
+2. **Check balances**
+   - "What is the current balance for wallet bln_wallet_456?"
+   - "Show me all negative or low balances"
+
+3. **Investigate issues**
+   - "Find failed or voided transactions"
+   - "Get the transaction with reference order_456"
+
+4. **Review large movements**
+   - "Show all USD transactions over $5,000"
+   - "List unusually large transactions today"
+
+5. **Answer operational questions**
+   - "How much money moved today?"
+   - "What is the total balance across all customer wallets?"
+
+---
+
+## Supported tools
+
+Blnk MCP provides 33 tools total across 7 categories for interacting with your data.
+
+<Tabs>
+<Tab title="Ledgers" icon="book-open">
+- **`create_ledger`** - Create a new ledger for organizing balances
+- **`get_ledger`** - Retrieve ledger details by ID
+- **`list_ledgers`** - List all ledgers
+</Tab>
+
+<Tab title="Balances" icon="wallet">
+- **`create_balance`** - Create a balance within a ledger
+- **`get_balance`** - Retrieve balance details and current amounts by ID
+- **`list_balances`** - List all balances
+</Tab>
+
+<Tab title="Transactions" icon="arrow-left-right">
+- **`record_transaction`** - Record a transaction between two balances
+- **`get_transaction`** - Get a transaction by ID
+- **`get_transaction_by_reference`** - Get a transaction by its unique reference
+- **`commit_inflight`** - Commit an inflight transaction to finalize it
+- **`void_inflight`** - Void an inflight transaction to cancel it
+- **`refund_transaction`** - Create a refund for a transaction
+- **`schedule_transaction`** - Schedule a transaction for future execution
+- **`bulk_transactions`** - Process multiple transactions at once
+</Tab>
+
+<Tab title="Identities" icon="users">
+- **`create_identity`** - Create a new identity (individual or organization)
+- **`get_identity`** - Retrieve identity details by ID
+- **`list_identities`** - List all identities
+- **`update_identity`** - Update an existing identity
+- **`delete_identity`** - Delete an identity
+</Tab>
+
+<Tab title="Views" icon="list">
+- **`create_view`** - Create a saved view (reusable filter configuration)
+- **`list_views`** - List all saved views
+- **`get_view`** - Retrieve a saved view by ID
+- **`update_view`** - Update an existing saved view
+- **`delete_view`** - Delete a saved view
+</Tab>
+
+<Tab title="Insights" icon="chart-bar">
+- **`create_visualization`** - Create a new visualization
+- **`list_visualizations`** - List all visualizations
+- **`get_visualization_data`** - Execute a saved visualization and get chart data
+- **`delete_visualization`** - Delete a visualization
+</Tab>
+
+<Tab title="Search" icon="search">
+- **`search`** - Search across entities (transactions, ledgers, balances, identities)
+</Tab>
+
+<Tab title="Queries" icon="database">
+- **`query_transactions`** - Query transactions with advanced filters
+- **`query_balances`** - Query balances with advanced filters
+- **`query_ledgers`** - Query ledgers with advanced filters
+- **`query_identities`** - Query identities with advanced filters
+</Tab>
+</Tabs>
+
+---
+
+<NeedHelp />

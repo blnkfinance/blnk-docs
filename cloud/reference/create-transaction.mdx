@@ -1,0 +1,156 @@
+---
+title: "Create transaction"
+api: "POST /cloud/proxy/transactions"
+description: "Create a new transaction between balances in your Blnk Core instance via the Cloud Proxy."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+Create a transaction to transfer funds from a source balance to a destination balance. Transactions are applied asynchronously and update both balances.
+
+<Note>
+For in-depth information about Blnk's ledger, balance, transaction, and identity APIs, see the [Blnk Core docs](https://docs.blnkfinance.com).
+</Note>
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=YOUR_INSTANCE_ID" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 100.50,
+    "currency": "USD",
+    "precision": 100,
+    "reference": "ref_myApp-integration-test-001",
+    "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "destination": "bln_ANOTHER_BALANCE_ID",
+    "description": "Integration test: transfer from Balance A to Balance B",
+    "allow_overdraft": true
+  }'
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for authentication. Format: `Bearer <access_token>`. Your OAuth key must include `proxy:write` scope (or `*`).
+</ParamField>
+
+<ParamField body="amount" type="number" required>
+Transaction amount.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+Currency code for the transaction (e.g., `USD`, `EUR`, `GBP`).
+</ParamField>
+
+<ParamField body="source" type="string" required>
+Balance ID to debit from.
+</ParamField>
+
+<ParamField body="destination" type="string" required>
+Balance ID to credit to.
+</ParamField>
+
+<ParamField body="precision" type="integer" required>
+Precision multiplier for the amount. Defaults to 100 (e.g., 100.50 becomes 10050).
+</ParamField>
+
+<ParamField body="reference" type="string" required>
+Optional reference identifier for the transaction.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+Optional description of the transaction.
+</ParamField>
+
+<ParamField body="meta_data" type="object">
+Optional metadata object for custom key-value data. Use a top-level key (e.g., your app name) to avoid conflicts.
+</ParamField>
+
+---
+
+### Query parameters
+
+<ParamField query="instance_id" type="string" required>
+The Blnk Core instance ID to target. Find this in Blnk Cloud under Instances.
+</ParamField>
+
+---
+
+### Response structure
+
+<ResponseExample>
+```json Success wrap
+{
+  "amount": 100.50,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 10050,
+  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "parent_transaction": "",
+  "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "destination": "bln_ANOTHER_BALANCE_ID",
+  "reference": "ref_myApp-integration-test-001",
+  "currency": "USD",
+  "description": "Integration test: transfer from Balance A to Balance B",
+  "status": "QUEUED",
+  "hash": "hash_...",
+  "allow_overdraft": true,
+  "inflight": false,
+  "created_at": "2024-11-26T08:40:00.000000000Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z"
+}
+```
+</ResponseExample>
+
+<ResponseField name="transaction_id" type="string">
+Unique identifier for the created transaction.
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+Transaction amount.
+</ResponseField>
+
+<ResponseField name="precise_amount" type="integer">
+Amount multiplied by precision (e.g., 100.50 * 100 = 10050).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+Currency code for the transaction.
+</ResponseField>
+
+<ResponseField name="source" type="string">
+Balance ID debited from.
+</ResponseField>
+
+<ResponseField name="destination" type="string">
+Balance ID credited to.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Current status of the transaction (e.g., `QUEUED`, `APPLIED`, `FAILED`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+Reference identifier for the transaction, if provided.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Description of the transaction, if provided.
+</ResponseField>
+
+<ResponseField name="precision" type="integer">
+Precision multiplier used for the amount.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+ISO 8601 formatted timestamp of when the transaction was created.
+</ResponseField>
+
+---
+
+<NeedHelp />

@@ -1,0 +1,205 @@
+---
+title: "Launching Your App"
+sidebarTitle: "App launch"
+description: "Publish and launch your custom app in Blnk Cloud."
+icon: "cloud-upload"
+og:title: "Launching Your Custom App | Blnk Cloud Guide"
+og:description: "Publish and launch your custom app in Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+Now, that your app is installed and working well, you can launch it from the Cloud dashboard.
+
+Just like the install process, the launch process starts in Blnk Cloud. When a user clicks **Launch app** in Blnk Cloud:
+
+1. Blnk sends a `POST` request to your [portal generator URL](/cloud/apps/codebase-setup#set-up-app-routes).
+2. Your app checks that the install exists and is active.
+3. Your app creates a short-lived portal session.
+4. Your app returns a `portal_url`.
+5. Blnk opens that URL inside the dashboard.
+
+<Frame>
+<img src="/cloud/img/apps/how-app-portal-works.png" alt= "How app portals work" className="rounded-lg" />
+</Frame>
+
+---
+
+## Handling the portal request
+
+Cloud sends a payload like this to your `portal_generator_url`:
+
+```json generate_portal.json
+{
+  "installed_app_id": "instapp_...",
+  "app_id": "app_...",
+  "organization_id": "org_...",
+  "instance_id": "inst_...",
+  "user_id": "user_..."
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `installed_app_id` | The ID for this specific app installation. Use it to find the install record. |
+| `app_id` | The ID of the app being launched. |
+| `organization_id` | The organization where the app is installed. |
+| `instance_id` | The Cloud instance the app should work with. |
+| `user_id` | The user launching the app from Cloud. |
+
+Before returning a portal URL, your app should confirm that:
+
+- the install exists and is active
+- the `organization_id` and `instance_id` match the install record
+
+```typescript validateInstallForPortal.ts wrap
+async function validateInstallForPortal(
+  installed_app_id: string,
+  organization_id: string,
+  instance_id: string
+): Promise<boolean> {
+  const install = await db.getInstall(installed_app_id);
+  const ok =
+    install != null &&
+    install.status === "active" &&
+    install.organization_id === organization_id &&
+    install.instance_id === instance_id;
+
+  if (!ok) {
+    return false;
+  }
+
+  return true;
+}
+```
+
+---
+
+## Create a portal session
+
+Next, your app should create a portal session once the portal request is validated. The session helps your app know:
+
+- which installation opened the portal
+- which organization and instance the portal is launched from
+- which user launched the app
+- when the session should expire
+
+<CodeGroup>
+```typescript Create session
+import { randomBytes } from "node:crypto";
+
+const PORTAL_BASE = "https://app.yourcompany.com";
+const TTL_SECONDS = 900; // 900 seconds = 15 minutes
+
+async function createPortalSession(
+  installed_app_id: string,
+  organization_id: string,
+  instance_id: string
+): Promise<string> {
+  const ttlSeconds = TTL_SECONDS;
+  const expiry_time_ms = Date.now() + (ttlSeconds * 1000);
+  const token = randomBytes(32).toString("base64url");
+  await db.savePortalSession({
+    token,
+    installed_app_id,
+    organization_id,
+    instance_id,
+    expiry_time_ms,
+  });
+  const portalUrl = new URL(PORTAL_BASE);
+
+  portalUrl.searchParams.set("token", token);
+
+  return portalUrl.toString();
+}
+```
+
+```typescript Verify session
+async function verifyPortalSession(token: string) {
+  const session = await db.getPortalSession(token);
+
+  if (!session) {
+    return { ok: false as const, status: 401 };
+  }
+
+  if (session.expiry_time_ms < Date.now()) {
+    return { ok: false as const, status: 410 };
+  }
+  
+  return { ok: true as const, session };
+}
+```
+</CodeGroup>
+
+<Note>
+We recommend keeping portal sessions short-lived. A 5 to 15 minute expiry is usually enough for launch sessions.
+</Note>
+
+<Frame>
+<img src="/cloud/img/apps/return-portal-url.png" alt="Create a portal URL" className="rounded-lg" />
+</Frame>
+
+After creating the session, return a `portal_url` to Cloud. The response should look like this:
+
+```json Expected response wrap
+{
+  "portal_url": "https://app.yourcompany.com/?token=short-lived"
+}
+```
+
+Cloud then uses this URL to open your app inside the dashboard. 
+
+<Note>
+The portal URL should only point to your app interface. It should not include API keys, provider secrets, or any sensitive data.
+</Note>
+
+---
+
+## Load the app inside Cloud
+
+When Cloud opens the `portal_url`, it loads your app inside the dashboard. 
+
+<Frame>
+<img src="/cloud/img/apps/live-app-portal.png" alt="Load the app inside Cloud" className="rounded-lg" />
+</Frame>
+
+To ensure Cloud can securely load the app inside the dashboard, you need to set the following HTTP header in your `portal_url`:
+
+```http Content-Security-Policy wrap
+Content-Security-Policy: frame-ancestors 'self' https://blnkfinance.com https://*.blnkfinance.com
+```
+
+A few rules to keep in mind during this process:
+
+- Blnk sends a fresh portal request for every launch. Your app should return a fresh `portal_url` for each request.
+- Keep Cloud API keys on the backend. Do not expose them in the browser.
+
+---
+
+## Test the launch flow
+
+To test app launch:
+
+1. Install the app in Cloud.
+2. Click **Launch app** from the app details page.
+3. Confirm your `portal_generator_url` receives the launch request.
+4. Confirm your app creates a portal session.
+5. Confirm your app returns a valid `portal_url`.
+6. Confirm the app opens inside the Cloud dashboard.
+7. Confirm expired sessions can no longer open the portal.
+
+Once this works, users can open your app from Blnk Cloud and work through the Stripe Sync workflow inside the dashboard.
+
+---
+
+<Card title="Run the example Stripe Sync app" icon="github" href="https://github.com/blnkfinance/apps-demo">
+  Open the demo repository and follow its README to run the Stripe Sync example app this documentation is built around.
+</Card>
+
+---
+
+<NeedHelp />
