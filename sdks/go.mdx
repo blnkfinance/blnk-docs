@@ -1,18 +1,224 @@
 ---
-title: "SDK Code Examples"
-sidebarTitle: "Code examples"
-icon: "scroll-text"
-description: "Real life use-case implementation with the Go SDK."
-"og:title": "Go – Code Examples • Blnk SDK Documentation"
-"og:description": "Real life use-case implementation with the Go SDK."
+title: "Getting Started with the Go SDK"
+description: "Learn how to work with the Blnk SDK for Go."
+sidebarTitle: "Go"
+"og:title": "Getting Started with the Go SDK • Blnk SDK Documentation"
+"og:description": "Get started with Blnk's Go SDK, learn how to install, initialize, and integrate with your Go projects"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 import Issues from "/snippets/sdk-issues.mdx";
 
+Welcome to the Blnk SDK for Go Developer Guide. In this guide, you'll learn how to install Blnk and work with our Blnk Go SDK. To view the open-source file, see the following: [Blnk Go SDK](https://github.com/blnkfinance/blnk-go/).
+
+You'll also find examples of running different fintech use cases with our Go SDK.
+
 ---
 
-## Introduction
+## Prerequisites
+
+Ensure that you have the following installed on your machine.
+
+1. [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) for running Blnk locally on your machine.
+2. [Go (v1.22 or later)](https://go.dev/doc/install) for installing and using the Blnk Go SDK.
+
+---
+
+## 1: Installation & Configuration
+
+Once you're good to go with the prerequisites, you can set up your Blnk Core instance and SDK in 5 steps:
+
+<Steps titleSize="h3">
+    <Step title="Clone the Blnk repository">
+        Run the following command in your terminal to clone Blnk to your local machine:
+        ```bash bash
+        git clone https://github.com/blnkfinance/blnk && cd blnk
+        ```
+    </Step>
+    <Step title="Set up your Blnk configuration">
+        Create a `blnk.json` file in your `blnk` project folder, paste the following configuration settings, and save.
+        ```json blnk.json
+        {
+            "project_name": "Blnk",
+            "data_source": {
+                "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
+            },
+            "redis": {
+                "dns": "redis:6379"
+            },
+            "server": {
+                "domain": "blnk.io",
+                "ssl": false,
+                "ssl_email": "jerryenebeli@gmail.com",
+                "port": "5001"
+            },
+            "notification": {
+                "slack": {
+                "webhook_url": "https://hooks.slack.com"
+                }
+            }
+        }
+        ```
+        This configuration sets up the required connections to PostgreSQL and Redis, specifies your server details, and allows Slack notifications if needed.
+    </Step>
+    <Step title="Launch Blnk">
+        Launch the Blnk Core instance with the following command:
+        ```bash bash
+        docker compose up
+        ```
+        Once running, your server will be accessible at http://localhost:5001.
+    </Step>
+    <Step title="Install Blnk CLI">
+        The Blnk CLI helps you to quickly test and manage your Blnk backend directly from your command line. You can also use it to perform create actions or view your data tables. To install and use the Blnk CLI, see the following in: [Installing the Blnk CLI](/blnk-cli/install).
+
+        To confirm that the CLI has been installed, run the following command:
+        ```bash bash
+        blnk --version
+        ```
+    </Step>
+</Steps>
+
+---
+
+## 2: Install the Blnk Go SDK
+
+In your Go project, install the Blnk Go SDK using `go get`:
+
+```bash bash
+go get github.com/blnkfinance/blnk-go
+```
+
+---
+
+## 3: Create your first ledger
+
+A ledger is a folder for grouping balances together in your Blnk server. To learn more, see the following: [Introduction to Ledgers](/ledgers/introduction)
+
+To create a ledger using the Go SDK:
+
+```go Create ledger
+package main
+
+import (
+	"fmt"
+	"net/url"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func main() {
+	// Initialize the Blnk client with base URL
+	baseURL, _ := url.Parse("http://localhost:5001/")
+	client := blnkgo.NewClient(baseURL, nil, blnkgo.WithTimeout(5*time.Second))
+
+	// Create a ledger request
+	ledgerBody := blnkgo.CreateLedgerRequest{
+		Name: "Customer Savings Account",
+		MetaData: map[string]interface{}{
+			"project_owner": "YOUR_APP_NAME",
+		},
+	}
+
+	// Create the ledger
+	ledger, resp, err := client.Ledger.Create(ledgerBody)
+	if err != nil {
+		fmt.Printf("Error creating ledger: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Ledger Created: %+v\n", ledger)
+	fmt.Printf("Response Status: %d\n", resp.StatusCode)
+}
+```
+
+You can confirm that the ledger has been created with the Blnk CLI:
+```bash bash
+blnk ledgers list
+```
+
+---
+
+## 4: Create your first balance
+
+A balance is used to represent a store of value in your Blnk server, e.g., wallet or account. To learn more, see the following: [Introduction to Balances](/balances/introduction)
+
+To create a balance using the Go SDK:
+
+```go Create balance
+// Create a balance request
+balanceBody := blnkgo.CreateLedgerBalanceRequest{
+	LedgerID: ledger.LedgerID,
+	Currency: "USD",
+	MetaData: map[string]interface{}{
+		"first_name":     "Alice",
+		"last_name":      "Hart",
+		"account_number": "1234567890",
+	},
+}
+
+// Create the balance
+balance, resp, err := client.LedgerBalance.Create(balanceBody)
+if err != nil {
+	fmt.Printf("Error creating balance: %v\n", err)
+	return
+}
+
+fmt.Printf("Balance Created: %+v\n", balance)
+fmt.Printf("Response Status: %d\n", resp.StatusCode)
+```
+
+You can confirm that the balance has been created with the Blnk CLI:
+```bash bash
+blnk balances list
+```
+
+---
+
+## 5: Record your first transaction
+
+Transaction records represent all financial activities (money in and money out) happening within your Blnk ledger. All transactions are immutable (cannot be modified or deleted) and idempotent (producing the same result no matter how many times an operation is performed).
+
+To record a transaction using the Go SDK:
+
+```go Create transaction
+// Create a transaction request using internal balances
+// Internal balances use the "@" prefix and are automatically created if they don't exist
+transactionBody := blnkgo.CreateTransactionRequest{
+	// This groups the base transaction properties
+	ParentTransaction: blnkgo.ParentTransaction{
+		Amount:      1000,
+		Reference:   "first_transaction_001",
+		Currency:    "USD",
+		Precision:   100,
+		Source:      "@FundingPool",
+		Destination: "@MyBalance",
+		Description: "My first Blnk transaction",
+		MetaData:    map[string]interface{}{},
+	},
+	// Additional transaction options are set at the CreateTransactionRequest level
+	AllowOverdraft: true,
+}
+
+// Create the transaction
+transaction, resp, err := client.Transaction.Create(transactionBody)
+if err != nil {
+	fmt.Printf("Error creating transaction: %v\n", err)
+	return
+}
+
+fmt.Printf("Transaction Recorded: %+v\n", transaction)
+fmt.Printf("Response Status: %d\n", resp.StatusCode)
+```
+
+You can confirm that the transaction has been created with the Blnk CLI:
+```bash bash
+blnk transactions list
+```
+
+---
+
+## Code examples
 
 In this examples guide, you'll learn how to implement common real life fintech use-cases with the Blnk Go SDK.
 
@@ -25,7 +231,6 @@ To view the full list of examples, see the following: [Blnk Go SDK Code Examples
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"net/url"
 	"time"
@@ -185,7 +390,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"log"
 	"net/url"
@@ -259,7 +463,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"log"
 	"net/url"
 	"time"
@@ -382,7 +585,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"net/url"
 	"os"
@@ -459,7 +661,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"net/http"
 	"net/url"
@@ -694,7 +895,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"math/big"
 	"net/url"
@@ -748,7 +948,6 @@ func main() {
 ```go main.go
 package main
 
-import (
 	"fmt"
 	"net/url"
 
@@ -819,7 +1018,10 @@ func main() {
 ```
 </Accordion>
 
+---
+
 <NeedHelp />
 
-<Issues />
+---
 
+<Issues />
