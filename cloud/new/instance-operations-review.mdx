@@ -1,0 +1,95 @@
+---
+title: "Instance Operations Review"
+sidebarTitle: "Instance operations review"
+icon: "server-cog"
+description: "Draft Cloud instance operations guide based on the current dashboard."
+og:title: "Instance Operations Review | Blnk Cloud Guide"
+og:description: "Draft guide for Cloud instance actions, Query Agent setup, direct DB access, IP allowlists, and upgrades."
+---
+
+<Warning>
+This is a draft review guide. It is intentionally separate from the live instance docs so product and engineering can confirm the current dashboard behavior before existing pages are edited.
+</Warning>
+
+The dashboard exposes different actions for self-hosted Agent instances and managed Cloud deployments.
+
+## Self-hosted Agent instances
+
+For instances where `connection_type` is `agent` and there is no `deployment_id`, the dashboard shows:
+
+- **View details**
+- **View setup guide**
+- **Edit**
+- **Terminate**
+
+The **View setup guide** action opens:
+
+```text
+/cloud/settings/instances/setup-query-agent?id=INSTANCE_ID
+```
+
+The setup page shows the connection key, polls the instance status every 10 seconds, and marks the instance as connected when the API reports `connected`.
+
+### Query Agent command
+
+The dashboard Docker example uses `CONNECTION_KEY`:
+
+```bash
+docker run -d --name blnk-agent-YOUR_INSTANCE_ID \
+  -e DB_URL='<YOUR_DATABASE_URL>' \
+  -e CONNECTION_KEY='<YOUR_CONNECTION_KEY>' \
+  blnkfinance/query-agent:latest
+```
+
+Use a PostgreSQL URL in this format:
+
+```text
+postgres://<user>:<password>@<host>:<port>/<db-name>?sslmode=<mode>
+```
+
+The dashboard tells users they can leave the setup page open or navigate away; the connection status auto-completes when the agent connects.
+
+## Managed deployments
+
+For connected managed deployments, the dashboard can show:
+
+- **Manage allowed IPs**
+- **Generate DB access**
+- **Revoke DB access**
+- **Destroy**
+- **Upgrade deployment**, when an upgrade is available
+
+These actions are gated by deployment type and state.
+
+| Action | Dashboard condition |
+| --- | --- |
+| Manage allowed IPs | Managed deployment, connected, not sandbox, not currently upgrading |
+| Generate DB access | Managed deployment, connected, not sandbox, no existing DB access, at least one allowed IP |
+| Revoke DB access | Managed deployment, connected, not sandbox, existing DB access |
+| Destroy deployment | Managed deployment, not still deploying |
+| Upgrade deployment | Managed deployment with an available newer image version |
+
+<Info>
+The dashboard disables **Generate DB access** until at least one IP address is allowed. The disabled tooltip says to add a whitelisted IP address before generating database access.
+</Info>
+
+## Destructive actions
+
+The dashboard distinguishes these destructive actions:
+
+- **Terminate instance** removes a self-hosted instance connection from the workspace. The Core data remains intact.
+- **Destroy deployment** permanently deletes a managed deployment and its data. The confirmation requires typing the instance name.
+- **Revoke DB access** permanently revokes generated direct database credentials for a deployment.
+
+## Upgrade prompts
+
+The dashboard can initiate deployment upgrades. If the backend returns `upgrade_status: "skipped"`, the UI reports that the deployment is already up to date. Otherwise, it reports that the upgrade has started.
+
+The instance details modal includes a sandbox warning during upgrade confirmation:
+
+> Sandbox environments start fresh with each upgrade.
+
+<Note>
+Product confirmation needed: document the exact production upgrade data behavior and whether the sandbox "starts fresh" warning applies only to sandbox deployments.
+</Note>
+

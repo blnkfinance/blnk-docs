@@ -1,0 +1,113 @@
+---
+title: "MCP Dashboard Setup"
+sidebarTitle: "MCP dashboard setup"
+icon: "cpu"
+description: "Draft update for the MCP setup flow shown in the current Cloud dashboard."
+og:title: "MCP Dashboard Setup | Blnk Cloud Guide"
+og:description: "Draft Cloud MCP setup guide based on the current Blnk dashboard implementation."
+---
+
+<Warning>
+This is a draft guide for review. It reflects the current dashboard source and should not replace the live MCP guide until the authentication header and tool list are confirmed.
+</Warning>
+
+Blnk MCP lets an MCP-compatible AI client connect to your selected Blnk Core instance through Blnk Cloud.
+
+In the dashboard, go to **Settings > MCP** to copy:
+
+- Your MCP endpoint
+- A Cursor-ready MCP server configuration
+- The API key scope requirements
+- The supported MCP tool list
+
+## Endpoint format
+
+The dashboard builds the endpoint from the selected instance:
+
+```text
+https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID
+```
+
+If the dashboard cannot find a selected instance in the browser, it shows `YOUR_INSTANCE_ID` as a placeholder.
+
+## API key scopes
+
+Create an API key from **Settings > API keys** with these scopes:
+
+- `mcp:read`
+- `mcp:write`
+
+Use `mcp:read` for read-only workflows and add `mcp:write` when the AI client should create or mutate records through MCP.
+
+## Cursor setup shown in the dashboard
+
+The current dashboard renders this Cursor configuration:
+
+```json
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "X-API-Key": "YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+To configure Cursor:
+
+1. Open Cursor settings.
+2. Go to **Features > MCP Servers**.
+3. Click **Add Server**.
+4. Paste the Blnk MCP configuration.
+5. Replace `YOUR_INSTANCE_ID` and `YOUR_API_KEY`.
+
+<Note>
+The existing live docs show an `Authorization: Bearer YOUR_API_KEY` header for this flow. The dashboard currently shows `X-API-Key`. Product or API engineering should confirm the canonical header before this draft is promoted.
+</Note>
+
+## Tools listed in the dashboard
+
+The dashboard lists 33 MCP tools:
+
+| Tool | Description |
+| --- | --- |
+| `create_ledger` | Create a new ledger |
+| `get_ledger` | Get ledger by ID |
+| `list_ledgers` | List all ledgers |
+| `create_balance` | Create a balance |
+| `get_balance` | Get balance by ID |
+| `list_balances` | List all balances |
+| `record_transaction` | Record a transaction |
+| `get_transaction` | Get transaction by ID |
+| `commit_inflight` | Commit inflight transaction |
+| `void_inflight` | Void inflight transaction |
+| `refund_transaction` | Refund a transaction |
+| `schedule_transaction` | Schedule a transaction |
+| `bulk_transactions` | Process bulk transactions |
+| `search` | Search across entities |
+| `create_identity` | Create an identity |
+| `get_identity` | Get identity by ID |
+| `list_identities` | List all identities |
+| `update_identity` | Update an identity |
+| `delete_identity` | Delete an identity |
+| `query_transactions` | Query with filters |
+| `query_balances` | Query balances |
+| `query_ledgers` | Query ledgers |
+| `query_identities` | Query identities |
+| `create_view` | Create a saved view |
+| `list_views` | List all views |
+| `get_view` | Get view by ID |
+| `update_view` | Update a view |
+| `delete_view` | Delete a view |
+| `create_visualization` | Create visualization |
+| `list_visualizations` | List visualizations |
+| `get_visualization_data` | Get chart data |
+| `delete_visualization` | Delete visualization |
+
+<Note>
+The live docs also list `get_transaction_by_reference`. The dashboard tool table does not. Confirm whether that tool is supported before updating the canonical MCP reference.
+</Note>
+

@@ -1,0 +1,61 @@
+---
+title: "Cloud Dashboard Gap Review"
+sidebarTitle: "Dashboard gap review"
+icon: "clipboard-check"
+description: "Review Cloud dashboard features that need new or updated documentation."
+og:title: "Cloud Dashboard Gap Review | Blnk Cloud Guide"
+og:description: "Cloud documentation gaps discovered by comparing the dashboard source with the docs."
+---
+
+This review compares the current Cloud docs with the dashboard source in `blnkfinance/blnk-dashboard` at `ab36f8b2`.
+
+## Source paths checked
+
+Dashboard evidence:
+
+- `utils/links.ts`
+- `components/blnk-ui/settings-side-nav/index.tsx`
+- `pages/cloud/settings/mcp/index.tsx`
+- `pages/cloud/settings/watch/index.tsx`
+- `pages/cloud/settings/flags/index.tsx`
+- `hooks/use-ui-feature-flags.ts`
+- `components/pages/cloud/settings/table/index.tsx`
+- `components/pages/cloud/settings/table/instance-details-modal.tsx`
+- `components/pages/cloud/setup-query-agent/index.tsx`
+- `components/blnk-ui/code-snippet/docker-run-query-agent.tsx`
+
+Docs paths checked:
+
+- `docs.json`
+- `cloud/integrations/mcp.mdx`
+- `cloud/auth/api-keys.mdx`
+- `cloud/auth/oauth.mdx`
+- `cloud/instances/create.mdx`
+- `cloud/instances/deploy.mdx`
+- `cloud/instances/whitelist.mdx`
+- `cloud/organization/workspace.mdx`
+- `cloud/account/security.mdx`
+
+## Gaps found
+
+| Area | Dashboard behavior | Current docs state | Suggested action |
+| --- | --- | --- | --- |
+| MCP dashboard setup | Settings > MCP exposes an endpoint shaped as `https://api.cloud.blnkfinance.com/mcp/{instance_id}` and a Cursor JSON sample that sends `X-API-Key`. It also lists 33 tools. | `cloud/integrations/mcp.mdx` uses `Authorization: Bearer YOUR_API_KEY` in the Cursor sample and lists `get_transaction_by_reference`, which is not in the dashboard's 33-tool table. | Product/engineering should confirm the accepted MCP auth header and canonical tool list, then update the live MCP docs. Draft guide: `/cloud/new/mcp-dashboard-setup`. |
+| Feature flags | Settings > Feature flags appears only when the remote `browser-flags` feature is enabled. The current browser-local flag is `apps`, described as "Manage the tools connected to your Cloud workspace." | No Cloud docs page explains browser-only feature flags or that this page can be hidden. | Add an internal-facing or beta-facing guide if this should be documented publicly. Draft guide: `/cloud/new/settings-feature-flags-watch`. |
+| Watch in Cloud settings | Settings > Watch introduces Watch and links to `https://github.com/blnkfinance/watch`. | Watch has its own docs tab, but the Cloud settings navigation is not documented as a discovery path. | Add a short Cloud settings note if Watch should be discoverable from Cloud docs. Draft guide: `/cloud/new/settings-feature-flags-watch`. |
+| Managed instance operations | Managed instance rows support allowed IP management, direct DB access generation/revocation, destroy deployment, and upgrade prompts. DB access is disabled until at least one IP is whitelisted. Sandbox deployments hide direct DB access and allowed IP actions. | Direct DB access and IP whitelisting exist in docs, but the current dashboard-specific gates and upgrade caveats are scattered or missing. | Update the managed instance docs after confirmation. Draft guide: `/cloud/new/instance-operations-review`. |
+| Query Agent setup | Dashboard setup details copy a connection key, poll instance status every 10 seconds, and use a Docker command with `CONNECTION_KEY`. | `cloud/instances/create.mdx` covers Query Agent, but the dashboard flow now emphasizes the setup details page and auto-completion when connected. | Fold the dashboard flow language into the self-hosted instance guide. Draft guide: `/cloud/new/instance-operations-review`. |
+| Workspace deletion | Settings > Workspace lets admins schedule workspace deletion after typing the workspace name. | `cloud/organization/workspace.mdx` covers workspace updates and multiple workspaces, but not deletion. | Confirm whether destructive workspace deletion should be public docs, admin-only docs, or support-led. |
+| Referrals | `/cloud/settings/referrals` exists but redirects to `/cloud/settings/profile`; the nav item is commented out. | Referrals are not in docs. | No docs update unless the product re-enables referrals. |
+| Branching | Branch-out code exists behind `SHOW_BRANCHING = false`. | `cloud/instances/branching.mdx` exists. | Confirm whether branching should remain documented if disabled in the dashboard. |
+
+## Product confirmations needed
+
+1. MCP authentication: should dashboard client configuration use `X-API-Key`, `Authorization: Bearer`, or both?
+2. MCP tool list: should the docs include `get_transaction_by_reference` even though the dashboard table does not list it?
+3. Feature flags: should the browser-only feature flags page be public documentation, internal support documentation, or omitted?
+4. Watch: should Cloud docs mention Settings > Watch, or should Watch remain documented only in the Watch tab?
+5. Instance upgrades: what is the expected data behavior for production upgrades, and should sandbox upgrades always be described as starting fresh?
+6. Branching: should the existing branching docs stay visible while the dashboard action is disabled?
+7. Workspace deletion: should users be guided to schedule deletion themselves, or should this remain support-led?
+
