@@ -1,0 +1,90 @@
+---
+sidebarTitle: "Time-based conditions"
+title: "Time-based condition examples"
+description: "Watch DSL examples that use time context from transaction metadata."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+These examples depend on time context that your application has already added to metadata, such as hour of day or day of week. 
+
+That approach keeps the rules portable while letting you localize time logic upstream when needed.
+
+### Late night transactions
+
+This rule reviews larger transactions that occur late at night. It is useful for flagging activity that lands outside a customer's normal operating window without blocking all after-hours traffic.
+
+```bash LateNightTransactions.ws
+rule LateNightTransactions {
+  description "Flags large transactions that occur late at night."
+
+  when metadata.hour_of_day >= 21
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction during late-night hours"
+}
+```
+
+### Review Christmas transactions
+
+This rule reviews transactions that occur on Christmas Day. It is a simple seasonal pattern you can adapt for holidays, maintenance windows, or business-specific blackout periods.
+
+```bash ReviewChristmasTransactions.ws
+rule ReviewChristmasTransactions {
+  description "Flags transactions that occur on Christmas Day."
+
+  when metadata.month_of_year == 12
+   and metadata.day_of_month == 25
+
+  then review
+       score   0.6
+       reason  "Transaction occurred on Christmas Day"
+}
+```
+
+### Unusual transaction time
+
+This rule reviews large transactions that happen in the early-morning window between 1 AM and 5 AM. It is a good template when you want to tune thresholds based on hours that are uncommon for a customer segment or product line.
+
+```bash UnusualTransactionTime.ws
+rule UnusualTransactionTime {
+  description "Flags large transactions during unusual early-morning hours."
+
+  when metadata.hour_of_day >= 1
+   and metadata.hour_of_day < 5
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction during unusual early-morning hours"
+}
+```
+
+### Weekend transaction check
+
+This rule reviews large transactions that occur on a weekend. It is a practical pattern for products where genuine activity is mostly weekday-driven and weekend spikes deserve a closer look.
+
+```bash WeekendTransactionCheck.ws
+rule WeekendTransactionCheck {
+  description "Flags large transactions that occur on weekends."
+
+  when metadata.day_of_week in (0, 6)
+   and amount > 5000
+
+  then review
+       score   0.4
+       reason  "Large weekend transaction flagged for review"
+}
+```
+
+---
+
+See also [Setting conditions](/watch/rules/setting-conditions) and [Defining verdicts](/watch/rules/defining-verdicts).
+
+---
+
+<NeedHelp />

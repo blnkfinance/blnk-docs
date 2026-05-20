@@ -1,0 +1,86 @@
+---
+sidebarTitle: "Sync Git repository"
+title: "Sync Git repository"
+description: "Manually pull the latest Watch scripts from Git and reload them."
+api: "POST http://localhost:8081/git/sync"
+"og:title": "Sync Git Repository • Watch API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Use this endpoint to manually sync Watch scripts from the configured Git repository. When the remote commit changes, Watch reloads scripts from the updated repository in the background.
+
+This endpoint is only available when `WATCH_SCRIPT_GIT_REPO` is configured in your [Watch configuration](/watch/configuration).
+
+### Request
+
+This endpoint has no path, query, or body parameters.
+
+<RequestExample>
+```bash
+curl -X POST http://localhost:8081/git/sync
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true,
+  "message": "Repository synced and scripts reloaded",
+  "before_commit": "abc123def456",
+  "after_commit": "def456ghi789"
+}
+```
+
+```json 200 No changes
+{
+  "success": true,
+  "message": "Repository synced successfully",
+  "before_commit": "abc123def456",
+  "after_commit": "abc123def456"
+}
+```
+
+```json 200 Not configured
+{
+  "success": false,
+  "error": "Git repository not configured"
+}
+```
+
+```json 200 Sync failed
+{
+  "success": false,
+  "before_commit": "abc123def456",
+  "error": "Failed to sync repository: ..."
+}
+```
+</ResponseExample>
+
+### Response fields
+
+<ResponseField name="success" type="boolean">
+Whether the sync operation completed successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+Status message. When the commit changes, this includes confirmation that scripts were reloaded.
+</ResponseField>
+
+<ResponseField name="before_commit" type="string">
+Local commit hash before the sync started.
+</ResponseField>
+
+<ResponseField name="after_commit" type="string">
+Local commit hash after the sync completed.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+Error message when Git is not configured or the sync fails.
+</ResponseField>
+
+---
+
+<NeedHelp />

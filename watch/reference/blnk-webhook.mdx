@@ -1,0 +1,76 @@
+---
+sidebarTitle: "Blnk webhook"
+title: "Blnk webhook"
+description: "Receive Blnk Core webhook events and inject transactions into Watch for real-time risk evaluation."
+api: "POST http://localhost:8081/blnkwebhook"
+"og:title": "Blnk Webhook • Watch API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Use this endpoint when Blnk Core sends transaction events to Watch through a [hook](/hooks/overview). Watch unwraps the webhook payload, injects the transaction, and evaluates it against your active instructions.
+
+This follows the same evaluation flow as [inject transaction](/watch/reference/inject-transaction). After processing, use [get verdict](/watch/reference/get-verdict) to read the result, or configure `ALERT_WEBHOOK_URL` to receive alerts when rules match.
+
+<Tip>
+See [Getting data into Watch](/watch/integration) for how to register a Core hook that points at this endpoint.
+</Tip>
+
+### Body
+
+<ParamField body="event" type="string" required>
+  The Blnk webhook event name. For example, `transaction.created`.
+</ParamField>
+
+<ParamField body="data" type="object" required>
+  The transaction object from Blnk Core. Field names match Blnk transaction naming — `transaction_id`, `amount`, `currency`, `source`, `destination`, `created_at`, `meta_data`, and so on.
+</ParamField>
+
+<RequestExample>
+```bash
+curl -X POST http://localhost:8081/blnkwebhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "transaction.created",
+    "data": {
+      "transaction_id": "txn_123",
+      "amount": 1000.00,
+      "currency": "USD",
+      "source": "balance_123",
+      "destination": "balance_456",
+      "reference": "ref_001",
+      "status": "applied",
+      "created_at": "2026-03-16T09:00:00Z",
+      "meta_data": {
+        "source_country": "US"
+      }
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```text 200
+Transaction txn_123 from webhook event 'transaction.created' processed successfully
+```
+
+```text 400
+Error decoding webhook payload
+```
+
+```text 500
+Error processing transaction: ...
+```
+</ResponseExample>
+
+### Notes
+
+- If `data.transaction_id` is missing, Watch generates a UUID before evaluation.
+- If `data.created_at` is missing, Watch uses the current server time.
+- On success, the response body is plain text, not JSON.
+
+---
+
+<NeedHelp />

@@ -1,0 +1,133 @@
+---
+sidebarTitle: "Basic conditions"
+title: "Basic condition examples"
+description: "Single-field and list-check Watch DSL examples for common transaction monitoring patterns."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Each example below is a full watch script you can drop into your rules directory.
+
+These examples trigger on a single comparison or a simple list check. They are useful when you want a rule to react to one clear signal without needing historical context.
+
+### Block black listed accounts
+
+This rule blocks a transaction when the source account appears in a blacklist supplied on the current transaction. It works well when your application already maintains a denylist and passes it into Watch as metadata.
+
+```bash BlockBlackListedAccounts.ws
+rule BlockBlackListedAccounts {
+  description "Blocks transactions from accounts on an internal blacklist."
+
+  when source in $current.metadata.blacklisted_accounts
+
+  then block
+       score   1.0
+       reason  "Source account is on the blacklist"
+}
+```
+
+### Category BTC check
+
+This rule sends cryptocurrency-tagged activity to review. It is a lightweight pattern for routing a known transaction category into a tighter manual workflow.
+
+```bash CategoryBTCCheck.ws
+rule CategoryBTCCheck {
+  description "Cryptocurrency transactions require manual verification."
+
+  when metadata.category == "cryptocurrency"
+
+  then review
+       score   0.6
+       reason  "Transaction category is cryptocurrency"
+}
+```
+
+### High risk destination country
+
+This rule blocks transactions headed to countries that your system has already marked as high risk. It keeps the country list outside the DSL so you can update it without rewriting the rule.
+
+```bash HighRiskDestinationCountry.ws
+rule HighRiskDestinationCountry {
+  description "Blocks transactions headed to a high-risk destination country."
+
+  when metadata.destination_country in $current.metadata.high_risk_countries
+
+  then block
+       score   0.5
+       reason  "Destination country is classified as high risk"
+}
+```
+
+### High value transaction check
+
+This rule reviews any transaction above a fixed value threshold. It is a good baseline control for catching unusually large transactions before you layer on more specific checks.
+
+```bash HighValueTransactionCheck.ws
+rule HighValueTransactionCheck {
+  description "Monitors for unusually large transactions requiring review."
+
+  when amount > 10000
+
+  then review
+       score   0.5
+       reason  "Transaction amount exceeds 10,000"
+}
+```
+
+### Known fraud entity check
+
+This rule blocks transactions sent to known bad counterparties that are provided on the current transaction. It is useful when your fraud system or case-management tooling already maintains a live list of risky entities.
+
+```bash KnownFraudEntityCheck.ws
+rule KnownFraudEntityCheck {
+  description "Blocks transactions sent to known fraud entities."
+
+  when destination in $current.metadata.known_fraud_entities
+
+  then block
+       score   1.0
+       reason  "Destination is on the known fraud entities list"
+}
+```
+
+### Sanctioned country check
+
+This rule blocks transactions going to countries that appear on a sanctions list supplied in metadata. It is a direct pattern for policy-driven controls where the list itself changes more often than the rule logic.
+
+```bash SanctionedCountryCheck.ws
+rule SanctionedCountryCheck {
+  description "Blocks transactions sent to sanctioned countries."
+
+  when metadata.destination_country in $current.metadata.sanctioned_countries
+
+  then block
+       score   1.0
+       reason  "Destination country is on the sanctions list"
+}
+```
+
+### Suspicious MCC check
+
+This rule reviews transactions whose merchant category code falls inside a known high-risk list. It is useful for fast controls around gambling, quasi-cash, or other categories that deserve extra scrutiny.
+
+```bash SuspiciousMCCCheck.ws
+rule SuspiciousMCCCheck {
+  description "Flags transactions with high-risk merchant category codes."
+
+  when metadata.mcc in ("7995", "5912")
+
+  then review
+       score   0.5
+       reason  "Transaction involves a high-risk merchant category code"
+}
+```
+
+---
+
+See also [Setting conditions](/watch/rules/setting-conditions) and [Defining verdicts](/watch/rules/defining-verdicts).
+
+---
+
+<NeedHelp />

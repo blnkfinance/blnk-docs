@@ -1,0 +1,208 @@
+---
+sidebarTitle: "Compound conditions"
+title: "Compound condition examples"
+description: "Watch DSL examples that combine multiple checks in a single rule."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+These examples combine multiple checks in one rule. 
+
+They are helpful when one field on its own is not enough, but a combination of amount, account type, or metadata creates a stronger signal.
+
+### Block if previous failed
+
+This rule blocks a very large transaction when the previous transaction status for the same flow was already marked as failed. It assumes your upstream system writes the prior status into metadata before the transaction reaches Watch.
+
+```bash BlockIfPreviousFailed.ws
+rule BlockIfPreviousFailed {
+  description "Blocks a large transaction when the previous related transaction failed."
+
+  when metadata.previous_transaction_status == "failed"
+   and amount > 700000
+
+  then block
+       score   1.0
+       reason  "Previous related transaction failed and the current amount is high"
+}
+```
+
+### Business account personal spending
+
+This rule reviews business-account transactions that land in merchant categories commonly associated with personal spending. It is useful for expense, card, and treasury programs that want to catch obvious policy misuse early.
+
+```bash BusinessAccountPersonalSpending.ws
+rule BusinessAccountPersonalSpending {
+  description "Flags likely personal spending from a business account."
+
+  when metadata.account_type == "business"
+   and metadata.merchant_category in ("retail", "entertainment", "restaurant", "personal_services")
+
+  then review
+       score   0.4
+       reason  "Potential personal spending from a business account"
+}
+```
+
+### Cross border transaction check
+
+This rule reviews higher-value transactions when the source and destination countries do not match. It is a good example of comparing one metadata field against another value from the current transaction.
+
+```bash CrossBorderTransactionCheck.ws
+rule CrossBorderTransactionCheck {
+  description "Reviews high-value transactions that cross borders."
+
+  when metadata.source_country != $current.metadata.destination_country
+   and amount > 1000
+
+  then review
+       score   0.5
+       reason  "Large cross-border transaction requires review"
+}
+```
+
+### Dormant account activity
+
+This rule reviews transactions from accounts that have been inactive for a long time and suddenly become active again. It is useful for spotting account takeover, mule activity, or stale credentials being reused.
+
+```bash DormantAccountActivity.ws
+rule DormantAccountActivity {
+  description "Flags high-value activity after a long period of dormancy."
+
+  when metadata.days_since_last_transaction > 90
+   and amount > 1000
+
+  then review
+       score   0.7
+       reason  "High-value transaction after extended account inactivity"
+}
+```
+
+### Foreign currency transaction
+
+This rule reviews larger transactions when the transaction currency differs from the account's base currency. It is a practical pattern for detecting unusual cross-currency behavior without blocking normal low-value activity.
+
+```bash ForeignCurrencyTx.ws
+rule ForeignCurrencyTx {
+  description "Flags large transactions in a currency different from the account base currency."
+
+  when currency != $current.metadata.account_base_currency
+   and amount > 1000
+
+  then review
+       score   0.4
+       reason  "Large transaction in a foreign currency"
+}
+```
+
+### Low KYC daily limit
+
+This rule reviews a transaction when a low-tier KYC customer exceeds the per-transaction or daily limit assigned to them. It relies on your application passing the limit into metadata so the threshold can differ by customer.
+
+```bash LowKycDailyLimit.ws
+rule LowKycDailyLimit {
+  description "Flags low-tier KYC customers that exceed their configured limit."
+
+  when metadata.kyc_tier == 1
+   and amount > $current.metadata.daily_limit
+
+  then review
+       score   0.5
+       reason  "Transaction amount exceeds the configured limit for a tier-1 user"
+}
+```
+
+### Low KYC high risk
+
+This rule reviews lower-KYC customers when they transact in a high-risk merchant category and the amount is material. It is a common pattern for tightening controls on newer or less verified accounts.
+
+```bash LowKycHighRisk.ws
+rule LowKycHighRisk {
+  description "Flags high-risk category activity from a low-tier KYC customer."
+
+  when metadata.kyc_tier == 1
+   and metadata.merchant_category in ("gambling", "cryptocurrency", "adult", "high_value_goods")
+   and amount > 500
+
+  then review
+       score   0.8
+       reason  "Low-KYC account is transacting in a high-risk category"
+}
+```
+
+### Merchant issuer mismatch
+
+This rule reviews card transactions when the merchant country does not match the issuer country. It is a simple geo-mismatch control that can be combined with other travel, device, or authentication signals.
+
+```bash MerchantIssuerMismatch.ws
+rule MerchantIssuerMismatch {
+  description "Flags country mismatches between the merchant and card issuer."
+
+  when metadata.merchant_country != $current.metadata.card_issuer_country
+
+  then review
+       score   0.4
+       reason  "Merchant country does not match card issuer country"
+}
+```
+
+### New account first day
+
+This rule reviews larger transactions from very new accounts. It helps catch abuse patterns where bad actors create a fresh account and immediately try to move significant value.
+
+```bash NewAccountFirstDay.ws
+rule NewAccountFirstDay {
+  description "Flags high-value activity on the first day of a new account."
+
+  when metadata.account_age_days < 1
+   and amount > 1000
+
+  then review
+       score   0.6
+       reason  "Large transaction from a newly created account"
+}
+```
+
+### Self transfer check
+
+This rule reviews large self-transfers by checking whether the source and destination are the same. It is useful for spotting circular movement, layering, or attempts to manipulate downstream controls.
+
+```bash SelfTransferCheck.ws
+rule SelfTransferCheck {
+  description "Flags large transfers where the source and destination are the same."
+
+  when source == $current.destination
+   and amount > 3000
+
+  then review
+       score   0.45
+       reason  "Large self-transfer detected"
+}
+```
+
+### Suspicious description check
+
+This rule reviews high-value transactions when an upstream process has already normalized the free-form description into a suspicious keyword. It is a good fit when you want predictable rule logic without relying on complex text parsing inside the DSL.
+
+```bash SuspiciousDescriptionCheck.ws
+rule SuspiciousDescriptionCheck {
+  description "Flags high-value transactions tagged with suspicious description keywords."
+
+  when metadata.description_keyword in ("btc", "bitcoin", "crypto", "gift_card", "western_union")
+   and amount > 1000
+
+  then review
+       score   0.7
+       reason  "Suspicious description keyword found on a high-value transaction"
+}
+```
+
+---
+
+See also [Setting conditions](/watch/rules/setting-conditions) and [Defining verdicts](/watch/rules/defining-verdicts).
+
+---
+
+<NeedHelp />
