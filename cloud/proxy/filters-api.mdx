@@ -1,0 +1,194 @@
+---
+title: "Filtering Data"
+sidebarTitle: "Filtering data"
+description: "Retrieve filtered records from a Blnk Core instance using JSON filters through Blnk Cloud."
+og:title: "Filtering data | Blnk Cloud Guide"
+og:description: "Retrieve filtered records from a Blnk Core instance using JSON filters through Blnk Cloud."
+---
+
+import AppsHelp from "/cloud/snippets/apps-help.mdx";
+
+The Filters API lets you retrieve filtered records from a Blnk Core instance through Blnk Cloud. Send a POST request with a JSON filter body to query instance data directly.
+
+For the full endpoint reference, see [Filters API](/cloud/reference/filters-api).
+
+### How it works
+
+- Requests query the instance database directly through Blnk Cloud.
+- Every request must include `instance_id` as a query parameter.
+- You authenticate using a Cloud access token with the `data:read` scope.
+- Filter conditions are sent as a JSON array in the request body.
+
+### URL structure
+
+**Base URL:**
+
+```bash
+https://api.cloud.blnkfinance.com
+```
+
+Filter endpoints are at the API root, not under `/data/` or `/proxy/`.
+
+**Required headers:**
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Every request must include `instance_id` as a query parameter:
+
+```bash
+?instance_id=YOUR_INSTANCE_ID
+```
+
+---
+
+## Filter endpoints
+
+Each collection has a dedicated filter endpoint:
+
+| Collection | Endpoint | Default pageSize |
+| --- | --- | --- |
+| Ledgers | `POST /ledger/filter` | 30 |
+| Balances | `POST /balances/filter` | 20 |
+| Transactions | `POST /transactions/filter` | 20 |
+| Identities | `POST /identities/filter` | 20 |
+| Reconciliations | `POST /reconciliation/filter` | 20 |
+
+<Note>
+The ledgers endpoint uses `/ledger/filter` (singular), not `/ledgers/filter`.
+</Note>
+
+---
+
+## Request format
+
+Send a POST request with a JSON body containing your filters. Pagination is controlled via query parameters, not the request body.
+
+```bash wrap
+curl -X POST "https://api.cloud.blnkfinance.com/transactions/filter?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20" \
+  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "currency", "operator": "in", "values": ["USD", "EUR"] }
+    ]
+  }'
+```
+
+| Parameter | Location | Required | Description |
+| --- | --- | --- | --- |
+| `filters` | Body | Yes | Array of filter objects |
+| `instance_id` | Query | Yes | Target Core instance ID |
+| `page` | Query | No | Page number (default: `1`) |
+| `pageSize` | Query | No | Records per page (default varies by resource) |
+| `strict_total` | Query | No | Transactions only. Set to `true` for an exact total count |
+
+### Filter object
+
+Each filter object in the `filters` array has the following fields:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `field` | string | Yes | Field to filter on |
+| `operator` | string | Yes | Comparison operator |
+| `value` | any | No | Single value for most operators |
+| `values` | array | No | Multiple values for `in` and `between` operators |
+
+---
+
+## Supported operators
+
+| Operator | Meaning | Example |
+| --- | --- | --- |
+| `eq` | Equals | `{ "field": "status", "operator": "eq", "value": "APPLIED" }` |
+| `ne` | Not equals | `{ "field": "status", "operator": "ne", "value": "PENDING" }` |
+| `gt` | Greater than | `{ "field": "amount", "operator": "gt", "value": 100 }` |
+| `gte` | Greater than or equal | `{ "field": "amount", "operator": "gte", "value": 50 }` |
+| `lt` | Less than | `{ "field": "amount", "operator": "lt", "value": 500 }` |
+| `lte` | Less than or equal | `{ "field": "amount", "operator": "lte", "value": 500 }` |
+| `in` | In list | `{ "field": "currency", "operator": "in", "values": ["USD", "EUR"] }` |
+| `between` | Between two values | `{ "field": "created_at", "operator": "between", "values": ["2025-01-01T00:00:00Z", "2025-01-31T23:59:59Z"] }` |
+| `like` | Pattern match | `{ "field": "reference", "operator": "like", "value": "ref_%" }` |
+| `ilike` | Case-insensitive pattern | `{ "field": "description", "operator": "ilike", "value": "%fee%" }` |
+| `isnull` | Is null | `{ "field": "identity_id", "operator": "isnull" }` |
+| `isnotnull` | Is not null | `{ "field": "identity_id", "operator": "isnotnull" }` |
+| `exists` | JSON key exists (metadata) | `{ "field": "meta_data.myApp.channel", "operator": "exists" }` |
+| `notexists` | JSON key absent (metadata) | `{ "field": "meta_data.myApp.channel", "operator": "notexists" }` |
+
+---
+
+## Response format
+
+<CodeGroup>
+```json Transactions wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "status": "APPLIED",
+      "created_at": "2025-01-15T10:00:00.000000000Z"
+    }
+  ],
+  "total": 12,
+  "stats": {},
+  "total_is_estimate": false,
+  "total_source": "exact"
+}
+```
+
+```json Balances and identities wrap
+{
+  "data": [
+    {
+      "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "currency": "USD",
+      "balance": 10050,
+      "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc"
+    }
+  ],
+  "total": 5,
+  "stats": {}
+}
+```
+
+```json Ledgers wrap
+{
+  "data": [
+    {
+      "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "name": "My Integration Ledger",
+      "created_at": "2024-02-20T05:28:03.558281542Z"
+    }
+  ],
+  "total": 3
+}
+```
+</CodeGroup>
+
+<Info>
+The Cloud Filters API uses `{ "filters": [...] }` in the body with pagination via query parameters. This differs from the self-hosted Core Filter API, which accepts `limit`, `offset`, `sort_by`, and `include_count` in the body. See [Search via Database Filtering](/search/db/filtering) for self-hosted Core.
+</Info>
+
+---
+
+## Filterable fields by resource
+
+| Resource | Fields |
+| --- | --- |
+| Ledgers | `ledger_id`, `name`, `created_at`, `meta_data`, `meta_data.<path>` |
+| Balances | `balance_id`, `ledger_id`, `identity_id`, `indicator`, `currency`<br />`balance`, `credit_balance`, `debit_balance`<br />`inflight_balance`, `inflight_credit_balance`, `inflight_debit_balance`<br />`created_at`, `meta_data` |
+| Transactions | `transaction_id`, `parent_transaction`, `amount`, `currency`<br />`source`, `destination`, `balance_id`, `reference`<br />`status`, `created_at`, `effective_date`, `precision`, `meta_data` |
+| Identities | `identity_id`, `first_name`, `last_name`, `other_names`, `gender`, `dob`<br />`email_address`, `phone_number`, `nationality`, `street`, `country`<br />`state`, `organization_name`, `category`, `identity_type`<br />`post_code`, `city`, `created_at`, `meta_data` |
+
+<Note>
+Nested `meta_data` keys use dot notation. Example: `meta_data.myApp.channel`.
+</Note>
+
+---
+
+<AppsHelp />

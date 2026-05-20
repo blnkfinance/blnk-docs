@@ -1,0 +1,122 @@
+---
+title: "Proxy API"
+api: "POST /proxy/{path}"
+description: "Send write and search requests to a Blnk Core instance through Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+The Proxy API forwards HTTP requests to your Blnk Core instance through Blnk Cloud. Use it to create ledgers, balances, transactions, identities, and other Core resources without connecting to Core directly.
+
+<Note>
+Blnk Cloud authenticates your request, routes it to the target instance using `instance_id`, and returns the Core response unchanged. For a step-by-step walkthrough, see [Making requests via the Cloud Proxy](/cloud/proxy/proxy-api).
+</Note>
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "My Integration Ledger",
+    "meta_data": {
+      "description": "Ledger for integration test"
+    }
+  }'
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for an API key or OAuth access token. Format: `Bearer YOUR_API_KEY` or `Bearer YOUR_ACCESS_TOKEN`. Credentials must include the appropriate proxy scope:
+
+| Scope | Access |
+| --- | --- |
+| `proxy:write` | Create and update resources (POST, PUT, DELETE) |
+| `proxy:read` | Read resources (GET routes) |
+
+Create credentials with proxy scopes in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
+</ParamField>
+
+<ParamField query="instance_id" type="string" required>
+Unique identifier of the Blnk Core instance to target. Required on every Proxy API request.
+</ParamField>
+
+<ParamField header="Content-Type" type="string">
+Required for requests with a body. Set to `application/json`. Use `multipart/form-data` for reconciliation file uploads.
+</ParamField>
+
+---
+
+### Available endpoints
+
+All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
+
+<Tabs>
+<Tab title="Writes">
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/ledgers` | Create a ledger |
+| POST | `/balances` | Create a balance |
+| POST | `/transactions` | Create a transaction |
+| POST | `/transactions/bulk` | Create multiple transactions |
+| PUT | `/transactions/inflight/:id` | Update an inflight transaction |
+| POST | `/refund-transaction/:id` | Refund a transaction |
+| POST | `/identities` | Create an identity |
+| PUT | `/identities/:identity_id` | Update an identity |
+| PUT | `/balances/:id/identity` | Link an identity to a balance |
+| POST | `/:id/metadata` | Update metadata on a ledger, balance, transaction, or identity |
+
+</Tab>
+<Tab title="Reads">
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/balances/:id/at` | Get balance at a timestamp (`timestamp` query required) |
+| GET | `/balances/:id/lineage` | Get balance lineage |
+| GET | `/transactions/:id/lineage` | Get transaction lineage |
+| GET | `/identities/:identity_id/tokenized-fields` | List tokenized fields |
+| GET | `/identities/:identity_id/detokenize/:field` | Detokenize a single field |
+
+</Tab>
+<Tab title="Tokenization">
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/identities/:identity_id/tokenize/:field` | Tokenize a single field |
+| POST | `/identities/:identity_id/tokenize` | Tokenize multiple fields |
+| POST | `/identities/:identity_id/detokenize` | Detokenize multiple fields |
+
+</Tab>
+<Tab title="Reconciliation">
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/reconciliation/start` | Start a reconciliation |
+| POST | `/reconciliation/upload` | Upload reconciliation data |
+| POST | `/reconciliation/matching-rules` | Create matching rules |
+| PUT | `/reconciliation/matching-rules/:id` | Update a matching rule |
+| DELETE | `/reconciliation/matching-rules/:id` | Delete a matching rule |
+| GET | `/reconciliation/:reconciliation_id` | Get reconciliation details |
+| POST | `/reconciliation/start-instant` | Start instant reconciliation |
+
+</Tab>
+</Tabs>
+
+<Info>
+When creating a transaction, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
+</Info>
+
+---
+
+### Response structure
+
+Proxy responses pass through the Core instance response unchanged. Status codes and body shapes match the corresponding Core endpoint.
+
+---
+
+<NeedHelp />

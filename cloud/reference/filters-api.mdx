@@ -1,0 +1,132 @@
+---
+title: "Filters API"
+api: "POST /{resource}/filter"
+description: "Retrieve filtered records from a Blnk Core instance via JSON filters through Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+The Filters API lets you retrieve filtered records from a Blnk Core instance through Blnk Cloud. Send a POST request with a JSON filter body to query instance Postgres directly.
+
+<Note>
+Filter endpoints are registered at the Cloud API root (for example, `/transactions/filter`), not under `/data/` or `/proxy/`. For a step-by-step guide, see [Filtering data](/cloud/proxy/filters-api).
+</Note>
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/transactions/filter?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "currency", "operator": "in", "values": ["USD", "EUR"] }
+    ]
+  }'
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for an API key or OAuth access token. Requires the `data:read` scope. Create credentials with the `data:read` scope in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
+</ParamField>
+
+<ParamField query="instance_id" type="string" required>
+Unique identifier of the Blnk Core instance to query. Required on every Filters API request.
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+Page number for paginated results.
+</ParamField>
+
+<ParamField query="pageSize" type="integer">
+Number of records per page. Defaults vary by resource (see endpoints table below).
+</ParamField>
+
+<ParamField body="filters" type="array" required>
+Array of filter objects. Each object requires `field` and `operator`, and optionally `value` or `values`.
+
+Examples:
+- `[{"field": "status", "operator": "eq", "value": "APPLIED"}]` — exact match
+- `[{"field": "currency", "operator": "in", "values": ["USD", "EUR"]}]` — multiple values
+- `[{"field": "created_at", "operator": "between", "values": ["2025-01-01T00:00:00Z", "2025-01-31T23:59:59Z"]}]`
+</ParamField>
+
+---
+
+### Endpoints
+
+All paths are relative to `https://api.cloud.blnkfinance.com`.
+
+| Method | Path | Default pageSize |
+| --- | --- | --- |
+| POST | `/ledger/filter` | 30 |
+| POST | `/balances/filter` | 20 |
+| POST | `/transactions/filter` | 20 |
+| POST | `/identities/filter` | 20 |
+| POST | `/reconciliation/filter` | 20 |
+
+<Warning>
+The ledgers endpoint uses `/ledger/filter` (singular), not `/ledgers/filter`.
+</Warning>
+
+<Tip>
+For supported operators and filterable fields, see [Filtering data](/cloud/proxy/filters-api).
+</Tip>
+
+---
+
+### Response structure
+
+<ResponseExample>
+```json Success
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "status": "APPLIED",
+      "created_at": "2025-01-15T10:00:00.000000000Z"
+    }
+  ],
+  "total": 12,
+  "stats": {},
+  "total_is_estimate": false,
+  "total_source": "exact"
+}
+```
+</ResponseExample>
+
+<ResponseField name="data" type="array" required>
+Array of matching records. Structure varies by resource type.
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+Total number of matching records.
+</ResponseField>
+
+<ResponseField name="stats" type="object">
+Aggregate statistics for the filtered result set. Present on balances, transactions, identities, and reconciliations.
+</ResponseField>
+
+<ResponseField name="total_is_estimate" type="boolean">
+Transactions only. When `true`, the `total` value is an estimate rather than an exact count.
+</ResponseField>
+
+<ResponseField name="total_source" type="string">
+Transactions only. Indicates how the total was computed (for example, `"exact"` or `"estimate"`).
+</ResponseField>
+
+<Info>
+The Cloud Filters API accepts `{ "filters": [...] }` in the body with pagination via query parameters. 
+
+This differs from the self-hosted Core Filter API documented in [Search via DB](/reference/search-db), which uses `limit`, `offset`, `sort_by`, and `include_count` in the body and returns `total_count`.
+</Info>
+
+---
+
+<NeedHelp />
