@@ -1,0 +1,58 @@
+---
+title: "MCP server"
+api: "POST /mcp/{instance_id}"
+description: "Connect to the Blnk MCP server to query and manage ledger data from AI assistants."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+The Blnk MCP server exposes your Core instance through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). AI assistants and MCP-compatible clients connect to this endpoint, authenticate with Blnk Cloud credentials, and call tools to read or write ledger data.
+
+<Note>
+All MCP traffic is routed through Blnk Cloud. AI clients never connect directly to your Core instance. Blnk Cloud validates credentials, enforces scopes, and forwards authorized operations to the target instance.
+</Note>
+
+For client setup in Cursor, Claude Desktop, ChatGPT, and other tools, see the [MCP integration guide](/cloud/integrations/mcp).
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json'
+```
+</RequestExample>
+
+<ParamField path="instance_id" type="string" required>
+Unique identifier of the Blnk Core instance to connect to. Find this in **Settings > MCP** in your Blnk Cloud dashboard, or from the instance currently open in your workspace.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for API key or OAuth access token. Format: `Bearer YOUR_API_KEY` or `Bearer YOUR_ACCESS_TOKEN`.
+</ParamField>
+
+Credentials must include one or both MCP scopes:
+
+| Scope | Access |
+| --- | --- |
+| `mcp:read` | Read-only access to data through MCP tools |
+| `mcp:write` | Read and write access through MCP tools |
+
+Create credentials with MCP scopes in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
+
+---
+
+### Response structure
+
+Blnk MCP follows the [Model Context Protocol specification](https://modelcontextprotocol.io/specification/2025-03-26). Request and response formats, session lifecycle, transport, and error handling are defined by the MCP standard.
+
+Most MCP clients handle the protocol automatically. If you are building a custom client, refer to the MCP specification for message structure, initialization, and tool invocation.
+
+For the list of supported tools, see [Supported tools](/cloud/integrations/mcp#supported-tools) in the MCP integration guide.
+
+---
+
+<NeedHelp />
