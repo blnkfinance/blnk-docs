@@ -1,14 +1,17 @@
 ---
-title: "Transaction and Queue Configuration"
+title: "Transaction Configuration"
 sidebarTitle: "Transactions"
-description: "Configure transaction processing, queues, coalescing, and hot-lane routing in Blnk."
-"og:title": "Transaction and Queue Configuration • Blnk Developer Documentation"
-"og:description": "Configure transaction processing, queues, coalescing, and hot-lane routing in Blnk."
+icon: "arrow-left-right"
+description: "Configure transaction processing, batching, locking, and coalescing in Blnk."
+"og:title": "Transaction Configuration • Blnk Developer Documentation"
+"og:description": "Configure transaction processing, batching, locking, and coalescing in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-This page covers the settings that control how Blnk executes, queues, batches, and routes transactions.
+This page covers the settings that control how Blnk executes, batches, and locks transactions.
+
+For queue names, sharding, retries, and hot-lane routing, see [Queue configuration](/advanced/configuration/queue).
 
 ---
 
@@ -46,7 +49,7 @@ BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
 | :-- | :-- | :-- |
 | `BLNK_TRANSACTION_BATCH_SIZE` | Maximum number of items Blnk processes in a single transaction batch. | `1000` |
 | `BLNK_TRANSACTION_MAX_QUEUE_SIZE` | In-memory **channel buffer size** for the batch worker used by `ProcessTransactionInBatches` (not a Redis queue depth limit). | `1000` |
-| `BLNK_TRANSACTION_MAX_WORKERS` | Concurrency for **batch and reconciliation** transaction workers (e.g. `ProcessTransactionInBatches`). For the main Redis-backed **queued** transaction pool, use `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` and [hot-lane settings](#hot-lane-routing-settings) instead. | `10` |
+| `BLNK_TRANSACTION_MAX_WORKERS` | Concurrency for **batch and reconciliation** transaction workers (e.g. `ProcessTransactionInBatches`). For the main Redis-backed **queued** transaction pool, use `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` and [hot-lane settings](/advanced/configuration/queue#hot-lane-routing-settings) instead. | `10` |
 | `BLNK_TRANSACTION_LOCK_DURATION` | How long a distributed balance lock can live once acquired, in **seconds** (non-zero values). | `1800` |
 | `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | How long Blnk waits when acquiring **transaction balance locks** (shared path for direct and queued processing, including coalesced batch execution), in **seconds**. | `3` |
 | `BLNK_TRANSACTION_INDEX_QUEUE_PREFIX` | **Collection / index name prefix** for **transaction search** documents (e.g. Typesense), not a Redis transaction queue name. | `transactions` |
@@ -56,7 +59,7 @@ BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
 
 This controls how long a transaction should wait when [acquiring a lock](/guides/concurrency#distributed-redis-balance-locks) before the transaction fails with a lock error.
 
-If locks are not acquired in time, the **operation fails with a lock error**. For a **direct** (`skip_queue=true`) request, that is typically returned to the client. For **queued** work, workers may retry or reject depending on [queue settings](#queue-settings), e.g.  `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` and `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
+If locks are not acquired in time, the **operation fails with a lock error**. For a **direct** (`skip_queue=true`) request, that is typically returned to the client. For **queued** work, workers may retry or reject depending on [queue settings](/advanced/configuration/queue#queue-settings), e.g.  `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` and `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
 
 <Tip>
 **Tip:** Keep the default value unless transactions regularly outlive the lock window. This config is especially important for transactions that bypass the queue.
@@ -111,153 +114,6 @@ Leaving it as `false` (the default) is safer because it helps catch duplicate or
 <Warning>
 **Please note:** Disabling reference checks may reduce some overhead, but it also increases the risk of duplicate-reference issues slipping through batched execution.
 </Warning>
-
----
-
-## Queue settings
-
-Use these settings to control queue names, sharding, concurrency, retries, and worker monitoring for normal queued processing.
-
-<CodeGroup>
-```bash blnk.env
-BLNK_QUEUE_TRANSACTION=new:transaction
-BLNK_QUEUE_NUMBER_OF_QUEUES=20
-BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=1
-BLNK_QUEUE_MAX_RETRY_ATTEMPTS=5
-BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES=false
-BLNK_QUEUE_WEBHOOK=new:webhook
-BLNK_QUEUE_INDEX=new:index
-BLNK_QUEUE_INFLIGHT_EXPIRY=new:inflight-expiry
-BLNK_QUEUE_WEBHOOK_CONCURRENCY=20
-BLNK_QUEUE_MONITORING_PORT=5004
-```
-
-```json blnk.json
-{
-  "queue": {
-    "transaction_queue": "new:transaction",
-    "number_of_queues": 20,
-    "transaction_worker_concurrency": 1,
-    "max_retry_attempts": 5,
-    "insufficient_fund_retries": false,
-    "webhook_queue": "new:webhook",
-    "index_queue": "new:index",
-    "inflight_expiry_queue": "new:inflight-expiry",
-    "webhook_concurrency": 20,
-    "monitoring_port": "5004"
-  }
-}
-```
-</CodeGroup>
-
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_QUEUE_TRANSACTION` | Base name used for normal transaction queue shards. | `new:transaction` |
-| `BLNK_QUEUE_NUMBER_OF_QUEUES` | Number of normal transaction queue shards used for queued work. | `20` |
-| `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` | Worker concurrency for normal transaction queues. | `1` |
-| `BLNK_QUEUE_MAX_RETRY_ATTEMPTS` | Maximum number of retries for queued transaction failures. | `5` |
-| `BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES` | Controls whether insufficient-funds failures are retried instead of rejected immediately. | `false` |
-| `BLNK_QUEUE_WEBHOOK` | Queue name used for webhook tasks. | `new:webhook` |
-| `BLNK_QUEUE_INDEX` | Queue name used for indexing tasks. | `new:index` |
-| `BLNK_QUEUE_INFLIGHT_EXPIRY` | Queue name used for inflight-expiry tasks. | `new:inflight-expiry` |
-| `BLNK_QUEUE_WEBHOOK_CONCURRENCY` | Worker concurrency for webhook and index tasks. | `20` |
-| `BLNK_QUEUE_MONITORING_PORT` | Port used for worker monitoring and metrics. | `5004` |
-
-### `BLNK_QUEUE_NUMBER_OF_QUEUES`
-
-Blnk hashes the source balance ID and assigns the transaction to one of the configured queue shards. More queues allow more unrelated balances to process in parallel. 
-
-This helps reduce collisions before execution, but it does not replace locking. If many transactions still target the same balances, increasing the shard count alone will not solve the hotspot. 
-
-See instead: [How to handle hot balances](/guides/hot-balances#using-the-queue).
-
-### `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY`
-
-This controls how many normal queued transaction tasks can execute at the same time.
-
-Higher concurrency can improve throughput when work is spread across unrelated balances. It can also increase lock contention when many tasks overlap on the same balances. Increase it gradually and watch for contention before raising it further.
-
-### `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`
-
-This sets the maximum number of times Blnk will try a queued transaction again after a temporary failure such as lock contention, insufficient funds, etc.
-
-In simple terms:
-
-- If a queued transaction fails for a reason that may clear on its own, Blnk can try it again
-- If it keeps failing, Blnk stops after this limit instead of retrying forever.
-
-
-### `BLNK_QUEUE_INSUFFICIENT_FUND_RETRIES`
-
-This controls whether Blnk should retry queued transactions that fail because the source balance does not have enough funds.
-
-Leave this disabled when an insufficient-funds result should be treated as final. Enable it only when the balance may change shortly after the first attempt, for example:
-
-- another queued credit is still being processed
-- funds are expected to arrive from another part of your workflow
-- transaction ordering means the balance may be sufficient on a later retry
-
----
-
-## Hot-lane routing settings
-
-Use these settings to isolate repeatedly contended balance pairs into a dedicated queue.
-
-<CodeGroup>
-```bash blnk.env
-BLNK_QUEUE_ENABLE_HOT_LANE=false
-BLNK_QUEUE_HOT_QUEUE_NAME=hot_transactions
-BLNK_QUEUE_HOT_QUEUE_CONCURRENCY=1
-BLNK_QUEUE_HOT_PAIR_TTL=300
-BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD=3
-BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY=false
-```
-
-```json blnk.json
-{
-  "queue": {
-    "enable_hot_lane": false,
-    "hot_queue_name": "hot_transactions",
-    "hot_queue_concurrency": 1,
-    "hot_pair_ttl": 300,
-    "hot_pair_lock_contention_threshold": 3,
-    "reject_lock_contention_immediately": false
-  }
-}
-```
-</CodeGroup>
-
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_QUEUE_ENABLE_HOT_LANE` | Enables hot-lane routing for repeatedly contended balance pairs. | `false` |
-| `BLNK_QUEUE_HOT_QUEUE_NAME` | Queue name used for hot-lane traffic. | `hot_transactions` |
-| `BLNK_QUEUE_HOT_QUEUE_CONCURRENCY` | Worker concurrency for the hot queue. | `1` |
-| `BLNK_QUEUE_HOT_PAIR_TTL` | How long hot-pair activity and contention state is remembered, in **seconds** (see note at top of this page). | `300` |
-| `BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD` | Number of contention events required before a pair is promoted into the hot lane. | `3` |
-| `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` | Rejects queued transactions immediately after lock-contention failure instead of retrying them. | `false` |
-
-### `BLNK_QUEUE_ENABLE_HOT_LANE`
-
-Hot-lane routing is Blnk’s contention-aware queue routing strategy.
-
-Blnk tracks repeated lock-contention events for a specific `source|destination|currency` pair. When contention crosses the configured threshold, `BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD`, Blnk promotes that pair into a hot state. New queued transactions for that pair are then routed to a dedicated hot queue instead of the normal queue shards.
-
-This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
-
-### `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY`
-
-This setting changes what queued workers do after a lock-contention failure.
-
-When set to `true`, Blnk rejects the transaction immediately if the required lock is busy. When set to `false`, the worker treats the failure as retryable and retries it up to `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
-
-<Note>**Please note:** This setting does not affect `skip_queue=true` transactions.</Note>
-
-### Best practices
-
-- Enable hot-lane routing when only a few balance pairs keep colliding.
-- Use a shorter TTL for short bursts so pairs return to the normal queue sooner after traffic settles. Use a longer TTL when the same pairs stay hot for longer periods.
-- Lower the threshold if hot pairs are not moving into the hot lane fast enough. This makes Blnk promote contended pairs sooner instead of letting them keep slowing down the normal queue.
-- Only enable immediate rejection when you do not want Blnk to retry lock-contention failures.
 
 ---
 
