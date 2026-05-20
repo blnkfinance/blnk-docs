@@ -1,0 +1,149 @@
+---
+title: "Custom App security and best practices"
+sidebarTitle: "Best practices"
+icon: "shield-check"
+description: "Security and reliability checklist for Custom Apps before you ship to production in Blnk Cloud."
+og:title: "Custom App Security and Best Practices | Blnk Cloud Guide"
+og:description: "Security and reliability checklist for Custom Apps before you ship to production in Blnk Cloud."
+---
+
+import AppsHelp from "/cloud/snippets/apps-help.mdx";
+
+
+<Note>
+This feature is in private beta. If you want access, please [contact Support](mailto:support@blnkfinance.com?subject=Interested%20in%20Custom%20Apps).
+</Note>
+
+You have wired install, launch, and Cloud API calls. Before users rely on your app in production, use this page as a final checklist for security and reliability.
+
+---
+
+## How Blnk Cloud keeps apps safe
+
+Blnk Cloud is designed so your app never needs direct access to the Core. Learn more: [How apps work](/cloud/apps/how-apps-work).
+
+| Blnk Cloud handles | You handle in your app |
+| --- | --- |
+| A scoped API key for each install | Protecting and storing the API key safely |
+| Permission checks on every request | Securing the portal users see in the dashboard |
+| Cancelling the install if your app does not confirm in time | Checking granted permissions before sensitive actions |
+
+---
+
+## Protect secrets
+
+The install callback includes a scoped API key. Treat it like any production credential.
+
+- **Encrypt before you save it.** Do not store the key in plain text in your database. Use encryption or a secrets manager that fits your stack.
+- **Keep keys on the server.** Never put the scoped API key in the browser, in a `portal_url`, or in client-side code.
+- **Confirm installs quickly.** Return a successful response within about **10 seconds** of the install callback. If your app does not confirm in time, Blnk cancels the installation and revokes the key.
+- **Log safely.** Use install IDs and key prefixes for debugging. Do not log full API keys, portal session tokens, or third-party secrets.
+
+<Warning>
+If an install fails after you received the key, assume that key is no longer valid. Wait for a successful install event before using a new key.
+</Warning>
+
+---
+
+## Install and uninstall events
+
+Blnk sends install and uninstall events to your callback URL. See [Managing installs](/cloud/apps/installation) for payload fields and code examples.
+
+- **Process each event once.** Use the `idempotency_key` Blnk sends to detect duplicates. If you already handled an event, return success again without repeating side effects.
+- **On uninstall, stop using that install.** Mark the installation inactive, remove portal sessions, and stop background jobs that used that install’s API key.
+
+<Note>
+The install is already tied to the workspace and Cloud instance the user chose in the dashboard. 
+
+You do not need a separate organization field in the callback payload—save `installed_app_id` and `instance_id` so your backend knows which installation it is serving.
+</Note>
+
+---
+
+## Permissions
+
+Request only what your app needs in the manifest. Users can approve a subset of what you ask for.
+
+- **At runtime, trust `granted_permissions`.** That list from the install event is what the user approved. Check it before reads, writes, or alert actions even if your manifest requested more.
+- **Your app does not inherit user access.** A workspace admin installing your app does not give the app their personal permissions. The app can only do what was granted to that install.
+
+Supported permission scopes today:
+
+| Scope | What it allows |
+| --- | --- |
+| `data:read` | Read ledger data through Cloud. |
+| `data:write` | Perform write operations through Cloud APIs. |
+| `alerts:read` | Read alerts for the installed instance. |
+| `alerts:write` | Create and update alerts through Cloud. |
+
+---
+
+## Calling Blnk Cloud from your backend
+
+All Cloud API calls from your app should run on the server using the install’s scoped API key.
+
+- Use the Cloud base URL and authentication pattern from [App development](/cloud/apps/app-logic).
+- **Always include the correct `instance_id`** for the installation you are acting on. The key is bound to that instance.
+- Use the [Proxy API](/cloud/proxy/proxy-api) for Core actions and the [Data API](/cloud/proxy/data-api) for reads and filters. Use alerts endpoints for alert features—not the proxy.
+
+<Tip>
+Your portal UI should call **your** backend. Your backend calls Blnk. That keeps the scoped key off the user’s device.
+</Tip>
+
+---
+
+## URLs you register in the manifest
+
+When you [register your app](/cloud/apps/register-app), you provide callback and portal URLs that Blnk calls from the cloud.
+
+- **Production:** Use public **HTTPS** endpoints that Blnk can reach from the internet.
+- **Local development:** Use a tunnel service (for example ngrok) and register the HTTPS URL. `localhost` will not work when your app is embedded in the Cloud dashboard.
+- Blnk validates callback and portal URLs when you register the app. Invalid or unreachable URLs will block registration or launch.
+
+---
+
+## Portal and dashboard embedding
+
+When a user launches your app, Blnk opens your `portal_url` inside the dashboard. This section is the full policy for embedding safely. 
+
+See [Launch your app](/cloud/apps/launch-app) for the launch flow.
+
+### Content Security Policy
+
+Set this header on pages Blnk loads in the iframe:
+
+```http Content-Security-Policy wrap
+Content-Security-Policy: frame-ancestors 'self' https://blnkfinance.com https://*.blnkfinance.com
+```
+
+Only Blnk-owned domains can embed your portal. Other sites—including `localhost` in production—will be blocked by the browser. `'self'` keeps internal redirects (for example from `/portal/enter` to `/portal`) working inside the frame.
+
+### Portal sessions and URLs
+
+- Return a **new `portal_url` every time** someone launches the app from Cloud.
+- Use **short-lived portal sessions**—roughly 5 to 15 minutes is a good default. Validate the session on every portal page load and API request from the UI.
+- The `portal_url` is for your interface only. Do not put API keys, provider secrets, or other sensitive data in the link.
+
+---
+
+## Pre-launch checklist
+
+Before users rely on your app in production, work through this list:
+
+1. API keys are encrypted at rest
+2. No secrets in logs, portal URLs, or client-side code
+3. Install callback responds within about 10 seconds
+4. Handlers dedupe events with `idempotency_key`
+5. Uninstall disables the install and stops related jobs
+6. Manifest requests only needed scopes
+7. Backend checks `granted_permissions` before sensitive actions
+8. Every Cloud API call includes the correct `instance_id`
+9. Production URLs are public HTTPS endpoints Blnk can reach
+10. Local testing uses a tunnel, not raw `localhost` in the manifest
+11. `frame-ancestors` policy is set on portal pages
+12. Fresh portal URL and short-lived session on each launch
+13. Portal talks to your backend; backend talks to Blnk
+
+---
+
+<AppsHelp />
