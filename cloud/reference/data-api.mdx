@@ -1,0 +1,95 @@
+---
+title: "Data API"
+api: "GET /data/{resource}"
+description: "Read and query data from a Blnk Core instance via direct database access through Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+
+The Data API lets you read data stored in a Blnk Core instance through Blnk Cloud. Requests query the instance database directly and are commonly used for dashboards, analytics, reporting, and back-office operations.
+
+<Note>
+The Data API is read-only and queries the instance DB directly via our query agent. It does not forward requests to Core over HTTP. 
+
+For write operations, use the [Proxy API](/cloud/reference/proxy-api). For JSON body filters, use the [Filters API](/cloud/reference/filters-api).
+</Note>
+
+For a step-by-step walkthrough, see [Retrieving data](/cloud/proxy/data-api).
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/data/transactions?instance_id=YOUR_INSTANCE_ID&page=1&pageSize=20' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for an API key or OAuth access token. Requires the `data:read` scope. Create credentials with the `data:read` scope in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
+</ParamField>
+
+<ParamField query="instance_id" type="string" required>
+Unique identifier of the Blnk Core instance to query. Required on every Data API request.
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+Page number for paginated list requests.
+</ParamField>
+
+<ParamField query="pageSize" type="integer">
+Number of records per page. Defaults vary by resource: `30` for ledgers, `20` for balances, transactions, and identities.
+</ParamField>
+
+---
+
+### List resources
+
+All list paths are relative to `https://api.cloud.blnkfinance.com/data`.
+
+| Resource | Path |
+| --- | --- |
+| Ledgers | `/ledgers` |
+| Balances | `/balances` |
+| Transactions | `/transactions` |
+| Identities | `/identities` |
+| Reconciliations | `/reconciliations` |
+| Matching rules | `/matching-rules` |
+| External transactions | `/external-transactions` |
+
+<ResponseExample>
+```json Success
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 100.50,
+      "currency": "USD",
+      "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "destination": "bln_ANOTHER_BALANCE_ID",
+      "status": "APPLIED",
+      "created_at": "2024-11-26T08:40:00.000000000Z"
+    }
+  ],
+  "total": 42
+}
+```
+</ResponseExample>
+
+<ResponseField name="data" type="array" required>
+Array of records for the requested resource.
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+Total number of matching records.
+</ResponseField>
+
+<Tip>
+For request examples, detail routes, and query-parameter filters, see [Retrieving data](/cloud/proxy/data-api). To filter with a JSON body, use the [Filters API](/cloud/reference/filters-api).
+</Tip>
+
+---
+
+<NeedHelp />

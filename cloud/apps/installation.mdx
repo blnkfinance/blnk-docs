@@ -25,19 +25,22 @@ Here's what happens during installation:
 5. Your app stores the install details and returns a `2xx` response.
 6. If the response succeeds, the app becomes active in Cloud.
 
+<Tip>
+See [Best practices](/cloud/apps/best-practices) for how to protect API keys, handle retries safely, and prepare for production.
+</Tip>
+
 ---
 
 ## Handling the install event
 
-An install event tells your app that a user has connected it to a specific organization and instance.
+An install event tells your app that a user has connected it to a specific workspace and Cloud instance. The install is already scoped to that context in Blnk—you do not receive a separate organization field in the callback.
 
 Blnk Cloud sends a payload like this:
 
-```json install_payload.json {9}
+```json install_payload.json {8}
 {
   "installed_app_id": "instapp_...",
   "app_id": "app_...",
-  "organization_id": "org_...",
   "instance_id": "inst_...",
   "api_key": "blnk_...",
   "api_key_prefix": "blnk_abc",
@@ -50,7 +53,6 @@ Blnk Cloud sends a payload like this:
 | --- | --- |
 | `installed_app_id` | The ID for this specific app installation. |
 | `app_id` | The ID of the app that was installed. |
-| `organization_id` | The organization where the app was installed. |
 | `instance_id` | The Cloud instance where the app was installed. |
 | `api_key` | The scoped API key your backend uses to call Cloud APIs for this install. |
 | `api_key_prefix` | A safe prefix for identifying the key without exposing the full secret. |
@@ -75,7 +77,6 @@ app.post("/api/callback", async (req, res) => {
     await installs.save({
       installed_app_id: event.installed_app_id,
       app_id: event.app_id,
-      organization_id: event.organization_id,
       instance_id: event.instance_id,
       api_key_encrypted: encryptSecret(event.api_key),
       api_key_prefix: event.api_key_prefix,
@@ -101,11 +102,10 @@ When a user uninstalls your app, Blnk Cloud revokes the app's API key and sends 
 
 Your app should use this event to stop treating the installation as active. You can also clean up any resources you created for that organization or instance.
 
-```json uninstall_payload.json {7}
+```json uninstall_payload.json {6}
 {
   "installed_app_id": "instapp_...",
   "app_id": "app_...",
-  "organization_id": "org_...",
   "instance_id": "inst_...",
   "uninstalled_at": "2026-04-21T12:00:00Z",
   "idempotency_key": "uninstall:instapp_..."

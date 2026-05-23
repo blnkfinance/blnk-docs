@@ -1,0 +1,85 @@
+---
+sidebarTitle: "Get instruction"
+title: "Get instruction"
+description: "Retrieve a single watch instruction by its numeric ID."
+api: "GET http://localhost:8081/instructions/{id}"
+"og:title": "Get Instruction • Watch API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Use this endpoint to fetch one instruction by ID. The response includes the original DSL script and the compiled rule JSON.
+
+### Path
+
+<ParamField path="id" type="integer" required>
+  The numeric instruction ID.
+</ParamField>
+
+<RequestExample>
+```bash
+curl http://localhost:8081/instructions/1
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": 1,
+  "name": "HighValueTransaction",
+  "text": "rule HighValueTransaction {\n    description \"Review any transaction above $10,000\"\n    when amount > 10000\n    then review\n         score   0.5\n         reason  \"Amount exceeds threshold\"\n}",
+  "description": "Review any transaction above $10,000",
+  "dsl_json": "{\"name\":\"HighValueTransaction\",\"when\":[...],\"then\":{...}}",
+  "created_at": "2026-03-16T10:00:00Z",
+  "updated_at": "2026-03-16T10:00:00Z"
+}
+```
+
+```text 400
+Invalid instruction ID: abc
+```
+
+```text 404
+instruction with ID 99 not found
+```
+
+```text 500
+Failed to retrieve instruction
+```
+</ResponseExample>
+
+### Response fields
+
+<ResponseField name="id" type="integer">
+Auto-generated instruction ID.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Unique rule name.
+</ResponseField>
+
+<ResponseField name="text" type="string">
+Original Watch DSL script text.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Rule description from the DSL script, if provided.
+</ResponseField>
+
+<ResponseField name="dsl_json" type="string">
+Compiled rule JSON used during transaction evaluation.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+ISO 8601 timestamp of when the instruction was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+ISO 8601 timestamp of when the instruction was last updated.
+</ResponseField>
+
+---
+
+<NeedHelp />

@@ -1,0 +1,110 @@
+---
+sidebarTitle: "Get verdict"
+title: "Get transaction verdict"
+description: "Retrieve the Watch evaluation result for a transaction: final verdict, risk score, and reason."
+api: "GET http://localhost:8081/transactions/{transaction_id}"
+"og:title": "Get Transaction Verdict • Watch API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Use this to check if/how a transaction was classified and why.
+
+It returns the Watch evaluation result for a transaction—the consolidated verdict, risk score, and reason produced after rules are evaluated.
+
+### Path
+
+<ParamField path="transaction_id" type="string" required>
+  The transaction ID to retrieve the verdict for.
+</ParamField>
+
+<RequestExample>
+```bash
+curl http://localhost:8081/transactions/txn_001
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "transaction_id": "txn_001",
+  "amount": 15000,
+  "currency": "USD",
+  "source": "acct_sender_123",
+  "destination": "acct_receiver_456",
+  "reference": "payment_ref_001",
+  "description": "Wire transfer",
+  "status": "",
+  "created_at": "2026-03-16T09:00:05Z",
+  "meta_data": {
+    "kyc_tier": 1,
+    "source_country": "US",
+    "destination_country": "NG",
+    "evaluation_status": "completed",
+    "risk_evaluation_timestamp": "2026-03-16T09:00:05.123456789Z",
+    "dsl_verdicts": [
+      {
+        "rule_id": 1,
+        "verdict": "review",
+        "score": 0.5,
+        "reason": "Amount exceeds $10,000"
+      }
+    ],
+    "consolidated_risk_assessment": {
+      "final_risk_score": 0.5,
+      "final_verdict": "review",
+      "final_reason": "Amount exceeds $10,000",
+      "source_count": 1
+    }
+  }
+}
+```
+
+```text 404
+Transaction not found
+```
+
+```text 500
+Failed to retrieve transaction
+```
+</ResponseExample>
+
+### Response fields
+
+The transaction object mirrors the fields you sent on [inject](/watch/reference/inject-transaction). After evaluation completes, `meta_data` includes the verdict details:
+
+<ResponseField name="meta_data.dsl_verdicts" type="array">
+Per-rule evaluation results. Each item includes `rule_id`, `verdict`, `score`, and `reason`.
+</ResponseField>
+
+<ResponseField name="meta_data.consolidated_risk_assessment" type="object">
+Aggregated risk assessment across all matched rules.
+
+<Expandable title="Assessment properties">
+  <ResponseField name="final_risk_score" type="number">
+    Consolidated risk score between `0` and `1`, averaged from matched rule scores.
+  </ResponseField>
+
+  <ResponseField name="final_verdict" type="string">
+    Final decision: `allow`, `review`, or `block`. Scores at or above `0.7` map to `block`; lower matched scores default to `review`.
+  </ResponseField>
+
+  <ResponseField name="final_reason" type="string">
+    Combined reasons from all matched rules, joined with `;`.
+  </ResponseField>
+
+  <ResponseField name="source_count" type="integer">
+    Number of rules that matched and contributed to the assessment.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="meta_data.evaluation_status" type="string">
+Set to `completed` once Watch has finished evaluating the transaction.
+</ResponseField>
+
+---
+
+<NeedHelp />
