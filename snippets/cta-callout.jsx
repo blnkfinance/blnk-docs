@@ -27,10 +27,24 @@ export const CtaCallout = (props) => {
     }
 
     try {
+      window.posthog?.capture?.(trackingEvent, { href })
+    } catch {
+      /* non-fatal */
+    }
+
+    const gaPayload = { cta_href: href }
+
+    try {
+      window.gtag?.("event", trackingEvent, gaPayload)
+    } catch {
+      /* non-fatal */
+    }
+
+    try {
       window.dataLayer = window.dataLayer || []
       window.dataLayer.push({
         event: trackingEvent,
-        cta_href: href,
+        ...gaPayload,
       })
     } catch {
       /* non-fatal */
