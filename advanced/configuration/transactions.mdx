@@ -17,15 +17,12 @@ For queue names, sharding, retries, and hot-lane routing, see [Queue configurati
 
 ## Transaction settings
 
-Use these settings to control transaction batching, worker behavior, locking, and queued validation.
+Use these settings to control transaction batching, worker behavior, and queued validation.
 
 <CodeGroup>
 ```bash blnk.env
-BLNK_TRANSACTION_BATCH_SIZE=1000
 BLNK_TRANSACTION_MAX_QUEUE_SIZE=1000
 BLNK_TRANSACTION_MAX_WORKERS=10
-BLNK_TRANSACTION_LOCK_DURATION=1800
-BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3
 BLNK_TRANSACTION_INDEX_QUEUE_PREFIX=transactions
 BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
 ```
@@ -36,8 +33,6 @@ BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
     "batch_size": 1000,
     "max_queue_size": 1000,
     "max_workers": 10,
-    "lock_duration": 1800,
-    "lock_wait_timeout": 3,
     "index_queue_prefix": "transactions",
     "enable_queued_checks": false
   }
@@ -47,23 +42,10 @@ BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
 
 | | Description | Default |
 | :-- | :-- | :-- |
-| `BLNK_TRANSACTION_BATCH_SIZE` | Maximum number of items Blnk processes in a single transaction batch. | `1000` |
 | `BLNK_TRANSACTION_MAX_QUEUE_SIZE` | In-memory **channel buffer size** for the batch worker used by `ProcessTransactionInBatches` (not a Redis queue depth limit). | `1000` |
-| `BLNK_TRANSACTION_MAX_WORKERS` | Concurrency for **batch and reconciliation** transaction workers (e.g. `ProcessTransactionInBatches`). For the main Redis-backed **queued** transaction pool, use `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` and [hot-lane settings](/advanced/configuration/queue#hot-lane-routing-settings) instead. | `10` |
-| `BLNK_TRANSACTION_LOCK_DURATION` | How long a distributed balance lock can live once acquired, in **seconds** (non-zero values). | `1800` |
-| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | How long Blnk waits when acquiring **transaction balance locks** (shared path for direct and queued processing, including coalesced batch execution), in **seconds**. | `3` |
+| `BLNK_TRANSACTION_MAX_WORKERS` | Concurrency for **batch and reconciliation** transaction workers. For the main Redis-backed **queued** transaction pool, use `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` and [hot-lane settings](/advanced/configuration/queue#hot-lane-routing-settings) instead. | `10` |
 | `BLNK_TRANSACTION_INDEX_QUEUE_PREFIX` | **Collection / index name prefix** for **transaction search** documents (e.g. Typesense), not a Redis transaction queue name. | `transactions` |
 | `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` | Includes queued debits when loading balances for pre-transaction validation. | `false` |
-
-### `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT`
-
-This controls how long a transaction should wait when [acquiring a lock](/guides/concurrency#distributed-redis-balance-locks) before the transaction fails with a lock error.
-
-If locks are not acquired in time, the **operation fails with a lock error**. For a **direct** (`skip_queue=true`) request, that is typically returned to the client. For **queued** work, workers may retry or reject depending on [queue settings](/advanced/configuration/queue#queue-settings), e.g.  `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` and `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
-
-<Tip>
-**Tip:** Keep the default value unless transactions regularly outlive the lock window. This config is especially important for transactions that bypass the queue.
-</Tip>
 
 ---
 
@@ -114,6 +96,43 @@ Leaving it as `false` (the default) is safer because it helps catch duplicate or
 <Warning>
 **Please note:** Disabling reference checks may reduce some overhead, but it also increases the risk of duplicate-reference issues slipping through batched execution.
 </Warning>
+
+---
+
+## Lock settings
+
+Use these settings to control [distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) for direct and queued transaction processing, including coalesced batch execution.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_LOCK_DURATION=1800
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "lock_duration": 1800,
+    "lock_wait_timeout": 3
+  }
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_TRANSACTION_LOCK_DURATION` | How long a distributed balance lock can live once acquired, in **seconds** (non-zero values). | `1800` |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | How long Blnk waits when acquiring **transaction balance locks** (shared path for direct and queued processing, including coalesced batch execution), in **seconds**. | `3` |
+
+### `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT`
+
+This controls how long a transaction should wait when [acquiring a lock](/guides/concurrency#distributed-redis-balance-locks) before the transaction fails with a lock error.
+
+If locks are not acquired in time, the **operation fails with a lock error**. For a **direct** (`skip_queue=true`) request, that is typically returned to the client. For **queued** work, workers may retry or reject depending on [queue settings](/advanced/configuration/queue#queue-settings), e.g.  `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` and `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
+
+<Tip>
+**Tip:** Keep the default value unless transactions regularly outlive the lock window. This config is especially important for transactions that bypass the queue.
+</Tip>
 
 ---
 
