@@ -56,7 +56,7 @@ For regular operations, create API keys with specific permissions to enforce fin
 
 #### Create an API key
 
-This requires the master key authentication. See the [Create API key](/reference/create-api-key) reference for complete documentation.
+Use the master key to bootstrap keys for each owner. Starting in **0.14.3**, a non-master key with `api-keys:write` can also create keys, but only within its own owner context and with scopes it already holds. See the [Create API key](/reference/create-api-key) reference for complete documentation.
 
 ```json
 curl --request POST \
@@ -74,7 +74,7 @@ curl --request POST \
 | Parameter   | Description |
 | :--- | :--- |
 | `name`        | The name of the API key or service account. |
-| `owner`       | Unique identifier of the owner or service associated with the API key, provided by you. You can use any string value that identifies the owner (e.g., team name, service name, user ID). When you authenticate with a non-master API key, Blnk ignores a different `owner` value and uses the caller's owner instead. |
+| `owner`       | Owner identifier for the new key. You choose this value (e.g. team name, service name, user ID). It is stored as `owner_id` on the key record and defines the key's owner context. When you authenticate with a non-master API key, Blnk always uses the caller's `owner_id` — a different `owner` value in the request returns `403 Forbidden`. |
 | `scopes`      | A list of permissions granted to the API key (e.g., `ledgers:read`, `balances:write`). |
 | `expires_at`  | The expiration date and time for the API key in ISO 8601 format. |
 
@@ -82,15 +82,27 @@ curl --request POST \
 For managing API keys, see the [API Keys reference documentation](/reference/create-api-key): create, list, and delete API keys.
 </Tip>
 
-#### Delegated API key management
+#### Owner context
 
 <Info>Available on version 0.14.3 or later.</Info>
 
-Non-master API keys with `api-keys:read`, `api-keys:write`, or `api-keys:delete` can manage keys within their own owner context:
+Every stored API key belongs to an **owner context** — the `owner_id` field on the key record. When you call the API key management endpoints (create, list, revoke), Blnk checks whether the caller is allowed to act on that owner.
 
-- **Owner binding:** Blnk resolves the effective owner from the authenticated API key, not from caller-supplied `owner` values. Requests that target another owner return `403 Forbidden`.
+| Caller | What it can manage |
+| :-- | :-- |
+| **Master key** (`server.secret_key`) | Keys for **any** owner. Pass `owner` in the request to target a specific owner. The master key is a global server secret and is not bound to an `owner_id`. |
+| **Non-master API key** | Keys for **its own** `owner_id` only. Blnk resolves the effective owner from the authenticated key, not from caller-supplied `owner` values. |
+
+For example, key `k1` has `owner_id = merchant_a`.
+
+- `k1` can create, list, and revoke keys for `merchant_a`
+- `k1` cannot manage keys for `merchant_b`, even if the request body or query includes `"owner": "merchant_b"`
+- The master key can manage keys for both `merchant_a` and `merchant_b`
+
+Non-master keys with `api-keys:read`, `api-keys:write`, or `api-keys:delete` can delegate key management within their owner context, subject to two additional rules:
+
 - **Scope inheritance:** A non-master key can grant only scopes it already holds. You cannot mint a key with broader permissions than the caller.
-- **Master key unchanged:** The master key can still create, list, and revoke keys across all owners.
+- **No cross-owner access:** The effective owner always comes from the caller's `owner_id`, never from a different value in the request.
 
 #### Use the API key
 

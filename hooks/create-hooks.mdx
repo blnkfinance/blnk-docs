@@ -43,8 +43,7 @@ Header name is case-insensitive; examples on this page use `X-Blnk-Key` for read
 
 Blnk sends an HTTP **POST** to your `url` when a transaction matches the hook `type`. Delivery is **asynchronous**: hook failures are isolated from the core transaction (see [Introduction to hooks](/hooks/overview)).
 
-<RequestExample>
-```bash cURL
+```bash Request body
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
   -H "X-Blnk-Key: YOUR_MASTER_KEY" \
   -H "Content-Type: application/json" \
@@ -57,31 +56,17 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
     "retry_count": 3
   }'
 ```
-</RequestExample>
 
-### Request body
+| Field | Description | Required | Type |
+| :--- | :--- | :--- | :--- |
+| `name` | Human-readable label for operators and logs. Use something you can recognize in dashboards and audits. | Yes | `string` |
+| `url` | Absolute HTTPS (recommended) or HTTP URL that accepts **POST** requests from Blnk. | Yes | `string` |
+| `type` | Either `PRE_TRANSACTION` (before the transaction is applied) or `POST_TRANSACTION` (after). | Yes | `string` |
+| `active` | When `false`, Blnk skips this hook until you enable it again. | Yes | `boolean` |
+| `timeout` | Maximum time in **seconds** Blnk waits for your endpoint to respond per attempt. | Yes | `number` |
+| `retry_count` | Maximum **additional** attempts after a failed delivery (network error, timeout, or non-success HTTP status). Tune this with your idempotency strategy on the receiver side. | Yes | `number` |
 
-<ParamField body="name" type="string" required>
-  Human-readable label for operators and logs. Use something you can recognize in dashboards and audits.
-</ParamField>
-<ParamField body="url" type="string" required>
-  Absolute HTTPS (recommended) or HTTP URL that accepts **POST** requests from Blnk.
-</ParamField>
-<ParamField body="type" type="string" required>
-  Either `PRE_TRANSACTION` (before the transaction is applied) or `POST_TRANSACTION` (after).
-</ParamField>
-<ParamField body="active" type="boolean" required>
-  When `false`, Blnk skips this hook until you enable it again.
-</ParamField>
-<ParamField body="timeout" type="number" required>
-  Maximum time in **seconds** Blnk waits for your endpoint to respond per attempt.
-</ParamField>
-<ParamField body="retry_count" type="number" required>
-  Maximum **additional** attempts after a failed delivery (network error, timeout, or non-success HTTP status). Tune this with your idempotency strategy on the receiver side.
-</ParamField>
-
-<ResponseExample>
-```json Success
+```json Response structure
 {
   "hook_id": "hoo_2vN9KxQpA1wM4rL6yB8cD0eF",
   "name": "Pre-transaction validation",
@@ -92,7 +77,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
   "retry_count": 3
 }
 ```
-</ResponseExample>
 
 <Note>
 Exact JSON keys may vary slightly by Blnk version. Use the hook identifier returned by **your** instance for update, get, and delete calls.
@@ -232,72 +216,6 @@ Each delivery is a **POST** whose JSON body includes the transaction context. Ty
 <Warning>
   Treat `data` as the contract for your integration; fields depend on the transaction type and Blnk version. Always handle unknown keys safely when parsing JSON.
 </Warning>
-
----
-
-## Update a hook
-
-Send the same JSON shape as **Register a hook** to replace settings for an existing hook.
-
-<ParamField path="hook_id" type="string" required>
-  Identifier returned when the hook was created.
-</ParamField>
-
-<RequestExample>
-```bash cURL
-curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Pre-transaction validation",
-    "url": "https://api.example.com/blnk/hooks/pre-v2",
-    "type": "PRE_TRANSACTION",
-    "active": true,
-    "timeout": 45,
-    "retry_count": 5
-  }'
-```
-</RequestExample>
-
----
-
-## Retrieve a hook
-
-<RequestExample>
-```bash cURL
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_MASTER_KEY"
-```
-</RequestExample>
-
----
-
-## List hooks by type
-
-Returns hooks filtered to one lifecycle type.
-
-<ParamField query="type" type="string" required>
-  `PRE_TRANSACTION` or `POST_TRANSACTION`.
-</ParamField>
-
-<RequestExample>
-```bash cURL
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks?type=PRE_TRANSACTION" \
-  -H "X-Blnk-Key: YOUR_MASTER_KEY"
-```
-</RequestExample>
-
----
-
-## Delete a hook
-
-<RequestExample>
-```bash cURL
-curl -X DELETE "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_MASTER_KEY"
-```
-</RequestExample>
-
 
 ---
 
