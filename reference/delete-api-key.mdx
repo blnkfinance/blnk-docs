@@ -15,7 +15,9 @@ Use this endpoint to revoke unused or expired API keys to maintain good security
 Revoking an API key immediately revokes access, so ensure you update your applications with a new API key before revoking the old one.
 
 <Info>
-Available on version 0.10.1 or later. Requires master key authentication (the `server.secret_key` from your configuration).
+Available on version 0.10.1 or later. Requires the master key or an API key with `api-keys:delete` scope.
+
+Starting in **0.14.3**, non-master callers can revoke keys only within their own owner context. Passing a different `owner` returns `403 Forbidden`.
 </Info>
 
 <Key />
@@ -26,8 +28,8 @@ Available on version 0.10.1 or later. Requires master key authentication (the `s
 </ParamField>
 
 ### Query Parameters
-<ParamField query="owner" type="string" required>
-  Unique identifier of the owner. Required to revoke API keys for a specific owner.
+<ParamField query="owner" type="string">
+  Unique identifier of the owner. **Required** when you authenticate with the master key. When you authenticate with a non-master API key, omit this parameter to revoke within the caller's owner context, or pass a matching owner value.
 </ParamField>
 
 ### Response

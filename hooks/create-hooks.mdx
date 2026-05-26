@@ -8,7 +8,6 @@ description: "Use the Hooks API to register PRE_TRANSACTION and POST_TRANSACTION
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
-import Key from "/snippets/key.mdx";
 
 <Info>Available in version 0.8.4 and later.</Info>
 
@@ -21,17 +20,21 @@ For what hooks are for, when `PRE_TRANSACTION` vs `POST_TRANSACTION` runs, and p
 ## Prerequisites
 
 - **Blnk Core base URL** — e.g. `http://localhost:5001` or your deployed instance (replace `YOUR_BLNK_INSTANCE_URL` in the examples).
-- **API key** — required if your server enforces API key auth (see below).
+- **Master key** — required for all hook management requests as of **0.14.3**. Use `server.secret_key` from your Blnk configuration.
 - **HTTPS in production** — your hook `url` should use TLS in live environments.
 
 ---
 
 ## Authentication
 
-<Key />
+Hook management endpoints require the **master key** (`server.secret_key`). Send it in the `X-Blnk-Key` header.
+
+<Warning>
+Regular API keys cannot create, update, view, list, or delete hooks, even if they include `hooks` scopes. Requests authenticated with a non-master key return `403 Forbidden` with `"hook management requires master key"`.
+</Warning>
 
 <Note>
-Header name is case-insensitive; examples on this page use `X-Blnk-Key` for readability. The value must match the key configured for your Blnk instance.
+Header name is case-insensitive; examples on this page use `X-Blnk-Key` for readability.
 </Note>
 
 ---
@@ -43,7 +46,7 @@ Blnk sends an HTTP **POST** to your `url` when a transaction matches the hook `t
 <RequestExample>
 ```bash cURL
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Pre-transaction validation",
@@ -120,7 +123,7 @@ After a successful response, store `hook_id`. You need it for **Get**, **Update*
 <CodeGroup>
 ```bash PRE_TRANSACTION
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Pre-transaction validation",
@@ -133,7 +136,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
 ```
 ```bash POST_TRANSACTION
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Post-transaction notifications",
@@ -243,7 +246,7 @@ Send the same JSON shape as **Register a hook** to replace settings for an exist
 <RequestExample>
 ```bash cURL
 curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Pre-transaction validation",
@@ -263,7 +266,7 @@ curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
 <RequestExample>
 ```bash cURL
 curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_API_KEY"
+  -H "X-Blnk-Key: YOUR_MASTER_KEY"
 ```
 </RequestExample>
 
@@ -280,7 +283,7 @@ Returns hooks filtered to one lifecycle type.
 <RequestExample>
 ```bash cURL
 curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks?type=PRE_TRANSACTION" \
-  -H "X-Blnk-Key: YOUR_API_KEY"
+  -H "X-Blnk-Key: YOUR_MASTER_KEY"
 ```
 </RequestExample>
 
@@ -291,7 +294,7 @@ curl -X GET "http://YOUR_BLNK_INSTANCE_URL/hooks?type=PRE_TRANSACTION" \
 <RequestExample>
 ```bash cURL
 curl -X DELETE "http://YOUR_BLNK_INSTANCE_URL/hooks/YOUR_HOOK_ID" \
-  -H "X-Blnk-Key: YOUR_API_KEY"
+  -H "X-Blnk-Key: YOUR_MASTER_KEY"
 ```
 </RequestExample>
 

@@ -14,7 +14,7 @@ This guide will walk you through the steps to run your Blnk server in secure mod
 Before you start, please ensure that you have a working instance of Blnk Core:
 
 <Card title="Deploy Blnk" icon="sparkles" href="/home/install">
-        Start here to run your Blnk server
+Start here to run your Blnk server
 </Card>
 
 ---
@@ -74,13 +74,23 @@ curl --request POST \
 | Parameter   | Description |
 | :--- | :--- |
 | `name`        | The name of the API key or service account. |
-| `owner`       | Unique identifier of the owner or service associated with the API key, provided by you. You can use any string value that identifies the owner (e.g., team name, service name, user ID). |
+| `owner`       | Unique identifier of the owner or service associated with the API key, provided by you. You can use any string value that identifies the owner (e.g., team name, service name, user ID). When you authenticate with a non-master API key, Blnk ignores a different `owner` value and uses the caller's owner instead. |
 | `scopes`      | A list of permissions granted to the API key (e.g., `ledgers:read`, `balances:write`). |
 | `expires_at`  | The expiration date and time for the API key in ISO 8601 format. |
 
 <Tip>
 For managing API keys, see the [API Keys reference documentation](/reference/create-api-key): create, list, and delete API keys.
 </Tip>
+
+#### Delegated API key management
+
+<Info>Available on version 0.14.3 or later.</Info>
+
+Non-master API keys with `api-keys:read`, `api-keys:write`, or `api-keys:delete` can manage keys within their own owner context:
+
+- **Owner binding:** Blnk resolves the effective owner from the authenticated API key, not from caller-supplied `owner` values. Requests that target another owner return `403 Forbidden`.
+- **Scope inheritance:** A non-master key can grant only scopes it already holds. You cannot mint a key with broader permissions than the caller.
+- **Master key unchanged:** The master key can still create, list, and revoke keys across all owners.
 
 #### Use the API key
 
@@ -107,7 +117,7 @@ Scopes define what resources an API key can access and what actions it can perfo
 | `identities` | Identity management |
 | `transactions` | Transaction processing |
 | `balance-monitors` | Balance monitoring |
-| `hooks` | Webhook management |
+| `hooks` | Hook-related permissions (hook **management** endpoints require the master key as of 0.14.3) |
 | `api-keys` | API key management |
 | `search` | Search operations |
 | `reconciliation` | Reconciliation tasks |
@@ -160,6 +170,7 @@ Scopes define what resources an API key can access and what actions it can perfo
 * Regularly review API key permissions
 * Implement role-based access control (RBAC)
 * Maintain audit logs of key activities
+* Register and manage [transaction hooks](/hooks/create-hooks) with the master key only
 
 ### Monitoring and auditing
 
@@ -183,7 +194,7 @@ Authentication failures return specific error messages:
 | **Status Code** | **Message** |
 | :-- | :-- |
 | **401 Unauthorized** | "Authentication required. Use X-Blnk-Key header" <br/> "Invalid API key" <br/> "API key is expired or revoked" |
-| **403 Forbidden** | "Insufficient permissions for resource:action" <br/> "Unknown resource type" |
+| **403 Forbidden** | "Insufficient permissions for resource:action" <br/> "Unknown resource type" <br/> "cannot manage API keys for another owner" <br/> "cannot grant scopes broader than caller" <br/> "hook management requires master key" |
 
 ### Example error response
 
