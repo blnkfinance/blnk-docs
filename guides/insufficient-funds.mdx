@@ -31,14 +31,37 @@ Instead of waiting for a `transaction.rejected` webhook, you can implement a pre
 
 First, query the balance of the sender using:
 
+<CodeGroup>
 ```bash cURL
 curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
   -H 'Authorization: Bearer YOUR_API_KEY'
 ```
+```json Response {2,8,10}
+{
+    "balance": 50000,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 50000,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": 0,
+    "queued_debit_balance": 15000,
+    "precision": 100,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "idt_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": null
+}
+```
+</CodeGroup>
 
 Next, calculate your available balance: 
 ```
-available_balance = balance - queued_debit_balance
+available_balance = balance - inflight_debit_balance - queued_debit_balance
 ```
 
 * If the available balance is sufficient, proceed with posting your transaction.
