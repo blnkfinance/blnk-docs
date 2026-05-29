@@ -13,9 +13,9 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Most hot balance scenarios fall into one of the following patterns:
 
-1. **A → N:** one source balance funds many destination balances at the same time.
-2. **N → A:** many source balances fund one destination balance at the same time.
-3. **A → B and B → A:** the same two balances move funds back and forth at the same time.
+1. **A → N:** one source balance funds many destination balances concurrently.
+2. **N → A:** many source balances fund one destination balance concurrently.
+3. **A → B and B → A:** the same two balances exchange funds concurrently.
 
 This guide explains the different strategies Blnk natively supports to handle these patterns safely. We'll cover:
 
@@ -45,7 +45,7 @@ The difference is that the queue gives Blnk more ways to manage that contention 
 
 <Info>Available in version 0.14 and later.</Info>
 
-Consider a deposit workflow involving one internal source balance funding 1000+ destination balances at the same time, or vice versa, e.g. `A → N` or `N → A`.
+Consider a deposit workflow involving one internal source balance concurrently funding 1000+ destination balances, or vice versa, e.g. `A → N` or `N → A`.
 
 **With Coalescing**, Blnk identifies the queued transactions based on if they share the same `source`, `destination`, and `currency`, batches them in-memory, and applies them in a single commit. 
 
@@ -77,7 +77,7 @@ It is a good fit when:
 
 - It takes too long for your queue to finish processing the transactions.
 - You see repeated contention on the same balance pair, source, or destination.
-- Your system experiences frequent bursts, with many similar transactions happening at the same time.
+- Your system experiences frequent bursts, with many similar transactions happening concurrently.
 - You want to reduce repeated lock contention errors in the queue and improve throughput.
 
 Coalescing is less useful when:
