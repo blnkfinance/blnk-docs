@@ -36,8 +36,8 @@ The install callback includes a scoped API key. Treat it like any production cre
 
 - **Encrypt before you save it.** Do not store the key in plain text in your database. Use encryption or a secrets manager that fits your stack.
 - **Keep keys on the server.** Never put the scoped API key in the browser, in a `portal_url`, or in client-side code.
-- **Confirm installs quickly.** Return a successful response within about **10 seconds** of the install callback. If your app does not confirm in time, Blnk cancels the installation and revokes the key.
-- **Log safely.** Use install IDs and key prefixes for debugging. Do not log full API keys, portal session tokens, or third-party secrets.
+- `Confirm installs quickly.` Return a successful response within about `10 seconds` of the install callback. If your app does not confirm in time, Blnk cancels the installation and revokes the key.
+- `Log safely.` Use install IDs and key prefixes for debugging. Do not log full API keys, portal session tokens, or third-party secrets.
 
 <Warning>
 If an install fails after you received the key, assume that key is no longer valid. Wait for a successful install event before using a new key.
@@ -49,13 +49,13 @@ If an install fails after you received the key, assume that key is no longer val
 
 Blnk sends install and uninstall events to your callback URL. See [Managing installs](/cloud/apps/installation) for payload fields and code examples.
 
-- **Process each event once.** Use the `idempotency_key` Blnk sends to detect duplicates. If you already handled an event, return success again without repeating side effects.
-- **On uninstall, stop using that install.** Mark the installation inactive, remove portal sessions, and stop background jobs that used that install’s API key.
+- `Process each event once.` Use the `idempotency_key` Blnk sends to detect duplicates. If you already handled an event, return success again without repeating side effects.
+- `On uninstall, stop using that install.` Mark the installation inactive, remove portal sessions, and stop background jobs that used that install's API key.
 
 <Note>
 The install is already tied to the workspace and Cloud instance the user chose in the dashboard. 
 
-You do not need a separate organization field in the callback payload—save `installed_app_id` and `instance_id` so your backend knows which installation it is serving.
+You do not need a separate organization field in the callback payload"save `installed_app_id` and `instance_id` so your backend knows which installation it is serving.
 </Note>
 
 ---
@@ -64,8 +64,8 @@ You do not need a separate organization field in the callback payload—save `in
 
 Request only what your app needs in the manifest. Users can approve a subset of what you ask for.
 
-- **At runtime, trust `granted_permissions`.** That list from the install event is what the user approved. Check it before reads, writes, or alert actions even if your manifest requested more.
-- **Your app does not inherit user access.** A workspace admin installing your app does not give the app their personal permissions. The app can only do what was granted to that install.
+- `At runtime, trust `granted_permissions`.` That list from the install event is what the user approved. Check it before reads, writes, or alert actions even if your manifest requested more.
+- `Your app does not inherit user access.` A workspace admin installing your app does not give the app their personal permissions. The app can only do what was granted to that install.
 
 Supported permission scopes today:
 
@@ -80,14 +80,14 @@ Supported permission scopes today:
 
 ## Calling Blnk Cloud from your backend
 
-All Cloud API calls from your app should run on the server using the install’s scoped API key.
+All Cloud API calls from your app should run on the server using the install's scoped API key.
 
 - Use the Cloud base URL and authentication pattern from [App development](/cloud/apps/app-logic).
-- **Always include the correct `instance_id`** for the installation you are acting on. The key is bound to that instance.
-- Use the [Proxy API](/cloud/proxy/proxy-api) for Core actions and the [Data API](/cloud/proxy/data-api) for reads and filters. Use alerts endpoints for alert features—not the proxy.
+- `Always include the correct `instance_id`` for the installation you are acting on. The key is bound to that instance.
+- Use the [Proxy API](/cloud/proxy/proxy-api) for Core actions and the [Data API](/cloud/proxy/data-api) for reads and filters. Use alerts endpoints for alert features"not the proxy.
 
 <Tip>
-Your portal UI should call **your** backend. Your backend calls Blnk. That keeps the scoped key off the user’s device.
+Your portal UI should call **your** backend. Your backend calls Blnk. That keeps the scoped key off the user's device.
 </Tip>
 
 ---
@@ -116,12 +116,12 @@ Set this header on pages Blnk loads in the iframe:
 Content-Security-Policy: frame-ancestors 'self' https://blnkfinance.com https://*.blnkfinance.com
 ```
 
-Only Blnk-owned domains can embed your portal. Other sites—including `localhost` in production—will be blocked by the browser. `'self'` keeps internal redirects (for example from `/portal/enter` to `/portal`) working inside the frame.
+Only Blnk-owned domains can embed your portal. Other sites"including `localhost` in production"will be blocked by the browser. `'self'` keeps internal redirects (for example from `/portal/enter` to `/portal`) working inside the frame.
 
 ### Portal sessions and URLs
 
-- Return a **new `portal_url` every time** someone launches the app from Cloud.
-- Use **short-lived portal sessions**—roughly 5 to 15 minutes is a good default. Validate the session on every portal page load and API request from the UI.
+- Return a `new `portal_url` every time` someone launches the app from Cloud.
+- Use **short-lived portal sessions**"roughly 5 to 15 minutes is a good default. Validate the session on every portal page load and API request from the UI.
 - The `portal_url` is for your interface only. Do not put API keys, provider secrets, or other sensitive data in the link.
 
 ---
@@ -147,3 +147,4 @@ Before users rely on your app in production, work through this list:
 ---
 
 <AppsHelp />
+
