@@ -1,97 +1,335 @@
 ---
-title: "Deploy Blnk"
+title: "Deploy the Open-Source Blnk Core"
 sidebarTitle: "Deploy"
 icon: "cloud-upload"
-description: "Choose how to deploy and host Blnk for your use case."
+description: "Learn how to set up and deploy the open-source Blnk Core in your own environment."
+"og:title": "Deploy the Open-Source Blnk Core • Blnk Developer Documentation"
+"og:description": "Learn how to set up and deploy the open-source Blnk Core in your own environment."
 ---
 
-import { CtaCallout } from "/snippets/cta-callout.jsx";
+import SupportHelp from "/snippets/support-help.mdx";
 
-Blnk can be deployed in multiple ways, depending on your infrastructure, environment, and scale requirements. It is designed to run seamlessly across different setups, from local development environments to production systems handling high transaction volumes.
-
-| Deployment paths | Best for | Operations model |
-| --- | --- | --- |
-| Managed hosting | Teams that want the fastest path to a hosted Blnk instance | Blnk manages provisioning, hosting, and core infrastructure operations |
-| Private Cloud | Production teams that need a dedicated deployment, stronger isolation, or custom operating requirements | Blnk works with your team under a production license |
-| Self hosting | Teams that need to run Blnk inside their own infrastructure | Your team provisions, secures, scales, monitors, and upgrades the environment |
+Self-host the open-source Blnk Core in infrastructure your team controls. You are responsible for deployment, upgrades, configuration, and day-to-day operations across each environment you maintain—dev, staging, production, and beyond.
 
 ---
 
-## Managed hosting on Blnk Cloud
+## Deployment guide
 
-This is the fastest way to run Blnk without managing infrastructure work yourself. Everything is handled for you: server, workers, databases, and more.
+There are two ways to self-host Blnk Core in your environment: via [Docker](#using-docker) or [Kubernetes](#using-kubernetes).
 
-Use it when you:
+<Tabs>
+<Tab title="Docker">
 
-- Want to launch a sandbox without setting up infrastructure yourself
-- Run a small to mid-sized workload without building and operating your own hosting stack
-- Are testing integrations or validating product flows
-- Need production traffic at a scale where managed hosting keeps operational overhead low
+Before you start, make sure you have the following set up (required):
 
-See the [Blnk pricing page](https://www.blnkfinance.com/pricing?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Fdeploy) for a full comparison of plans, features, and what's included in each tier.
+1. Managed PostgreSQL instance
+2. Managed Redis instance
+3. Docker or k8s installed 
+4. Linux server (Ubuntu 20.04 LTS or newer recommended)
 
-<Note>
-Every Blnk Cloud account starts with a **5-day free trial**, so you can explore the platform before choosing a plan.
-</Note>
+<Steps>
+  <Step title="Set up your configuration file">
+    This is the configuration file that will be used to start the Blnk Core, it can be the `blnk.json` file or environment variables. 
+    
+    For more options, go to [Blnk Configuration](/advanced/configuration/overview).
 
-<CtaCallout
-  title="Start with managed Cloud"
-  href="https://cloud.blnkfinance.com/auth/sign-up?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Fdeploy-new"
-  buttonLabel="Sign up for Cloud"
-  trackingEvent="clicked_cloud_signup"
->
-  Create a Blnk Cloud account and launch a managed Blnk environment without setting up your own infrastructure.
-</CtaCallout>
+    <CodeGroup>
+    ```json blnk.json
+    {
+      "project_name": "Blnk",
+      "data_source": {
+        "dns": "postgres://<user>:<password>@<host>:5432/blnk?sslmode=require"
+      },
+      "redis": {
+        "dns": "redis://:<password>@<host>:6379"
+      },
+      "server": {
+        "port": "5001"
+      },
+      "queue": {
+        "monitoring_port": "5004"
+      }
+    }
+    ```
+
+    ```bash .env
+    BLNK_PROJECT_NAME=Blnk
+    BLNK_DATA_SOURCE_DNS=postgres://<user>:<password>@<host>:5432/blnk?sslmode=require
+    BLNK_REDIS_DNS=redis://:<password>@<host>:6379
+    BLNK_SERVER_PORT=5001
+    BLNK_QUEUE_MONITORING_PORT=5004
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="Create a 'docker-compose.yml' file">
+    Add the following configuration to provision the server, worker, and supporting services if needed. You can use the default `docker-compose.yml` file in the [Blnk repository](https://github.com/blnkfinance/blnk/blob/main/docker-compose.yaml).
+
+    <Note>
+      For live deployments, we recommend connecting your managed Postgres and Redis databases. This means you can exclude the `redis` and `postgres` services from your `docker-compose.yaml` file.
+    </Note>
+
+    ```yaml docker-compose.yaml [expandable]
+    version: "3.8"
+
+    services:
+      server:
+        image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.10.2}
+        container_name: server
+        restart: on-failure
+        entrypoint: ["/bin/sh", "-c"]
+        command:
+          - "blnk migrate up && blnk start"
+        environment:
+          TZ: ${TZ:-Etc/UTC}
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+        ports:
+          - "5001:5001"
+          - "80:80"
+          - "443:443"
+        depends_on:
+          - jaeger
+        volumes:
+          - ./blnk.json:/blnk.json
+
+      worker:
+        image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.10.2}
+        container_name: worker
+        restart: on-failure
+        entrypoint: ["blnk", "workers"]
+        environment:
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+        depends_on:
+          - jaeger
+        volumes:
+          - ./blnk.json:/blnk.json
+
+      jaeger:
+        image: jaegertracing/all-in-one:latest
+        container_name: jaeger
+        ports:
+          - "16686:16686" # Jaeger UI
+          - "4317:4317" # OTLP gRPC
+          - "4318:4318" # OTLP HTTP
+        environment:
+          - COLLECTOR_OTLP_ENABLED=true
+        healthcheck:
+          test: ["CMD", "wget", "--spider", "http://localhost:16686"]
+          interval: 10s
+          timeout: 5s
+          retries: 3
+    ```
+
+    <Check>
+      For PaaS deployments like Railway, Render, etc., you'll need to deploy each service separately, with their respective start commands.
+    </Check>
+  </Step>
+  <Step title="Start deployment">
+    Run these commands in your terminal to start and validate your deployment:
+
+    ```shell
+    # Start all services
+    docker compose up -d
+    
+    # Verify deployment status
+    docker ps
+
+    # Monitor service logs
+    docker logs -f server worker
+    ```
+
+    <Check>
+      Blnk should be running and accessible at port 5001 and available for requests.
+    </Check>
+  </Step>
+</Steps>
+
+</Tab>
+<Tab title="Kubernetes">
+
+Blnk provides Kubernetes manifests to help you deploy and operate Blnk in containerized environments.
+
+Use the official manifests and instructions:
+
+<Card href="https://github.com/blnkfinance/blnk/tree/main/infrastructure/k8s-manifests" icon="folder-git" title="infrastructure/k8s-manifests">
+  Blnk Kubernetes Manifests
+</Card>
+
+After `kubectl` is installed, run:
+
+```bash kubectl
+kubectl apply -f infrastructure/k8s-manifests/namespace.yaml
+kubectl apply -f infrastructure/k8s-manifests
+```
+
+</Tab>
+</Tabs>
 
 ---
 
-## Private Cloud with production license
+## Back-office management
 
-Private Cloud is for teams that need a dedicated production deployment with stronger isolation, custom infrastructure requirements, or a closer operational partnership with Blnk.
+Once your Blnk Core is deployed in your own environment, you can connect it to a Blnk Cloud account to operate your ledger from a back-office dashboard.
 
-A production license gives you the full Blnk stack, [Core](/home/install), [Cloud dashboard](/cloud/start/guide), and [Watch](/watch/quick-start), in a closed environment that only your team can access.
+<img src="/cloud/img/transactions/transactions-table.png" alt="Transactions table" className="rounded-lg" />
 
-<Note>
-You choose where that environment runs: on-prem in your infrastructure, or in a dedicated cloud instance that Blnk manages for you.
-</Note>
-
-Private Cloud is a strong fit for teams with strict deployment, compliance, security, and data residency requirements.
-
-<CtaCallout
-  title="Want a dedicated setup?"
-  href="https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Fdeploy"
-  buttonLabel="Get production license"
-  trackingEvent="clicked_production_license"
->
-  Get the Blnk production license for on-prem or private deployments, including the ledger, reconciliation tooling, and back-office dashboard.
-</CtaCallout>
+<Card title="Connect Core to Blnk Cloud" href="/cloud/instances/create" icon="link">
+  Learn how to connect your Core to Blnk Cloud
+</Card>
 
 ---
 
-## Self-hosting
+## Troubleshooting
 
-Self-hosting lets you run Blnk Core for free in infrastructure your team controls.
+Use this guide to troubleshoot your deployment when Blnk fails to start or you experience errors in your deployment.
 
-Your team is responsible for managing deployment, upgrades, configuration, and day-to-day operations manually across each environment you maintain—dev, staging, production, and beyond. That includes provisioning infrastructure, applying updates, monitoring uptime, and handling backups and recovery.
+<AccordionGroup>
+<Accordion title="Server fails to start or cannot reach PostgreSQL">
+**Common symptoms:** Connection refused or timeout errors in server logs; messages referencing `data_source` or `BLNK_DATA_SOURCE_DNS`.
 
-Use it when you:
+<Steps>
+<Step title="Verify your connection string">
+Confirm `BLNK_DATA_SOURCE_DNS` (or `data_source.dns` in `blnk.json`) includes the correct host, port, database name, user, and password.
 
-- Want full control over how each environment is deployed and configured
-- Have the team capacity to operate and maintain Blnk yourself
+Set `sslmode` to match your provider; most managed Postgres instances require `sslmode=require`.
 
-<CtaCallout
-  title="Host Blnk yourself"
-  href="/advanced/self-hosting"
-  buttonLabel="View self-hosting guide"
-  trackingEvent="clicked_self_hosting_guide"
->
-  Follow the self-hosting guide to deploy Blnk Core in infrastructure managed by your team.
-</CtaCallout>
+<Warning>
+Many hosted Postgres providers expose two URLs: a **direct** connection and a **pooled** connection. 
+
+If Blnk keeps timing out or disconnecting under load, confirm you are using the **direct** connection string for `BLNK_DATA_SOURCE_DNS`.
+</Warning>
+
+See [Database settings](/advanced/configuration/data-stores#database-settings).
+</Step>
+
+<Step title="Check network access">
+Allow inbound traffic from your Blnk host to PostgreSQL. Review security groups, firewall rules, and private networking (VPC peering, subnet routing) between the container host and your database.
+
+<Warning>
+If Postgres is only reachable on a private network, running `psql` from your laptop may succeed or fail independently of the container. Test from the same network context as the Blnk server.
+</Warning>
+</Step>
+
+<Step title="Test the connection">
+From a host on the same network as Blnk, run:
+
+```bash
+psql "$BLNK_DATA_SOURCE_DNS" -c "SELECT 1"
+```
+
+A successful response confirms credentials and reachability.
+</Step>
+</Steps>
+</Accordion>
+
+<Accordion title="Migrations fail on startup">
+**Common symptoms:** The server container exits immediately; logs show errors from `blnk migrate up`.
+
+The Docker Compose example runs migrations before starting the API (`blnk migrate up && blnk start`). Migration failures prevent the server from listening on port `5001`.
+
+<Steps>
+<Step title="Confirm database permissions">
+The database user must be able to create and alter tables in the target database. Read-only or restricted roles cause migration failures.
+
+<Check>
+Grant the application user `CREATE` and `ALTER` privileges on the `blnk` database (or your chosen database name).
+</Check>
+</Step>
+
+<Step title="Inspect migration logs">
+Read the server container output:
+
+```bash
+docker logs server
+```
+
+Look for the first migration error—later messages often repeat the same root cause.
+</Step>
+
+<Step title="Run migrations manually">
+Re-run migrations in the foreground to capture the full error:
+
+```bash
+docker compose run --rm server blnk migrate up
+```
+</Step>
+</Steps>
+</Accordion>
+
+<Accordion title="Transactions stay queued or workers are idle">
+**Common symptoms:** The API accepts requests but transactions remain `QUEUED`; the worker container restarts or logs Redis connection errors.
+
+Workers depend on Redis for queueing and coordination. The server and worker must share the same Redis and [queue configuration](/advanced/configuration/queue).
+
+<Steps>
+<Step title="Verify Redis connectivity">
+Confirm `BLNK_REDIS_DNS` (or `redis.dns` in `blnk.json`) points at your managed Redis instance. Include the password in the URL when required:
+
+```bash
+redis://:<password>@<host>:6379
+```
+
+For TLS-enabled Redis, use `rediss://` and review [Redis configuration](/advanced/configuration/data-stores#redis-configuration).
+</Step>
+
+<Step title="Confirm the worker is running">
+Both `server` and `worker` services must be up:
+
+```bash
+docker ps
+docker logs -f worker
+```
+
+On Kubernetes, check worker pod status and logs alongside the server deployment.
+</Step>
+
+<Step title="Check queue health">
+If you configured `BLNK_QUEUE_MONITORING_PORT` (default `5004`), open the monitoring dashboard or probe the endpoint:
+
+```bash
+curl -s http://localhost:5004/monitoring
+```
+
+See [Queue monitoring](/advanced/monitoring-port) for dashboard details and metrics.
+</Step>
+</Steps>
+</Accordion>
+
+<Accordion title="API is unreachable or containers keep restarting">
+**Common symptoms:** `docker ps` shows a restarting `server` or `worker` container; requests to port `5001` time out.
+
+<Steps>
+<Step title="Review container status">
+List all containers, including stopped ones:
+
+```bash
+docker ps -a
+docker logs -f server worker
+```
+
+Restart loops usually point to configuration, migration, or dependency errors in the logs.
+</Step>
+
+<Step title="Confirm port exposure">
+Verify port `5001` is published in `docker-compose.yaml` and allowed through your host firewall and cloud security groups.
+
+<Check>
+`curl http://localhost:5001/health` (or your health endpoint) should respond when the server is healthy.
+</Check>
+</Step>
+
+<Step title="Validate configuration is loaded">
+When using `blnk.json`, confirm the file is mounted into both `server` and `worker` containers. When using environment variables, set them on both services—mismatched config between server and worker causes subtle queue issues.
+
+See [Blnk configuration](/advanced/configuration/overview).
+</Step>
+</Steps>
+
+<Tip>
+For PaaS deployments (Railway, Render, Fly.io), run the server and worker as separate services with identical configuration and the correct start commands for each.
+</Tip>
+</Accordion>
+</AccordionGroup>
 
 ---
 
-## Questions?
-
-If you are interested and have more questions about our Blnk Cloud product, send us an email at [support@blnkfinance.com](mailto:support@blnkfinance.com) or [schedule a call with us](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Fdeploy) to discuss your use case.
-
-Happy to help you get started!
+<SupportHelp />
