@@ -1,0 +1,240 @@
+---
+title: "Launcher Configuration"
+sidebarTitle: "Launcher"
+icon: "rocket"
+description: "Configure the enterprise launcher, shared infrastructure, and service lifecycle."
+og:title: "Launcher Configuration | Blnk Cloud Guide"
+og:description: "Configure the enterprise launcher, shared infrastructure, and service lifecycle."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Configure the enterprise launcher and `ENTERPRISE_*` environment variables. The launcher reads `.env` and `enterprise.env` from the runtime root; existing shell environment variables take precedence over file values.
+
+---
+
+## Shared infrastructure
+
+```bash enterprise.env
+ENTERPRISE_POSTGRES_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+ENTERPRISE_REDIS_URL=redis://redis:6379/0
+ENTERPRISE_CORE_DB_NAME=blnk
+ENTERPRISE_PLANE_DB_NAME=blnk-cloud
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | Connection string for your Postgres server. The launcher derives Core and Plane database settings from this value. | None | Yes |
+| `ENTERPRISE_REDIS_URL` | Connection string for your Redis instance. The launcher derives Core Redis settings from this value. | None | Yes |
+| `ENTERPRISE_CORE_DB_NAME` | Database name the launcher uses for Blnk Core. | `blnk` | No |
+| `ENTERPRISE_PLANE_DB_NAME` | Database name the launcher uses for Plane. | `blnk-cloud` | No |
+
+### `ENTERPRISE_POSTGRES_URL`
+
+The URL must reach the Postgres server that hosts your Core and Plane databases. Point the connection string at an admin database, such as `postgres`; the launcher rewrites the database name to `ENTERPRISE_CORE_DB_NAME` for Core and `ENTERPRISE_PLANE_DB_NAME` for Plane.
+
+---
+
+## License
+
+```bash enterprise.env
+ENTERPRISE_LICENSE_B64=
+ENTERPRISE_LICENSE_FILE=/run/secrets/blnk-enterprise.lic
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from your license email. | None | Conditional |
+| `ENTERPRISE_LICENSE_FILE` | Path to a `.lic` license file inside the container or mounted volume. | None | Conditional |
+
+### `ENTERPRISE_LICENSE_B64` and `ENTERPRISE_LICENSE_FILE`
+
+`ENTERPRISE_LICENSE_B64` takes precedence when both are set. Use `ENTERPRISE_LICENSE_B64` for inline env configuration, or set `ENTERPRISE_LICENSE_FILE` to a mounted `.lic` file path.
+
+If neither is set, the launcher checks `license.lic` in the runtime root, then `/run/secrets/blnk-enterprise.lic`, then `/etc/blnk/license.lic`.
+
+---
+
+## Public access
+
+```bash enterprise.env
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_PUBLIC_PORT` | Port Plane listens on inside the container. Map this port on your host or load balancer. | `3000` | No |
+| `ENTERPRISE_PUBLIC_URL` | Full URL where users open the dashboard, including the scheme (`http://` or `https://`). | `http://127.0.0.1:{ENTERPRISE_PUBLIC_PORT}` | No |
+
+### `ENTERPRISE_PUBLIC_URL`
+
+Include the scheme (`https://` in production). Add this value to `CORS_ORIGINS` on the [Auth & security](/cloud/configuration/plane/auth-and-security) page. Plane uses it for password reset links when `LOCAL_PASSWORD_RESET_URL` is unset.
+
+---
+
+## Branding
+
+```bash enterprise.env
+ENTERPRISE_BRAND_NAME=Acme Ledger
+ENTERPRISE_BRAND_PRIMARY_COLOR=#0F6FFF
+ENTERPRISE_BRAND_HELPER_LINKS_JSON={"ledgers":"https://docs.acme.com/ledgers","balances":"https://docs.acme.com/balances"}
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_BRAND_NAME` | Display name exposed through Plane's `/branding.js` payload. | `Blnk` | No |
+| `ENTERPRISE_BRAND_PRIMARY_COLOR` | Primary brand color exposed through `/branding.js`. Use a six-digit hex value, with or without `#`. Invalid values fall back to the default. | `#0979C6` | No |
+| `ENTERPRISE_BRAND_HELPER_LINKS_JSON` | JSON object that overrides Cloud learn-more links. Supported keys: `ledgers`, `ledgerDetails`, `balances`, `transactions`, `identities`, `reconciliation`, `alerts`. | Built-in Blnk links | No |
+
+---
+
+## UI controls
+
+```bash enterprise.env
+ENTERPRISE_ENABLE_INSTANCE_MANAGEMENT=false
+ENTERPRISE_SHOW_WHATS_NEW=false
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_ENABLE_INSTANCE_MANAGEMENT` | Exposed through `/branding.js` as `allowInstanceManagement`. The current packaged UI does not hide or show instance actions solely from this value. | `false` | No |
+| `ENTERPRISE_SHOW_WHATS_NEW` | Exposed through `/branding.js` as `showWhatsNew`. The current packaged UI does not hide or show the Watch settings link solely from this value. | `false` | No |
+
+---
+
+## Bootstrap behavior
+
+```bash enterprise.env
+ENTERPRISE_AUTO_PROVISION=true
+ENTERPRISE_AUTO_INSTANCE_NAME=Enterprise Core
+ENTERPRISE_AUTO_PROVISION_INTERVAL=15s
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_AUTO_PROVISION` | Plane provisioner flag for automatic billing, managed Core instance registration, and query-agent bootstrap data. In launcher mode, the launcher currently passes `true` to Plane. | `true` | No |
+| `ENTERPRISE_AUTO_INSTANCE_NAME` | Display name for the auto-provisioned Core instance. | `Enterprise Core` | No |
+| `ENTERPRISE_AUTO_PROVISION_INTERVAL` | How often Plane reconciles auto-provisioned resources. Go duration format. | `15s` | No |
+| `ENTERPRISE_AUTO_PROVISION_PLAN` | Billing plan assigned during auto-provisioning. Accepted values: `PRODUCTION_MONTHLY`, `PRODUCTION_YEARLY`, `SANDBOX_MONTHLY`, `SANDBOX_YEARLY`. | `PRODUCTION_MONTHLY` | No |
+
+When `ENTERPRISE_AUTO_PROVISION` is `false` in a direct Plane runtime, Plane still creates billing records but skips managed instance and query-agent bootstrap setup. In launcher-managed Production License deployments, use `ENTERPRISE_SKIP_QUERY_AGENT=true` to prevent query-agent startup.
+
+---
+
+## Internal ports
+
+Override only when another service already binds these ports inside the container.
+
+```bash enterprise.env
+ENTERPRISE_CORE_PORT=5001
+ENTERPRISE_WORKERS_PORT=5004
+ENTERPRISE_WATCH_PORT=8081
+ENTERPRISE_UI_PORT=3001
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_CORE_PORT` | Port Blnk Core listens on inside the container. | `5001` | No |
+| `ENTERPRISE_WORKERS_PORT` | Port for queue workers and the monitoring dashboard. | `5004` | No |
+| `ENTERPRISE_WATCH_PORT` | Port Blnk Watch listens on inside the container. | `8081` | No |
+| `ENTERPRISE_UI_PORT` | Port the Cloud Dashboard UI binds to inside the container. | `3001` | No |
+
+---
+
+## Lifecycle and service control
+
+```bash enterprise.env
+ENTERPRISE_STARTUP_TIMEOUT=2m
+ENTERPRISE_SHUTDOWN_TIMEOUT=20s
+ENTERPRISE_SKIP_MIGRATIONS=false
+ENTERPRISE_SKIP_WORKERS=false
+ENTERPRISE_SKIP_WATCH=false
+ENTERPRISE_SKIP_QUERY_AGENT=false
+ENTERPRISE_SKIP_UI_BUILD=true
+ENTERPRISE_SINGLE_QUERY_AGENT=true
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_STARTUP_TIMEOUT` | Maximum time to wait for services to become ready on startup. Go duration format. | `2m` | No |
+| `ENTERPRISE_SHUTDOWN_TIMEOUT` | Maximum time to wait for graceful shutdown. Go duration format. | `20s` | No |
+| `ENTERPRISE_SKIP_MIGRATIONS` | Skip database migrations on startup. | `false` | No |
+| `ENTERPRISE_SKIP_WORKERS` | Do not start queue workers. | `false` | No |
+| `ENTERPRISE_SKIP_WATCH` | Do not start Blnk Watch. | `false` | No |
+| `ENTERPRISE_SKIP_QUERY_AGENT` | Do not start the query agent. | `false` | No |
+| `ENTERPRISE_SKIP_UI_BUILD` | Skip UI build step at startup. Defaults to `true` in packaged Docker images, `false` in source deployments. | Packaged: `true` | No |
+| `ENTERPRISE_SINGLE_QUERY_AGENT` | Plane provisioner flag for single-agent allocation. In launcher mode, the launcher currently passes `true` to Plane and starts one query-agent process after the first bootstrap file is written. | `true` | No |
+
+### Skip flags
+
+- `ENTERPRISE_SKIP_MIGRATIONS` — Use only when migrations are managed externally. Skipping migrations on a fresh deploy prevents schema setup.
+- `ENTERPRISE_SKIP_WORKERS` — Disables background transaction, webhook, and index processing.
+- `ENTERPRISE_SKIP_WATCH` — Disables rule evaluation and alert delivery.
+- `ENTERPRISE_SKIP_QUERY_AGENT` — Disables query-agent startup. See [Query agent](/cloud/configuration/query-agent).
+
+---
+
+## Query agent launcher
+
+The launcher starts the query agent after Plane writes a bootstrap file with `CONNECTION_KEY`. It derives `DB_URL` from the Core database URL and passes `CONNECTION_URL` and `HTTP_PORT` to the query-agent process.
+
+```bash enterprise.env
+ENTERPRISE_QUERY_AGENT_PORT=9090
+ENTERPRISE_QUERY_AGENT_CONNECTION_URL=ws://127.0.0.1:3000/ws/agent
+ENTERPRISE_QUERY_AGENT_HEALTH_URL=http://127.0.0.1:9090/ready
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_QUERY_AGENT_PORT` | Port the query agent listens on inside the container. | `9090` | No |
+| `ENTERPRISE_QUERY_AGENT_CONNECTION_URL` | WebSocket URL the query agent uses to connect to Plane. | `ws(s)://{ENTERPRISE_PUBLIC_URL host}/ws/agent` | No |
+| `ENTERPRISE_QUERY_AGENT_HEALTH_URL` | Readiness URL the launcher polls before marking the query agent ready. | `http://127.0.0.1:{ENTERPRISE_QUERY_AGENT_PORT}/ready` | No |
+
+---
+
+## Health and upstream URLs
+
+Override only when services run on non-default hosts or ports.
+
+```bash enterprise.env
+ENTERPRISE_CORE_UPSTREAM_URL=http://127.0.0.1:5001
+ENTERPRISE_CORE_HEALTH_URL=http://127.0.0.1:5001/health
+ENTERPRISE_WORKERS_HEALTH_URL=http://127.0.0.1:5004/monitoring
+ENTERPRISE_WATCH_UPSTREAM_URL=http://127.0.0.1:8081
+ENTERPRISE_WATCH_HEALTH_URL=http://127.0.0.1:8081/health
+ENTERPRISE_UI_UPSTREAM_URL=http://127.0.0.1:3001
+ENTERPRISE_UI_HEALTH_URL=http://127.0.0.1:3001/
+ENTERPRISE_PLANE_HEALTH_URL=http://127.0.0.1:3000/health
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_CORE_UPSTREAM_URL` | Internal Core URL. The launcher passes this to Plane as `CORE_UPSTREAM_URL`. | `http://127.0.0.1:{ENTERPRISE_CORE_PORT}` | No |
+| `ENTERPRISE_CORE_HEALTH_URL` | Core readiness URL polled by the launcher. | `{ENTERPRISE_CORE_UPSTREAM_URL}/health` | No |
+| `ENTERPRISE_WORKERS_HEALTH_URL` | Workers readiness URL polled by the launcher and passed to Plane as `WORKERS_HEALTH_URL` when workers are enabled. | `http://127.0.0.1:{ENTERPRISE_WORKERS_PORT}/monitoring` | No |
+| `ENTERPRISE_WATCH_UPSTREAM_URL` | Internal Watch URL. The launcher passes this to Plane as `WATCH_UPSTREAM_URL` when Watch is enabled. | `http://127.0.0.1:{ENTERPRISE_WATCH_PORT}` | No |
+| `ENTERPRISE_WATCH_HEALTH_URL` | Watch readiness URL polled by the launcher. | `http://127.0.0.1:{ENTERPRISE_WATCH_PORT}/health` | No |
+| `ENTERPRISE_UI_UPSTREAM_URL` | Internal UI URL. The launcher passes this to Plane as `UI_UPSTREAM_URL`. | `http://127.0.0.1:{ENTERPRISE_UI_PORT}` | No |
+| `ENTERPRISE_UI_HEALTH_URL` | UI readiness URL polled by the launcher. | `{ENTERPRISE_UI_UPSTREAM_URL}/` | No |
+| `ENTERPRISE_PLANE_HEALTH_URL` | Plane readiness URL polled by the launcher. | `{ENTERPRISE_PUBLIC_URL}/health` | No |
+
+---
+
+## Watch integration
+
+```bash enterprise.env
+ENTERPRISE_WATCH_DIR=./watch
+ENTERPRISE_WATCH_CMD=
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `ENTERPRISE_WATCH_DIR` | Directory containing the Watch binary and scripts inside the container. | `./watch` | No |
+| `ENTERPRISE_WATCH_CMD` | Custom command to start Watch. Leave unset to use the launcher default. | None | No |
+
+The launcher attempts to auto-fill `ALERT_WEBHOOK_URL` and `ALERT_WEBHOOK_API_KEY` before starting Watch. This requires `ENTERPRISE_POSTGRES_URL`, at least one Plane organization, and an owner user. If those records do not exist yet, Watch starts without alert webhook forwarding. For rule sources, sync settings, and webhook tuning, see [Watch configuration](/watch/configuration).
+
+---
+
+<NeedHelp />

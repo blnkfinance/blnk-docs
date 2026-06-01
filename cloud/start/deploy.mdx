@@ -7,92 +7,274 @@ description: "Learn how to configure and deploy the Blnk production license in y
 
 import { CtaCallout } from "/snippets/cta-callout.jsx";
 
-Blnk can be deployed in multiple ways, depending on your infrastructure, environment, and scale requirements. It is designed to run seamlessly across different setups, from local development environments to production systems handling high transaction volumes.
+The Production License lets you run the full Blnk stack, including Core, Cloud Dashboard, and Watch, in a dedicated environment. You can deploy it in your own infrastructure or run it in a dedicated cloud environment managed by Blnk.
 
-| Deployment paths | Best for | Operations model |
-| --- | --- | --- |
-| Managed hosting | Teams that want the fastest path to a hosted Blnk instance | Blnk manages provisioning, hosting, and core infrastructure operations |
-| Private Cloud | Production teams that need a dedicated deployment, stronger isolation, or custom operating requirements | Blnk works with your team under a production license |
-| Self hosting | Teams that need to run Blnk inside their own infrastructure | Your team provisions, secures, scales, monitors, and upgrades the environment |
-
----
-
-## Managed hosting on Blnk Cloud
-
-This is the fastest way to run Blnk without managing infrastructure work yourself. Everything is handled for you: server, workers, databases, and more.
-
-Use it when you:
-
-- Want to launch a sandbox without setting up infrastructure yourself
-- Run a small to mid-sized workload without building and operating your own hosting stack
-- Are testing integrations or validating product flows
-- Need production traffic at a scale where managed hosting keeps operational overhead low
-
-See the [Blnk pricing page](https://www.blnkfinance.com/pricing?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Fstart%2Fdeploy) for a full comparison of plans, features, and what's included in each tier.
-
-<Note>
-Every Blnk Cloud account starts with a **5-day free trial**, so you can explore the platform before choosing a plan.
-</Note>
+Built for teams that need stronger security controls, data residency support, custom tooling, or a closer operational partnership with Blnk.
 
 <CtaCallout
-  title="Start with managed Cloud"
-  href="https://cloud.blnkfinance.com/auth/sign-up?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Fstart%2Fdeploy-new"
-  buttonLabel="Sign up for Cloud"
-  trackingEvent="clicked_cloud_signup"
->
-  Create a Blnk Cloud account and launch a managed Blnk environment without setting up your own infrastructure.
-</CtaCallout>
-
----
-
-## Private Cloud with production license
-
-Private Cloud is for teams that need a dedicated production deployment with stronger isolation, custom infrastructure requirements, or a closer operational partnership with Blnk.
-
-A production license gives you the full Blnk stack, [Core](/home/install), [Cloud dashboard](/cloud/start/guide), and [Watch](/watch/quick-start), in a closed environment that only your team can access.
-
-<Note>
-You choose where that environment runs: on-prem in your infrastructure, or in a dedicated cloud instance that Blnk manages for you.
-</Note>
-
-Private Cloud is a strong fit for teams with strict deployment, compliance, security, and data residency requirements.
-
-<CtaCallout
-  title="Want a dedicated setup?"
+  title="Want a dedicated Production setup?"
   href="https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Fstart%2Fdeploy"
   buttonLabel="Get production license"
   trackingEvent="clicked_production_license"
 >
-  Get the Blnk production license for on-prem or private deployments, including the ledger, reconciliation tooling, and back-office dashboard.
+  Get a Production License tailored to your deployment needs.
 </CtaCallout>
+
+This doc provides a step-by-step guide for deploying the Production License in your own infrastructure. Let's get started!
 
 ---
 
-## Self-hosting the production license
+## Deployment guide
 
-Self-hosting with a production license lets you run the full Blnk stack—Core, Cloud dashboard, and Watch—in infrastructure your team controls.
+Use this guide to deploy Blnk Production License on AWS, GCP, Azure, or any cloud provider.
 
-Your team is responsible for managing deployment, upgrades, configuration, and day-to-day operations manually across each environment you maintain—dev, staging, production, and beyond. That includes provisioning infrastructure, applying updates, monitoring uptime, and handling backups and recovery.
+Before you begin, make sure you have:
 
-Use it when you:
+1. A managed Postgres instance
+2. A managed Redis instance
 
-- Need the full Blnk stack in your own infrastructure
-- Have strict deployment, compliance, security, or data residency requirements
-- Have the team capacity to operate and maintain Blnk yourself
+<Steps>
+<Step title="Get your Production License">
+After purchasing a Production License, you'll receive an email with your license details.
 
-<CtaCallout
-  title="Self-host the open-source Core"
-  href="/home/deploy"
-  buttonLabel="View Core deploy guide"
-  trackingEvent="clicked_core_deploy_guide"
->
-  To self-host only the open-source Blnk Core for free, follow the Core deploy guide.
-</CtaCallout>
+Your license details will include a base64-encoded license string, which is the recommended way to activate your license. You may also receive a license file named `blnk-enterprise.lic`. Both contain the same license information and enabled features.
+</Step>
+<Step title="Prepare your Postgres">
+Create two databases in your Postgres instance: one for Blnk Core and one for Blnk Cloud. Keeping these databases separate isolates ledger data from Cloud management data.
+
+```sql
+CREATE DATABASE blnk;
+CREATE DATABASE "blnk-cloud";
+```
+</Step>
+<Step title="Pull the Docker image">
+Pull the enterprise image from GitHub Container Registry:
+
+```bash Docker
+docker pull ghcr.io/blnkfinance/blnk-enterprise:latest
+```
+
+<Note>
+Using a custom image? Use the image name provided in your license email or onboarding instructions.
+</Note>
+</Step>
+<Step title="Add primary environment variables">
+Create an environment file, such as `.env` or `enterprise.env`.
+
+Add the following variables and replace the placeholder values with your Postgres URL, Redis URL, and license string.
+
+```dotenv .env wrap
+ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
+ENTERPRISE_REDIS_URL=redis://host:6379/0
+ENTERPRISE_LICENSE_B64=your_base64_license_string
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | Connection string for your Postgres instance. |
+| `ENTERPRISE_REDIS_URL` | Connection string for your Redis instance. |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from Step 1. Takes precedence over `ENTERPRISE_LICENSE_FILE`. To use a file instead, set `ENTERPRISE_LICENSE_FILE` to the path of your `.lic` file. |
+</Step>
+<Step title="Set up public app config">
+Add these variables to the same environment file. They configure how users access the Cloud Dashboard.
+
+```dotenv .env wrap
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_PUBLIC_PORT` | Port exposed by the enterprise launcher for the Cloud Dashboard. |
+| `ENTERPRISE_PUBLIC_URL` | Public URL where users access the Cloud Dashboard, including `https://`. Use this value when configuring `CORS_ORIGINS` in the next step. |
+</Step>
+<Step title="Set up Plane Environment variables">
+Plane powers the Cloud Dashboard and stores its data in the `blnk-cloud` database.
+
+Add these variables to the same environment file you created in the previous step.
+
+```dotenv .env wrap
+ENVIRONMENT=production
+CORS_ORIGINS=https://ledger.yourdomain.com
+
+BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+JWT_SECRET=your_long_random_secret_here
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENVIRONMENT` | Set to `production` for Production License deployments. This enables production-only checks and Sentry monitoring. |
+| `CORS_ORIGINS` | Comma-separated list of browser origins allowed to access the Plane API. Do not include spaces. Make sure `ENTERPRISE_PUBLIC_URL` is included. |
+| `BLNK_ENCRYPTION_KEY` | A unique 32-character key used to encrypt sensitive data, such as instance connection keys. Do not change this value after deployment, or previously encrypted data may become unreadable. |
+| `JWT_SECRET` | A strong random secret used to sign and verify authentication tokens. |
+</Step>
+<Step title="Set up SMTP">
+Configure SMTP so Plane can send emails from your deployment, including login alerts, password resets, and Cloud notifications.
+
+If you do not already have an SMTP provider, services such as [Resend](https://resend.com), [SendGrid](https://sendgrid.com), or [Amazon SES](https://aws.amazon.com/ses/) can be used. After configuring your provider, add the SMTP credentials to the same `.env` file.
+
+<Note>
+SMTP is optional. You can skip this step if you do not need email notifications yet.
+</Note>
+
+```dotenv .env wrap
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_AUTH_USERNAME=your_username
+SMTP_AUTH_PASSWORD=your_password
+SMTP_TLS_MODE=auto
+SMTP_SKIP_TLS_VERIFY=false
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `EMAIL_PROVIDER` | Which email transport Plane uses. Set to `smtp`, or leave unset to use SMTP when `SMTP_HOST` is set. |
+| `SMTP_HOST` | Hostname of your SMTP server. |
+| `SMTP_PORT` | Port your SMTP server listens on. |
+| `SMTP_AUTH_USERNAME` | Username for SMTP authentication. |
+| `SMTP_AUTH_PASSWORD` | Password or API key for SMTP authentication. |
+| `SMTP_TLS_MODE` | How Plane negotiates TLS with the SMTP server. |
+| `SMTP_SKIP_TLS_VERIFY` | Whether to skip TLS certificate verification. Use `false` in production. |
+</Step>
+<Step title="Run the enterprise image">
+Start the stack with the image you pulled earlier. Map the host port to `ENTERPRISE_PUBLIC_PORT`, e.g. `8080` if you used the value from the public app config step.
+
+```bash Docker
+docker run -d \
+  --name blnk-enterprise \
+  -p 8080:8080 \
+  --env-file ./enterprise.env \
+  ghcr.io/blnkfinance/blnk-enterprise:latest
+```
+
+<Note>
+If you use a license file instead of `ENTERPRISE_LICENSE_B64`, mount `blnk-enterprise.lic` into the container and set `ENTERPRISE_LICENSE_FILE` to its path in your env file.
+</Note>
+</Step>
+<Step title="Verify your deployment">
+Confirm the stack started and is reachable.
+
+1. Check that the container is running:
+
+    ```bash
+    docker ps
+    ```
+
+2. Call the health endpoint on the mapped port:
+
+    <CodeGroup>
+    ```bash Health check
+    curl http://localhost:8080/health
+    ```
+    ```json 200
+    {
+      "status": "healthy"
+    }
+    ```
+    </CodeGroup>
+
+3. Open `ENTERPRISE_PUBLIC_URL` in your browser. If you are testing locally before DNS is ready, use `http://localhost:8080` and ensure that origin is listed in `CORS_ORIGINS`.
+
+    <Check>
+    Your deployment is ready when the health check succeeds and the Cloud Dashboard loads.
+    </Check>
+</Step>
+</Steps>
 
 ---
 
-## Questions?
+## API base URL and paths
 
-If you are interested and have more questions about our Blnk Cloud product, send us an email at [support@blnkfinance.com](mailto:support@blnkfinance.com) or [schedule a call with us](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Fstart%2Fdeploy) to discuss your use case.
+The Production License image runs **Blnk Core**, **Blnk Cloud**, and **Blnk Watch** together. How you reach each service depends on which API you are calling.
 
-Happy to help you get started!
+Your public entry point is `ENTERPRISE_PUBLIC_URL` (the same host and port you mapped in the `docker run` step, for example `https://ledger.yourdomain.com`).
+
+<Tabs>
+<Tab title="Cloud" icon="cloud">
+
+Cloud APIs are served on their normal routes at `ENTERPRISE_PUBLIC_URL`. They are the same paths documented in the [Cloud API reference](/cloud/reference/overview), including:
+
+| Prefix | Purpose |
+| :-- | :-- |
+| `/proxy` | Forward writes and reads to a Core instance (use `instance_id` on the query string) |
+| `/data` | Read instance data with query filters |
+| `/alerts`, `/mcp` | Alerts and MCP integrations |
+
+```bash cURL example
+curl -X POST 'https://ledger.yourdomain.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "My Ledger"}'
+```
+
+<Note>
+Authenticate with API keys or OAuth as described in the Cloud reference. Replace `https://ledger.yourdomain.com` with your `ENTERPRISE_PUBLIC_URL`.
+</Note>
+
+</Tab>
+<Tab title="Core" icon="layers">
+
+The launcher starts a Core instance inside the package and exposes it on the public app under the `/core` prefix. Take any path from the [Core API reference](/reference/overview) and prepend `/core`.
+
+| Core reference path | Production License path |
+| :-- | :-- |
+| `POST /ledgers` | `POST {ENTERPRISE_PUBLIC_URL}/core/ledgers` |
+| `GET /balances` | `GET {ENTERPRISE_PUBLIC_URL}/core/balances` |
+| `GET /health` | `GET {ENTERPRISE_PUBLIC_URL}/core/health` |
+
+```bash cURL example
+curl -X GET 'https://ledger.yourdomain.com/core/health'
+```
+
+<Note>
+Use this path when you want to speak to the bundled Core directly, without going through Cloud Proxy or `instance_id`.
+</Note>
+</Tab>
+<Tab title="Watch" icon="eye">
+
+Watch listens on `ENTERPRISE_WATCH_PORT` inside the container (default `8081`). 
+
+Use the paths in the [Watch API reference](/watch/reference/overview) at `http://your-host:8081`. For example, `POST /inject` becomes `POST http://your-host:8081/inject`.
+
+Publish that port when you run the image so you can reach Watch from outside the container:
+
+```bash Docker
+docker run -d \
+  --name blnk-enterprise \
+  -p 8080:8080 \
+  -p 8081:8081 \
+  --env-file ./enterprise.env \
+  ghcr.io/blnkfinance/blnk-enterprise:latest
+```
+
+<Tip>You can also put a reverse proxy in front of Watch if you want a custom hostname or TLS termination.</Tip>
+
+</Tab>
+</Tabs>
+
+---
+
+## What's next
+
+Your deployment is now running. Sign in at `ENTERPRISE_PUBLIC_URL`, set up your workspace, and start using the Cloud Dashboard. 
+
+A Core instance will be deployed automatically and ready to use once you're in. You can also connect more Blnk Core instances to the same dashboard if you wish to manage multiple environments.
+
+<CardGroup cols={2}>
+<Card title="Connect instance" icon="cable" href="/cloud/instances/create">
+Learn how to connect multiple Core instances to your dashboard through the Query Agent.
+</Card>
+
+<Card title="Working with Blnk Core" icon="book-open" href="/home/install">
+Start building your application with the Blnk Core.
+</Card>
+
+<Card title="Navigating Cloud" icon="sparkles" href="/cloud/start/guide">
+Operate your financial data with the Cloud Dashboard.
+</Card>
+
+<Card title="Advanced configurations" icon="settings" href="/cloud/configuration/overview">
+Customize your deployment with optional environment variables.
+</Card>
+</CardGroup>

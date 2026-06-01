@@ -1,0 +1,62 @@
+---
+title: "Kubernetes Configuration"
+sidebarTitle: "Kubernetes"
+icon: "container"
+description: "Configure Plane Kubernetes deployment provider settings."
+og:title: "Kubernetes Configuration | Blnk Cloud Guide"
+og:description: "Configure Plane Kubernetes deployment provider settings."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Configure Plane to provision Blnk Core instances on a Kubernetes cluster. Kubernetes is the default deployment provider when `DEPLOYMENT_DEFAULT_PROVIDER` is unset, but provider startup is disabled unless Kubernetes configuration or DigitalOcean credentials are present.
+
+---
+
+## Cluster connection
+
+```bash enterprise.env
+KUBECONFIG="$HOME/.kube/config"
+KUBERNETES_CONTEXT=
+KUBERNETES_CLUSTER_NAME=minikube
+KUBERNETES_SERVICE_TYPE=LoadBalancer
+KUBERNETES_CLUSTER_ID=4b8429ce-c7f4-4d31-aca6-1123288df6c8
+DO_TOKEN=
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `KUBECONFIG` | Path to the kubeconfig file Plane uses to connect to the cluster. `KUBERNETES_KUBECONFIG` is accepted as an alias. | None | Conditional |
+| `KUBERNETES_CONTEXT` | kubeconfig context override. | None | No |
+| `KUBERNETES_CLUSTER_NAME` | Name of the target Kubernetes cluster. Defaults to `default`, but DigitalOcean-backed credentials require a real name when `KUBERNETES_CLUSTER_ID` is unset. | `default` | Conditional |
+| `KUBERNETES_SERVICE_TYPE` | Kubernetes `Service` type for deployed instances. Accepted values: `LoadBalancer` and `NodePort`. | `LoadBalancer` | No |
+| `KUBERNETES_CLUSTER_ID` | UUID identifying the cluster in Plane. Required with DigitalOcean-backed cluster credentials when `KUBERNETES_CLUSTER_NAME` is unset. | None | Conditional |
+| `DO_TOKEN` | DigitalOcean token. Enables DigitalOcean-backed Kubernetes credentials and managed database provisioning. | None | Conditional |
+
+Plane can also run in-cluster when `KUBERNETES_SERVICE_HOST` is set.
+
+---
+
+## Deployment defaults
+
+```bash enterprise.env
+DEPLOYMENT_DEFAULT_PROVIDER=kubernetes
+KUBERNETES_RESOURCE_PROFILE=standard
+KUBERNETES_NAMESPACE_PREFIX=blnk
+KUBERNETES_PROXY_TARGET_HOST=
+KUBERNETES_DO_KUBECONFIG_EXPIRY_SECONDS=0
+SHARED_SANDBOX_DATABASE_ID=16bd8e2c-29b6-4b62-8bac-92dba9cbcde1
+```
+
+| Variable | Description | Default | Required |
+| :-- | :-- | :-- | :-- |
+| `DEPLOYMENT_DEFAULT_PROVIDER` | Default deployment provider for new instances. Accepted values include `kubernetes` and `digitalocean`. Empty values normalize to `kubernetes`. | `kubernetes` | No |
+| `KUBERNETES_RESOURCE_PROFILE` | Resource sizing profile for Kubernetes deployments. Accepted values: `standard`, `default`, `local`, `dev`, and `minikube`. | `standard` | No |
+| `KUBERNETES_NAMESPACE_PREFIX` | Prefix used when creating Kubernetes namespaces. | `blnk` | No |
+| `KUBERNETES_PROXY_TARGET_HOST` | Optional host override used when building the service target for deployed instances. | None | No |
+| `KUBERNETES_DO_KUBECONFIG_EXPIRY_SECONDS` | DigitalOcean kubeconfig expiry in seconds. `0` means no explicit expiry override. Must be zero or greater. | `0` | No |
+| `SHARED_SANDBOX_DATABASE_ID` | Shared database cluster ID for sandbox instances on DigitalOcean-backed Kubernetes. | None | No |
+
+---
+
+<NeedHelp />
