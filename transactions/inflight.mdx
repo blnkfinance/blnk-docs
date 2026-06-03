@@ -114,7 +114,8 @@ PUT /transactions/inflight/{transaction_id}
 2. Triggers balance updates, and clears the inflight balances.
 3. Creates new transaction record with `APPLIED` status.
 
-```bash cURL {5} wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
   -H 'X-Blnk-Key: <api-key>' \
   -H 'Content-Type: application/json' \
@@ -122,6 +123,19 @@ curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
     "status": "commit"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.updateStatus('{transaction_id}', {
+  status: 'commit',
+});
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateStatus{
+  Status: blnkgo.InflightStatusCommit,
+})
+```
+</CodeGroup>
 
 In our example, after commit:
 
@@ -138,7 +152,8 @@ In our example, after commit:
 
 <span id="partial-commits" />
 
-```bash cURL {5-6} wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
   -H 'X-Blnk-Key: <api-key>' \
   -H 'Content-Type: application/json' \
@@ -147,6 +162,21 @@ curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
     "amount": 40
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.updateStatus('{transaction_id}', {
+  status: 'commit',
+  amount: 40,
+});
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateStatus{
+  Status: blnkgo.InflightStatusCommit,
+  Amount: 40,
+})
+```
+</CodeGroup>
 
 <Note>Partial commit amount must not exceed remaining inflight amount.</Note>
 
@@ -160,7 +190,8 @@ Our example after a partial commit:
 </Tab>
 <Tab title="Void inflight" icon="circle-x">
 
-```bash cURL {5} wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
   -H 'X-Blnk-Key: <api-key>' \
   -H 'Content-Type: application/json' \
@@ -168,6 +199,19 @@ curl -X PUT http://localhost:5001/transactions/inflight/{transaction_id} \
     "status": "void"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.updateStatus('{transaction_id}', {
+  status: 'void',
+});
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateStatus{
+  Status: blnkgo.InflightStatusVoid,
+})
+```
+</CodeGroup>
 
 * Indicates transaction conditions were not met.
 * Creates new transaction record with `VOID` status.
@@ -194,6 +238,7 @@ Bulk inflight updates are for independently-created inflight transactions. For i
 <Tabs>
 <Tab title="Bulk commit" icon="circle-check">
 
+<CodeGroup>
 ```bash cURL wrap
 curl -X POST http://localhost:5001/transactions/inflight/bulk/commit \
   -H 'X-Blnk-Key: <api-key>' \
@@ -209,9 +254,19 @@ curl -X POST http://localhost:5001/transactions/inflight/bulk/commit \
   }'
 ```
 
+```javascript TypeScript wrap
+
+```
+
+```go Go wrap
+
+```
+</CodeGroup>
+
 </Tab>
 <Tab title="Bulk void" icon="circle-x">
 
+<CodeGroup>
 ```bash cURL wrap
 curl -X POST http://localhost:5001/transactions/inflight/bulk/void \
   -H 'X-Blnk-Key: <api-key>' \
@@ -223,6 +278,15 @@ curl -X POST http://localhost:5001/transactions/inflight/bulk/void \
     ]
   }'
 ```
+
+```javascript TypeScript wrap
+
+```
+
+```go Go wrap
+
+```
+</CodeGroup>
 
 </Tab>
 </Tabs>
@@ -312,6 +376,7 @@ You can verify transaction status using the Search API by querying with the appr
 <Tab title="When skip_queue = false (default)">
 Use the **queued transaction ID** to search for its child transactions.
 
+<CodeGroup>
 ```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
@@ -322,12 +387,36 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "status:[APPLIED, VOID]"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '<queued_transaction_id>',
+    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
+    filter_by: 'status:[APPLIED, VOID]',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:        "<queued_transaction_id>",
+    QueryBy:  "meta_data.QUEUED_PARENT_TRANSACTION",
+    FilterBy: "status:[APPLIED, VOID]",
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Tab>
 
 <Tab title="When skip_queue = true">
 Use the **inflight transaction ID** and search for its child transactions:
 
-```bash cURl wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -336,6 +425,24 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "query_by": "parent_transaction"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '<inflight_transaction_id>', query_by: 'parent_transaction' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:       "<inflight_transaction_id>",
+    QueryBy: "parent_transaction",
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Tab>
 </Tabs>
 
@@ -439,6 +546,7 @@ Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Des
     <Step title="Update Inflight">
         To commit or void all transactions at once, call the [Update Inflight endpoint](/reference/update-inflight) and pass the root-level `transaction_id` from your API response as the path parameter.
 
+        <CodeGroup>
         ```bash cURL wrap
         curl -X PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_transaction} \
           -H 'X-Blnk-Key: <api-key>' \
@@ -447,6 +555,19 @@ Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Des
             "status": "commit"
           }'
         ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.Transactions.updateStatus('{parent_transaction}', {
+          status: 'commit',
+        });
+        ```
+
+        ```go Go wrap
+        txn, resp, err := client.Transaction.Update("{parent_transaction}", blnkgo.UpdateStatus{
+          Status: blnkgo.InflightStatusCommit,
+        })
+        ```
+        </CodeGroup>
     </Step>
 </Steps>
 

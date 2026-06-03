@@ -19,7 +19,7 @@ Filters work with any search query, including the wildcard `*`, and support vari
 Here's a basic filter that demonstrates the most common pattern:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -28,6 +28,21 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "status:=APPLIED && currency:=USD"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 
 ```json Response
 {
@@ -46,7 +61,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   ]
 }
 ```
-</CodeGroup>
 
 ---
 
@@ -56,7 +70,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 
 Match field values exactly:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -66,11 +81,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### Partial match (`:`)
 
 Match fields containing the value:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -79,6 +110,21 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "description:payment && reference:ref_001"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'description:payment && reference:ref_001' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "description:payment && reference:ref_001"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 
 ### Comparison operators
 
@@ -91,7 +137,8 @@ Compare numeric values and dates:
 | `<` | Less than | `created_at:<1720396800` |
 | `<=` | Less than or equal | `balance:<=50000` |
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -101,11 +148,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'amount:>1000 && balance:<=50000' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "amount:>1000 && balance:<=50000"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### Range operator (`[min..max]`)
 
 Filter values within a range:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -115,6 +178,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    filter_by: 'balance:[1000..50000] && created_at:[1720310400..1720396800]',
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:        "*",
+    FilterBy: "balance:[1000..50000] && created_at:[1720310400..1720396800]",
+  },
+  blnkgo.Balances,
+)
+```
+</CodeGroup>
+
 <Info>
 Use Unix timestamps for date ranges. The example above filters for July 7-8, 2024.
 </Info>
@@ -123,7 +207,8 @@ Use Unix timestamps for date ranges. The example above filters for July 7-8, 202
 
 Match any value from a list:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -133,11 +218,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:[APPLIED, INFLIGHT] && currency:[USD, EUR]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### AND operator (`&&`)
 
 Combine multiple conditions where ALL must be true:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -147,11 +248,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD && amount:>1000' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD && amount:>1000"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### Partial match (`:`)
 
 Match fields containing the value:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -161,11 +278,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'description:payment && reference:ref_001' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "description:payment && reference:ref_001"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### Not equal (`:!=`)
 
 Exclude specific values:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -175,6 +308,21 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'currency:!=USD && status:!=REJECTED' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "currency:!=USD && status:!=REJECTED"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ---
 
 ## Common patterns
@@ -183,7 +331,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 <Step title="Filter by transaction status">
 Find all successful and pending transactions.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -192,12 +341,28 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "status:[APPLIED, INFLIGHT]"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:[APPLIED, INFLIGHT]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:[APPLIED, INFLIGHT]"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Filter transactions by amount range">
 Find USD transactions between \$1,000 and \$10,000.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -206,12 +371,28 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "amount:[1000..10000] && currency:=USD"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'amount:[1000..10000] && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "amount:[1000..10000] && currency:=USD"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Filter by creation date">
 Find transactions created within a specific date range using Unix timestamps.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -220,12 +401,28 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "filter_by": "created_at:[1720310400..1720396800]"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'created_at:[1720310400..1720396800]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "created_at:[1720310400..1720396800]"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Filter by multiple currencies">
 Find balances in major currencies with positive amounts.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -234,6 +431,21 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
     "filter_by": "currency:[USD, EUR, GBP] && balance:>0"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'currency:[USD, EUR, GBP] && balance:>0' },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "currency:[USD, EUR, GBP] && balance:>0"},
+  blnkgo.Balances,
+)
+```
+</CodeGroup>
 </Step>
 </Steps>
 

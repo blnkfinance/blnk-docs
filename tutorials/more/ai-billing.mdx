@@ -50,15 +50,33 @@ Each customer needs a wallet to track their usage and balance. Each wallet will 
 
 [Create a ledger](/reference/create-ledger) for customer wallets. This groups all customer balances in one place:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl --request POST \
   --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
+  --header 'X-Blnk-Key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{
     "name": "Customers Ledger"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customers Ledger',
+});
+```
+
+```go Go wrap
+ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+  Name: "Customers Ledger",
+})
+```
+
+```bash Blnk CLI wrap
+blnk ledgers create
+```
+</CodeGroup>
 
 <Info>
   Save the `ledger_id` from the response. You'll need it to create balances for customer wallets.
@@ -71,16 +89,36 @@ curl --request POST \
 
 [Create a customer identity](/reference/create-identity) to link all balances to the same customer:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl --request POST \
   --url http://localhost:5001/identities \
-  --header 'X-blnk-key: <api-key>' \
+  --header 'X-Blnk-Key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{
     "first_name": "Xavier",
     "last_name": "Woods"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Identity.create({
+  first_name: 'Xavier',
+  last_name: 'Woods',
+});
+```
+
+```go Go wrap
+identity, resp, err := client.Identity.Create(blnkgo.Identity{
+  FirstName: "Xavier",
+  LastName:  "Woods",
+})
+```
+
+```bash Blnk CLI wrap
+blnk identities create
+```
+</CodeGroup>
 
 <Info>
   Save the `identity_id` from the response. You'll use this ID to link the customer wallet to this identity.
@@ -91,10 +129,11 @@ curl --request POST \
 
 [Create a balance](/reference/create-balance) for the customer wallet:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl --request POST \
   --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
+  --header 'X-Blnk-Key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{
     "ledger_id": "<ledger-id>",
@@ -103,6 +142,31 @@ curl --request POST \
     "meta_data": { "name": "Xavier Woods" }
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '<ledger-id>',
+  identity_id: '<identity-id>',
+  currency: 'USD',
+  meta_data: { name: 'Xavier Woods' },
+});
+```
+
+```go Go wrap
+balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+  LedgerID:   "<ledger-id>",
+  IdentityID: "<identity-id>",
+  Currency:   "USD",
+  MetaData: map[string]interface{}{
+    "name": "Xavier Woods",
+  },
+})
+```
+
+```bash Blnk CLI wrap
+blnk balances create
+```
+</CodeGroup>
 
 <Info>
   Save the `balance_id` from the response. You'll need it for wallet funding and usage transactions.
@@ -134,10 +198,11 @@ When a customer funds their wallet, money moves from the external world to the c
 
 [Create a transaction](/reference/create-transaction) to add funds to the customer's wallet:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl --request POST \
   --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
+  --header 'X-Blnk-Key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{
     "amount": 120,
@@ -150,6 +215,39 @@ curl --request POST \
     "allow_overdraft": true
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 120,
+  precision: 100,
+  currency: 'USD',
+  reference: 'ai-billing_ref-001',
+  source: '@World-USD',
+  destination: '<customer-balance-id>',
+  description: 'Wallet funding',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      120,
+    Precision:   100,
+    Currency:    "USD",
+    Reference:   "ai-billing_ref-001",
+    Source:      "@World-USD",
+    Destination: "<customer-balance-id>",
+    Description: "Wallet funding",
+  },
+  AllowOverdraft: true,
+})
+```
+
+```bash Blnk CLI wrap
+blnk transactions create
+```
+</CodeGroup>
 
 <img src="/images/tutorials/ai-billing/fund-transaction.png" className="rounded-xl" alt="Create a transaction to add funds to the customer's wallet" />
 
@@ -220,7 +318,7 @@ export async function runCompletion(model: string, prompt: string) {
 
 Each model has its own rate for input and output tokens. Calculate the cost:
 
-```typescript
+```typescript expandable
 const MODEL_RATES = {
   "gpt-4o-mini": { inputPer1K: 0.15, outputPer1K: 0.60 },
   "gpt-4o": { inputPer1K: 0.30, outputPer1K: 1.20 },
@@ -246,10 +344,11 @@ export function calculateUSD(
 
 Record both token usage and dollar cost together using the [bulk transactions](/reference/bulk-transactions) endpoint with `atomic: true`:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap expandable
 curl --request POST \
   --url http://localhost:5001/transactions/bulk \
-  --header 'X-blnk-key: <api-key>' \
+  --header 'X-Blnk-Key: <api-key>' \
   --header 'Content-Type: application/json' \
   --data '{
     "atomic": true,
@@ -278,6 +377,44 @@ curl --request POST \
     ]
   }'
 ```
+
+```javascript TypeScript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  run_async: false,
+  transactions: [
+    {
+      amount: 2290,
+      precision: 1,
+      currency: 'TOKENS',
+      reference: 'ref_ai-billing_001_tokens',
+      source: '@Token-Wallet',
+      destination: '@System-Tokens',
+      description: 'Token leg',
+      allow_overdraft: true,
+    },
+    {
+      amount: 6025,
+      precision: 100,
+      currency: 'USD',
+      reference: 'ref_ai-billing_001_usd',
+      source: '<customer-balance-id>',
+      destination: '@Revenue',
+      description: 'USD leg',
+      allow_overdraft: false,
+    },
+  ],
+});
+```
+
+```go Go wrap
+
+```
+
+```bash Blnk CLI wrap
+
+```
+</CodeGroup>
 
 <img src="/images/tutorials/ai-billing/record-usage.png" className="rounded-xl" alt="Record usage atomically" />
 
@@ -336,4 +473,3 @@ You now have a fully functional AI billing system built with Blnk Finance. This 
 ---
 
 <RequestTutorial />
-

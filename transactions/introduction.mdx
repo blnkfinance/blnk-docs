@@ -46,8 +46,9 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions
 With the following request body:
 
 <CodeGroup>
-```bash Request {11}
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 750,
@@ -62,7 +63,40 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
     "meta_data": {}
   }'
 ```
-```json Response
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  precision: 100,
+  source: '@FundingPool',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Fund with starting balance amount',
+  allow_overdraft: true,
+  skip_queue: false,
+  meta_data: {},
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      750,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "@FundingPool",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "Fund with starting balance amount",
+  },
+  AllowOverdraft: true,
+  SkipQueue:      false,
+})
+```
+</CodeGroup>
+
+```json Response expandable
 {
     "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
     "source": "@FundingPool",
@@ -81,7 +115,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
     }
 }
 ```
-</CodeGroup>
 
 <Tip>
 If this is your first transaction, the participating balances will start at 0. To ensure the transaction is successful, enable overdrafts as shown above, allowing the source balance to go negative.
@@ -170,15 +203,19 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
       <Tab title="By reference (direct endpoint)">
         Blnk appends a `_q` suffix to your original reference after processing a `QUEUED` transaction. To verify the updated status, retrieve the transaction using your original reference plus the `_q` suffix.
 
-        ```bash
+        <CodeGroup>
+        ```bash cURL wrap
         curl -X GET "http://YOUR_BLNK_INSTANCE_URL/transactions/reference/{reference}" \
           -H "X-blnk-key: <api-key>"
         ```
+
+        </CodeGroup>
       </Tab>
       <Tab title="By reference (search)">
         Use the **Search API** to look up your transaction by reference. If the transaction exists, the response will include its current status.
 
-        ```bash
+        <CodeGroup>
+        ```bash cURL wrap
         curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
           -H "Content-Type: application/json" \
           -d '{
@@ -186,11 +223,30 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
             "query_by": "reference"
           }'
         ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.Search.search(
+          { q: '<transaction-reference>', query_by: 'reference' },
+          'transactions',
+        );
+        ```
+
+        ```go Go wrap
+        results, resp, err := client.Search.SearchDocument(
+          blnkgo.SearchParams{
+            Q:       "<transaction-reference>",
+            QueryBy: "reference",
+          },
+          blnkgo.Transactions,
+        )
+        ```
+        </CodeGroup>
       </Tab>
       <Tab title="By transaction ID">
         To check the updated status, take the queued transaction ID and search with it as the `parent_transaction`. This is because Blnk treats the queued transaction as the parent for the next transaction state. See also: [Transaction lifecycle](/transactions/transaction-lifecycle)
 
-        ```bash
+        <CodeGroup>
+        ```bash cURL wrap
         curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
           -H "Content-Type: application/json" \
           -d '{
@@ -198,6 +254,24 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
             "query_by": "parent_transaction"
           }'
         ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.Search.search(
+          { q: '<queued-transaction-id>', query_by: 'parent_transaction' },
+          'transactions',
+        );
+        ```
+
+        ```go Go wrap
+        results, resp, err := client.Search.SearchDocument(
+          blnkgo.SearchParams{
+            Q:       "<queued-transaction-id>",
+            QueryBy: "parent_transaction",
+          },
+          blnkgo.Transactions,
+        )
+        ```
+        </CodeGroup>
       </Tab>
     </Tabs>
 
@@ -206,8 +280,9 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
 When using `skip_queue: true`, transactions are processed immediately and you can verify them from the direct response. Learn more about [skip queue](/transactions/transaction-lifecycle#skip-transaction-queue).
 
 <CodeGroup>
-```bash cURL {12}
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 750,
@@ -221,6 +296,38 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
     "skip_queue": true
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  precision: 100,
+  source: '@FundingPool',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Fund with starting balance amount',
+  allow_overdraft: true,
+  skip_queue: true,
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      750,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "@FundingPool",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "Fund with starting balance amount",
+  },
+  AllowOverdraft: true,
+  SkipQueue:      true,
+})
+```
+</CodeGroup>
+
 ```json Response {11}
 {
   "id": "txn_6164573b-6cc8-45d4-ad2e-7b4ba6a60f7d",
@@ -237,7 +344,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
   "meta_data": {}
 }
 ```
-</CodeGroup>
 
 The response immediately shows the final status (`INFLIGHT`, `APPLIED`, or `REJECTED`), allowing you to confirm the transaction result without waiting for webhooks or additional API calls.
 
@@ -281,7 +387,7 @@ If the transaction amount is more than the available balance, the source has ins
 If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request.
 
 <Card title="Learn about overdrafts" icon="credit-card" href="/transactions/overdrafts">
-  Detailed guide on managing overdrafts and negative balances
+  Overdrafts and negative balances.
 </Card>
 
 ---
@@ -290,13 +396,13 @@ If you want a transaction to proceed even when it exceeds the available balance,
 
 <CardGroup>
   <Card title="Transaction lifecycle" icon="refresh-cw" href="/transactions/transaction-lifecycle">
-    Learn how transactions move through different states from creation to completion
+    States from creation through completion.
   </Card>
   <Card title="Understanding precision" icon="target" href="/transactions/precision">
-    Master decimal handling and precision for accurate financial calculations
+    Decimal handling for accurate amounts.
   </Card>
   <Card title="Transaction statuses" icon="tag" href="/transactions/transaction-lifecycle#statuses">
-    Understand what each transaction status means and when they occur
+    What each status means and when it applies.
   </Card>
 </CardGroup>
 

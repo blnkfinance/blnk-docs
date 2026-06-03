@@ -56,7 +56,7 @@ When recording a deposit with fee processing, we’ll use the [Multiple Destinat
 
 We’ll also apply `inflight` to validate the deposits against predefined business rules before finalizing the transaction.
 
-```javascript
+```javascript TypeScript wrap expandable
 async function recordDeposit(sourceId, customerBalanceId, amount, reference, stripePaymentId) {
   const blnk = await getBlnkInstance();
   
@@ -112,77 +112,97 @@ Next, we’ll develop functions to process deposits according to the following b
 
 #### Rule 1: Check if balance is blocked or frozen
 
-```javascript
+```javascript TypeScript wrap expandable
 async function processDepositBasedOnRules(transactionId) {
-  
-  // Retrieve transaction details
-  const transaction = await blnk.Transactions.retrieve(transactionId);
-  
-  // Extract destination balance IDs (assuming the first destination is the customer)
-  const destinations = transaction.data.destinations || [];
-  
-  const customerBalanceId = destinations[0].identifier;
-  
-  // Retrieve balance details
-  const balance = await blnk.LedgerBalances.retrieve(customerBalanceId);
-  const meta = balance.data.meta_data || {};
-  
-  // Check if balance is frozen or blocked
-  if (meta.status === "frozen" || meta.status === "blocked") {
-    try {
-        // First update metadata with the reason
-        const response = await blnk.Transactions.updateMetadata(transactionId, {
-            meta_data: {
-                void_reason: `Account ${meta.status}`,
-            }
-        });
-        if (response.success) {
-            // Then void the transaction
-            const void_result = await blnk.Transactions.inflight.void(transactionId);
-            console.log(`Transaction ${transactionId} voided: account ${meta.status}`);
-            return void_result.data;
-        }
-    } catch (error) {
-        console.error("Error occurred:", error);
+  const blnk = await getBlnkInstance();
+  const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+  const apiKey = process.env.BLNK_API_KEY ?? '';
+
+  const txnRes = await fetch(`${baseUrl}/transactions/${transactionId}`, {
+    headers: { 'X-Blnk-Key': apiKey },
+  });
+  if (!txnRes.ok) throw new Error(await txnRes.text());
+  const transaction = await txnRes.json();
+
+  const destinations = transaction.destinations || [];
+  const customerBalanceId = destinations[0]?.identifier;
+
+  const balanceResponse = await blnk.LedgerBalances.get(customerBalanceId);
+  const meta = balanceResponse.data?.meta_data || {};
+
+  if (meta.status === 'frozen' || meta.status === 'blocked') {
+    const metaUpdate = await fetch(`${baseUrl}/${transactionId}/metadata`, {
+      method: 'POST',
+      headers: {
+        'X-Blnk-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        meta_data: { void_reason: `Account ${meta.status}` },
+      }),
+    });
+    if (!metaUpdate.ok) throw new Error(await metaUpdate.text());
+
+    const voidResult = await blnk.Transactions.updateStatus(transactionId, {
+      status: 'void',
+    });
+    if (voidResult.status !== 200 || !voidResult.data) {
+      throw new Error(voidResult.message ?? 'Failed to void transaction');
     }
+    console.log(`Transaction ${transactionId} voided: account ${meta.status}`);
+    return voidResult.data;
   }
-  
-  // If balance is active, proceed with amount check
+
   return await processDepositByAmount(transactionId);
 }
 ```
 
 #### Rule 2: Check amount rule
 
-```javascript
+```javascript TypeScript wrap expandable
 async function processDepositByAmount(transactionId) {
+  const blnk = await getBlnkInstance();
+  const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+  const apiKey = process.env.BLNK_API_KEY ?? '';
 
-  // Retrieve transaction details
-  const transaction = await blnk.Transactions.retrieve(transactionId);
-  const amount = transaction.data.precise_amount;
-  
-  // Check if amount is less than 1,000,000.00 USD (with precision 100, so 100000000 = $1M)
+  const txnRes = await fetch(`${baseUrl}/transactions/${transactionId}`, {
+    headers: { 'X-Blnk-Key': apiKey },
+  });
+  if (!txnRes.ok) throw new Error(await txnRes.text());
+  const transaction = await txnRes.json();
+  const amount = transaction.precise_amount;
+
   if (amount < 100000000) {
-    // Less than $1M - commit the transaction
-    const commit = await blnk.Transactions.inflight.commit(transactionId);
+    const commit = await blnk.Transactions.updateStatus(transactionId, {
+      status: 'commit',
+    });
+    if (commit.status !== 200 || !commit.data) {
+      throw new Error(commit.message ?? 'Failed to commit transaction');
+    }
     console.log(`Transaction ${transactionId} committed: amount below threshold`);
     return commit.data;
-  } else {
-    // $1M or more - flag for investigation using updateMetadata
-    const response = await blnk.Transactions.updateMetadata(transactionId, {
-      "meta_data": {
-        "investigation_required": true,
-        "investigation_reason": "Large deposit amount",
-        "flagged_at": new Date().toISOString()
-      }
-    });
-    
-    // Here you would trigger a notification via Hooks
-    await triggerLargeDepositHook(transactionId, amount);
-    
-    console.log(`Transaction ${transactionId} flagged for investigation: large amount`);
-    return response.data;
   }
+
+  const metaRes = await fetch(`${baseUrl}/${transactionId}/metadata`, {
+    method: 'POST',
+    headers: {
+      'X-Blnk-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      meta_data: {
+        investigation_required: true,
+        investigation_reason: 'Large deposit amount',
+        flagged_at: new Date().toISOString(),
+      },
+    }),
+  });
+  if (!metaRes.ok) throw new Error(await metaRes.text());
+  const flagged = await metaRes.json();
+
+  await triggerLargeDepositHook(transactionId, amount);
+  console.log(`Transaction ${transactionId} flagged for investigation: large amount`);
+  return flagged;
 }
 ```
 
@@ -190,7 +210,7 @@ Read more: [How to Use Hooks to Trigger Notifications →](/hooks/overview)
 
 ### Putting it all together
 
-```javascript
+```javascript TypeScript wrap expandable
 async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
   const blnk = await getBlnkInstance();
   
@@ -217,20 +237,27 @@ async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
 
 To process refunds in your ledger and reverse a deposit:
 
-```javascript
+```javascript TypeScript wrap expandable
 async function refundDeposit(transactionId, reason = 'Customer requested refund') {
   const blnk = await getBlnkInstance();
   
   // Process the refund
   const refund = await blnk.Transactions.refund(transactionId);
   
-  // Update metadata on the refund transaction
-  await blnk.Transactions.updateMetadata(refund.data.refund_id, {
-    meta_data: {
-      refund_reason: reason,
-    }
+  const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+  const apiKey = process.env.BLNK_API_KEY ?? '';
+  const metaRes = await fetch(`${baseUrl}/${refund.data.refund_id}/metadata`, {
+    method: 'POST',
+    headers: {
+      'X-Blnk-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      meta_data: { refund_reason: reason },
+    }),
   });
-  
+  if (!metaRes.ok) throw new Error(await metaRes.text());
+
   console.log(`Deposit refunded: ${refund.data.refund_id}`);
   return refund.data;
 }
@@ -256,7 +283,7 @@ From our map, we can verify:
 
 Here, the payout was successfully completed by your payout provider:
 
-```javascript
+```javascript TypeScript wrap expandable
 // Initiate a payout with inflight
 async function initiatePayout(customerBalanceId, billsAmount, reference) {
   const blnk = await getBlnkInstance();
@@ -309,7 +336,7 @@ function getExpiryDate(hours) {
 
 #### Commit based on feedback from payout provider
 
-```javascript
+```javascript TypeScript wrap expandable
 // Webhook handler for payment processor notifications
 async function handlePaymentWebhook(webhookBody) {
   const { 
@@ -332,21 +359,34 @@ async function handlePaymentWebhook(webhookBody) {
     const transaction = searchResult.data.hits[0].document;
     const transactionId = transaction.parent_transaction;
 
-    // Update metadata with details from provider
-    await blnk.Transactions.updateMetadata(transactionId, {
-      meta_data: {
-        payout_status: "confirmed",
-        provider_payout_id: payout_id,
-        confirmation_time: new Date().toISOString()
-      }
+    const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+    const apiKey = process.env.BLNK_API_KEY ?? '';
+    const metaRes = await fetch(`${baseUrl}/${transactionId}/metadata`, {
+      method: 'POST',
+      headers: {
+        'X-Blnk-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        meta_data: {
+          payout_status: 'confirmed',
+          provider_payout_id: payout_id,
+          confirmation_time: new Date().toISOString(),
+        },
+      }),
     });
+    if (!metaRes.ok) throw new Error(await metaRes.text());
 
-    // Commit the transaction
-    const commit = await blnk.Transactions.inflight.commit(transactionId);
+    const commit = await blnk.Transactions.updateStatus(transactionId, {
+      status: 'commit',
+    });
+    if (commit.status !== 200 || !commit.data) {
+      throw new Error(commit.message ?? 'Failed to commit payout');
+    }
     console.log(`Payout confirmed and committed: ${transactionId}`);
-    return { 
-      processed: true, 
-      transaction_id: transactionId 
+    return {
+      processed: true,
+      transaction_id: transactionId,
     };
   }
 }
@@ -369,7 +409,7 @@ This unified approach simplifies managing complex transactions involving multipl
 
 The payout is pending, but a failure message was received from the provider, resulting in the transaction being voided:
 
-```javascript
+```javascript TypeScript wrap expandable
 async function handlePaymentWebhook(webhookBody) {
   const { 
     event_type, 
@@ -391,21 +431,34 @@ async function handlePaymentWebhook(webhookBody) {
     const transaction = searchResult.data.hits[0].document;
     const transactionId = transaction.parent_transaction;
 
-    // Update metadata with details from provider
-    await blnk.Transactions.updateMetadata(transactionId, {
-      meta_data: {
-        payout_status: "failed",
-        provider_payout_id: payout_id,
-        confirmation_time: new Date().toISOString()
-      }
+    const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+    const apiKey = process.env.BLNK_API_KEY ?? '';
+    const metaRes = await fetch(`${baseUrl}/${transactionId}/metadata`, {
+      method: 'POST',
+      headers: {
+        'X-Blnk-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        meta_data: {
+          payout_status: 'failed',
+          provider_payout_id: payout_id,
+          confirmation_time: new Date().toISOString(),
+        },
+      }),
     });
+    if (!metaRes.ok) throw new Error(await metaRes.text());
 
-    // Void the transaction
-    const void = await blnk.Transactions.inflight.void(transactionId);
+    const voidResult = await blnk.Transactions.updateStatus(transactionId, {
+      status: 'void',
+    });
+    if (voidResult.status !== 200 || !voidResult.data) {
+      throw new Error(voidResult.message ?? 'Failed to void payout');
+    }
     console.log(`Payout cancelled: ${transactionId}`);
-    return { 
-      processed: true, 
-      transaction_id: transactionId 
+    return {
+      processed: true,
+      transaction_id: transactionId,
     };
   }
 }
@@ -415,20 +468,27 @@ async function handlePaymentWebhook(webhookBody) {
 
 The payout was initially successful, with confirmation received from the provider, but the funds were reversed by the provider due to an inability to settle the transaction:
 
-```javascript
+```javascript TypeScript wrap expandable
 async function refundPayout(transactionId, reason = "Can't complete payout") {
   const blnk = await getBlnkInstance();
   
   // Process the refund
   const refund = await blnk.Transactions.refund(transactionId);
   
-  // Update metadata on the refund transaction
-  await blnk.Transactions.updateMetadata(refund.data.refund_id, {
-    meta_data: {
-      refund_reason: reason,
-    }
+  const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+  const apiKey = process.env.BLNK_API_KEY ?? '';
+  const metaRes = await fetch(`${baseUrl}/${refund.data.refund_id}/metadata`, {
+    method: 'POST',
+    headers: {
+      'X-Blnk-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      meta_data: { refund_reason: reason },
+    }),
   });
-  
+  if (!metaRes.ok) throw new Error(await metaRes.text());
+
   console.log(`Payout refunded: ${refund.data.refund_id}`);
   return refund.data;
 }

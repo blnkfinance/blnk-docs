@@ -98,7 +98,7 @@ const maticLedger = await Ledgers.create({
 
 Create balances for both users in each ledger:
 
-```javascript
+```javascript TypeScript wrap expandable
 // Create ETH balances
 const johnEthBalance = await Balances.create({
   ledger_id: ethLedger.id,
@@ -128,7 +128,7 @@ const emilyMaticBalance = await Balances.create({
   In this example, we use a precision of 100 for simplicity (e.g., 1 ETH = 100 units). In production, cryptocurrencies like ETH use a precision of 10^18 (1 ETH = 10^18 wei). Adjust the `precision` parameter in all transaction calls accordingly and ensure amount calculations reflect this precision.
 </Note>
 
-```javascript
+```javascript TypeScript wrap expandable
 // Fund John's ETH balance
 await Transactions.create({
   amount: 1, 
@@ -164,8 +164,12 @@ When John or Emily creates an order, we need to:
 1. Confirm that they have sufficient funds to successfully place the order.
     ```javascript
     async function checkBalance(balanceId: string, amount: number) {
-      const { Balances } = blnk;
-      const balance = await Balances.retrieve(balanceId);
+      const { LedgerBalances } = blnk;
+      const response = await LedgerBalances.get(balanceId);
+      if (response.status !== 200 || !response.data) {
+        throw new Error(response.message ?? 'Failed to get balance');
+      }
+      const balance = response.data;
       const availableBalance = balance.balance - balance.inflight_debit_balance;
       
       if (amount > availableBalance) {
@@ -180,16 +184,21 @@ When John or Emily creates an order, we need to:
       const orderReference = `order_${uuidv4()}`;
       const { Transactions } = blnk;
       
-      const inflightTx = await Transactions.inflight.create({
+      const inflightResponse = await Transactions.create({
         amount: amount,
         currency: currency,
         precision: 100,
         source: balanceId,
         destination: `@${currency}_Escrow`,
         description: `Exchange order: ${currency} to ${receiveCurrency}`,
-        reference: orderReference
+        reference: orderReference,
+        inflight: true,
       });
-      
+      if (inflightResponse.status !== 201 || !inflightResponse.data) {
+        throw new Error(inflightResponse.message ?? 'Failed to create inflight transaction');
+      }
+      const inflightTx = inflightResponse.data;
+
       return { inflightTx, orderReference };
     }
     ```
@@ -271,26 +280,31 @@ When John or Emily creates an order, we need to:
 
 When two orders are matched (e.g., John and Emily), we want to link them together with a common matching ID. This helps us track which orders in our Ledger were matched with each other.
 
-```javascript
+```javascript TypeScript wrap expandable
 async function linkMatchedOrders(transaction1Id: string, transaction2Id: string) {
-    // Generate a unique matching ID with 'match_' prefix
+    const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+    const apiKey = process.env.BLNK_API_KEY ?? '';
     const matchingId = `match_${uuidv4()}`;
 
-    // Update the first order's inflight transaction metadata
-    await Transactions.update(transaction1Id, {
-        meta_data: {
+    for (const [txnId, matchedWith] of [
+      [transaction1Id, transaction2Id],
+      [transaction2Id, transaction1Id],
+    ]) {
+      const res = await fetch(`${baseUrl}/${txnId}/metadata`, {
+        method: 'POST',
+        headers: {
+          'X-Blnk-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meta_data: {
             matching_id: matchingId,
-            matched_with_tx: transaction2Id
-        }
-    });
-
-    // Update the second order's inflight transaction metadata
-    await Transactions.update(transaction2Id, {
-        meta_data: {
-            matching_id: matchingId,
-            matched_with_tx: transaction1Id
-        }
-    });
+            matched_with_tx: matchedWith,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    }
 
     return matchingId;
 }
@@ -311,19 +325,28 @@ Finally, we need to execute the exchange of assets between the matched orders â€
 1. We need to commit these transactions to move the funds to escrow.
 2. Then we create new transactions to move funds from escrow to the respective recipient balances (John's MATIC balance and Emily's ETH balance).
 
-```javascript
+```javascript TypeScript wrap expandable
 async function settleMatchedOrders(
     johnTxId: string,    // John's ETH inflight transaction ID
     emilyTxId: string    // Emily's MATIC inflight transaction ID
 ) {
     try {
-        // Step 1: Commit both inflight transactions
-        await Transactions.inflight.commit(johnTxId);
-        await Transactions.inflight.commit(emilyTxId);
+        const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+        const apiKey = process.env.BLNK_API_KEY ?? '';
 
-        // Step 2: Retrieve transaction metadata to get the matching ID
-        const johnTx = await Transactions.retrieve(johnTxId);
-        const matchingId = johnTx.meta_data?.matching_id || `match_${uuidv4()}`; // Fallback if missing
+        for (const txId of [johnTxId, emilyTxId]) {
+          const commit = await Transactions.updateStatus(txId, { status: 'commit' });
+          if (commit.status !== 200 || !commit.data) {
+            throw new Error(commit.message ?? `Failed to commit ${txId}`);
+          }
+        }
+
+        const johnRes = await fetch(`${baseUrl}/transactions/${johnTxId}`, {
+          headers: { 'X-Blnk-Key': apiKey },
+        });
+        if (!johnRes.ok) throw new Error(await johnRes.text());
+        const johnTx = await johnRes.json();
+        const matchingId = johnTx.meta_data?.matching_id || `match_${uuidv4()}`;
 
         const settlementReference = `settlement_${uuidv4()}`;
 

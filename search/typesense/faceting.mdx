@@ -22,7 +22,7 @@ Faceting gives you total counts for any field in your results. It helps you buil
 Here's a basic faceting request that shows the total counts for the `status` and `currency` fields:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -31,7 +31,23 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "facet_by": "status,currency"
   }'
 ```
-```json Response
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', facet_by: 'status,currency' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FacetBy: "status,currency"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
+```json Response expandable
 {
   "facet_counts": [
     {
@@ -81,8 +97,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
       }
     }
   ]
+}
 ```
-</CodeGroup>
 
 | **Field**      | **Description**                                  |
 | :------------- | :------------------------------------------- |
@@ -99,7 +115,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 Faceting becomes more powerful when combined with filters. You can facet on one field while filtering on others to analyze specific subsets of your data.
 
 <CodeGroup>
-```bash USD transactions by status
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -110,7 +126,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
-```bash Customer balances by currency
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'currency:=USD', facet_by: 'status' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:        "*",
+    FilterBy: "currency:=USD",
+    FacetBy:  "status",
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -119,6 +155,28 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
     "filter_by": "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
     "facet_by": "currency"
   }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    filter_by: 'identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e',
+    facet_by: 'currency',
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:        "*",
+    FilterBy: "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    FacetBy:  "currency",
+  },
+  blnkgo.Balances,
+)
 ```
 </CodeGroup>
 
@@ -133,7 +191,8 @@ The example above allows you to answer questions like:
 
 You can also facet on metadata objects.
 
-```bash Facet on metadata fields
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -142,6 +201,27 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "facet_by": "meta_data.transaction_type,meta_data.payment_method"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    facet_by: 'meta_data.transaction_type,meta_data.payment_method',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:       "*",
+    FacetBy: "meta_data.transaction_type,meta_data.payment_method",
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 
 <Tip>
 Always use dot notation to access nested metadata fields: `meta_data.field_name`

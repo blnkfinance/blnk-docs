@@ -26,9 +26,84 @@ To process multiple transactions in a single request, call the [Bulk Transaction
 POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
 ```
 
+<CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "atomic": true,
+    "inflight": false,
+    "run_async": false,
+    "skip_queue": false,
+    "transactions": [
+      {
+        "amount": 358.90,
+        "precision": 100,
+        "reference": "unique_reference_1",
+        "description": "Transaction description",
+        "currency": "NGN",
+        "source": "@source_account",
+        "allow_overdraft": true,
+        "destination": "@destination_account"
+      },
+      {
+        "amount": 358.90,
+        "precision": 100,
+        "reference": "unique_reference_2",
+        "description": "Transaction description",
+        "currency": "NGN",
+        "source": "@source_account",
+        "allow_overdraft": true,
+        "destination": "@destination_account"
+      }
+    ]
+  }'
+```
+
+```javascript TypeScript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: false,
+  run_async: false,
+  skip_queue: false,
+  transactions: [
+    {
+      amount: 358.90,
+      precision: 100,
+      reference: 'unique_reference_1',
+      description: 'Transaction description',
+      currency: 'NGN',
+      source: '@source_account',
+      allow_overdraft: true,
+      destination: '@destination_account',
+    },
+    {
+      amount: 358.90,
+      precision: 100,
+      reference: 'unique_reference_2',
+      description: 'Transaction description',
+      currency: 'NGN',
+      source: '@source_account',
+      allow_overdraft: true,
+      destination: '@destination_account',
+    },
+  ],
+});
+```
+
+```go Go wrap
+
+```
+
+```bash Blnk CLI wrap
+
+```
+</CodeGroup>
+
 ### Request body
 
-```json 
+```json expandable
 {
   "atomic": true,
   "inflight": false,
@@ -116,7 +191,7 @@ To retrieve every transaction in that batch:
 POST http://YOUR_BLNK_INSTANCE_URL/search/transactions
 ```
 <CodeGroup>
-```curl cURL
+```bash cURL wrap
 curl -X POST http://localhost:5001/search/transactions \
   -H "Content-Type: application/json" \
   -H "X-blnk-key: <api-key>" \
@@ -125,6 +200,21 @@ curl -X POST http://localhost:5001/search/transactions \
     "query_by": "parent_transaction"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '<batch-id>', query_by: 'parent_transaction' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "<batch-id>", QueryBy: "parent_transaction"},
+  blnkgo.Transactions,
+)
+```
+
 ```json JSON Request
 {
   "q": "<batch-id>",
@@ -207,7 +297,7 @@ The webhooks follow this structure:
 
 Process multiple transactions atomically (all or nothing):
 
-```json Request
+```json Request expandable
 {
   "atomic": true,
   "inflight": false,
@@ -238,7 +328,7 @@ Process multiple transactions atomically (all or nothing):
 
 Process a large batch of transactions in the background:
 
-```json
+```json expandable
 {
   "atomic": true,
   "inflight": false,

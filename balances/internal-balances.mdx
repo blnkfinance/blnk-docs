@@ -55,9 +55,10 @@ If the specified balance doesn't exist, it is automatically created, and the tra
 
 Continuing our earlier example, we can represent revenue with `@Revenue` and fees with `@Fees`. A transaction request from the user's wallet when they pay for something on the app would look like this:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://localhost:5001/transactions" \
-  -H "X-blnk-key: <api-key>" \
+  -H "X-Blnk-Key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 750000,
@@ -66,9 +67,40 @@ curl -X POST "http://localhost:5001/transactions" \
     "precision": 100,
     "source": "bal_91283-8102dj1-1209212-129109",
     "destination": "@Revenue",
-    "description": "Fund with starting balance amount",
+    "description": "Fund with starting balance amount"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750000,
+  reference: 'ref_1298122819291982',
+  currency: 'USD',
+  precision: 100,
+  source: 'bal_91283-8102dj1-1209212-129109',
+  destination: '@Revenue',
+  description: 'Fund with starting balance amount',
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      750000,
+    Reference:   "ref_1298122819291982",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bal_91283-8102dj1-1209212-129109",
+    Destination: "@Revenue",
+    Description: "Fund with starting balance amount",
+  },
+})
+```
+
+```bash Blnk CLI wrap
+blnk transactions create
+```
+</CodeGroup>
 
 <Warning>
     When you post a transaction to a new internal balance, the balance is created with the same asset class specified in the transaction, e.g., in the example above, `@Revenue` is a USD internal balance.

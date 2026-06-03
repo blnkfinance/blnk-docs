@@ -23,9 +23,12 @@ In this scenario, Typesense is empty while your primary database holds transacti
 Blnk reads all records from your database and indexes them into their respective Typesense collections (transactions, balances, ledgers, identities).
 
 <CodeGroup>
-```bash Request
-curl -X POST "http://localhost:5001/search/reindex"
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/reindex" \
+  -H "X-blnk-key: <api-key>"
 ```
+</CodeGroup>
+
 ```json Response
 {
     "status": "in_progress",
@@ -35,16 +38,18 @@ curl -X POST "http://localhost:5001/search/reindex"
     "started_at": "2026-02-12T12:13:10.448612096Z"
 }
 ```
-</CodeGroup>
 </Step>
 
 <Step title="Monitor progress">
 Check the reindex status. Completion time depends on the size of your data.
 
 <CodeGroup>
-```bash Request
-curl -X GET "http://localhost:5001/search/reindex" 
+```bash cURL wrap
+curl -X GET "http://localhost:5001/search/reindex" \
+  -H "X-blnk-key: <api-key>"
 ```
+</CodeGroup>
+
 ```json Response
 {
     "status": "completed",
@@ -55,17 +60,29 @@ curl -X GET "http://localhost:5001/search/reindex"
     "completed_at": "2026-02-12T12:18:42.018420264Z"
 }
 ```
-</CodeGroup>
 </Step>
 
 <Step title="Verify completeness">
 Once the reindex finishes, confirm that all records are in Typesense by searching each collection with `q: "*"` to return all records. 
 
-```bash wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X POST http://localhost:5001/search/{collection} \
 -H 'X-Blnk-Key: YOUR_API_KEY' \
 -d '{ "q": "*" }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search({ q: '*' }, 'transactions');
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 
 Compare `found` and `out_of` values with your expected record counts. If anything is missing, run the reindex again.
 </Step>

@@ -17,7 +17,7 @@ This tutorial will guide you through implementing a simple wallet management sys
 4. Create purpose-specific wallets (e.g. card balances).
 5. Enable transfers between wallets.
 
-For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+For this tutorial, we'll use the [Blnk TypeScript SDK](/sdks/typescript) and [Blnk Go SDK](/sdks/go) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
 
 ---
 
@@ -70,15 +70,12 @@ Before starting, ensure you have:
 
 ---
 
-## Create customer ledger
+## Initialise your client
 
-First, we need to initialise Blnk and [create a ledger](/ledgers/introduction) to organise all customer wallets — main and card wallets.
+Initialize the Blnk client once at the start of your application:
 
-<Tip>
-  You can also create separate ledgers for different wallet types, e.g., `Customer Main Ledger` and `Customer Card Ledger`, to keep your balances more organized.
-</Tip>
-
-```javascript Initialising Blnk
+<CodeGroup>
+```javascript TypeScript wrap
 const { BlnkInit } = require('@blnkfinance/blnk-typescript');
 
 let blnkInstance = null;
@@ -90,8 +87,47 @@ async function getBlnkInstance() {
   return blnkInstance;
 }
 ```
+
+```go Go wrap
+var client *blnkgo.Client
+
+func getClient() *blnkgo.Client {
+    if client == nil {
+        baseURL, _ := url.Parse("http://localhost:5001/")
+        apiKey := "YOUR_API_KEY"
+        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
+    }
+    return client
+}
+```
+</CodeGroup>
+
+---
+
+## Create customer ledger
+
+<Tip>
+  You can also create separate ledgers for different wallet types, e.g., `Customer Main Ledger` and `Customer Card Ledger`, to keep your balances more organized.
+</Tip>
+
+Create a [ledger](/ledgers/introduction) to organize all customer wallets — main and card wallets:
+
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request POST \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Customer Wallets Ledger",
+    "meta_data": {
+        "description": "Ledger for managing customer wallets",
+        "application": "Wallet Management System"
+    }
+  }'
+```
+
+```javascript TypeScript wrap
 async function createCustomerLedger() {
   const blnk = await getBlnkInstance();
   const { Ledgers } = blnk;
@@ -108,18 +144,23 @@ async function createCustomerLedger() {
   return customerLedger.data.ledger_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "name": "Customer Wallets Ledger",
-    "meta_data": {
-        "description": "Ledger for managing customer wallets",
-        "application": "Wallet Management System"
+
+```go Go wrap
+func createCustomerLedger() (string, error) {
+    client := getClient()
+    ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+        Name: "Customer Wallets Ledger",
+        MetaData: map[string]interface{}{
+            "description": "Ledger for managing customer wallets",
+            "application": "Wallet Management System",
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Customer Ledger created:", ledger.LedgerID)
+    return ledger.LedgerID, nil
+}
 ```
 </CodeGroup>
 
@@ -131,10 +172,28 @@ curl --request POST \
 
 ## Create customer identity
 
-Create your customer profiles with [identities](/identities/introduction):
+Create a customer [identity](/identities/introduction) to store user profile information:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request POST \
+  --url http://localhost:5001/identities \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "identity_type": "individual",
+    "first_name": "Alice",
+    "last_name": "Johnson",
+    "email_address": "alice@example.com",
+    "phone_number": "+1234567890",
+    "meta_data": {
+        "customer_id": "CUST-001",
+        "registration_date": "2024-02-25T10:30:00Z"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createCustomerIdentity(customerData) {
   const blnk = await getBlnkInstance();
   const { Identities } = blnk;
@@ -155,22 +214,27 @@ async function createCustomerIdentity(customerData) {
   return identity.data.identity_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/identities \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "identity_type": "individual",
-    "first_name": "Alice",
-    "last_name": "Johnson",
-    "email_address": "alice@example.com",
-    "phone_number": "+1234567890",
-    "meta_data": {
-        "customer_id": "CUST-001",
-        "registration_date": "2024-02-25T10:30:00Z"
+
+```go Go wrap expandable
+func createCustomerIdentity(customerData CustomerData) (string, error) {
+    client := getClient()
+    identity, _, err := client.Identity.Create(blnkgo.Identity{
+        IdentityType: blnkgo.Individual,
+        FirstName:    customerData.FirstName,
+        LastName:     customerData.LastName,
+        EmailAddress: customerData.Email,
+        PhoneNumber:  customerData.Phone,
+        MetaData: map[string]interface{}{
+            "customer_id":       customerData.CustomerID,
+            "registration_date": time.Now().UTC().Format(time.RFC3339),
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Customer Identity created:", identity.IdentityID)
+    return identity.IdentityID, nil
+}
 ```
 </CodeGroup>
 
@@ -185,7 +249,24 @@ curl --request POST \
 [Create a balance](/balances/introduction) to represent the customer main wallet and link to the customer identity:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "<customer-wallets-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "main",
+        "purpose": "general",
+        "status": "active"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createMainWallet(ledgerId, identityId, currency) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -205,21 +286,26 @@ async function createMainWallet(ledgerId, identityId, currency) {
   return mainWallet.data.balance_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "<customer-wallets-ledger-id>",
-    "identity_id": "<customer-identity-id>",
-    "currency": "USD",
-    "meta_data": {
-        "wallet_type": "main",
-        "purpose": "general",
-        "status": "active"
+
+```go Go wrap expandable
+func createMainWallet(ledgerID, identityID, currency string) (string, error) {
+    client := getClient()
+    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID:   ledgerID,
+        IdentityID: identityID,
+        Currency:   currency,
+        MetaData: map[string]interface{}{
+            "wallet_type": "main",
+            "purpose":     "general",
+            "status":      "active",
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Main Wallet created:", balance.BalanceID)
+    return balance.BalanceID, nil
+}
 ```
 </CodeGroup>
 
@@ -231,10 +317,33 @@ curl --request POST \
 
 ## Funding the main wallet
 
-Use an [internal balance](/balances/internal-balances) to represent external deposit sources—such as bank accounts, cards, and other funding methods—responsible for funding a customer's wallet:
+Use an [internal balance](/balances/internal-balances) to represent external deposit sources—such as bank accounts, cards, and other funding methods—responsible for funding a customer's wallet.
+
+Record a deposit from an external source to fund the main wallet:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 1000,
+    "precision": 100,
+    "reference": "DEP-20250225-103000",
+    "description": "Initial deposit",
+    "currency": "USD",
+    "source": "@WorldUSD",
+    "destination": "<customer-main-balance-id>",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "deposit",
+        "channel": "bank_transfer"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function depositToWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
@@ -258,25 +367,35 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
   return deposit.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 1000,
-    "precision": 100,
-    "reference": "DEP-20250225-103000",
-    "description": "Initial deposit",
-    "currency": "USD",
-    "source": "@WorldUSD",
-    "destination": "<customer-main-balance-id>",
-    "allow_overdraft": true,
-    "meta_data": {
-        "transaction_type": "deposit",
-        "channel": "bank_transfer"
+
+```go Go wrap expandable
+func depositToWallet(customerBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+    client := getClient()
+    if description == "" {
+        description = "Deposit to wallet"
     }
-  }'
+    deposit, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      amount,
+            Precision:   100,
+            Reference:   uniqueReference,
+            Description: description,
+            Currency:    "USD",
+            Source:      "@WorldUSD",
+            Destination: customerBalanceID,
+            MetaData: map[string]interface{}{
+                "transaction_type": "deposit",
+                "channel":          "bank_transfer",
+            },
+        },
+        AllowOverdraft: true,
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Deposit transaction created:", deposit.TransactionID)
+    return deposit.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -288,13 +407,35 @@ curl --request POST \
 
 ## Withdrawals from the main wallet
 
-You can use the same internal balance to represent external withdrawal destinations to ensure it is balances out your ledger, or you can allocate a separate internal balance specifically for withdrawals.
+You can use the same internal balance to represent external withdrawal destinations to balance out your ledger, or you can allocate a separate internal balance specifically for withdrawals.
+
+Record a withdrawal from the main wallet to an external destination:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 100,
+    "precision": 100,
+    "reference": "WDR-20250225-104500",
+    "description": "Wallet withdrawal",
+    "currency": "USD",
+    "source": "<customer-main-balance-id>",
+    "destination": "@WorldUSD",
+    "meta_data": {
+        "transaction_type": "withdrawal",
+        "channel": "atm"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
-  const { Transactions, LedgerBalances } = blnk;
+  const { Transactions } = blnk;
   
   const withdrawal = await Transactions.create({
     amount: amount,
@@ -314,24 +455,34 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
   return withdrawal.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 100,
-    "precision": 100,
-    "reference": "WDR-20250225-104500",
-    "description": "Wallet withdrawal",
-    "currency": "USD",
-    "source": "<customer-main-balance-id>",
-    "destination": "@WorldUSD",
-    "meta_data": {
-        "transaction_type": "withdrawal",
-        "channel": "atm"
+
+```go Go wrap expandable
+func withdrawFromWallet(customerBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+    client := getClient()
+    if description == "" {
+        description = "Withdrawal from wallet"
     }
-  }'
+    withdrawal, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      amount,
+            Precision:   100,
+            Reference:   uniqueReference,
+            Description: description,
+            Currency:    "USD",
+            Source:      customerBalanceID,
+            Destination: "@WorldUSD",
+            MetaData: map[string]interface{}{
+                "transaction_type": "withdrawal",
+                "channel":          "bank_transfer",
+            },
+        },
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Withdrawal transaction created:", withdrawal.TransactionID)
+    return withdrawal.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -342,7 +493,29 @@ curl --request POST \
 To create a card balance and link it to the customer:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "<customer-wallets-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "card",
+        "purpose": "card_payments",
+        "status": "active",
+        "card_details": {
+            "masked_number": "xxxx-xxxx-xxxx-1234",
+            "expiry": "12/25",
+            "type": "virtual"
+        }
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createCardWallet(ledgerId, identityId, currency) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -367,26 +540,31 @@ async function createCardWallet(ledgerId, identityId, currency) {
   return cardWallet.data.balance_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "<customer-wallets-ledger-id>",
-    "identity_id": "<customer-identity-id>",
-    "currency": "USD",
-    "meta_data": {
-        "wallet_type": "card",
-        "purpose": "card_payments",
-        "status": "active",
-        "card_details": {
-            "masked_number": "xxxx-xxxx-xxxx-1234",
-            "expiry": "12/25",
-            "type": "virtual"
-        }
+
+```go Go wrap expandable
+func createCardWallet(ledgerID, identityID, currency string) (string, error) {
+    client := getClient()
+    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID:   ledgerID,
+        IdentityID: identityID,
+        Currency:   currency,
+        MetaData: map[string]interface{}{
+            "wallet_type": "card",
+            "purpose":     "card_payments",
+            "status":      "active",
+            "card_details": map[string]interface{}{
+                "masked_number": "xxxx-xxxx-xxxx-1234",
+                "expiry":        "12/25",
+                "type":          "virtual",
+            },
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Card Wallet created:", balance.BalanceID)
+    return balance.BalanceID, nil
+}
 ```
 </CodeGroup>
 
@@ -397,10 +575,30 @@ curl --request POST \
 Record a transaction between both balances to fund your card balance:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 200,
+    "precision": 100,
+    "reference": "TRF-20250225-110000",
+    "description": "Transfer to card wallet",
+    "currency": "USD",
+    "source": "<customer-main-balance-id>",
+    "destination": "<customer-card-balance-id>",
+    "meta_data": {
+        "transaction_type": "internal_transfer",
+        "purpose": "fund_card"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, uniqueReference, description) {
   const blnk = await getBlnkInstance();
-  const { Transactions, LedgerBalances } = blnk;
+  const { Transactions } = blnk;
   
   const transfer = await Transactions.create({
     amount: amount,
@@ -420,24 +618,34 @@ async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, unique
   return transfer.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 200,
-    "precision": 100,
-    "reference": "TRF-20250225-110000",
-    "description": "Transfer to card wallet",
-    "currency": "USD",
-    "source": "<customer-main-balance-id>",
-    "destination": "<customer-card-balance-id>",
-    "meta_data": {
-        "transaction_type": "internal_transfer",
-        "purpose": "fund_card"
+
+```go Go wrap expandable
+func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+    client := getClient()
+    if description == "" {
+        description = "Transfer to card wallet"
     }
-  }'
+    transfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      amount,
+            Precision:   100,
+            Reference:   uniqueReference,
+            Description: description,
+            Currency:    "USD",
+            Source:      mainBalanceID,
+            Destination: cardBalanceID,
+            MetaData: map[string]interface{}{
+                "transaction_type": "internal_transfer",
+                "purpose":          "fund_card",
+            },
+        },
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Transfer transaction created:", transfer.TransactionID)
+    return transfer.TransactionID, nil
+}
 ```
 </CodeGroup>
 

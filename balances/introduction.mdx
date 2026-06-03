@@ -30,7 +30,7 @@ All ledger balances in the Blnk Ledger each have 6 main balance attributes:
 To create a balance in Blnk, call the **Create Balance** endpoint:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://localhost:5001/balances" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -45,7 +45,7 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript
+```javascript TypeScript wrap
 const { LedgerBalances } = blnk;
 
 const newBalance = await LedgerBalances.create({
@@ -60,7 +60,23 @@ const newBalance = await LedgerBalances.create({
 console.log("Balance Created:", newBalance);
 ```
 
-```bash Blnk CLI
+```go Go wrap
+balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    Currency: "USD",
+    MetaData: map[string]interface{}{
+        "first_name":     "Alice",
+        "last_name":      "Hart",
+        "account_number": "1234567890",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Balance Created:", balance.BalanceID)
+```
+
+```bash Blnk CLI wrap
 blnk balances create
 ? Ledger ID: <ledger-id>
 ? Currency: <currency>
@@ -68,7 +84,7 @@ blnk balances create
 ```
 </CodeGroup>
 
-```json Response
+```json Response expandable
 {
     "balance": 0,
     "version": 0,
@@ -153,11 +169,14 @@ Queued balances are estimates and may change as transactions are processed or if
 To view the queued balances of a ledger balance:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
   -H 'X-blnk-key: <api-key>'
 ```
-```json Response {9-10}
+
+</CodeGroup>
+
+```json Response {9-10} expandable
 {
     "balance": 0,
     "version": 0,
@@ -181,7 +200,6 @@ curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=tru
     }
 }
 ```
-</CodeGroup>
 
 ### Calculating expected and available balances
 

@@ -55,15 +55,38 @@ Consider an inflight transaction of \$100. Its lifecycle looks like this:
 
 With the `INFLIGHT` record as the parent, you can retrieve the complete outcome of that transaction by querying for all transactions whose `parent_transaction` field matches the `INFLIGHT` transaction ID:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "q": "<inflight_transaction_id>",
     "query_by": "parent_transaction"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '<inflight_transaction_id>', query_by: 'parent_transaction' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "<inflight_transaction_id>", QueryBy: "parent_transaction"},
+  blnkgo.Transactions,
+)
+```
+
+```json JSON Request wrap
+{
+  "q": "<inflight_transaction_id>",
+  "query_by": "parent_transaction"
+}
+```
+</CodeGroup>
 
 ---
 
@@ -75,15 +98,44 @@ In most cases, this initial transaction starts in the `QUEUED` state, serving as
 
 Blnk records the ID of this initial transaction in the `meta_data.QUEUED_PARENT_TRANSACTION` field of every subsequent transaction. You can use this ID to query and retrieve all transactions that belong to the same lifecycle chain:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "q": "<queued_parent_transaction_id>",
     "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '<queued_parent_transaction_id>',
+    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:       "<queued_parent_transaction_id>",
+    QueryBy: "meta_data.QUEUED_PARENT_TRANSACTION",
+  },
+  blnkgo.Transactions,
+)
+```
+
+```json JSON Request wrap
+{
+  "q": "<queued_parent_transaction_id>",
+  "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
+}
+```
+</CodeGroup>
 
 Blnk automatically creates this field whenever you use the queue system to process any transaction — single, inflight, split, or bulk transactions.
 

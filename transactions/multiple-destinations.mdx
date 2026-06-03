@@ -47,10 +47,11 @@ When sending to multiple destinations, you can only send from one source.
 
 Call the [Create Transaction](/reference/create-transaction) endpoint with these fields:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap expandable
 curl -X POST http://localhost:5001/transactions \
   -H "Content-Type: application/json" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: <api-key>" \
   -d '{
     "amount": 30000,
     "precision": 100,
@@ -74,6 +75,45 @@ curl -X POST http://localhost:5001/transactions \
     "description": "Payment from Sarah"
   }'
 ```
+
+```javascript TypeScript wrap expandable
+const response = await blnk.Transactions.create({
+  amount: 30000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
+  destinations: [
+    { identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f', distribution: '20%' },
+    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', distribution: '10000' },
+    { identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b', distribution: 'left' },
+  ],
+  description: 'Payment from Sarah',
+});
+```
+
+```go Go wrap expandable
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      30000,
+    Precision:   100,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    Description: "Payment from Sarah",
+    Destinations: []blnkgo.Source{
+      {Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f", Distribution: "20%"},
+      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", Distribution: "10000"},
+      {Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b", Distribution: "left"},
+    },
+  },
+})
+```
+
+```bash Blnk CLI wrap
+blnk transactions create
+```
+</CodeGroup>
 
 | Field | Description | Required | Type |
 | :--- | :--- | :--- | :--- |
@@ -100,10 +140,11 @@ By default, Blnk processes a multiple destinations split with `atomic: false`. E
 
 Set `atomic: true` to enable all-or-nothing processing. All destination legs must succeed for the split to be completed. If any leg fails, Blnk rolls back any previously `APPLIED` or `INFLIGHT` legs, reversing the credits so the split is fully cancelled and no partial state remains on the ledger.
 
-```bash cURL {9}
+<CodeGroup>
+```bash cURL wrap expandable
 curl -X POST http://localhost:5001/transactions \
   -H "Content-Type: application/json" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: <api-key>" \
   -d '{
     "amount": 30000,
     "precision": 100,
@@ -129,6 +170,47 @@ curl -X POST http://localhost:5001/transactions \
   }'
 ```
 
+```javascript TypeScript wrap expandable
+const response = await blnk.Transactions.create({
+  amount: 30000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  atomic: true,
+  source: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
+  destinations: [
+    { identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f', distribution: '20%' },
+    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', distribution: '10000' },
+    { identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b', distribution: 'left' },
+  ],
+  description: 'Payment from Sarah',
+});
+```
+
+```go Go wrap expandable
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      30000,
+    Precision:   100,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    Description: "Payment from Sarah",
+    Destinations: []blnkgo.Source{
+      {Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f", Distribution: "20%"},
+      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", Distribution: "10000"},
+      {Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b", Distribution: "left"},
+    },
+  },
+  Atomic: true,
+})
+```
+
+```bash Blnk CLI wrap
+blnk transactions create
+```
+</CodeGroup>
+
 <Tip>
 Use `atomic: true` when partial results are not acceptable. For example, when sending a split payment, every destination must succeed for the transaction to go through.
 </Tip>
@@ -143,7 +225,7 @@ Blnk returns a response containing:
 - A **main transaction ID** for the overall split transaction. If `inflight: true`, it can be used to commit or void all transactions at once.
 - A **destinations array** with individual transaction IDs for each destination.
 
-```json Response {7,23,28,33}
+```json Response {7,23,28,33} expandable
 {
     "precise_amount": 3000000,
     "amount": 30000,
@@ -192,15 +274,44 @@ Blnk returns a response containing:
 
 You can retrieve all transactions in the split by searching for the main transaction ID in the `meta_data.QUEUED_PARENT_TRANSACTION` field:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://localhost:5001/search/transactions" \
-  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "X-Blnk-Key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "q": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
     "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: 'txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab',
+    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:       "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+    QueryBy: "meta_data.QUEUED_PARENT_TRANSACTION",
+  },
+  blnkgo.Transactions,
+)
+```
+
+```json JSON Request wrap
+{
+  "q": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
+}
+```
+</CodeGroup>
 
 This will return all individual transactions that were created as part of the multiple destinations transaction, allowing you to track and manage the complete set of related transactions.
 
@@ -262,7 +373,7 @@ This ensures traceability while maintaining connection to the original transacti
 Also see:
 
 <Card title="Multiple sources" href="multiple-sources" icon="inbox">
-  Move money from multiple sources to a single destination in one transaction.
+  Multiple sources, one destination.
 </Card>
 
 ---

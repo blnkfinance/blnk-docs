@@ -3,20 +3,20 @@ sidebarTitle: "Lending"
 title: "Building a Lending Management System"
 description: "Learn how to manage & track loans and repayments with the Blnk Ledger."
 "og:title": "Building a Lending Management System with Blnk • Blnk Developer Documentation"
-"og:description": Learn how to manage & track loans and repayments with the Blnk Ledger."
+"og:description": Learn how to manage & track loans and repayments with the Blnk Ledger.
 ---
 
 import RequestTutorial from "/snippets/request-tutorial.mdx"
 
 
-This tutorial provides a step-by-step guide to building a simple loan management system using Blnk Finance. You’ll learn how to: 
+This tutorial provides a step-by-step guide to building a simple loan management system using Blnk Finance. You'll learn how to: 
 
 1. Disburse loans to customers. 
 2. Calculate and apply interest.
 3. Process repayments.
 4. Monitor loan status effectively.
 
-For this tutorial, we’ll use the [Blnk TypeScript SDK](/sdks/typescript) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+For this tutorial, we'll use the [Blnk TypeScript SDK](/sdks/typescript) and [Blnk Go SDK](/sdks/go) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
 
 ---
 
@@ -44,8 +44,42 @@ Before starting, ensure you have:
 2. An API key for Blnk (replace `YOUR_API_KEY` in the code examples). Required for authenticated requests.
 3. Optionally, you can connect your Blnk Core to your [Blnk Cloud](https://cloud.blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=tutorials%2Fdigital-banking%2Flending) workspace to view your ledger data.
 
-To prepare for the rest of this tutorial, read our [Building a Wallet with Blnk](/tutorials/quick-start/wallet-management) tutorial if you haven’t already.
+To prepare for the rest of this tutorial, read our [Building a Wallet with Blnk](/tutorials/quick-start/wallet-management) tutorial if you haven't already.
 
+
+---
+
+## Initialise your client
+
+Initialize the Blnk client once at the start of your application:
+
+<CodeGroup>
+```javascript TypeScript wrap
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
+
+let blnkInstance = null;
+
+async function getBlnkInstance() {
+  if (!blnkInstance) {
+    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
+  }
+  return blnkInstance;
+}
+```
+
+```go Go wrap
+var client *blnkgo.Client
+
+func getClient() *blnkgo.Client {
+    if client == nil {
+        baseURL, _ := url.Parse("http://localhost:5001/")
+        apiKey := "YOUR_API_KEY"
+        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
+    }
+    return client
+}
+```
+</CodeGroup>
 
 ---
 
@@ -57,38 +91,7 @@ First, we create 2 ledgers.
 * `Loan Accounts` to organize all loan accounts.
 
 <CodeGroup>
-```javascript TypeScript
-const blnk = await getBlnk();
-
-async function createCustomerLedger() {
-  const { Ledgers } = blnk;
-  
-  const customerLedger = await Ledgers.create({
-    name: "Customer Accounts",
-    meta_data: {
-      description: "Contains all customer main balances"
-    }
-  });
-  
-  console.log("Customer Ledger created:", customerLedger.data);
-  return customerLedger.data.ledger_id;
-}
-
-async function createLoanLedger() {
-  const { Ledgers } = blnk;
-  
-  const loanLedger = await Ledgers.create({
-    name: "Loan Accounts",
-    meta_data: {
-      description: "Contains all customer loan balances"
-    }
-  });
-  
-  console.log("Loan Ledger created:", loanLedger.data);
-  return loanLedger.data.ledger_id;
-}
-```
-```bash cURL
+```bash cURL wrap expandable
 # Create main wallet ledger (Customer Accounts)
 curl --request POST \
   --url http://localhost:5001/ledgers \
@@ -113,6 +116,70 @@ curl --request POST \
   }
 }'
 ```
+
+```javascript TypeScript wrap expandable
+async function createCustomerLedger() {
+  const blnk = await getBlnkInstance();
+  const { Ledgers } = blnk;
+  
+  const customerLedger = await Ledgers.create({
+    name: "Customer Accounts",
+    meta_data: {
+      description: "Contains all customer main balances"
+    }
+  });
+  
+  console.log("Customer Ledger created:", customerLedger.data);
+  return customerLedger.data.ledger_id;
+}
+
+async function createLoanLedger() {
+  const blnk = await getBlnkInstance();
+  const { Ledgers } = blnk;
+  
+  const loanLedger = await Ledgers.create({
+    name: "Loan Accounts",
+    meta_data: {
+      description: "Contains all customer loan balances"
+    }
+  });
+  
+  console.log("Loan Ledger created:", loanLedger.data);
+  return loanLedger.data.ledger_id;
+}
+```
+
+```go Go wrap expandable
+func createCustomerLedger() (string, error) {
+    client := getClient()
+    ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+        Name: "Customer Accounts",
+        MetaData: map[string]interface{}{
+            "description": "Contains all customer main balances",
+        },
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Customer Ledger created:", ledger.LedgerID)
+    return ledger.LedgerID, nil
+}
+
+func createLoanLedger() (string, error) {
+    client := getClient()
+    ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+        Name: "Loan Accounts",
+        MetaData: map[string]interface{}{
+            "description": "Contains all customer loan balances",
+        },
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Loan Ledger created:", ledger.LedgerID)
+    return ledger.LedgerID, nil
+}
+```
 </CodeGroup>
 
 ---
@@ -122,9 +189,26 @@ curl --request POST \
 First, we create the customer's balance:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "ldg_CUSTOMER_LEDGER_ID",
+    "currency": "USD",
+    "meta_data": {
+        "customer_id": "12345",
+        "customer_name": "John Doe",
+        "account_type": "main",
+        "account_status": "active"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createCustomerMainBalance(customerLedgerId, customerDetails) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
   
   const mainBalance = await LedgerBalances.create({
@@ -142,30 +226,50 @@ async function createCustomerMainBalance(customerLedgerId, customerDetails) {
   return mainBalance.data.balance_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "ldg_CUSTOMER_LEDGER_ID",
-    "currency": "USD",
-    "meta_data": {
-        "customer_id": "12345",
-        "customer_name": "John Doe",
-        "account_type": "main",
-        "account_status": "active"
+
+```go Go wrap expandable
+func createCustomerMainBalance(customerLedgerID string, customerDetails CustomerDetails) (string, error) {
+    client := getClient()
+    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID: customerLedgerID,
+        Currency: "USD",
+        MetaData: map[string]interface{}{
+            "customer_id":    customerDetails.ID,
+            "customer_name":  customerDetails.Name,
+            "account_type":   "main",
+            "account_status": "active",
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Customer Main Balance created:", balance.BalanceID)
+    return balance.BalanceID, nil
+}
 ```
 </CodeGroup>
 
 Next, we create the loan balance:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "ldg_LOAN_LEDGER_ID",
+    "currency": "USD",
+    "meta_data": {
+        "customer_id": "12345",
+        "customer_name": "John Doe"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createLoanBalance(loanLedgerId, customerDetails, loanDetails) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
   
   const loanBalance = await LedgerBalances.create({
@@ -181,19 +285,24 @@ async function createLoanBalance(loanLedgerId, customerDetails, loanDetails) {
   return loanBalance.data.balance_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "ldg_LOAN_LEDGER_ID",
-    "currency": "USD",
-    "meta_data": {
-        "customer_id": "12345",
-        "customer_name": "John Doe"
+
+```go Go wrap expandable
+func createLoanBalance(loanLedgerID string, customerDetails CustomerDetails) (string, error) {
+    client := getClient()
+    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID: loanLedgerID,
+        Currency: "USD",
+        MetaData: map[string]interface{}{
+            "customer_id":   customerDetails.ID,
+            "customer_name": customerDetails.Name,
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Loan Balance created:", balance.BalanceID)
+    return balance.BalanceID, nil
+}
 ```
 </CodeGroup>
 
@@ -203,7 +312,7 @@ curl --request POST \
 
 When the loan is disbursed, money is deducted from the `Loan Balance` to the `Main Balance`.
 
-```txt Example scenario
+```txt Example scenario wrap
 * Starting Scenario
 Alice Loan Balance: 0.00 USD
 Alice Main Balance: 0.00 USD
@@ -219,9 +328,29 @@ Alice Main Balance: + 500.00 USD (funds received by customer)
 Initiate this transaction in your ledger:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 500,
+    "precision": 100,
+    "reference": "LOAN-DISBURSE-1709741652384",
+    "currency": "USD",
+    "source": "bln_LOAN_BALANCE_ID",
+    "destination": "bln_CUSTOMER_BALANCE_ID",
+    "description": "Loan disbursement",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "loan_disbursement"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
   
   // Generate a unique reference for this transaction
@@ -243,35 +372,60 @@ async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
   
   console.log("Loan disbursed:", disbursement.data);
   
-  // Create loan status in metadata
-  await LedgerBalances.updateMetadata(loanBalanceId, {
-    metadata: {
-      loan_status: "active",
-      pri
-    }
+  const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+  const apiKey = process.env.BLNK_API_KEY ?? '';
+  const metaRes = await fetch(`${baseUrl}/${loanBalanceId}/metadata`, {
+    method: 'POST',
+    headers: {
+      'X-Blnk-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      meta_data: { loan_status: 'active' },
+    }),
   });
+  if (!metaRes.ok) throw new Error(await metaRes.text());
   
   return disbursement.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 500,
-    "precision": 100,
-    "reference": "LOAN-DISBURSE-1709741652384",
-    "currency": "USD",
-    "source": "bln_LOAN_BALANCE_ID",
-    "destination": "bln_CUSTOMER_BALANCE_ID",
-    "description": "Loan disbursement",
-    "allow_overdraft": true,
-    "meta_data": {
-        "transaction_type": "loan_disbursement",
+
+```go Go wrap expandable
+func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (string, error) {
+    client := getClient()
+    reference := fmt.Sprintf("LOAN-DISBURSE-%d", time.Now().Unix())
+
+    disbursement, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      loanAmount,
+            Precision:   100,
+            Reference:   reference,
+            Currency:    "USD",
+            Source:      loanBalanceID,
+            Destination: customerBalanceID,
+            Description: "Loan disbursement",
+            MetaData: map[string]interface{}{
+                "transaction_type": "loan_disbursement",
+            },
+        },
+        AllowOverdraft: true,
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+
+    _, _, err = client.Metadata.UpdateMetadata(loanBalanceID, blnkgo.UpdateMetaDataRequest{
+        MetaData: map[string]interface{}{
+            "loan_status": "active",
+        },
+    })
+    if err != nil {
+        return "", err
+    }
+
+    fmt.Println("Loan disbursed:", disbursement.TransactionID)
+    return disbursement.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -287,7 +441,7 @@ Next, we need to calculate daily interest based on the formula $P * R * T$, wher
 
 According to our map, interest is transferred from the `Loan Balance` to the `@InterestRevenue`.
 
-```txt Example scenario (cont'd)
+```txt Example scenario (cont'd) wrap
 * After 1 day, with 1% daily interest
 +5 USD added to @InterestRevenue
 -5 USD deducted from Loan Balance
@@ -298,14 +452,38 @@ Alice Main Balance: 500.00 USD (funds received by customer)
 @InterestRevenue: + 5.00 USD (interest earned)
 ```
 
+Record the daily interest charge on the loan balance:
+
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 5,
+    "precision": 100,
+    "reference": "INTEREST-1709741780214",
+    "currency": "USD",
+    "source": "bln_LOAN_BALANCE_ID",
+    "destination": "@InterestRevenue",
+    "description": "Daily interest charge",
+    "allow_overdraft": true,
+    "meta_data": {
+        "transaction_type": "interest_charge",
+        "interest_rate": 0.01,
+        "principal_amount": 500
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function calculateAndChargeInterest(loanBalanceId, interestRate) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
   
   // Get current loan balance
-  const loanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  const loanBalance = await LedgerBalances.get(loanBalanceId);
   
   // Get the principal amount (convert negative balance to positive)
   const principal = Math.abs(loanBalance.data.balance);
@@ -342,26 +520,46 @@ async function calculateAndChargeInterest(loanBalanceId, interestRate) {
   return interestTransaction.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 5,
-    "precision": 100,
-    "reference": "INTEREST-1709741780214",
-    "currency": "USD",
-    "source": "bln_LOAN_BALANCE_ID",
-    "destination": "@InterestRevenue",
-    "description": "Daily interest charge",
-    "allow_overdraft": true,
-    "meta_data": {
-        "transaction_type": "interest_charge",
-        "interest_rate": 0.01,
-        "principal_amount": 500,
+
+```go Go wrap expandable
+func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (string, error) {
+    client := getClient()
+    loanBalance, _, err := client.LedgerBalance.Get(loanBalanceID)
+    if err != nil {
+        return "", err
     }
-  }'
+
+    balanceFloat, _ := loanBalance.Balance.Float64()
+    principal := math.Abs(balanceFloat)
+    dailyRate := interestRate / 365
+    interestAmount := principal * dailyRate
+    roundedInterest := math.Round(interestAmount*100) / 100
+    reference := fmt.Sprintf("INTEREST-%d", time.Now().Unix())
+
+    interestTransaction, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      roundedInterest,
+            Precision:   100,
+            Reference:   reference,
+            Currency:    "USD",
+            Source:      loanBalanceID,
+            Destination: "@InterestRevenue",
+            Description: "Daily interest charge",
+            MetaData: map[string]interface{}{
+                "transaction_type": "interest_charge",
+                "interest_rate":    interestRate,
+                "principal_amount": principal / 100,
+            },
+        },
+        AllowOverdraft: true,
+    })
+    if err != nil {
+        return "", err
+    }
+
+    fmt.Println("Interest charged:", interestTransaction.TransactionID)
+    return interestTransaction.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -372,9 +570,29 @@ curl --request POST \
 When a customer makes a loan repayment, the money moves from their main balance to the loan balance.
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 200,
+    "precision": 100,
+    "reference": "LOAN-REPAY-1709741952867",
+    "currency": "USD",
+    "source": "bln_CUSTOMER_BALANCE_ID",
+    "destination": "bln_LOAN_BALANCE_ID",
+    "description": "Loan repayment",
+    "meta_data": {
+        "transaction_type": "loan_repayment",
+        "payment_method": "bank_transfer"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentAmount) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { Transactions, LedgerBalances } = blnk;
   
   // Generate a unique reference
@@ -398,38 +616,79 @@ async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentA
   console.log("Loan repayment processed:", repayment.data);
   
   // Check if loan is fully repaid
-  const updatedLoanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  const updatedLoanBalance = await LedgerBalances.get(loanBalanceId);
   
   if (updatedLoanBalance.data.balance >= 0) {
     // Loan is fully repaid, update status
-    await LedgerBalances.updateMetadata(loanBalanceId, {
-      loan_status: "fully_repaid",
-      repayment_completed_date: new Date().toISOString()
+    const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+    const apiKey = process.env.BLNK_API_KEY ?? '';
+    const metaRes = await fetch(`${baseUrl}/${loanBalanceId}/metadata`, {
+      method: 'POST',
+      headers: {
+        'X-Blnk-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        meta_data: {
+          loan_status: 'fully_repaid',
+          repayment_completed_date: new Date().toISOString(),
+        },
+      }),
     });
+    if (!metaRes.ok) throw new Error(await metaRes.text());
     console.log("Loan fully repaid!");
   }
   
   return repayment.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 200,
-    "precision": 100,
-    "reference": "LOAN-REPAY-1709741952867",
-    "currency": "USD",
-    "source": "bln_CUSTOMER_BALANCE_ID",
-    "destination": "bln_LOAN_BALANCE_ID",
-    "description": "Loan repayment",
-    "meta_data": {
-        "transaction_type": "loan_repayment",
-        "payment_method": "bank_transfer"
+
+```go Go wrap expandable
+func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmount float64) (string, error) {
+    client := getClient()
+    reference := fmt.Sprintf("LOAN-REPAY-%d", time.Now().Unix())
+
+    repayment, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      repaymentAmount,
+            Precision:   100,
+            Reference:   reference,
+            Currency:    "USD",
+            Source:      customerBalanceID,
+            Destination: loanBalanceID,
+            Description: "Loan repayment",
+            MetaData: map[string]interface{}{
+                "transaction_type": "loan_repayment",
+                "payment_method":     "bank_transfer",
+            },
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+
+    updatedLoanBalance, _, err := client.LedgerBalance.Get(loanBalanceID)
+    if err != nil {
+        return "", err
+    }
+
+    repaidBalance, _ := updatedLoanBalance.Balance.Float64()
+    if repaidBalance >= 0 {
+        _, _, err = client.Metadata.UpdateMetadata(loanBalanceID, blnkgo.UpdateMetaDataRequest{
+            MetaData: map[string]interface{}{
+                "loan_status":                "fully_repaid",
+                "repayment_completed_date": time.Now().UTC().Format(time.RFC3339),
+            },
+        })
+        if err != nil {
+            return "", err
+        }
+        fmt.Println("Loan fully repaid!")
+    }
+
+    fmt.Println("Loan repayment processed:", repayment.TransactionID)
+    return repayment.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -440,12 +699,19 @@ curl --request POST \
 We can check if a loan is fully repaid by verifying if the loan balance is zero or positive:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap
+curl --request GET \
+  --url http://localhost:5001/balances/bln_LOAN_BALANCE_ID \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json'
+```
+
+```javascript TypeScript wrap expandable
 async function checkLoanStatus(loanBalanceId) {
-  const blnk = await getBlnk();
+  const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
   
-  const loanBalance = await LedgerBalances.retrieve(loanBalanceId);
+  const loanBalance = await LedgerBalances.get(loanBalanceId);
   
   const status = {
     balance_id: loanBalanceId,
@@ -459,11 +725,27 @@ async function checkLoanStatus(loanBalanceId) {
   return status;
 }
 ```
-```bash cURL
-curl --request GET \
-  --url http://localhost:5001/balances/bln_LOAN_BALANCE_ID \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json'
+
+```go Go wrap expandable
+func checkLoanStatus(loanBalanceID string) (map[string]interface{}, error) {
+    client := getClient()
+    loanBalance, _, err := client.LedgerBalance.Get(loanBalanceID)
+    if err != nil {
+        return nil, err
+    }
+
+    balanceFloat, _ := loanBalance.Balance.Float64()
+    status := map[string]interface{}{
+        "balance_id":      loanBalanceID,
+        "current_balance": balanceFloat / 100,
+        "is_fully_repaid": balanceFloat >= 0,
+        "loan_status":     loanBalance.MetaData["loan_status"],
+        "loan_details":    loanBalance.MetaData,
+    }
+
+    fmt.Println("Loan status:", status)
+    return status, nil
+}
 ```
 </CodeGroup>
 

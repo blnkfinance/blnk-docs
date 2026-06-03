@@ -15,7 +15,7 @@ In this tutorial, you'll learn how to implement, monitor, and manage scheduled s
 2. Initiate a scheduled deposit transaction. For one-time funding: [Wallet Funding Tutorial →](/tutorials/quick-start/wallet-management#funding-the-main-wallet).
 3. Update the savings frequency.
 
-For this tutorial, we'll use the [Blnk TypeScript SDK](/sdks/typescript) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+For this tutorial, we'll use the [Blnk TypeScript SDK](/sdks/typescript) and [Blnk Go SDK](/sdks/go) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
 
 ---
 
@@ -55,12 +55,65 @@ Before starting, ensure you have:
 
 ---
 
+## Initialise your client
+
+Initialize the Blnk client once at the start of your application:
+
+<CodeGroup>
+```javascript TypeScript wrap
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
+
+let blnkInstance = null;
+
+async function getBlnkInstance() {
+  if (!blnkInstance) {
+    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
+  }
+  return blnkInstance;
+}
+```
+
+```go Go wrap
+var client *blnkgo.Client
+
+func getClient() *blnkgo.Client {
+    if client == nil {
+        baseURL, _ := url.Parse("http://localhost:5001/")
+        apiKey := "YOUR_API_KEY"
+        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
+    }
+    return client
+}
+```
+</CodeGroup>
+
+---
+
 ## Create customer savings balance
 
 Create a balance with the `ledger_id` of your `Customer Savings Ledger` to represent your customer savings wallet:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "<customer-savings-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "savings",
+        "schedule_savings": true,
+        "savings_frequency": "monthly",
+        "savings_amount": 10000,
+        "next_scheduled_savings": ""
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createSavingsWallet(savingsLedgerId, identityId, currency) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -82,23 +135,28 @@ async function createSavingsWallet(savingsLedgerId, identityId, currency) {
   return savingsWallet.data.balance_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "<customer-savings-ledger-id>",
-    "identity_id": "<customer-identity-id>",
-    "currency": "USD",
-    "meta_data": {
-        "wallet_type": "savings",
-        "schedule_savings": true,
-        "savings_frequency": "monthly",
-        "savings_amount": 10000,
-        "next_scheduled_savings": ""
+
+```go Go wrap expandable
+func createSavingsWallet(savingsLedgerID, identityID, currency string) (string, error) {
+    client := getClient()
+    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID:   savingsLedgerID,
+        IdentityID: identityID,
+        Currency:   currency,
+        MetaData: map[string]interface{}{
+            "wallet_type":            "savings",
+            "schedule_savings":       true,
+            "savings_frequency":      "monthly",
+            "savings_amount":         10000,
+            "next_scheduled_savings": "",
+        },
+    })
+    if err != nil {
+        return "", err
     }
-  }'
+    fmt.Println("Savings Wallet created:", balance.BalanceID)
+    return balance.BalanceID, nil
+}
 ```
 </CodeGroup>
 
@@ -115,7 +173,27 @@ This creates a savings balance with a set of default metadata:
 Schedule a transaction on the ledger with the `scheduled_for` parameter:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 1000,
+    "precision": 100,
+    "reference": "SAV_0001",
+    "description": "Scheduled savings deposit",
+    "currency": "USD",
+    "source": "@WorldUSD",
+    "destination": "<savings-balance-id>",
+    "scheduled_for": "2025-12-25T02:42:19Z",
+    "meta_data": {
+      "transaction_type": "savings"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createScheduledSavingsTransaction(savingsBalanceId, savingsAmount, uniqueReference, description, scheduledDate) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
@@ -138,24 +216,34 @@ async function createScheduledSavingsTransaction(savingsBalanceId, savingsAmount
   return scheduledSavings.data.transaction_id;
 }
 ```
-```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 1000,
-    "precision": 100,
-    "reference": "SAV_0001",
-    "description": "Scheduled savings deposit",
-    "currency": "USD",
-    "source": "@WorldUSD",
-    "destination": "<savings-balance-id>",
-    "scheduled_for": "2025-12-25T02:42:19Z",
-    "meta_data": {
-      "transaction_type": "savings"
+
+```go Go wrap expandable
+func createScheduledSavingsTransaction(savingsBalanceID string, savingsAmount float64, uniqueReference, description string, scheduledDate time.Time) (string, error) {
+    client := getClient()
+    if description == "" {
+        description = "Scheduled savings deposit"
     }
-  }'
+    scheduledSavings, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      savingsAmount,
+            Precision:   100,
+            Reference:   uniqueReference,
+            Description: description,
+            Currency:    "USD",
+            Source:      "@WorldUSD",
+            Destination: savingsBalanceID,
+            MetaData: map[string]interface{}{
+                "transaction_type": "savings",
+            },
+        },
+        ScheduledFor: &scheduledDate,
+    })
+    if err != nil {
+        return "", err
+    }
+    fmt.Println("Savings successfully scheduled:", scheduledSavings.TransactionID)
+    return scheduledSavings.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -171,7 +259,42 @@ To schedule the next savings deposit, verify that `scheduled_savings` is still a
   Blnk sends a webhook when a scheduled transaction gets applied.
 </Tip>
 
-```javascript [expandable]
+Update balance metadata and create the next scheduled savings transaction:
+
+<CodeGroup>
+```bash cURL wrap expandable
+# After a scheduled savings transaction is applied, update balance metadata:
+curl --request POST \
+  --url http://localhost:5001/balances/<savings-balance-id>/metadata \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "meta_data": {
+      "next_scheduled_savings": "2026-01-25T02:42:19Z"
+    }
+  }'
+
+# Then create the next scheduled transaction:
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 10000,
+    "precision": 100,
+    "reference": "sch-savings-1709741652384",
+    "description": "Scheduled savings deposit",
+    "currency": "USD",
+    "source": "@WorldUSD",
+    "destination": "<savings-balance-id>",
+    "scheduled_for": "2026-01-25T02:42:19Z",
+    "meta_data": {
+      "transaction_type": "savings"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 import express from 'express';
 const app = express();
 app.use(express.json());
@@ -190,7 +313,7 @@ app.post('/webhooks/transactions', async (req, res) => {
       const { LedgerBalances, Transactions } = blnk;
       
       const savingsBalanceId = transaction.destination;
-      const savingsBalance = await LedgerBalances.retrieve(savingsBalanceId);
+      const savingsBalance = await LedgerBalances.get(savingsBalanceId);
       
       if (
         savingsBalance.meta_data?.schedule_savings === true
@@ -201,11 +324,21 @@ app.post('/webhooks/transactions', async (req, res) => {
         const nextScheduledDate = calculateNextScheduledDate(frequency);
         
         // 1. Update metadata with the next scheduled date
-        await LedgerBalances.updateMetadata(savingsBalanceId, {
-          "meta_data": {
-            "next_scheduled_savings": nextScheduledDate.toISOString()
-          }
+        const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+        const apiKey = process.env.BLNK_API_KEY ?? '';
+        const metaRes = await fetch(`${baseUrl}/${savingsBalanceId}/metadata`, {
+          method: 'POST',
+          headers: {
+            'X-Blnk-Key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            meta_data: {
+              next_scheduled_savings: nextScheduledDate.toISOString(),
+            },
+          }),
         });
+        if (!metaRes.ok) throw new Error(await metaRes.text());
         
         // 2. Create a new scheduled transaction
         const uniqueReference = `sch-savings-${Date.now()}`;
@@ -263,34 +396,96 @@ app.listen(PORT, () => {
 });
 ```
 
+```go Go wrap expandable
+func handleTransactionWebhook(w http.ResponseWriter, r *http.Request) {
+    var payload struct {
+        Event string                 `json:"event"`
+        Data  map[string]interface{} `json:"data"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+        http.Error(w, "invalid payload", http.StatusBadRequest)
+        return
+    }
+
+    if payload.Event != "transaction.applied" {
+        w.WriteHeader(http.StatusOK)
+        return
+    }
+
+    meta, _ := payload.Data["meta_data"].(map[string]interface{})
+    if meta["transaction_type"] != "savings" {
+        w.WriteHeader(http.StatusOK)
+        return
+    }
+
+    client := getClient()
+    savingsBalanceID, _ := payload.Data["destination"].(string)
+    savingsBalance, _, err := client.LedgerBalance.Get(savingsBalanceID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    balanceMeta := savingsBalance.MetaData
+    if scheduleSavings, _ := balanceMeta["schedule_savings"].(bool); !scheduleSavings {
+        w.WriteHeader(http.StatusOK)
+        return
+    }
+
+    frequency, _ := balanceMeta["savings_frequency"].(string)
+    if frequency == "" {
+        frequency = "monthly"
+    }
+    amount, _ := balanceMeta["savings_amount"].(float64)
+    nextScheduledDate := calculateNextScheduledDate(frequency)
+
+    _, _, err = client.Metadata.UpdateMetadata(savingsBalanceID, blnkgo.UpdateMetaDataRequest{
+        MetaData: map[string]interface{}{
+            "next_scheduled_savings": nextScheduledDate.Format(time.RFC3339),
+        },
+    })
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    uniqueReference := fmt.Sprintf("sch-savings-%d", time.Now().Unix())
+    scheduledSavings, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      amount,
+            Precision:   100,
+            Reference:   uniqueReference,
+            Description: "Scheduled savings deposit",
+            Currency:    "USD",
+            Source:      "@WorldUSD",
+            Destination: savingsBalanceID,
+            MetaData: map[string]interface{}{
+                "transaction_type": "savings",
+            },
+        },
+        ScheduledFor: &nextScheduledDate,
+    })
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    fmt.Printf("Next scheduled deposit created for %s: %s\n", nextScheduledDate.Format(time.RFC3339), scheduledSavings.TransactionID)
+    w.WriteHeader(http.StatusOK)
+}
+```
+</CodeGroup>
+
 ---
 
 ## Change savings frequency
 
 To change the savings frequency of a balance, use the [Update Metadata](/metadata/update-metadata) endpoint:
 
+Update the savings frequency on the customer balance:
+
 <CodeGroup>
-```javascript TypeScript
-async function updateSavingsFrequency(balanceId, newFrequency) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
-  
-  try {
-    const response = await LedgerBalances.updateMetadata(balanceId, {
-      "meta_data": {
-        "savings_frequency": newFrequency
-      }
-    });
-    
-    console.log(`Successfully updated savings frequency to ${newFrequency} for balance ${balanceId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Failed to update savings frequency for balance ${balanceId}:`, error);
-    throw error;
-  }
-}
-```
-```json
+```bash cURL wrap
 curl --request POST \
   --url http://localhost:5001/balances/<balance-id>/metadata \
   --header 'X-blnk-key: <api-key>' \
@@ -301,17 +496,62 @@ curl --request POST \
   }
 }'
 ```
+
+```javascript TypeScript wrap expandable
+async function updateSavingsFrequency(balanceId, newFrequency) {
+  const blnk = await getBlnkInstance();
+  const { LedgerBalances } = blnk;
+  
+  try {
+    const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
+    const apiKey = process.env.BLNK_API_KEY ?? '';
+    const res = await fetch(`${baseUrl}/${balanceId}/metadata`, {
+      method: 'POST',
+      headers: {
+        'X-Blnk-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        meta_data: { savings_frequency: newFrequency },
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    console.log(`Successfully updated savings frequency to ${newFrequency} for balance ${balanceId}`);
+    return data;
+  } catch (error) {
+    console.error(`Failed to update savings frequency for balance ${balanceId}:`, error);
+    throw error;
+  }
+}
+```
+
+```go Go wrap
+func updateSavingsFrequency(balanceID, newFrequency string) error {
+    client := getClient()
+    _, _, err := client.Metadata.UpdateMetadata(balanceID, blnkgo.UpdateMetaDataRequest{
+        MetaData: map[string]interface{}{
+            "savings_frequency": newFrequency,
+        },
+    })
+    if err != nil {
+        return err
+    }
+    fmt.Printf("Successfully updated savings frequency to %s for balance %s\n", newFrequency, balanceID)
+    return nil
+}
+```
 </CodeGroup>
 
 ---
 
 ## Conclusion
 
-In this tutorial, we’ve built a scheduled savings workflow for a wallet app using Blnk. Here’s what we covered:
+In this tutorial, we've built a scheduled savings workflow for a wallet app using Blnk. Here's what we covered:
 
 * Setting up savings ledgers and customer savings accounts
 * Adding scheduled deposits
-* Automatically rescheduling deposits after they’re completed
+* Automatically rescheduling deposits after they're completed
 * Handling deposit frequencies and customer preferences
 * Using webhooks to detect completed transactions and schedule new deposits.
 

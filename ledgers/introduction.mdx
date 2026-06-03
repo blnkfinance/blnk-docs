@@ -24,10 +24,10 @@ Blnk includes two types of ledgers — a General Ledger and custom ledgers.
 
 <CardGroup>
   <Card title="Creating balances in the General Ledger" icon="network" href="/balances/internal-balances">
-    Learn how to create and manage balances in the General Ledger.
+    General Ledger balance setup and management.
   </Card>
   <Card title="Architecting your ledger" icon="layers" href="/ledgers/architecture">
-    Learn how to design your ledger to organize your financial data efficiently.
+    Structure ledgers for your product.
   </Card>
 </CardGroup>
 
@@ -38,7 +38,7 @@ Blnk includes two types of ledgers — a General Ledger and custom ledgers.
 To create a ledger, call the [**Create Ledger**](/reference/create-ledger) endpoint:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://localhost:5001/ledgers" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -50,10 +50,10 @@ curl -X POST "http://localhost:5001/ledgers" \
   }'
 ```
 
-```javascript TypeScript
+```javascript TypeScript wrap
 import { BlnkInit } from '@blnkfinance/blnk-typescript';
 
-const blnk = await BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
+const blnk = BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
 const { Ledgers } = blnk;
 
 const newLedger = await Ledgers.create({
@@ -65,7 +65,20 @@ const newLedger = await Ledgers.create({
 console.log("Ledger Created:", newLedger);
 ```
 
-```bash Blnk CLI
+```go Go wrap
+ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "Customer Savings Account",
+    MetaData: map[string]interface{}{
+        "project_owner": "YOUR_APP_NAME",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Ledger Created:", ledger.LedgerID)
+```
+
+```bash Blnk CLI wrap
 blnk ledgers create
 ```
 </CodeGroup>
@@ -138,7 +151,7 @@ To learn about filtering directly with operators like `eq`, `ilike`, `between`, 
 You can rename an existing ledger using the [**Update Ledger Name**](/reference/update-ledger-name) endpoint without affecting any balances or transactions:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X PUT "http://localhost:5001/ledgers/{id}" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -147,14 +160,7 @@ curl -X PUT "http://localhost:5001/ledgers/{id}" \
   }'
 ```
 
-```javascript TypeScript
-const updatedLedger = await Ledgers.updateName(ledgerId, {
-    name: "Updated Customer Savings Account"
-});
-console.log("Ledger Updated:", updatedLedger);
-```
-
-```bash Blnk CLI
+```bash Blnk CLI wrap
 blnk ledgers update-name
 ```
 </CodeGroup>

@@ -19,7 +19,8 @@ Any transaction record associated with a linked balance is also automatically ma
 
 To create a balance connected to an identity, include the `identity_id` of the identity you want to associate with the balance in the request body of the **create-balance** endpoint as shown below:
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://localhost:5001/balances" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -30,7 +31,33 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```json Response {11}
+```javascript TypeScript wrap
+const newBalance = await LedgerBalances.create({
+    ledger_id: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    identity_id: "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    currency: "USD",
+});
+console.log("Balance Created:", newBalance);
+```
+
+```go Go wrap
+balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID:   "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    IdentityID: "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    Currency:   "USD",
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Balance Created:", balance.BalanceID)
+```
+
+```bash Blnk CLI wrap
+blnk balances create
+```
+</CodeGroup>
+
+```json Response {11} expandable
 {
     "balance": 0,
     "version": 0,
@@ -60,7 +87,7 @@ curl -X POST "http://localhost:5001/balances" \
 You can update the identity associated with an existing balance using the [**Update Balance Identity**](/reference/update-balance-identity) endpoint:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X PUT "http://localhost:5001/balances/{id}/identity" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -69,14 +96,7 @@ curl -X PUT "http://localhost:5001/balances/{id}/identity" \
   }'
 ```
 
-```javascript TypeScript
-const updatedBalance = await LedgerBalances.updateIdentity(balanceId, {
-    identity_id: "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6"
-});
-console.log("Balance Identity Updated:", updatedBalance);
-```
-
-```bash Blnk CLI
+```bash Blnk CLI wrap
 blnk balances update-identity
 ```
 </CodeGroup>

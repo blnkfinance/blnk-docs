@@ -33,7 +33,8 @@ Each collection has a dedicated filter endpoint:
 
 Send a POST request with a JSON body containing your filters, sorting, and pagination options:
 
-```bash wrap
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -50,6 +51,26 @@ curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
     "offset": 0
   }'
 ```
+
+```javascript TypeScript wrap
+
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+  LogicalOperator: "and",
+  Filters: []blnkgo.Filter{
+    {Field: "status", Operator: blnkgo.OpEqual, Value: "APPLIED"},
+    {Field: "currency", Operator: blnkgo.OpIn, Values: []string{"USD", "EUR"}},
+  },
+  SortBy:       "created_at",
+  SortOrder:    "desc",
+  IncludeCount: true,
+  Limit:        20,
+  Offset:       0,
+})
+```
+</CodeGroup>
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -262,6 +283,18 @@ curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
       { "field": "meta_data.customer_type", "operator": "eq", "value": "premium" }
     ]
   }'
+```
+
+```javascript TypeScript wrap
+
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+  Filters: []blnkgo.Filter{
+    {Field: "meta_data.customer_type", Operator: blnkgo.OpEqual, Value: "premium"},
+  },
+})
 ```
 
 ```json Request wrap

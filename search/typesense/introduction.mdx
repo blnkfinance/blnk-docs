@@ -42,7 +42,7 @@ To get started with the Search API, use the endpoint: `/search/{collection}` whe
 Here's how a full search request looks:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -56,7 +56,36 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
-```json Response
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: 'bulk_baaea495-148a-4b16-b171-68c92fb911a6',
+    query_by: 'parent_transaction',
+    filter_by: 'status:=APPLIED && currency:=USD',
+    sort_by: 'created_at:desc',
+    page: 1,
+    per_page: 10,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:        "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+    QueryBy:  "parent_transaction",
+    FilterBy: "status:=APPLIED && currency:=USD",
+    SortBy:   "created_at:desc",
+    Page:     1,
+    PerPage:  10,
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
+```json Response expandable
 {
   "facet_counts": [],
   "found": 2,
@@ -123,7 +152,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   "search_time_ms": 2
 }
 ```
-</CodeGroup>
 
 ### Request parameters
 
@@ -159,7 +187,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 <Step title="Find all transactions for a specific account">
 Get a complete transaction history by searching for all transactions where a particular balance ID appears as either source or destination.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -169,12 +198,32 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "sort_by": "created_at:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", QueryBy: "source,destination", SortBy: "created_at:desc"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Get recent high-value transactions">
 Find transactions above a certain amount threshold to monitor large money movements or flag suspicious activity.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -185,12 +234,33 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "per_page": 50
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "amount:>10000",
+    sort_by: "created_at:desc",
+    per_page: 50,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "amount:>10000", SortBy: "created_at:desc", PerPage: 50},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Search transactions by date range">
 Retrieve all transactions that occurred within a specific time period for reporting or audit purposes. Use Unix timestamps for date filtering.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -201,6 +271,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "created_at:[1704067200..1706745599]",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "created_at:[1704067200..1706745599]", SortBy: "created_at:desc"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 <Info>
 Learn more about date filtering and Unix timestamps in our [Filtering documentation](/search/typesense/filtering).
 </Info>
@@ -209,7 +298,8 @@ Learn more about date filtering and Unix timestamps in our [Filtering documentat
 <Step title="Find rejected transactions">
 Filter transactions by status to identify failed payments that were rejected due to insufficient funds or validation errors.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -220,6 +310,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "status:=REJECTED",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "status:=REJECTED", SortBy: "created_at:desc"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 <Tip>
 For advanced filtering with operators like `:=`, `&&`, and ranges, see our detailed [Filtering guide](/search/typesense/filtering).
 </Tip>
@@ -228,7 +337,8 @@ For advanced filtering with operators like `:=`, `&&`, and ranges, see our detai
 <Step title="Search by transaction type or description">
 Use full-text search to find transactions based on transaction type in metadata or descriptions for customer support.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -239,6 +349,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "payment",
+    query_by: "meta_data.transaction_type,description",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "payment", QueryBy: "meta_data.transaction_type,description", SortBy: "created_at:desc"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 <Info>
 Learn more about full-text search and field-specific queries in our [Querying documentation](/search/typesense/querying).
 </Info>
@@ -247,7 +376,8 @@ Learn more about full-text search and field-specific queries in our [Querying do
 <Step title="Find transactions between specific accounts">
 Search for transactions that occurred between two particular balance IDs to track money flow or analyze trading patterns.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -257,6 +387,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "sort_by": "created_at:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12", SortBy: "created_at:desc"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 </Steps>
 
@@ -266,7 +415,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 <Step title="Get balances above/below a threshold">
 Find all balances with amounts greater than or less than specific values for risk management or account monitoring.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -276,12 +426,32 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
     "sort_by": "balance:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "balance:>100000",
+    sort_by: "balance:desc",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "balance:>100000", SortBy: "balance:desc"},
+  blnkgo.Balances,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Fetch all balances belonging to an identity">
 Retrieve all balances associated with a specific identity ID to get a complete view of a user's accounts and wallets.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -291,12 +461,32 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
     "sort_by": "created_at:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    sort_by: "created_at:desc",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*", FilterBy: "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e", SortBy: "created_at:desc"},
+  blnkgo.Balances,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Search ledgers by name or metadata">
 Find specific ledgers using partial name matching or metadata filters to locate the right ledger for operations.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/ledgers" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -306,6 +496,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/ledgers" \
     "sort_by": "created_at:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "customer savings",
+    query_by: "name",
+    sort_by: "created_at:desc",
+  },
+  'ledgers',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "customer savings", QueryBy: "name", SortBy: "created_at:desc"},
+  blnkgo.Ledgers,
+)
+```
+</CodeGroup>
 </Step>
 </Steps>
 
@@ -315,7 +524,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/ledgers" \
 <Step title="Search identities by name or email">
 Find specific customer identities using partial name matching or email addresses for customer support and account verification.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -325,6 +535,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
     "sort_by": "created_at:desc"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "john doe",
+    query_by: "first_name,last_name,email",
+    sort_by: "created_at:desc",
+  },
+  'identities',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "john doe", QueryBy: "first_name,last_name,email", SortBy: "created_at:desc"},
+  blnkgo.Identities,
+)
+```
+</CodeGroup>
 </Step>
 </Steps>
 

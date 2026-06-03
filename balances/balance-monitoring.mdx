@@ -46,9 +46,10 @@ Next, call the **create-balance-monitor** endpoint and provide the following req
 POST http://YOUR_BLNK_INSTANCE_URL/balance-monitors
 ```
 
-```bash cURL
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://localhost:5001/balance-monitors" \
-  -H "X-blnk-key: <api-key>" \
+  -H "X-Blnk-Key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
@@ -61,6 +62,37 @@ curl -X POST "http://localhost:5001/balance-monitors" \
     "description": "Tier 1 Account"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.BalanceMonitor.create({
+  balance_id: 'bln_0be360ca-86fe-457d-be43-daa3f966d8f0',
+  condition: {
+    field: 'debit_balance',
+    operator: '>',
+    value: 1000,
+    precision: 100,
+  },
+  description: 'Tier 1 Account',
+});
+```
+
+```go Go wrap
+monitor, resp, err := client.BalanceMonitor.Create(blnkgo.MonitorData{
+  BalanceID: "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+  Condition: blnkgo.MonitorCondition{
+    Field:     "debit_balance",
+    Operator:  blnkgo.OperatorGreaterThan,
+    Value:     1000,
+    Precision: 100,
+  },
+  Description: "Tier 1 Account",
+})
+```
+
+```bash Blnk CLI wrap
+
+```
+</CodeGroup>
 
 | Field | Description | Required? | Type
 | :--- |:--- | :--- | :---
@@ -126,9 +158,39 @@ To view balance monitors, call the **get-balance-monitor** endpoint:
 GET http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor-id}
 ```
 
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor-id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```javascript TypeScript wrap
+const response = await blnk.BalanceMonitor.get('{monitor-id}');
+```
+
+```go Go wrap
+monitor, resp, err := client.BalanceMonitor.Get("mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0")
+```
+</CodeGroup>
+
 <Tip>
-    `GET http://YOUR_BLNK_INSTANCE_URL/balance-monitors` will return a list of all balance monitors.
+    List all balance monitors with `GET http://YOUR_BLNK_INSTANCE_URL/balance-monitors`:
 </Tip>
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balance-monitors" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```javascript TypeScript wrap
+const response = await blnk.BalanceMonitor.list();
+```
+
+```go Go wrap
+monitors, resp, err := client.BalanceMonitor.List()
+```
+</CodeGroup>
 
 To update a balance monitor, call the **update-balance-monitor** endpoint:
 

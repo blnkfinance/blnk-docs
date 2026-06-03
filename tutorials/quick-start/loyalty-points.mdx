@@ -16,6 +16,8 @@ In this tutorial, we will build a simple loyalty points system using the Blnk Le
 3. Award points to customers when they make purchases.
 4. Allow customers to redeem their points for discounts on future purchases.
 
+For this tutorial, we'll use the [Blnk TypeScript SDK](/sdks/typescript) and [Blnk Go SDK](/sdks/go) for the implementation. If you prefer, you can also refer to the [API reference](/reference/create-ledger) for details on the available endpoints.
+
 ---
 
 ## Designing your map
@@ -72,12 +74,72 @@ Before starting, ensure you have:
 
 ---
 
-## Create your ledgers
+## Initialise your client
 
-First, we need to create ledgers to organize our wallets::
+Initialize the Blnk client once at the start of your application:
 
 <CodeGroup>
-```javascript TypeScript
+```javascript TypeScript wrap
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
+
+let blnkInstance = null;
+
+async function getBlnkInstance() {
+  if (!blnkInstance) {
+    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
+  }
+  return blnkInstance;
+}
+```
+
+```go Go wrap
+var client *blnkgo.Client
+
+func getClient() *blnkgo.Client {
+    if client == nil {
+        baseURL, _ := url.Parse("http://localhost:5001/")
+        apiKey := "YOUR_API_KEY"
+        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
+    }
+    return client
+}
+```
+</CodeGroup>
+
+---
+
+## Create your ledgers
+
+First, we need to create ledgers to organize our wallets:
+
+<CodeGroup>
+```bash cURL wrap expandable
+# Create main wallet ledger
+curl --request POST \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Customer Main Wallets",
+    "meta_data": {
+        "description": "Ledger for customer USD wallets"
+    }
+  }'
+
+# Create points wallet ledger
+curl --request POST \
+  --url http://localhost:5001/ledgers \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Customer Points Wallets",
+    "meta_data": {
+        "description": "Ledger for customer loyalty points"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createLedgers() {
   const blnk = await getBlnkInstance();
   const { Ledgers } = blnk;
@@ -107,30 +169,35 @@ async function createLedgers() {
   };
 }
 ```
-```bash cURL
-# Create main wallet ledger
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "name": "Customer Main Wallets",
-    "meta_data": {
-        "description": "Ledger for customer USD wallets"
-    }
-  }'
 
-# Create points wallet ledger
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "name": "Customer Points Wallets",
-    "meta_data": {
-        "description": "Ledger for customer loyalty points"
+```go Go wrap expandable
+func createLedgers() (mainLedgerID, pointsLedgerID string, err error) {
+    client := getClient()
+
+    mainLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+        Name: "Customer Main Wallets",
+        MetaData: map[string]interface{}{
+            "description": "Ledger for customer USD wallets",
+        },
+    })
+    if err != nil {
+        return "", "", err
     }
-  }'
+
+    pointsLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+        Name: "Customer Points Wallets",
+        MetaData: map[string]interface{}{
+            "description": "Ledger for customer loyalty points",
+        },
+    })
+    if err != nil {
+        return "", "", err
+    }
+
+    fmt.Println("Created main wallet ledger:", mainLedger.LedgerID)
+    fmt.Println("Created points wallet ledger:", pointsLedger.LedgerID)
+    return mainLedger.LedgerID, pointsLedger.LedgerID, nil
+}
 ```
 </CodeGroup>
 
@@ -143,7 +210,39 @@ Blnk Finance supports tracking of different assets (e.g., USD and POINTS) in you
 Now, let's create the main wallet and points wallet for the customer:
 
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+# Create main wallet
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "<main-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "USD",
+    "meta_data": {
+        "wallet_type": "main",
+        "status": "active"
+    }
+  }'
+
+# Create points wallet
+curl --request POST \
+  --url http://localhost:5001/balances \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "ledger_id": "<points-ledger-id>",
+    "identity_id": "<customer-identity-id>",
+    "currency": "POINTS",
+    "meta_data": {
+        "wallet_type": "points",
+        "status": "active"
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
   const blnk = await getBlnkInstance();
   const { LedgerBalances } = blnk;
@@ -179,36 +278,41 @@ async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
   };
 }
 ```
-```bash cURL
-# Create main wallet
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "<main-ledger-id>",
-    "identity_id": "<customer-identity-id>",
-    "currency": "USD",
-    "meta_data": {
-        "wallet_type": "main",
-        "status": "active"
-    }
-  }'
 
-# Create points wallet
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "ledger_id": "<points-ledger-id",
-    "identity_id": "<customer-identity-id>",
-    "currency": "POINTS",
-    "meta_data": {
-        "wallet_type": "points",
-        "status": "active"
+```go Go wrap expandable
+func createCustomerWallets(mainLedgerID, pointsLedgerID, identityID string) (mainWalletID, pointsWalletID string, err error) {
+    client := getClient()
+
+    mainWallet, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID:   mainLedgerID,
+        IdentityID: identityID,
+        Currency:   "USD",
+        MetaData: map[string]interface{}{
+            "wallet_type": "main",
+            "status":      "active",
+        },
+    })
+    if err != nil {
+        return "", "", err
     }
-  }'
+
+    pointsWallet, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+        LedgerID:   pointsLedgerID,
+        IdentityID: identityID,
+        Currency:   "POINTS",
+        MetaData: map[string]interface{}{
+            "wallet_type": "points",
+            "status":      "active",
+        },
+    })
+    if err != nil {
+        return "", "", err
+    }
+
+    fmt.Println("Created main wallet:", mainWallet.BalanceID)
+    fmt.Println("Created points wallet:", pointsWallet.BalanceID)
+    return mainWallet.BalanceID, pointsWallet.BalanceID, nil
+}
 ```
 </CodeGroup>
 
@@ -225,8 +329,50 @@ When a customer makes a purchase, we need to:
   Ensure your customer main wallet is funded. Learn how: [Wallet Funding →](/tutorials/quick-start/wallet-management#funding-the-main-wallet)
 </Tip>
 
+Record the purchase payment and award loyalty points:
+
 <CodeGroup>
-```javascript TypeScript
+```bash cURL wrap expandable
+# Process purchase
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 100,
+    "precision": 100,
+    "reference": "purchase-123456789",
+    "currency": "USD",
+    "source": "<customer-main-balance-id>",
+    "destination": "@RevenueUSD",
+    "description": "Product purchase",
+    "meta_data": {
+        "transaction_type": "purchase"
+    }
+  }'
+
+# Award points
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 10,
+    "precision": 1,
+    "reference": "points-purchase-123456789",
+    "currency": "POINTS",
+    "source": "@PointsPool",
+    "destination": "<customer-points-balance-id>",
+    "description": "Loyalty points award",
+    "allow_overdraft": true,
+    "meta_data": {
+        "purchase_reference": "purchase-123456789",
+        "purchase_amount": 100
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purchaseAmount, pointsToAward) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
@@ -273,44 +419,54 @@ async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purch
   };
 }
 ```
-```bash cURL
-# Process purchase
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 100,
-    "precision": 100,
-    "reference": "purchase-123456789",
-    "currency": "USD",
-    "source": "<customer-main-balance-id>",
-    "destination": "@RevenueUSD",
-    "description": "Product purchase",
-    "meta_data": {
-        "transaction_type": "purchase"
-    }
-  }'
 
-# Award points
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 10,
-    "precision": 1,
-    "reference": "points-purchase-123456789",
-    "currency": "POINTS",
-    "source": "@PointsPool",
-    "destination": "<customer-points-balance-id>",
-    "description": "Loyalty points award",
-    "allow_overdraft": true,
-    "meta_data": {
-        "purchase_reference": "purchase-123456789",
-        "purchase_amount": 100
+```go Go wrap expandable
+func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchaseAmount, pointsToAward float64) (purchaseID, pointsAwardID string, err error) {
+    client := getClient()
+    purchaseReference := fmt.Sprintf("purchase-%d", time.Now().Unix())
+
+    purchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      purchaseAmount,
+            Precision:   100,
+            Reference:   purchaseReference,
+            Currency:    "USD",
+            Source:      mainWalletID,
+            Destination: "@RevenueUSD",
+            Description: "Product purchase",
+            MetaData: map[string]interface{}{
+                "transaction_type": "purchase",
+            },
+        },
+    })
+    if err != nil {
+        return "", "", err
     }
-  }'
+
+    pointsAward, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      pointsToAward,
+            Precision:   1,
+            Reference:   "points-" + purchaseReference,
+            Currency:    "POINTS",
+            Source:      "@PointsPool",
+            Destination: pointsWalletID,
+            Description: "Loyalty points award",
+            MetaData: map[string]interface{}{
+                "purchase_reference": purchaseReference,
+                "purchase_amount":    purchaseAmount,
+            },
+        },
+        AllowOverdraft: true,
+    })
+    if err != nil {
+        return "", "", err
+    }
+
+    fmt.Println("Purchase processed:", purchase.TransactionID)
+    fmt.Println("Points awarded:", pointsAward.TransactionID)
+    return purchase.TransactionID, pointsAward.TransactionID, nil
+}
 ```
 </CodeGroup>
 
@@ -338,7 +494,51 @@ Behind the scenes, here's what we'll do:
 2. Convert the points to its equivalent dollar value, apply it as discount, and calculate the final cost for the customer.
 3. Charge the `Customer Main Wallet` with the final discounted cost.
 
-```javascript TypeScript
+Redeem points and charge the discounted purchase amount:
+
+<CodeGroup>
+```bash cURL wrap expandable
+# Redeem points
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 200,
+    "precision": 1,
+    "reference": "redemption-123456789",
+    "currency": "POINTS",
+    "source": "<customer-points-balance-id>",
+    "destination": "@PointsPool",
+    "description": "Points redemption for discount",
+    "meta_data": {
+        "transaction_type": "redemption",
+        "convert_to_usd": 20
+    }
+  }'
+
+# Process discounted purchase
+curl --request POST \
+  --url http://localhost:5001/transactions \
+  --header 'X-blnk-key: <api-key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 80,
+    "precision": 100,
+    "reference": "purchase-redemption-123456789",
+    "currency": "USD",
+    "source": "<customer-main-balance-id>",
+    "destination": "@RevenueUSD",
+    "description": "Discounted purchase with points",
+    "meta_data": {
+        "redemption_reference": "redemption-123456789",
+        "original_amount": 100,
+        "points_redeemed": 200
+    }
+  }'
+```
+
+```javascript TypeScript wrap expandable
 async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem) {
   const blnk = await getBlnkInstance();
   const { Transactions } = blnk;
@@ -391,6 +591,59 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   };
 }
 ```
+
+```go Go wrap expandable
+func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount, pointsToRedeem float64) (redemptionID, purchaseID string, err error) {
+    client := getClient()
+    convertedAmount := pointsToRedeem / 10
+    redemptionReference := fmt.Sprintf("redemption-%d", time.Now().Unix())
+
+    pointsRedemption, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      pointsToRedeem,
+            Precision:   1,
+            Reference:   redemptionReference,
+            Currency:    "POINTS",
+            Source:      pointsWalletID,
+            Destination: "@PointsPool",
+            Description: "Points redemption for discount",
+            MetaData: map[string]interface{}{
+                "transaction_type": "redemption",
+                "convert_to_usd":   convertedAmount,
+            },
+        },
+    })
+    if err != nil {
+        return "", "", err
+    }
+
+    discountedAmount := purchaseAmount - convertedAmount
+    discountedPurchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      discountedAmount,
+            Precision:   100,
+            Reference:   "purchase-" + redemptionReference,
+            Currency:    "USD",
+            Source:      mainWalletID,
+            Destination: "@RevenueUSD",
+            Description: "Discounted purchase with points",
+            MetaData: map[string]interface{}{
+                "redemption_reference": redemptionReference,
+                "original_amount":      purchaseAmount,
+                "points_redeemed":      pointsToRedeem,
+            },
+        },
+    })
+    if err != nil {
+        return "", "", err
+    }
+
+    fmt.Println("Points redeemed:", pointsRedemption.TransactionID)
+    fmt.Println("Discounted purchase processed:", discountedPurchase.TransactionID)
+    return pointsRedemption.TransactionID, discountedPurchase.TransactionID, nil
+}
+```
+</CodeGroup>
 
 ---
 

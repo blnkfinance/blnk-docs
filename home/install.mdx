@@ -166,7 +166,7 @@ Your Blnk instance is now running! View the instance details to get your Core UR
 Now that Blnk is running, let's create your first transaction. Blnk uses the [double entry principle](/guides/double-entry) to record transactions, which means every transaction must have a source and destination.
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST 'http://localhost:5001/transactions' \
   -H 'X-blnk-key: <api-key>' \
   -H 'Content-Type: application/json' \
@@ -182,6 +182,37 @@ curl -X POST 'http://localhost:5001/transactions' \
     "meta_data": {}
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  reference: 'first_transaction_001',
+  currency: 'USD',
+  precision: 100,
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  description: 'My first Blnk transaction',
+  allow_overdraft: true,
+  meta_data: {},
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      1000,
+    Reference:   "first_transaction_001",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "@FundingPool",
+    Destination: "@MyBalance",
+    Description: "My first Blnk transaction",
+  },
+  AllowOverdraft: true,
+})
+```
+</CodeGroup>
+
 ```json Response
 {
   "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
@@ -199,7 +230,6 @@ curl -X POST 'http://localhost:5001/transactions' \
   "meta_data": {}
 }
 ```
-</CodeGroup>
 
 <Check>
 Congratulations! You've successfully created your first transaction in Blnk.
@@ -208,10 +238,14 @@ Congratulations! You've successfully created your first transaction in Blnk.
 Finally, let's view our balances to confirm that the transaction was recorded:
 
 <CodeGroup>
-```bash cURL
-curl -X GET 'http://localhost:5001/balances'
+```bash cURL wrap
+curl -X GET 'http://localhost:5001/balances' \
+  -H 'X-blnk-key: <api-key>'
 ```
-```json Response
+
+</CodeGroup>
+
+```json Response expandable
 {
   "balances": [
     {
@@ -255,7 +289,6 @@ curl -X GET 'http://localhost:5001/balances'
   ]
 }
 ```
-</CodeGroup>
 
 This will return a list of all balances in your system. You should see the `@FundingPool` balance (which will be negative since it funded the transaction) and the `@MyBalance` balance (which will show the amount we transferred).
 
@@ -285,27 +318,27 @@ Now that you're set up, start with these key concepts to build your application:
 
 <CardGroup cols={2}>
   <Card title="Ledgers" icon="book-open" href="/ledgers/introduction">
-    Organize your ledger according to your business/application needs.
+    Organize ledgers for your application.
   </Card>
   
   <Card title="Balances" icon="wallet" href="/balances/introduction">
-    Create and manage balances for wallets, accounts, and any store of value.
+    Wallets, accounts, and stores of value.
   </Card>
   
   <Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
-    Create any transaction workflow with Blnk.
+    Record and move money between balances.
   </Card>
   
   {/* <Card title="Reconciliations" icon="copy" href="/reconciliations/overview">
-    Match balances and transactions in your ledger with external sources.
+    Match ledger data with external sources.
   </Card> */}
   
   <Card title="Identities" icon="user" href="/identities/introduction">
-    Create, manage and link identities securely to balances.
+    Link people and entities to balances.
   </Card>
   
   {/* <Card title="Hooks" icon="link" href="/hooks/overview">
-    Listen for any event within Blnk Core and trigger workflows or other events.
+    React to Core events with webhooks.
   </Card> */}
 </CardGroup>
 

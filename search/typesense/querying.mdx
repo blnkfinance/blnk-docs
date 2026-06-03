@@ -19,7 +19,7 @@ The `q` parameter is required in all search requests. The `query_by` parameter i
 Here's a basic search query that demonstrates both parameters:
 
 <CodeGroup>
-```bash cURL
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -29,7 +29,25 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
-```json Response
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: 'bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e', query_by: 'source,destination' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{
+    Q:       "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    QueryBy: "source,destination",
+  },
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
+```json Response expandable
 {
   "found": 3,
     "hits": [
@@ -55,7 +73,6 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   ]
 }
 ```
-</CodeGroup>
 
 ---
 
@@ -65,7 +82,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 
 Search for specific text or IDs by specifying the fields to search in:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -75,11 +93,30 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", QueryBy: "source,destination"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ### Wildcard search
 
 Use `*` to return all records (only case where `query_by` is optional):
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -88,11 +125,29 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "*"},
+  blnkgo.Balances,
+)
+```
+</CodeGroup>
+
 ### Multi-word search
 
 Search for multiple words across specified fields:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -101,6 +156,24 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "query_by": "description"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "payment services",
+    query_by: "description",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "payment services", QueryBy: "description"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 
 <Warning>
 Multi-word searches require ALL words to be present in the document. For "payment services", both "payment" AND "services" must exist in the specified fields.
@@ -130,7 +203,8 @@ Search in one field or across multiple fields using comma separation:
 
 Search within metadata or nested objects using dot notation:
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -140,6 +214,24 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   }'
 ```
 
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "transfer",
+    query_by: "meta_data.transaction_type,description",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "transfer", QueryBy: "meta_data.transaction_type,description"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
+
 ---
 
 ## Common patterns
@@ -148,7 +240,8 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
 <Step title="Search for a specific balance's transactions">
 This finds all transactions where the specified balance ID appears as either source or destination.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -157,12 +250,31 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "query_by": "source,destination"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", QueryBy: "source,destination"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Find customers by name or email">
 This searches for "alice" across name and email fields, useful for customer support.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -171,12 +283,31 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/identities" \
     "query_by": "first_name,last_name,email"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "alice",
+    query_by: "first_name,last_name,email",
+  },
+  'identities',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "alice", QueryBy: "first_name,last_name,email"},
+  blnkgo.Identities,
+)
+```
+</CodeGroup>
 </Step>
 
 <Step title="Find transactions by description keywords">
 This finds transactions containing "refund" in their description or reference fields.
 
-```bash
+<CodeGroup>
+```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
   -H "X-Blnk-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -185,6 +316,24 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
     "query_by": "description,reference"
   }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "refund",
+    query_by: "description,reference",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+  blnkgo.SearchParams{Q: "refund", QueryBy: "description,reference"},
+  blnkgo.Transactions,
+)
+```
+</CodeGroup>
 </Step>
 </Steps>
 

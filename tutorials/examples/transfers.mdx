@@ -19,17 +19,11 @@ In such cases, we need to reverse the transaction using Blnk's refund endpoint.
 First, let's perform the initial transfer:
 
 <CodeGroup>
-```javascript NodeJS {4-22}
-const request = require('request');
-
-const options = {
-  method: 'POST',
-  url: 'http://localhost:5001/transactions',
-  headers: {
-    'X-Blnk-Key': 'blnk-api',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
+```bash cURL wrap
+curl -X POST 'http://localhost:5001/transactions' \
+  -H 'X-Blnk-Key: blnk-api' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "amount": 150.00,
     "precision": 100,
     "reference": "ref-0-07",
@@ -41,14 +35,44 @@ const options = {
       "provider_reference": "ext-pay-123456",
       "customer_id": "1234"
     }
-  })
-};
+  }'
+```
 
-request(options, (error, response) => {
-  if (error) throw new Error(error);
-  console.log(response.body);
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 150.0,
+  precision: 100,
+  reference: 'ref-0-07',
+  description: 'Payment to ExternalProvider',
+  currency: 'USD',
+  source: 'bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a',
+  destination: '@external-provider',
+  meta_data: {
+    provider_reference: 'ext-pay-123456',
+    customer_id: '1234',
+  },
 });
 ```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      150.0,
+    Precision:   100,
+    Reference:   "ref-0-07",
+    Description: "Payment to ExternalProvider",
+    Currency:    "USD",
+    Source:      "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    Destination: "@external-provider",
+    MetaData: map[string]interface{}{
+      "provider_reference": "ext-pay-123456",
+      "customer_id":        "1234",
+    },
+  },
+})
+```
+</CodeGroup>
+
 ```json Response
 {
     "precise_amount": 15000,
@@ -75,7 +99,6 @@ request(options, (error, response) => {
     }
 }
 ```
-</CodeGroup>
 
 View your transactions in your terminal:
 
@@ -194,43 +217,68 @@ Let's consider a scenario where we need to transfer $750.00 from Customer A's US
 First, let's initiate the transaction with the Inflight flag:
 
 <CodeGroup>
-```javascript NodeJS {5-25}
-const axios = require('axios');
-
-async function createInflightTransaction() {
-  try {
-    const response = await axios.post('http://localhost:5001/transactions', {
-      amount: 750.00,
-      precision: 100,
-      reference: "ref_001adcfgf",
-      description: "Payment to ExternalProvider (Pending Verification)",
-      currency: "USD",
-      source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-      destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-      inflight: true,
-      inflight_expiry_date: "2024-02-03T12:38:19Z",
-      meta_data: {
-        provider_reference: "ext-pay-123456",
-        customer_id: "1234",
-        verification_status: "PENDING"
-      }
-    }, {
-      headers: {
-        'X-Blnk-Key': 'your-blnk-api-key-here',
-        'Content-Type': 'application/json'
-      }
-    });
-
-    console.log('Inflight transaction created:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating inflight transaction:', error.response.data);
-    throw error;
-  }
-}
-
-createInflightTransaction();
+```bash cURL wrap
+curl -X POST 'http://localhost:5001/transactions' \
+  -H 'X-Blnk-Key: your-blnk-api-key-here' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amount": 750.00,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "description": "Payment to ExternalProvider (Pending Verification)",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "inflight": true,
+    "inflight_expiry_date": "2024-02-03T12:38:19Z",
+    "meta_data": {
+      "provider_reference": "ext-pay-123456",
+      "customer_id": "1234",
+      "verification_status": "PENDING"
+    }
+  }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750.0,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  description: 'Payment to ExternalProvider (Pending Verification)',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  inflight: true,
+  inflight_expiry_date: '2024-02-03T12:38:19Z',
+  meta_data: {
+    provider_reference: 'ext-pay-123456',
+    customer_id: '1234',
+    verification_status: 'PENDING',
+  },
+});
+```
+
+```go Go wrap expandable
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:              750.0,
+    Precision:           100,
+    Reference:           "ref_001adcfgf",
+    Description:         "Payment to ExternalProvider (Pending Verification)",
+    Currency:            "USD",
+    Source:              "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination:         "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Inflight:            true,
+    InflightExpiryDate:  "2024-02-03T12:38:19Z",
+    MetaData: map[string]interface{}{
+      "provider_reference":  "ext-pay-123456",
+      "customer_id":         "1234",
+      "verification_status": "PENDING",
+    },
+  },
+})
+```
+
 ```json Expected response
 {
     "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
