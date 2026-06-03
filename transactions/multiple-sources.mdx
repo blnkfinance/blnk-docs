@@ -83,11 +83,53 @@ curl -X POST http://localhost:5001/transactions \
 | `sources.identifier` | Balance ID of the source account | Yes | `string` |
 | `sources.distribution` | Amount to send from this source (specific amount, percentage, or "left") | Yes | `string` |
 | `destination` | Recipient's balance ID | Yes | `string` |
+| `atomic` | When `true`, all source legs succeed or the entire split fails. Default: `false`. | No | `boolean` |
 | `meta_data` | Custom transaction data | No | `object` |
 
 <Warning>
     When sending from multiple sources, do not include the `source` field in your payload. Use the `sources` array to group the participating balances in your payload.
 </Warning>
+
+---
+
+## Atomic split processing
+
+By default, Blnk processes a multiple sources split with `atomic: false`. Each source leg is evaluated independently. Legs that pass validation are marked `APPLIED`, while legs that fail are marked `REJECTED`. This can result in a partial split, where some sources are debited and others are not.
+
+Set `atomic: true` to enable all-or-nothing processing. All source legs must succeed for the split to be completed. If any leg fails, Blnk rolls back any previously `APPLIED` or `INFLIGHT` legs, reversing the debits so the split is fully cancelled and no partial state remains on the ledger.
+
+```bash cURL {9}
+curl -X POST http://localhost:5001/transactions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "amount": 30000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "atomic": true,
+    "sources": [
+        {
+            "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+            "distribution": "10%"
+        },
+        {
+            "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+            "distribution": "20000"
+        },
+        {
+            "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+            "distribution": "left"
+        }
+    ],
+    "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "description": "Payment to Sarah"
+  }'
+```
+
+<Tip>
+Use `atomic: true` when partial funding is not acceptable. For example, when settling an invoice, every contributor account must be able to cover its share for the transaction to succeed.
+</Tip>
 
 ---
 

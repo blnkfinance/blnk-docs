@@ -85,11 +85,53 @@ curl -X POST http://localhost:5001/transactions \
 | `destinations` | Array of destination objects with `identifier` and `distribution` fields | Yes | `array` |
 | `destinations.identifier` | Balance ID of the destination account | Yes | `string` |
 | `destinations.distribution` | Amount to send to this destination (specific amount, percentage, or "left") | Yes | `string` |
+| `atomic` | When `true`, all destination legs succeed or the entire split fails. Default: `false`. | No | `boolean` |
 | `meta_data` | Custom transaction data | No | `object` |
 
 <Warning>
     When sending to multiple destinations, do not include the `destination` field in your payload. Use the `destinations` array to group the participating balances in your payload.
 </Warning>
+
+---
+
+## Atomic split processing
+
+By default, Blnk processes a multiple destinations split with `atomic: false`. Each destination leg is evaluated independently. Legs that pass validation are marked `APPLIED`, while legs that fail are marked `REJECTED`. This can result in a partial split, where some destinations are credited and others are not.
+
+Set `atomic: true` to enable all-or-nothing processing. All destination legs must succeed for the split to be completed. If any leg fails, Blnk rolls back any previously `APPLIED` or `INFLIGHT` legs, reversing the credits so the split is fully cancelled and no partial state remains on the ledger.
+
+```bash cURL {9}
+curl -X POST http://localhost:5001/transactions \
+  -H "Content-Type: application/json" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -d '{
+    "amount": 30000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "atomic": true,
+    "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "destinations": [
+        {
+            "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+            "distribution": "20%"
+        },
+        {
+            "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+            "distribution": "10000"
+        },
+        {
+            "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+            "distribution": "left"
+        }
+    ],
+    "description": "Payment from Sarah"
+  }'
+```
+
+<Tip>
+Use `atomic: true` when partial results are not acceptable. For example, when sending a split payment, every destination must succeed for the transaction to go through.
+</Tip>
 
 ---
 
