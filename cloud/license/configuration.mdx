@@ -1,19 +1,160 @@
 ---
 title: "License Configuration"
 sidebarTitle: "Configuration"
-icon: "badge-check"
-description: "Learn how to configure your Blnk production license."
+icon: "settings"
+description: "Learn how to configure your Blnk production license deployment."
 og:title: "License Configuration | Blnk Cloud Guide"
-og:description: "Learn how to configure your Blnk production license in Blnk Cloud"
+og:description: "Learn how to configure your Blnk production license deployment in Blnk Cloud"
 ---
 
 import { CtaCallout } from "/snippets/cta-callout.jsx";
 
+This is the configuration reference for your Production License. Use these environment variables to control launcher behavior, public access, branding, authentication, email delivery, etc. 
+
+Set these values in your runtime `.env` or `enterprise.env` file before starting the deployment.
+
 <CtaCallout
-  title="Need help with your license?"
+  title="Need more custom configurations?"
   href="https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Flicense%2Fconfiguration"
   buttonLabel="Get Pro Support"
   trackingEvent="clicked_pro_support"
 >
-  Get dedicated support for production license setup, configuration, and deployment.
+  Reach out to us to discuss your requirements and customize your setup for you.
 </CtaCallout>
+
+---
+
+## Enterprise launcher
+
+The enterprise launcher starts and coordinates the services in your production stack. Use these variables to connect the launcher to shared infrastructure and provide the license used at startup.
+
+```dotenv .env wrap
+ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
+ENTERPRISE_REDIS_URL=redis://host:6379/0
+ENTERPRISE_LICENSE_B64=your_base64_license_string
+
+# Core and Cloud use separate databases on the Postgres instance above
+# Defaults: blnk (Core ledger) and blnk-cloud (Cloud Dashboard)
+ENTERPRISE_CORE_DB_NAME=blnk
+ENTERPRISE_PLANE_DB_NAME=blnk-cloud
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | Postgres connection string used by the launcher to derive the Core and Plane database connections. Point this at the Postgres server that hosts both databases. |
+| `ENTERPRISE_REDIS_URL` | Redis connection string passed to Core for queueing, caching, and other Redis-backed runtime work. |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from your onboarding email. To use a mounted license file instead, set `ENTERPRISE_LICENSE_FILE` to the path of your `.lic` file. |
+| `ENTERPRISE_CORE_DB_NAME` | Name of the Postgres database the launcher assigns to Blnk Core ledger data. |
+| `ENTERPRISE_PLANE_DB_NAME` | Name of the Postgres database the launcher assigns to Plane, which powers the Cloud Dashboard. |
+
+---
+
+## Public app configuration
+
+These variables control how users reach the deployment and how the launcher connects the internal services. 
+
+Use the public values for browser access and the internal port values only when you need to change service bindings.
+
+```dotenv .env wrap
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+ENTERPRISE_CORE_PORT=5001
+ENTERPRISE_WORKERS_PORT=5004
+ENTERPRISE_UI_PORT=3001
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_PUBLIC_PORT` | Port the launcher exposes for the public Plane gateway. Map your host or load balancer to this port when running the deployment. |
+| `ENTERPRISE_PUBLIC_URL` | Public URL where users open the Cloud Dashboard, including the scheme such as `https://`. Use the same origin in `CORS_ORIGINS`. |
+| `ENTERPRISE_CORE_PORT` | Internal port used by the Blnk Core API process. |
+| `ENTERPRISE_WORKERS_PORT` | Internal port used by the Core workers monitoring endpoint. |
+| `ENTERPRISE_UI_PORT` | Internal port used by the Cloud Dashboard UI process. |
+
+---
+
+## Branding
+
+Customize the Cloud Dashboard theme to match your brand colours. Set your organization name and primary colour so the dashboard feels like your product, not a generic install.
+
+```dotenv .env wrap
+ENTERPRISE_BRAND_NAME=Acme Ledger
+ENTERPRISE_BRAND_PRIMARY_COLOR="#A34EF4"
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_BRAND_NAME` | Display name used for your deployment in the Cloud Dashboard. |
+| `ENTERPRISE_BRAND_PRIMARY_COLOR` | Primary accent color used by the Cloud Dashboard UI. Use a six-digit hex color value, such as `"#A34EF4"`. |
+
+---
+
+## Security & authentication
+
+These variables configure browser access, local authentication, and encryption for Plane.
+
+```dotenv .env wrap
+CORS_ORIGINS=http://localhost:8080,http://localhost:3001
+JWT_SECRET=thisisasecret
+BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `CORS_ORIGINS` | Comma-separated list of browser origins allowed to call the Plane API. Do not include spaces. Include `ENTERPRISE_PUBLIC_URL` so the Cloud Dashboard can reach the API. |
+| `JWT_SECRET` | Strong random secret used to sign and verify local authentication tokens. Store this as a secret and keep it stable across restarts. |
+| `BLNK_ENCRYPTION_KEY` | Unique 32-character key used to encrypt sensitive data, including instance connection keys. Do not change it after deployment because existing encrypted data may become unreadable. |
+
+---
+
+## Email
+
+Configure SMTP so Plane can send login alerts, password resets, and other Cloud notifications from your deployment.
+
+If you do not already have an SMTP provider, services such as [Resend](https://resend.com), [SendGrid](https://sendgrid.com), or [Amazon SES](https://aws.amazon.com/ses/) can be used.
+
+<Note>
+SMTP is optional. You can skip these variables if you do not need email notifications yet.
+</Note>
+
+```dotenv .env wrap
+EMAIL_PROVIDER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_AUTH_USERNAME=
+SMTP_AUTH_PASSWORD=
+SMTP_TLS_MODE=auto
+SMTP_SKIP_TLS_VERIFY=false
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `EMAIL_PROVIDER` | Email transport Plane should use. Set this to `smtp`, or leave it unset so Plane uses SMTP when `SMTP_HOST` is configured. |
+| `SMTP_HOST` | Hostname of the SMTP server that sends mail for your deployment. |
+| `SMTP_PORT` | Port your SMTP server listens on. Use the value required by your provider. |
+| `SMTP_AUTH_USERNAME` | Username used for SMTP authentication. Some providers require a fixed username such as `resend`. |
+| `SMTP_AUTH_PASSWORD` | Password or API key used for SMTP authentication. Store this as a secret. |
+| `SMTP_TLS_MODE` | TLS mode Plane uses for the SMTP connection. Use `auto` for STARTTLS-capable servers unless your provider requires another supported mode. |
+| `SMTP_SKIP_TLS_VERIFY` | Whether to skip TLS certificate verification. Use `false` in production. |
+
+---
+
+## Watch
+
+Configure Git-based rule loading for your Watch service. When `WATCH_SCRIPT_GIT_REPO` is set, Watch clones the repository, loads `.ws` rule files from it, and keeps the local copy in sync.
+
+For additional Watch settings, see [Watch configuration](/watch/configuration).
+
+```dotenv .env wrap
+WATCH_SCRIPT_GIT_REPO=
+WATCH_SCRIPT_GIT_BRANCH=main
+WATCH_SCRIPT_GIT_USERNAME=git
+WATCH_SCRIPT_GIT_TOKEN=
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `WATCH_SCRIPT_GIT_REPO` | Git repository URL containing Watch rule files. When set, Watch loads rules from this repository instead of relying only on local files. |
+| `WATCH_SCRIPT_GIT_BRANCH` | Git branch Watch tracks when `WATCH_SCRIPT_GIT_REPO` is set. Use the branch that contains the rules for this deployment. |
+| `WATCH_SCRIPT_GIT_USERNAME` | Username used to authenticate when cloning a private rules repository over HTTPS. |
+| `WATCH_SCRIPT_GIT_TOKEN` | Personal access token or password used with `WATCH_SCRIPT_GIT_USERNAME` for private repository access. Store this as a secret. |
