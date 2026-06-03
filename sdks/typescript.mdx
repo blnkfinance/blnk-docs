@@ -1,845 +1,525 @@
 ---
 title: "Getting Started with the TypeScript SDK"
-description: "Learn how to work with the Blnk SDK for TypeScript."
+description: "Install the Blnk TypeScript SDK, run your first transaction, and find the Core docs for every SDK method."
 sidebarTitle: "TypeScript"
 "og:title": "Getting Started with the TypeScript SDK • Blnk SDK Documentation"
-"og:description": "Get started with Blnk's TypeScript SDK, learn how to install, initialize, and integrate with your TypeScript projects"
+"og:description": "Install the Blnk TypeScript SDK, initialize the client, and record your first transaction in TypeScript."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
-import Issues from "/snippets/sdk-issues.mdx";
 
-Welcome to the Blnk SDK for TypeScript Developer Guide. In this guide, you'll learn how to install Blnk and work with our Blnk TypeScript SDK. To view the open-source file, see the following: [Blnk TypeScript SDK](https://github.com/blnkfinance/blnk-ts/).
+The [Blnk TypeScript SDK](https://github.com/blnkfinance/blnk-ts) is the official Node.js client for Blnk Core, published as [`@blnkfinance/blnk-typescript`](https://www.npmjs.com/package/@blnkfinance/blnk-typescript).
 
-<Note>
-Building with Go instead? See the [Go SDK](/sdks/go).
-</Note>
-
-You'll also find examples of running different fintech use cases with our TypeScript SDK.
+For detailed documentation on each API, reference the [Core documentation](/ledgers/introduction).
 
 ---
 
-## Prerequisites
+## Quick start
 
-Ensure that you have the following installed on your machine.
+In a few minutes, you'll have a Node.js app moving money on your Blnk ledger. That's the starting point for wallets, transfers, and the rest of your product.
 
-1. [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/) for running Blnk locally on your machine.
-2. [Node.js (v14.0.0 or later)](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs) and [npm](https://www.npmjs.com/) for installing the Blnk Typescript SDK.
+<Steps>
+<Step title="Launch Blnk">
 
----
+You need a running Blnk Core instance before using the SDK.
 
-## 1: Installation & Configuration
+<Card title="Install Blnk" icon="sparkles" href="/home/install">
+Local install or Blnk Cloud
+</Card>
+</Step>
 
-Once you're good to go with the prerequisites, you can set up your Blnk server and SDK in 5 steps:
+<Step title="Install the TypeScript SDK">
 
-<Steps titleSize="h3">
-    <Step title="Clone the Blnk repository">
-        Run the following command in your terminal to clone Blnk to your local machine:
-        ```bash bash
-        git clone https://github.com/blnkfinance/blnk && cd blnk
-        ```
-    </Step>
-    <Step title="Set up your Blnk configuration">
-        Create a `blnk.json` file in your `blnk` project folder, paste the following configuration settings, and save.
-        ```json blnk.json
-        {
-            "project_name": "Blnk",
-            "data_source": {
-                "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=disable"
-            },
-            "redis": {
-                "dns": "redis:6379"
-            },
-            "server": {
-                "domain": "blnk.io",
-                "ssl": false,
-                "ssl_email": "jerryenebeli@gmail.com",
-                "port": "5001"
-            },
-            "notification": {
-                "slack": {
-                "webhook_url": "https://hooks.slack.com"
-                }
-            }
-        }
-        ```
-        This configuration sets up the required connections to PostgreSQL and Redis, specifies your server details, and allows Slack notifications if needed.
-    </Step>
-    <Step title="Launch Blnk">
-        Launch the Blnk server with the following command:
-        ```bash bash
-        docker compose up
-        ```
-        Once running, your server will be accessible at http://localhost:5001.
-    </Step>
-    <Step title="Install Blnk CLI">
-        The Blnk CLI helps you to quickly test and manage your Blnk backend directly from your command line. You can also use it to perform create actions or view your data tables. To install and use the Blnk CLI, see the following in: [Installing the Blnk CLI](/blnk-cli/install).
+Create a Node.js project and install the SDK. You need [Node.js 18 or later](https://nodejs.org/en/download).
 
-        To confirm that the CLI has been installed, run the following command:
-        ```bash bash
-        blnk --version
-        ```
-    </Step>
+```bash bash wrap
+npm init -y
+npm install @blnkfinance/blnk-typescript
+npm install -D tsx typescript
+```
+
+</Step>
+
+<Step title="Client initialization">
+
+Call `BlnkInit` to create a client. Pass your API key as the first argument when your instance requires authentication. The SDK sends it as the `X-Blnk-Key` header.
+
+Use an empty string when running locally without auth. `BlnkInit` is synchronous: do not `await` it.
+
+```typescript client.ts wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+const apiKey = process.env.BLNK_API_KEY ?? '';
+const blnk = BlnkInit(apiKey, {
+  baseUrl: 'http://localhost:5001',
+  timeout: 10000,
+  logger: console,
+});
+```
+
+</Step>
+
+<Step title="Create your first transaction">
+
+Create `index.ts`, paste the script below, and run it:
+
+```typescript index.ts wrap expandable
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+const blnk = BlnkInit('', { baseUrl: 'http://localhost:5001' });
+
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  reference: 'first_txn_001',
+  currency: 'USD',
+  precision: 100,
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  description: 'My first Blnk transaction',
+  allow_overdraft: true,
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  process.exit(1);
+}
+
+console.log('Transaction ID:', response.data.transaction_id);
+console.log('Status:', response.data.status);
+```
+
+Run the script:
+
+```bash bash wrap
+npx tsx index.ts
+```
+
+Your script prints the transaction ID when it succeeds. Verify the record with the CLI or in Blnk Cloud.
+
+```bash bash wrap
+blnk transactions list
+```
+
+Internal balances like `@FundingPool` are created automatically. See [Internal balances](/balances/internal-balances) to learn how they work.
+</Step>
 </Steps>
 
 ---
 
-## 2: Install the Blnk TypeScript SDK
+## Error handling
 
-In your `blnk` project folder, install Blnk Typescript SDK.
-```bash bash
-npm install @blnkfinance/blnk-typescript --save
+Every SDK method returns an `ApiResponse<T>` envelope:
+
+```typescript wrap
+interface ApiResponse<T> {
+  status: number;
+  message: string;
+  data: T;
+}
 ```
+
+Check `status` and `data` after every call:
+
+```typescript Error handling {5} wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customer accounts',
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  return;
+}
+
+console.log('Ledger ID:', response.data.ledger_id);
+```
+
+The SDK handles three failure modes:
+
+1. **HTTP errors**: Non-2xx responses return the status code, a message, and the error body in `data`.
+2. **Client-side validation**: SDK validators return `status: 400` with a message before the network call (for example, a missing `reference` or an invalid bulk payload).
+3. **Network or timeout errors**: Caught internally and returned as a failed `ApiResponse` with a logged error.
 
 ---
 
-## 3: Create your first ledger
+## Using the SDK
 
-A ledger is a folder for grouping balances together in your Blnk server. To learn more, see the following: [Introduction to Ledgers](/ledgers/introduction)
+Reference the Core documentation to understand how each API works. This section shows how those APIs are organized in the TypeScript SDK.
 
-To create a ledger using the TypeScript SDK:
+### Client structure
 
-```javascript Create ledger
+`BlnkInit` returns a client with one service per resource:
+
+- `blnk.Ledgers`
+- `blnk.LedgerBalances`
+- `blnk.Transactions`
+- `blnk.BalanceMonitor`
+- `blnk.Reconciliation`
+- `blnk.Search`
+- `blnk.Identity`
+
+Call methods on the service that matches the resource you need. The [endpoint map](#endpoint-map) lists each method and links to its API reference page.
+
+### Request field names
+
+Use **snake_case** field names that match the HTTP API directly: `meta_data`, `ledger_id`, `allow_overdraft`, and so on.
+
+```typescript wrap
+await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: 'bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e',
+  destination: 'bln_86ba7976-499d-4282-955e-a7c2abf5db12',
+  reference: 'payment_001',
+  allow_overdraft: true,
+  meta_data: { tier: 'gold' },
+});
+```
+
+### Client options
+
+Pass options as the second argument to `BlnkInit`:
+
+1. `baseUrl`: Required. A trailing `/` is appended automatically if missing.
+2. `timeout`: HTTP timeout in milliseconds. Defaults to `3000`.
+3. `logger`: Optional object implementing `BlnkLogger` (`info`, `error`, optional `debug`). Defaults to `CustomLogger` when omitted.
+
+```typescript wrap
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: 'http://localhost:5001',
+  timeout: 30000,
+  logger: console,
+});
+```
+
+### Module formats
+
+Use ESM `import` syntax in TypeScript projects:
+
+```typescript wrap
 import { BlnkInit } from '@blnkfinance/blnk-typescript';
-
-const blnk = await BlnkInit('<secret_key_if_set>', { baseUrl: 'http://localhost:5001' });
-const { Ledgers } = blnk;
-
-const newLedger = await Ledgers.create({
-    name: "Customer Savings Account",
-    meta_data: {
-        project_owner: "YOUR_APP_NAME"
-    }
-});
-console.log("Ledger Created:", newLedger);
 ```
 
-You can confirm that the ledger has been created with the Blnk CLI:
-```bash bash
-blnk ledgers list
+CommonJS also works and matches the [GitHub examples](https://github.com/blnkfinance/blnk-ts/tree/main/examples):
+
+```javascript wrap
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
 ```
 
 ---
 
-## 4: Create your first balance
+## Endpoint map
 
-A balance is used to represent a store of value in your Blnk server, e.g., wallet or account. To learn more, see the following: [Introduction to Balances](/balances/introduction)
+Each SDK method calls a Blnk Core HTTP endpoint. Use this map to find the SDK method for an operation and open its reference page for field definitions and business logic.
 
-To create a balance using the TypeScript SDK:
+<Tip>
+Read the linked Core reference page for each method to understand required fields, validation rules, and behavior.
+</Tip>
 
-```javascript Create balance
-const { LedgerBalances } = blnk;
+<Tabs>
+<Tab title="Ledgers">
 
-const newBalance = await LedgerBalances.create({
-    ledger_id: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-    currency: "USD",
-    meta_data: {
-        first_name: "Alice",
-        last_name: "Hart",
-        account_number: "1234567890"
-    }
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.Ledgers.create` | [Create ledger](/reference/create-ledger) |
+| `blnk.Ledgers.get` | [Get ledger](/reference/get-ledger) |
+
+<CodeGroup>
+```typescript Create wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customer accounts',
+  meta_data: { project_owner: 'MyApp' },
 });
-console.log("Balance Created:", newBalance);
 ```
 
-You can confirm that the balance has been created with the Blnk CLI:
-```bash bash
-blnk balances list
+```typescript Get wrap
+const response = await blnk.Ledgers.get(
+  'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
+);
 ```
+</CodeGroup>
+
+</Tab>
+<Tab title="Balances">
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.LedgerBalances.create` | [Create balance](/reference/create-balance) |
+| `blnk.LedgerBalances.get` | [Get balance](/reference/get-balance) |
+
+<CodeGroup>
+```typescript Create wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: 'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
+  currency: 'USD',
+});
+```
+
+```typescript Get wrap
+const response = await blnk.LedgerBalances.get(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+);
+```
+</CodeGroup>
+
+</Tab>
+<Tab title="Transactions">
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.Transactions.create` | [Create transaction](/reference/create-transaction) |
+| `blnk.Transactions.createBulk` | [Bulk transactions](/reference/bulk-transactions) |
+| `blnk.Transactions.updateStatus` | [Update inflight](/reference/update-inflight) |
+| `blnk.Transactions.refund` | [Refund transaction](/reference/refund-transaction) |
+
+For bulk transaction concepts and options, see the [Bulk transactions guide](/transactions/bulk-transactions).
+
+<CodeGroup>
+```typescript Create wrap
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  reference: 'payment_001',
+  allow_overdraft: true,
+});
+```
+
+```typescript CreateBulk wrap
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_1',
+      destination: '@dest_1',
+      reference: 'bulk_001',
+      description: 'Payment 1',
+    },
+    {
+      amount: 2000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_2',
+      destination: '@dest_2',
+      reference: 'bulk_002',
+      description: 'Payment 2',
+    },
+  ],
+});
+```
+
+```typescript UpdateStatus wrap
+const response = await blnk.Transactions.updateStatus(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { status: 'commit' },
+);
+```
+
+```typescript Refund wrap
+const response = await blnk.Transactions.refund(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+);
+```
+</CodeGroup>
+
+</Tab>
+<Tab title="Reconciliation">
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.Reconciliation.upload` | [Upload data](/reference/upload-data) |
+| `blnk.Reconciliation.createMatchingRule` | [Create matching rule](/reference/create-matching-rule) |
+| `blnk.Reconciliation.run` | [Start reconciliation](/reference/start-reconciliation) |
+
+<CodeGroup>
+```typescript Upload wrap
+const response = await blnk.Reconciliation.upload(
+  'statement.csv',
+  'stripe',
+);
+```
+
+```typescript CreateMatchingRule wrap
+const response = await blnk.Reconciliation.createMatchingRule({
+  name: 'Amount match',
+  description: 'Match by amount',
+  criteria: [{ field: 'amount', operator: 'equals', allowable_drift: 0.01 }],
+});
+```
+
+```typescript Run wrap
+const response = await blnk.Reconciliation.run({
+  upload_id: 'upl_f3a8b2c1-9d4e-4a7b-8c6e-1f2d3e4a5b6c',
+  strategy: 'one_to_one',
+  dry_run: true,
+  grouping_criteria: 'amount',
+  matching_rule_ids: ['rule_abc123'],
+});
+```
+</CodeGroup>
+
+</Tab>
+<Tab title="Identities">
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.Identity.create` | [Create identity](/reference/create-identity) |
+| `blnk.Identity.get` | [Get identity](/reference/get-identity) |
+| `blnk.Identity.list` | [Get identity](/reference/get-identity) |
+| `blnk.Identity.update` | [Edit identity](/reference/edit-identity) |
+
+<CodeGroup>
+```typescript Create wrap expandable
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: 'Jane',
+  last_name: 'Doe',
+  gender: 'female',
+  nationality: 'US',
+  dob: new Date('1990-01-15'),
+  email_address: 'jane@example.com',
+  phone_number: '+1234567890',
+  category: 'customer',
+  street: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  country: 'USA',
+  post_code: '10001',
+});
+```
+
+```typescript Get wrap
+const response = await blnk.Identity.get(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+);
+```
+
+```typescript List wrap
+const response = await blnk.Identity.list();
+```
+
+```typescript Update wrap
+const response = await blnk.Identity.update(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  { first_name: 'Jane', last_name: 'Smith' },
+);
+```
+</CodeGroup>
+
+</Tab>
+<Tab title="Typesense Search">
+
+Use `Search.search` for full-text search powered by Typesense.
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.Search.search(params, collection)` | [Search via Typesense](/reference/search-typesense) |
+
+Pass a collection name as the second argument: `'ledgers'`, `'transactions'`, or `'balances'`.
+
+<CodeGroup>
+```typescript Transactions wrap
+const response = await blnk.Search.search(
+  { q: 'payment', per_page: 20 },
+  'transactions',
+);
+```
+
+```typescript Balances wrap
+const response = await blnk.Search.search(
+  { q: 'USD', per_page: 20 },
+  'balances',
+);
+```
+
+```typescript Ledgers wrap
+const response = await blnk.Search.search(
+  { q: 'customer', per_page: 20 },
+  'ledgers',
+);
+```
+</CodeGroup>
+
+For structured DB queries without Typesense, use the [Search via DB](/reference/search-db) HTTP API directly.
+
+</Tab>
+<Tab title="Monitors">
+
+| SDK method | API Reference |
+|------------|---------------|
+| `blnk.BalanceMonitor.create` | [Create balance monitor](/reference/create-balance-monitor) |
+| `blnk.BalanceMonitor.get` | [Get balance monitor](/reference/get-balance-monitor) |
+| `blnk.BalanceMonitor.list` | [Get balance monitor](/reference/get-balance-monitor) |
+| `blnk.BalanceMonitor.update` | [Edit balance monitor](/reference/edit-balance-monitor) |
+
+<CodeGroup>
+```typescript Create wrap
+const response = await blnk.BalanceMonitor.create({
+  balance_id: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  condition: {
+    field: 'credit_balance',
+    operator: '>',
+    value: 1000,
+    precision: 100,
+  },
+});
+```
+
+```typescript Get wrap
+const response = await blnk.BalanceMonitor.get(
+  'mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0',
+);
+```
+
+```typescript List wrap
+const response = await blnk.BalanceMonitor.list();
+```
+
+```typescript Update wrap
+const response = await blnk.BalanceMonitor.update(
+  'mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0',
+  {
+    balance_id: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+    condition: {
+      field: 'credit_balance',
+      operator: '<',
+      value: 500,
+      precision: 100,
+    },
+  },
+);
+```
+</CodeGroup>
+
+</Tab>
+</Tabs>
 
 ---
 
-## 5: Record your first transaction
-
-Transaction records represent all financial activities (money in and money out) happening within your Blnk ledger. All transactions are immutable (cannot be modified or deleted) and idempotent (producing the same result no matter how many times an operation is performed).
-
-To record a transaction using the TypeScript SDK:
-
-```javascript Create transaction
-const { Transactions } = blnk;
-
-// Create a transaction using internal balances
-// Internal balances use the "@" prefix and are automatically created if they don't exist
-const newTransaction = await Transactions.create({
-    amount: 1000,
-    reference: "first_transaction_001",
-    currency: "USD",
-    precision: 100,
-    source: "@FundingPool",
-    destination: "@MyBalance",
-    description: "My first Blnk transaction",
-    allow_overdraft: true,
-    meta_data: {}
-});
-console.log("Transaction Recorded:", newTransaction);
-```
-
-You can confirm that the transaction has been created with the Blnk CLI:
-```bash bash
-blnk transactions list
-```
-
----
-
-## Code examples
-
-In this examples guide, you'll learn how to implement common real life fintech use-cases with the Blnk TypeScript SDK. 
-
-Click on a use-case item to view its sample SDK code. Each example is also linked with a detailed documentation of how it works.
-
-To view the full list of examples, see the following: [Blnk TypeScript SDK Code Examples](https://github.com/blnkfinance/blnk-ts/tree/main/examples)
-
-<Accordion title="Escrow application">
-<Tip>To view a detailed explanation of this implementation, see the following: [Escrow application](/tutorials/quick-start/escrow-payments)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { BASE_URL, GenerateRandomNumbersWithPrefix } = require(`../util`);
-
-async function main() {
-  // Initialize the Blnk SDK with base configuration
-  const blnk = BlnkInit(``, {
-    baseUrl: BASE_URL,
-    logger: console,
-  });
-  const { Ledgers, LedgerBalances, Transactions } = blnk;
-
-  // Create an escrow ledger for managing escrow accounts
-  const escrowLedger = await Ledgers.create({
-    name: `Escrow Ledger`,
-    meta_data: {
-      description: `Ledger for managing escrow accounts`,
-    },
-  });
-
-  // Check if ledger creation was successful
-  if (escrowLedger.data === null || escrowLedger.status !== 201) {
-    throw new Error(escrowLedger.message);
-  }
-
-  // Create the first escrow balance for Alice
-  const escrowBalance1 = await LedgerBalances.create({
-    ledger_id: escrowLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      account_type: `Escrow`,
-      customer_name: `Alice Johnson`,
-      customer_id: `alice-5678`,
-      account_opened_date: `2024-01-01`,
-      account_status: `active`,
-    },
-  });
-
-  // Check if balance creation for Alice was successful
-  if (escrowBalance1.data === null || escrowBalance1.status !== 201) {
-    throw new Error(escrowBalance1.message);
-  }
-
-  // Create the second escrow balance for Bob
-  const escrowBalance2 = await LedgerBalances.create({
-    ledger_id: escrowLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      account_type: `Escrow`,
-      customer_name: `Bob Smith`,
-      customer_id: `bob-9701`,
-      account_opened_date: `2024-01-01`,
-      account_status: `active`,
-    },
-  });
-
-  // Check if balance creation for Bob was successful
-  if (escrowBalance2.data === null || escrowBalance2.status !== 201) {
-    throw new Error(escrowBalance2.message);
-  }
-
-  // Fund Alice’s escrow account with a deposit
-  const fundAlice = await Transactions.create({
-    source: `@bank-account`,
-    destination: escrowBalance1.data.balance_id,
-    amount: 1000,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
-    description: `Funding escrow account`,
-    currency: `USD`,
-    inflight: true,
-    meta_data: {
-      transaction_type: `deposit`,
-      customer_name: `Alice Johnson`,
-      customer_id: `alice-5678`,
-      transaction_date: `2024-07-05`,
-      payment_verified: false,
-    },
-  });
-
-  // Check if funding transaction for Alice was successful
-  if (fundAlice.data === null || fundAlice.status !== 201) {
-    throw new Error(fundAlice.message);
-  }
-
-  // Release funds from Alice's escrow account to Bob's escrow account
-  const releaseFunds = await Transactions.create({
-    amount: 1000,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
-    description: `Releasing escrow funds`,
-    currency: `USD`,
-    source: escrowBalance1.data.balance_id, // Alice's escrow account balance_id
-    destination: escrowBalance2.data.balance_id, // Bob's escrow account balance_id
-    meta_data: {
-      transaction_type: `release`,
-      customer_name: `Alice Johnson`,
-      recipient_name: `Bob Smith`,
-      transaction_date: `2024-07-05`,
-    },
-  });
-
-  // Check if funds release transaction was successful
-  if (releaseFunds.data === null || releaseFunds.status !== 201) {
-    throw new Error(releaseFunds.message);
-  }
-
-  // Refund the transaction, moving funds from Alice's escrow account back to the bank account
-  const refund = await Transactions.create({
-    amount: 1000,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`release`, 4),
-    description: `Releasing escrow funds`,
-    currency: `USD`,
-    source: escrowBalance1.data.balance_id, // Alice's escrow account balance_id
-    destination: `@bank-account`, // Destination is set as a bank account for refund
-    meta_data: {
-      transaction_type: `release`,
-      customer_name: `Alice Johnson`,
-      recipient_name: `Bob Smith`,
-      transaction_date: `2024-07-05`,
-    },
-  });
-
-  // Check if refund transaction was successful
-  if (refund.data === null || refund.status !== 201) {
-    throw new Error(refund.message);
-  }
-}
-
-main();
-```
-</Accordion>
-
-<Accordion title="Loyalty points">
-<Tip>To view a detailed explanation of this implementation, see the following: [Loyalty points](/tutorials/quick-start/loyalty-points)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { BASE_URL } = require(`../util`);
-
-async function main() {
-  // Initialize the Blnk SDK with base configuration
-  const blnk = BlnkInit(``, {
-    baseUrl: BASE_URL,
-    logger: console,
-  });
-  const { Ledgers, LedgerBalances, Transactions } = blnk;
-
-  // Create a ledger specifically for customer loyalty points
-  const customerLedger = await Ledgers.create({
-    name: `Customer Loyalty Points Ledger`,
-    meta_data: {
-      project_name: `RetailStore App`,
-    },
-  });
-
-  // Log and check if the ledger creation was successful
-  console.log(`customer ledger`, customerLedger);
-  if (customerLedger.data === null) {
-    throw new Error(customerLedger.message);
-  }
-
-  // Create a balance entry for storing loyalty points for a customer
-  const pointBalance = await LedgerBalances.create({
-    ledger_id: customerLedger.data.ledger_id,
-    currency: `POINTS`,
-    meta_data: {
-      customer_name: `Alice`,
-      customer_internal_id: `5678`,
-    },
-  });
-
-  // Check if balance creation was successful
-  if (pointBalance.data === null) {
-    throw new Error(pointBalance.message);
-  }
-  console.log(`Point Balance`, pointBalance);
-
-  // Award points to Alice's loyalty balance as part of a purchase
-  const awardPoints = await Transactions.create({
-    amount: 100, // Representing 100 points
-    precision: 1,
-    reference: `purchase-001`,
-    description: `Points for purchase`,
-    currency: `POINTS`,
-    source: `@Store`,
-    destination: pointBalance.data.balance_id, // Alice's loyalty point balance_id
-    inflight: true,
-    meta_data: {
-      customer_name: `Alice`,
-      purchase_id: `purchase-001`,
-    },
-  });
-
-  // Check if points award transaction was successful
-  if (awardPoints.data === null) {
-    throw new Error(awardPoints.message);
-  }
-  console.log(`Points awarded`, awardPoints);
-
-  // Redeem some points from Alice's loyalty balance
-  const redeemPoints = await Transactions.create({
-    amount: 50, // Representing 50 points
-    precision: 1,
-    reference: `redemption-001`,
-    description: `Points redemption`,
-    currency: `POINTS`,
-    source: pointBalance.data.balance_id,
-    destination: `@Store`,
-    inflight: true,
-    meta_data: {
-      customer_name: `Alice`,
-      purchase_id: `purchase-001`,
-    },
-  });
-
-  // Check if points redemption transaction was successful
-  if (redeemPoints.data === null) {
-    throw new Error(redeemPoints.message);
-  }
-}
-
-main();
-```
-</Accordion>
-
-<Accordion title="Expense management">
-<Tip>To view a detailed explanation of this implementation, see the following: [Expense management](/tutorials/digital-banking/expense-management)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { BASE_URL, sleep, GenerateRandomNumbersWithPrefix } = require(`../util`);
-
-async function main() {
-  // Initialize Blnk SDK with base configuration
-  const blnk = await BlnkInit(``, {
-    baseUrl: BASE_URL,
-  });
-  const { Ledgers, Search, LedgerBalances, Transactions } = blnk;
-
-  // Create a ledger for the Marketing department
-  const marketLedger = await Ledgers.create({
-    name: `Marketing Department Ledger`,
-    meta_data: {
-      department: `Marketing`,
-    },
-  });
-
-  // Error handling for Marketing ledger creation
-  if (marketLedger.data === null) {
-    throw new Error(marketLedger.message);
-  }
-
-  // Create a ledger for the Human Resources department
-  const hrLedger = await Ledgers.create({
-    name: `Human Resources Department Ledger`,
-    meta_data: {
-      department: `Human Resources`,
-    },
-  });
-
-  // Error handling for HR ledger creation
-  if (hrLedger.data === null) {
-    throw new Error(hrLedger.message);
-  }
-
-  // Retrieve the list of ledgers using the search function
-  const ledgers = await Search.search(
-    {
-      q: `*`,
-      sort_by: `created_at:desc`,
-    },
-    `ledgers`
-  );
-  console.log(ledgers);
-
-  // Create a balance for the Marketing department's advertising expenses
-  const marketingBalance = await LedgerBalances.create({
-    ledger_id: marketLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      department: `Marketing`,
-      expense_type: `Advertising`,
-    },
-  });
-
-  // Error handling for Marketing balance creation
-  if (marketingBalance.data === null) {
-    throw new Error(marketingBalance.message);
-  }
-
-  // Create a balance for the HR department's recruitment expenses
-  const hrBalance = await LedgerBalances.create({
-    ledger_id: hrLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      department: `Human Resources`,
-      expense_type: `Recruitment`,
-    },
-  });
-
-  // Error handling for HR balance creation
-  if (hrBalance.data === null) {
-    throw new Error(hrBalance.message);
-  }
-
-  // Credit a transaction for marketing-related expenses
-  const marketingTransaction = await Transactions.create({
-    destination: marketingBalance.data.balance_id,
-    source: `@CompanyFunds`,
-    amount: 500,
-    currency: `USD`,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`ad`, 4),
-    description: `Payment for social media ads`,
-    inflight: true,
-    allow_overdraft: true,
-    meta_data: {
-      department: `Marketing`,
-      expense_type: `Advertising`,
-      vendor: `SocialMediaCo`,
-    },
-  });
-
-  // Error handling for Marketing transaction
-  if (marketingTransaction.data === null) {
-    throw new Error(marketingTransaction.message);
-  }
-
-  // Credit a transaction for HR-related recruitment expenses
-  const hrTransaction = await Transactions.create({
-    destination: `@CompanyFunds`,
-    source: hrBalance.data.balance_id,
-    amount: 1000,
-    currency: `USD`,
-    allow_overdraft: true,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`recruitment-expense`, 4),
-    description: `Payment for recruitment agency`,
-    inflight: true,
-    meta_data: {
-      department: `Human Resources`,
-      expense_type: `Recruitment`,
-      vendor: `JobBoardCo`,
-    },
-  });
-
-  // Error handling for HR transaction
-  if (hrTransaction.data === null) {
-    throw new Error(hrTransaction.message);
-  }
-
-  await sleep(4);  // Simulate a delay before committing transactions
-
-  // Approving the marketing transaction
-  console.log(`Approving marketing transaction`);
-  const commitMarketingTransaction = await Transactions.updateStatus(
-    marketingTransaction.data.transaction_id,
-    {
-      status: `commit`,
-    }
-  );
-
-  // Error handling for committing the marketing transaction
-  if (
-    commitMarketingTransaction.data === null ||
-    commitMarketingTransaction.status !== 200
-  ) {
-    throw new Error(commitMarketingTransaction.message);
-  }
-
-  // Approving the HR recruitment transaction
-  console.log(`Approving HR transaction`);
-  const recruitmentExpenseCommit = await Transactions.updateStatus(
-    hrTransaction.data.transaction_id,
-    {
-      status: `commit`,
-    }
-  );
-
-  // Error handling for committing the HR transaction
-  if (
-    recruitmentExpenseCommit.data === null ||
-    recruitmentExpenseCommit.status !== 200
-  ) {
-    throw new Error(recruitmentExpenseCommit.message);
-  }
-}
-
-main();
-```
-</Accordion>
-
-<Accordion title="Savings application">
-<Tip>To view a detailed explanation of this implementation, see the following: [Savings application](/tutorials/quick-start/savings-application)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { GenerateRandomNumbersWithPrefix, BASE_URL } = require(`../util`);
-
-async function main() {
-  // Initialize the Blnk SDK with base configuration
-  const blnk = BlnkInit(``, {
-    baseUrl: BASE_URL,
-    logger: console,
-  });
-
-  const { Ledgers, LedgerBalances, Transactions } = blnk;
-
-  // Create a ledger specifically for managing savings accounts
-  const savingsLedger = await Ledgers.create({
-    name: `Savings Ledger`,
-    meta_data: {
-      description: `Ledger for managing savings accounts`,
-    },
-  });
-
-  // Check if the savings ledger was successfully created
-  if (savingsLedger.data === null || savingsLedger.status !== 201) {
-    throw new Error(savingsLedger.message);
-  }
-
-  // Create a balance for Alice's savings account within the savings ledger
-  const aliceSavings = await LedgerBalances.create({
-    ledger_id: savingsLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      account_type: `Escrow`,
-      customer_name: `Alice Johnson`,
-      customer_id: `alice-5678`,
-      account_opened_date: `2024-01-01`,
-      account_status: `active`,
-    },
-  });
-
-  // Check if the balance creation for Alice's savings was successful
-  if (aliceSavings.data === null || aliceSavings.status !== 201) {
-    throw new Error(aliceSavings.message);
-  }
-
-  // Fund Alice's savings balance with an initial deposit transaction
-  const aliceDeposit = await Transactions.create({
-    amount: 1000,  // Amount to be deposited
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`funding`, 4),
-    description: `Funding savings account`,
-    currency: `USD`,
-    source: `@bank-account`,
-    destination: aliceSavings.data.balance_id,  // Alice's savings account balance_id
-    inflight: true,
-    allow_overdraft: true, // Enable overdraft for the initial deposit
-    meta_data: {
-      transaction_type: `deposit`,
-      customer_name: `Alice Johnson`,
-      customer_id: `alice-5678`,
-      transaction_date: `2024-07-05`,
-      payment_verified: false,
-    },
-  });
-
-  // Check if the deposit transaction was successful
-  if (aliceDeposit.data === null || aliceDeposit.status !== 201) {
-    throw new Error(aliceDeposit.message);
-  }
-}
-
-// Execute main function and catch any errors
-main().catch(error => {
-  console.error(error);
-});
-```
-</Accordion>
-
-<Accordion title="Virtual cards">
-<Tip>To view a detailed explanation of this implementation, see the following: [Virtual cards](/tutorials/payments/card-payments)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { GenerateRandomNumbersWithPrefix, sleep, BASE_URL } = require(`../util`);
-
-async function main() {
-  // Initialize the Blnk SDK with base configuration
-  const blnk = BlnkInit(``, {
-    baseUrl: BASE_URL,
-  });
-
-  const { Ledgers, LedgerBalances, Transactions } = blnk;
-
-  // Create a USD ledger for managing virtual card transactions
-  const usdLedger = await Ledgers.create({
-    name: `Customer USD Ledger`,
-    meta_data: {
-      project_name: `VirtualCard App`,
-    },
-  });
-
-  // Check if the USD ledger creation was successful
-  if (usdLedger.data === null) {
-    throw new Error(usdLedger.message);
-  }
-
-  // Create a USD virtual card balance with masked card details for security
-  const usdBalance = await LedgerBalances.create({
-    ledger_id: usdLedger.data.ledger_id,
-    currency: `USD`,
-    meta_data: {
-      customer_name: `Jerry`,
-      customer_internal_id: `1234`,
-      card_state: `ACTIVE`,
-      card_number: `411111XXXXXX1111`, // Masked for security
-      card_expiry: `12/26`,
-      card_cvv: `XXX`, // Masked for security
-    },
-  });
-
-  // Check if the virtual card balance creation was successful
-  if (usdBalance.data === null || usdBalance.status !== 201) {
-    throw new Error(usdBalance.message);
-  }
-
-  // Record the first transaction on this balance, allowing overdraft for setup
-  const firstTransaction = await Transactions.create({
-    amount: 1000,
-    precision: 100,
-    reference: GenerateRandomNumbersWithPrefix(`trx`, 4),
-    description: `First transaction on this balance`,
-    currency: `USD`,
-    source: `@World`,
-    destination: `@Merchant`,
-    allow_overdraft: true,
-    meta_data: {
-      merchant_name: `Store ABC`,
-      customer_name: `Jerry`,
-    },
-  });
-
-  // Check if the first transaction creation was successful
-  if (firstTransaction.data === null || firstTransaction.status !== 201) {
-    throw new Error(firstTransaction.message);
-  }
-
-  // Record an authorization transaction as inflight (pending approval)
-  const reference = GenerateRandomNumbersWithPrefix(`trx`, 4);
-  const inflightTransaction = await Transactions.create({
-    amount: 1000,
-    precision: 100,
-    reference,
-    description: `Authorization for purchase`,
-    currency: `USD`,
-    source: `@Merchant`,
-    destination: usdBalance.data.balance_id, // Jerry's virtual card balance_id
-    inflight: true,
-    meta_data: {
-      merchant_name: `Store ABC`,
-      customer_name: `Jerry`,
-    },
-  });
-
-  // Check if the inflight transaction creation was successful
-  if (inflightTransaction.data === null || inflightTransaction.status !== 201) {
-    throw new Error(inflightTransaction.message);
-  }
-
-  // Wait 4 seconds to simulate the time for transaction processing
-  await sleep(4);
-
-  // Commit the inflight transaction once verified
-  const x = await Transactions.updateStatus(
-    inflightTransaction.data.transaction_id,
-    {
-      status: `commit`,
-    }
-  );
-
-  // Check if the transaction commit was successful
-  if (x.data === null || x.status !== 200) {
-    throw new Error(x.message);
-  }
-
-  // Optionally void the transaction if it fails or is canceled
-  await Transactions.updateStatus(inflightTransaction.data.transaction_id, {
-    status: `void`,
-  });
-}
-
-// Execute the main function
-main();
-```
-</Accordion>
-
-<Accordion title="Reconciliation">
-<Tip>To view a detailed explanation of this implementation, see the following: [Reconciliation workflows](/reconciliations/overview)</Tip>
-```javascript index.js
-const { BlnkInit } = require(`@blnkfinance/blnk-typescript`);
-const { BASE_URL } = require(`../util`);
-const path = require(`path`);
-
-async function main() {
-  // Initialize the Blnk SDK with the base URL configuration
-  const blnk = BlnkInit(``, {
-    baseUrl: BASE_URL,
-  });
-  const { Reconciliation } = blnk;
-
-  // Define the path for the reconciliation file
-  const filePath = path.join(__dirname, `..`, `..`, `file.csv`);
-
-  // Upload the reconciliation file for the Stripe account
-  const reconciliationUpload = await Reconciliation.upload(filePath, `Stripe`);
-
-  // Check if the upload was successful
-  if (reconciliationUpload.status !== 200) {
-    throw new Error(reconciliationUpload.message);
-  }
-
-  // Create a matching rule to reconcile based on the 'amount' field
-  const matchingRule = await Reconciliation.createMatchingRule({
-    criteria: [
-      {
-        field: `amount`,
-        operator: `equals`,
-        allowable_drift: 0.01, // Allowable difference in amount for a match
-      },
-    ],
-    name: `Test Matching Rule`,
-    description: `Test Matching Rule Description`,
-  });
-
-  // Check if the matching rule creation was successful
-  if (matchingRule.status !== 201) {
-    throw new Error(matchingRule.message);
-  }
-
-  // Start the reconciliation process with specified criteria
-  const startReconciliation = await Reconciliation.run({
-    dry_run: true, // Run in test mode without making actual changes
-    grouping_criteria: `amount`,
-    matching_rule_ids: [matchingRule.data.rule_id], // Use the created matching rule
-    strategy: `many_to_one`, // Reconciliation strategy
-    upload_id: reconciliationUpload.data.upload_id, // Use the uploaded file
-  });
-
-  // Check if the reconciliation process started successfully
-  if (startReconciliation.status !== 200) {
-    throw new Error(startReconciliation.message);
-  }
-}
-
-// Execute the main function
-main();
-```
-</Accordion>
+## Where to find examples
+
+<CardGroup cols={2}>
+<Card title="TypeScript SDK examples" icon="github" href="https://github.com/blnkfinance/blnk-ts/tree/main/examples">
+Escrow, savings, cards, reconciliation, and more
+</Card>
+
+<Card title="Core tutorials" icon="book-open" href="/tutorials/quick-start/escrow-payments">
+Step-by-step use case guides
+</Card>
+
+<Card title="Ledgers" icon="folder" href="/ledgers/introduction">
+Group and organize balances
+</Card>
+
+<Card title="Balances" icon="wallet" href="/balances/introduction">
+Wallets, accounts, and stores of value
+</Card>
+</CardGroup>
 
 ---
 
@@ -847,4 +527,10 @@ main();
 
 ---
 
-<Issues />
+## Issue reporting and contributions
+
+The TypeScript SDK is [open-source on GitHub](https://github.com/blnkfinance/blnk-ts), and we welcome community issues and pull requests.
+
+If you run into problems installing or using the SDK, [report them on GitHub](https://github.com/blnkfinance/blnk-ts/issues).
+
+If an endpoint is documented in the [API reference](/reference/create-ledger) but missing from the TypeScript SDK, we encourage opening an issue or submitting a pull request to help improve SDK coverage.
