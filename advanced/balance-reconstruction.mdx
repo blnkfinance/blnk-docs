@@ -19,10 +19,32 @@ Balance Reconstruction helps you solve situations where your balances go out of 
 
 To reconstruct a balance, update its metadata with the following request:
 
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "BLNK_RUN_RECONCILIATION": "SOURCE"
+    }
+  }'
 ```
-POST https://YOUR_BLNK_INSTANCE_URL/{balance_id}/metadata
+
+```go Go wrap
+meta, resp, err := client.Metadata.UpdateMetadata(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  blnkgo.UpdateMetaDataRequest{
+    MetaData: map[string]interface{}{
+      "BLNK_RUN_RECONCILIATION": "SOURCE",
+    },
+  },
+)
 ```
-```json
+</CodeGroup>
+
+```json Response expandable
 {
   "meta_data": {
     "BLNK_RUN_RECONCILIATION": "SOURCE"
@@ -36,13 +58,21 @@ POST https://YOUR_BLNK_INSTANCE_URL/{balance_id}/metadata
 
 To check the results, retrieve the balance details with the [Get Balance](/reference/get-balance) endpoint:
 
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}" \
+  -H "X-blnk-key: <api-key>"
 ```
-GET https://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}
+
+```go Go wrap
+balance, resp, err := client.LedgerBalance.Get("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f")
 ```
+</CodeGroup>
 
 The results will be available in the `meta_data` object:
 
-```json Response
+```json Response expandable
 {
   "meta_data": {
     "BLNK_RECONCILIATION_RESULT": {

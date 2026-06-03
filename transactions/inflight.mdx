@@ -40,8 +40,12 @@ This is how inflight transactions work in Blnk:
 
 First, specify that the transaction should be held inflight by setting `inflight: true`.
 
-```json Record inflight {9}
-{
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 100,
     "precision": 100,
     "reference": "ref_001adcfgf",
@@ -50,6 +54,45 @@ First, specify that the transaction should be held inflight by setting `inflight
     "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
     "description": "For vacation",
     "inflight": true
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 100,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'For vacation',
+  inflight: true,
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      100,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "For vacation",
+  },
+  Inflight: true,
+})
+```
+</CodeGroup>
+
+```json Response expandable
+{
+  "amount": 100,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "inflight": true,
+  "created_at": "2024-12-21T01:36:46.997063436Z"
 }
 ```
 
@@ -104,10 +147,6 @@ To update an inflight transaction, use the [Update Inflight](/reference/update-i
 
 ![Scenarios when inflight transactions are finished processing](/images/step-03-using-inflight.png)
 
-```
-PUT /transactions/inflight/{transaction_id}
-```
-
 <Tabs>
 <Tab title="Commit inflight" icon="circle-check">
 1. Indicates transaction conditions are met.
@@ -136,6 +175,14 @@ txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateSta
 })
 ```
 </CodeGroup>
+
+```json Response expandable
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "APPLIED",
+  "parent_transaction": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d"
+}
+```
 
 In our example, after commit:
 
@@ -178,6 +225,14 @@ txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateSta
 ```
 </CodeGroup>
 
+```json Response expandable
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "APPLIED",
+  "amount": 40
+}
+```
+
 <Note>Partial commit amount must not exceed remaining inflight amount.</Note>
 
 Our example after a partial commit:
@@ -212,6 +267,13 @@ txn, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateSta
 })
 ```
 </CodeGroup>
+
+```json Response expandable
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "VOID"
+}
+```
 
 * Indicates transaction conditions were not met.
 * Creates new transaction record with `VOID` status.
@@ -253,15 +315,18 @@ curl -X POST http://localhost:5001/transactions/inflight/bulk/commit \
     ]
   }'
 ```
-
-```javascript TypeScript wrap
-
-```
-
-```go Go wrap
-
-```
 </CodeGroup>
+
+```json Response expandable
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    { "transaction_id": "txn_11111111-1111-4111-8111-111111111111", "status": "APPLIED" },
+    { "transaction_id": "txn_22222222-2222-4222-8222-222222222222", "status": "APPLIED" }
+  ]
+}
+```
 
 </Tab>
 <Tab title="Bulk void" icon="circle-x">
@@ -278,15 +343,18 @@ curl -X POST http://localhost:5001/transactions/inflight/bulk/void \
     ]
   }'
 ```
-
-```javascript TypeScript wrap
-
-```
-
-```go Go wrap
-
-```
 </CodeGroup>
+
+```json Response expandable
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    { "transaction_id": "txn_11111111-1111-4111-8111-111111111111", "status": "VOID" },
+    { "transaction_id": "txn_22222222-2222-4222-8222-222222222222", "status": "VOID" }
+  ]
+}
+```
 
 </Tab>
 </Tabs>
@@ -315,8 +383,13 @@ This is useful when the inflight transaction starts now, but the final commit sh
 For example, you can reserve funds for a hotel booking today and have Blnk commit the transaction automatically on the check-in date.
 </Check>
 
-```json Record inflight with commit date {10}
-{
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 100,
     "precision": 100,
     "reference": "ref_001adcfgf",
@@ -326,6 +399,47 @@ For example, you can reserve funds for a hotel booking today and have Blnk commi
     "description": "For vacation",
     "inflight": true,
     "inflight_commit_date": "2024-12-21T01:36:46+01:00"
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 100,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'For vacation',
+  inflight: true,
+  inflight_commit_date: '2024-12-21T01:36:46+01:00',
+});
+```
+
+```go Go wrap
+commitAt, _ := time.Parse(time.RFC3339, "2024-12-21T01:36:46+01:00")
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      100,
+    Precision:   100,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "For vacation",
+  },
+  Inflight:           true,
+  InflightCommitDate: &commitAt,
+})
+```
+</CodeGroup>
+
+```json Response expandable
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "inflight": true,
+  "inflight_commit_date": "2024-12-21T01:36:46+01:00"
 }
 ```
 
@@ -343,8 +457,13 @@ A transaction stays inflight until you commit it, void it manually, or it **expi
 * Creates a new record with **`VOID`** status.
 * Resets inflight balances without changing your settled balances.
 
-```json Record inflight with expiry date {10}
-{
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 100,
     "precision": 100,
     "reference": "ref_001adcfgf",
@@ -354,6 +473,47 @@ A transaction stays inflight until you commit it, void it manually, or it **expi
     "description": "For vacation",
     "inflight": true,
     "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 100,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'For vacation',
+  inflight: true,
+  inflight_expiry_date: '2024-12-21T01:36:46+01:00',
+});
+```
+
+```go Go wrap
+expiresAt, _ := time.Parse(time.RFC3339, "2024-12-21T01:36:46+01:00")
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      100,
+    Precision:   100,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "For vacation",
+  },
+  Inflight:           true,
+  InflightExpiryDate: &expiresAt,
+})
+```
+</CodeGroup>
+
+```json Response expandable
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "inflight": true,
+  "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
 }
 ```
 
@@ -532,12 +692,9 @@ Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Des
     <Step title="Initiate inflight">
         When initiating inflight transactions with multiple sources/destinations, enable the inflight feature in your transaction request. Here's how to structure your request:
 
-        ```json Request
-        {
-            // ... other transaction details
-            "inflight": true
-        }
-        ```
+        <Note>
+        Use the same [Create transaction](/reference/create-transaction) request as a single transfer, and set `"inflight": true` in the body. For multiple sources or destinations, include the `sources` or `destinations` array instead of `source` / `destination`.
+        </Note>
 
         When using multiple sources/destinations, each transaction is recorded separately in the ledger. 
 
@@ -568,6 +725,13 @@ Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Des
         })
         ```
         </CodeGroup>
+
+        ```json Response expandable
+        {
+          "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+          "status": "APPLIED"
+        }
+        ```
     </Step>
 </Steps>
 

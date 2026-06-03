@@ -65,12 +65,41 @@ Let's model this on our Blnk server.
 
         To do this call the endpoint URL, `/ledgers`, and pass the following in its request body:
 
-        ```json Request
-        {
+        <CodeGroup>
+        ```bash cURL wrap
+        curl -X POST "http://YOUR_BLNK_INSTANCE_URL/ledgers" \
+          -H "X-blnk-key: <api-key>" \
+          -H "Content-Type: application/json" \
+          -d '{
             "name": "User balances",
             "meta_data": {
-                "project_owner": "Blnk Finance"
+              "project_owner": "Blnk Finance"
             }
+          }'
+        ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.Ledgers.create({
+          name: 'User balances',
+          meta_data: { project_owner: 'Blnk Finance' },
+        });
+        ```
+
+        ```go Go wrap
+        ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+          Name: "User balances",
+          MetaData: map[string]interface{}{
+            "project_owner": "Blnk Finance",
+          },
+        })
+        ```
+        </CodeGroup>
+
+        ```json Response expandable
+        {
+          "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+          "name": "User balances",
+          "created_at": "2024-12-21T01:36:46.997063436Z"
         }
         ```
 
@@ -81,10 +110,39 @@ Let's model this on our Blnk server.
 
         To do this, call the endpoint URL, `/balances`, and pass the following in its request body:
 
-        ```json Request
-        {
+        <CodeGroup>
+        ```bash cURL wrap
+        curl -X POST "http://YOUR_BLNK_INSTANCE_URL/balances" \
+          -H "X-blnk-key: <api-key>" \
+          -H "Content-Type: application/json" \
+          -d '{
             "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
             "currency": "USD"
+          }'
+        ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.LedgerBalances.create({
+          ledger_id: 'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
+          currency: 'USD',
+        });
+        ```
+
+        ```go Go wrap
+        balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+          LedgerID: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+          Currency: "USD",
+        })
+        ```
+        </CodeGroup>
+
+        ```json Response expandable
+        {
+          "balance_id": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+          "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+          "currency": "USD",
+          "balance": 0,
+          "created_at": "2024-12-21T01:36:46.997063436Z"
         }
         ```
 
@@ -93,8 +151,12 @@ Let's model this on our Blnk server.
     <Step title="Record the transaction between the user and your company">
         To do this, call the endpoint URL, `/transactions`, and pass the following in its request body:
 
-        ```json Request
-        {
+        <CodeGroup>
+        ```bash cURL wrap
+        curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+          -H "X-blnk-key: <api-key>" \
+          -H "Content-Type: application/json" \
+          -d '{
             "reference": "ref_8728781718",
             "amount": 3000,
             "currency": "USD",
@@ -103,8 +165,50 @@ Let's model this on our Blnk server.
             "destination": "@CompanyRevenue",
             "description": "Invoice payment",
             "meta_data": {
-                "user_id": "user_a"
+              "user_id": "user_a"
             }
+          }'
+        ```
+
+        ```javascript TypeScript wrap
+        const response = await blnk.Transactions.create({
+          reference: 'ref_8728781718',
+          amount: 3000,
+          currency: 'USD',
+          precision: 100,
+          source: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+          destination: '@CompanyRevenue',
+          description: 'Invoice payment',
+          meta_data: { user_id: 'user_a' },
+        });
+        ```
+
+        ```go Go wrap
+        transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+          ParentTransaction: blnkgo.ParentTransaction{
+            Amount:      3000,
+            Reference:   "ref_8728781718",
+            Currency:    "USD",
+            Precision:   100,
+            Source:      "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+            Destination: "@CompanyRevenue",
+            Description: "Invoice payment",
+          },
+        })
+        ```
+        </CodeGroup>
+
+        ```json Response expandable
+        {
+          "transaction_id": "txn_171821872187",
+          "reference": "ref_8728781718",
+          "amount": 3000,
+          "precise_amount": 300000,
+          "currency": "USD",
+          "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+          "destination": "@CompanyRevenue",
+          "status": "QUEUED",
+          "created_at": "2024-04-23T12:32:00Z"
         }
         ```
 

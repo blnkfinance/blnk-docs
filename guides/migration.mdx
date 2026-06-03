@@ -103,39 +103,69 @@ For each batch of transactions:
 <Steps titleSize="h3">
 <Step id="creating-bulk-backdated-transactions" title="Creating bulk backdated transactions">
 
-```
-POST http://YOUR_BLNK_INSTANCE_URL/transactions/bulk
-```
 
 <CodeGroup>
-```json Request body {14,24} expandable
-{
-  "atomic": true,
-  "inflight": false,
-  "run_async": true,
-  "transactions": [
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "atomic": true,
+    "inflight": false,
+    "run_async": true,
+    "transactions": [
+      {
+        "amount": 358.90,
+        "precision": 100,
+        "reference": "migration_2024_001",
+        "description": "Invoice payment - Client A",
+        "currency": "NGN",
+        "source": "@source_account",
+        "destination": "@destination_account",
+        "effective_date": "2024-09-15T10:30:00Z"
+      },
+      {
+        "amount": 1250.00,
+        "precision": 100,
+        "reference": "migration_2024_002",
+        "description": "Supplier payment",
+        "currency": "NGN",
+        "source": "@source_account",
+        "destination": "@vendor_account",
+        "effective_date": "2024-09-18T14:15:00Z"
+      }
+    ]
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: false,
+  run_async: true,
+  transactions: [
     {
-      "amount": 358.90,
-      "precision": 100,
-      "reference": "migration_2024_001",
-      "description": "Invoice payment - Client A",
-      "currency": "NGN",
-      "source": "@source_account",
-      "destination": "@destination_account",
-      "effective_date": "2024-09-15T10:30:00Z"
+      amount: 358.90,
+      precision: 100,
+      reference: 'migration_2024_001',
+      description: 'Invoice payment - Client A',
+      currency: 'NGN',
+      source: '@source_account',
+      destination: '@destination_account',
+      effective_date: '2024-09-15T10:30:00Z',
     },
     {
-      "amount": 1250.00,
-      "precision": 100,
-      "reference": "migration_2024_002",
-      "description": "Supplier payment",
-      "currency": "NGN",
-      "source": "@source_account",
-      "destination": "@vendor_account",
-      "effective_date": "2024-09-18T14:15:00Z"
-    }
-  ]
-}
+      amount: 1250.00,
+      precision: 100,
+      reference: 'migration_2024_002',
+      description: 'Supplier payment',
+      currency: 'NGN',
+      source: '@source_account',
+      destination: '@vendor_account',
+      effective_date: '2024-09-18T14:15:00Z',
+    },
+  ],
+});
 ```
 </CodeGroup>
 
@@ -179,10 +209,27 @@ Learn more: [Bulk Transactions Webhooks →](/transactions/bulk-transactions#web
 
 2. **Balance validation:**
 
-    After each migration phase, verify account balances against your source system to ensure accuracy. Use the [Historical Balance API](/balances/historical-balances) to check balances at specific points in time, like this:
+    After each migration phase, verify account balances against your source system to ensure accuracy. Use the [Historical Balance API](/balances/historical-balances) to check balances at specific points in time:
 
+    <CodeGroup>
+    ```bash cURL wrap
+    curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-12-31T23:59:59Z" \
+      -H "X-blnk-key: <api-key>"
     ```
-    GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-12-31T23:59:59Z
+
+    ```go Go wrap
+    at, _ := time.Parse(time.RFC3339, "2024-12-31T23:59:59Z")
+    balance, resp, err := client.LedgerBalance.GetHistorical("{balance_id}", at, false)
+    ```
+    </CodeGroup>
+
+    ```json Response expandable
+    {
+      "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "balance": 150000,
+      "currency": "NGN",
+      "as_of": "2024-12-31T23:59:59Z"
+    }
     ```
 
 3. **Transaction references:**

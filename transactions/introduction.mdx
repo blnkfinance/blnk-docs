@@ -37,13 +37,7 @@ In this guide, you'll learn about:
 
 ## Recording a transaction
 
-To record a transaction, call the **record-transaction** endpoint: 
-
-```
-POST http://YOUR_BLNK_INSTANCE_URL/transactions
-```
-
-With the following request body:
+To record a transaction, call the **record-transaction** endpoint:
 
 <CodeGroup>
 ```bash cURL wrap
@@ -208,8 +202,15 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
         curl -X GET "http://YOUR_BLNK_INSTANCE_URL/transactions/reference/{reference}" \
           -H "X-blnk-key: <api-key>"
         ```
-
         </CodeGroup>
+
+        ```json Response expandable
+        {
+          "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+          "reference": "ref_001adcfgf",
+          "status": "APPLIED"
+        }
+        ```
       </Tab>
       <Tab title="By reference (search)">
         Use the **Search API** to look up your transaction by reference. If the transaction exists, the response will include its current status.
@@ -241,6 +242,21 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
         )
         ```
         </CodeGroup>
+
+        ```json Response expandable
+        {
+          "found": 1,
+          "hits": [
+            {
+              "document": {
+                "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+                "reference": "ref_001adcfgf",
+                "status": "APPLIED"
+              }
+            }
+          ]
+        }
+        ```
       </Tab>
       <Tab title="By transaction ID">
         To check the updated status, take the queued transaction ID and search with it as the `parent_transaction`. This is because Blnk treats the queued transaction as the parent for the next transaction state. See also: [Transaction lifecycle](/transactions/transaction-lifecycle)
@@ -272,6 +288,21 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
         )
         ```
         </CodeGroup>
+
+        ```json Response expandable
+        {
+          "found": 1,
+          "hits": [
+            {
+              "document": {
+                "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+                "parent_transaction": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+                "status": "APPLIED"
+              }
+            }
+          ]
+        }
+        ```
       </Tab>
     </Tabs>
 

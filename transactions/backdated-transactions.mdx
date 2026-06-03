@@ -31,14 +31,13 @@ When `effective_date` isn't specified, it defaults to the same value as `created
 
 Call the [Record Transaction](/reference/create-transaction) endpoint:
 
-```
-POST http://YOUR_BLNK_INSTANCE_URL/transactions
-```
 
-<Tabs>
-  <Tab title="Request body">
-  ```json {9}
-  {
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 358.90,
     "precision": 100,
     "reference": "unique_reference_1",
@@ -47,30 +46,55 @@ POST http://YOUR_BLNK_INSTANCE_URL/transactions
     "source": "@source_account",
     "destination": "@destination_account",
     "effective_date": "2025-02-15T10:30:00Z"
-  }
-  ```
+  }'
+```
 
-  <Tip>
-    Use the `effective_date` field (optional, string) to specify the date a transaction financially occurred, formatted in ISO 8601 (e.g., "2023-01-15T10:30:00Z"). 
-    
-    If left blank, `effective_date` defaults to the same value as `created_at`.
-  </Tip>
-  </Tab>
-  <Tab title="Response example">
-  ```json {8}
-  {
-    "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
-    "status": "applied",
-    "amount": 358.90,
-    "reference": "unique_reference_1",
-    "source": "bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66",
-    "destination": "bln_68be0aed-383c-4d27-87db-fb0650093686",
-    "effective_date": "2025-02-15T10:30:00Z",
-    "created_at": "2025-03-02T15:30:45Z"
-  }
-  ```
-  </Tab>
-</Tabs>
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 358.90,
+  precision: 100,
+  reference: 'unique_reference_1',
+  description: 'Backdated transaction',
+  currency: 'NGN',
+  source: '@source_account',
+  destination: '@destination_account',
+  effective_date: '2025-02-15T10:30:00Z',
+});
+```
+
+```go Go wrap
+effectiveDate, _ := time.Parse(time.RFC3339, "2025-02-15T10:30:00Z")
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:        358.90,
+    Reference:     "unique_reference_1",
+    Description:   "Backdated transaction",
+    Currency:      "NGN",
+    Precision:     100,
+    Source:        "@source_account",
+    Destination:   "@destination_account",
+    EffectiveDate: &effectiveDate,
+  },
+})
+```
+</CodeGroup>
+
+<Tip>
+  Use the `effective_date` field (optional, string) to specify the date a transaction financially occurred, formatted in ISO 8601 (e.g., "2023-01-15T10:30:00Z"). If left blank, `effective_date` defaults to the same value as `created_at`.
+</Tip>
+
+```json Response expandable
+{
+  "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "amount": 358.90,
+  "reference": "unique_reference_1",
+  "source": "bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66",
+  "destination": "bln_68be0aed-383c-4d27-87db-fb0650093686",
+  "effective_date": "2025-02-15T10:30:00Z",
+  "created_at": "2025-03-02T15:30:45Z"
+}
+```
 
 ---
 

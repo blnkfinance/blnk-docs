@@ -199,6 +199,10 @@ Go struct fields use PascalCase, like `MetaData` and `LedgerID`. These map to th
 
 You should always use the Go field names in your code.
 
+### Date and time fields
+
+Fields such as `DOB`, `EffectiveDate`, `ScheduledFor`, `InflightCommitDate`, and historical balance timestamps use `time.Time` (or `*time.Time`). Parse ISO 8601 strings with `time.Parse(time.RFC3339, "...")`—for example `"2024-04-22T15:28:03Z"` or `"2024-12-21T01:36:46+01:00"`—then pass the resulting value (use a pointer when the field is optional).
+
 ### Client options
 
 Pass optional settings to `NewClient` as functional options:
@@ -275,9 +279,10 @@ balance, resp, err := client.LedgerBalance.GetByIndicator("@FundingPool", "USD")
 ```
 
 ```go GetHistorical wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03Z")
 balance, resp, err := client.LedgerBalance.GetHistorical(
     "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
-    time.Now(),
+    at,
     false,
 )
 ```
@@ -369,7 +374,7 @@ result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
 
 <CodeGroup>
 ```go Create wrap expandable
-dob := time.Date(1990, 1, 15, 0, 0, 0, 0, time.UTC)
+dob, _ := time.Parse(time.RFC3339, "1990-01-15T00:00:00Z")
 identity, resp, err := client.Identity.Create(blnkgo.Identity{
     IdentityType: blnkgo.Individual,
     FirstName:    "Jane",

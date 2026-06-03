@@ -55,20 +55,52 @@ To reconcile in batches, you need to:
 
 To run your batch reconciliation, call the [Start Reconciliation](/reference/start-reconciliation) endpoint:
 
-```
-POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/reconciliation/start" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+    "strategy": "one_to_many",
+    "dry_run": false,
+    "grouping_criteria": "reference",
+    "matching_rule_ids": [
+      "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+      "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+    ]
+  }'
 ```
 
-```json Example request
+```javascript TypeScript wrap
+const response = await blnk.Reconciliation.run({
+  upload_id: 'upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3',
+  strategy: 'one_to_many',
+  dry_run: false,
+  grouping_criteria: 'reference',
+  matching_rule_ids: [
+    'rule_890bdbc4-467f-4670-8424-5667e41daf29',
+    'rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv',
+  ],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
+  UploadID:         "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  Strategy:         blnkgo.ReconciliationStrategyOneToMany,
+  DryRun:           false,
+  GroupingCriteria: "reference",
+  MatchingRuleIDs:  []string{"rule_890bdbc4-467f-4670-8424-5667e41daf29", "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"},
+})
+```
+</CodeGroup>
+
+```json Response expandable
 {
-  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
-  "strategy": "one_to_many",
-  "dry_run": false,
-  "grouping_criteria": "reference",
-  "matching_rule_ids": [
-    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
-  ]
+  "reconciliation_id": "recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3",
+  "status": "in_progress"
 }
 ```
 
@@ -94,13 +126,13 @@ To reconcile transactions instantly, provide the external records as an array of
 
 To run your reconciliation, call the [Instant Reconciliation](/reference/instant-reconciliation) endpoint:
 
-```bash wrap
-POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start-instant
-```
 
 <CodeGroup>
-```json Example request expandable
-{
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/reconciliation/start-instant" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
   "external_transactions": [
     {
       "id": "txn1a2b3c4d5e6f7g8h9i0",
@@ -134,7 +166,43 @@ POST https://YOUR_BLNK_INSTANCE_URL/reconciliation/start-instant
   "matching_rule_ids": [
     "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
   ]
-}
+}'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Reconciliation.run({
+  external_transactions: [
+    {
+      id: 'txn1a2b3c4d5e6f7g8h9i0',
+      amount: 5.49,
+      reference: 'INV-2023-002',
+      currency: 'GBP',
+      description: 'Card payment',
+      date: '2024-11-15T14:25:30Z',
+      source: 'bank-api',
+    },
+  ],
+  strategy: 'one_to_one',
+  matching_rule_ids: ['rule_04c4a59e-08a1-423b-bfae-48feebe16473'],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
+  ExternalTransactions: []blnkgo.ExternalTransaction{
+    {
+      ID:          "txn1a2b3c4d5e6f7g8h9i0",
+      Amount:      5.49,
+      Reference:   "INV-2023-002",
+      Currency:    "GBP",
+      Description: "Card payment",
+      Date:        "2024-11-15T14:25:30Z",
+      Source:      "bank-api",
+    },
+  },
+  Strategy:        blnkgo.ReconciliationStrategyOneToOne,
+  MatchingRuleIDs: []string{"rule_04c4a59e-08a1-423b-bfae-48feebe16473"},
+})
 ```
 </CodeGroup>
 
@@ -159,6 +227,10 @@ You can verify if a transaction has been reconciled with **Instant Reconciliatio
 ```bash cURL wrap
 curl -X GET "https://YOUR_BLNK_INSTANCE_URL/transactions/{transaction_id}" \
   -H "X-blnk-key: <api-key>"
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.get('{transaction_id}');
 ```
 
 ```go Go wrap

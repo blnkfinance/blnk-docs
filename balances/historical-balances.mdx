@@ -22,9 +22,10 @@ curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=20
 ```
 
 ```go Go wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03+00:00")
 balance, resp, err := client.LedgerBalance.GetHistorical(
   "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
-  time.Date(2024, 4, 22, 15, 28, 3, 0, time.UTC),
+  at,
   false,
 )
 ```
@@ -74,8 +75,35 @@ You can choose to bypass balance snapshots and directly reconstruct your balance
 
 To do this, include the query parameter `from_source=true` in your request URL:
 
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-04-22T15:28:03%2B00:00&from_source=true" \
+  -H "X-blnk-key: <api-key>"
 ```
-GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp={timestamp}&from_source=true
+
+```go Go wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03+00:00")
+balance, resp, err := client.LedgerBalance.GetHistorical(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  at,
+  true,
+)
+```
+</CodeGroup>
+
+```json Response expandable
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": ""
+  },
+  "timestamp": "2025-02-24T08:55:26Z"
+}
 ```
 
 ---

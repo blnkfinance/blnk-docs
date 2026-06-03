@@ -67,17 +67,49 @@ To apply precision with the `amount` field, enter the amount as a floating-point
 The `amount` field supports up to 15 digits. Exceeding this will throw [a rounding error](/transactions/precision#more-than-15-digits-in-the-amount-field) or truncation; switch to `precise_amount` for accuracy with larger values.
 </Warning>
 
-```json Example with "amount" {2,3}
-{
-  "amount": 750.23,
-  "precision": 100,
-  "reference": "ref_abc123",
-  "currency": "USD",
-  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-  "description": "Wallet funding"
-}
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 750.23,
+    "precision": 100,
+    "reference": "ref_abc123",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet funding"
+  }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750.23,
+  precision: 100,
+  reference: 'ref_abc123',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Wallet funding',
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      750.23,
+    Precision:   100,
+    Reference:   "ref_abc123",
+    Currency:    "USD",
+    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description: "Wallet funding",
+  },
+})
+```
+</CodeGroup>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -86,7 +118,7 @@ The `amount` field supports up to 15 digits. Exceeding this will throw [a roundi
 
 The resulting `precise_amount` is stored and used to compute your ledger balances. 
 
-```json Response {6-8}
+```json Response expandable
 {
   "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
   "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
@@ -116,21 +148,53 @@ To apply precision with the `precise_amount` field:
 * Enter this value directly into the `precise_amount` field of your request.
 * Include the corresponding `precision` value.
 
-```json Example with "precision_amount" {2,3}
-{
-  "precise_amount": 189207535698279000,
-  "precision": 1000000000000000000,
-  "reference": "ref_abc123",
-  "currency": "ETH",
-  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-  "description": "Wallet funding"
-}
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 189207535698279000,
+    "precision": 1000000000000000000,
+    "reference": "ref_abc123",
+    "currency": "ETH",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet funding"
+  }'
 ```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  precise_amount: 189207535698279000,
+  precision: 1000000000000000000,
+  reference: 'ref_abc123',
+  currency: 'ETH',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Wallet funding',
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    PreciseAmount: 189207535698279000,
+    Precision:     1000000000000000000,
+    Reference:     "ref_abc123",
+    Currency:      "ETH",
+    Source:        "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination:   "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description:   "Wallet funding",
+  },
+})
+```
+</CodeGroup>
 
 The example above correctly logs an ETH amount (18 digits) with full precision down to the smallest unit as shown below: 
 
-```json Response {2-4,6}
+```json Response expandable
 {
     "precise_amount": 189207535698279000,
     "amount": 0.189207535698279,

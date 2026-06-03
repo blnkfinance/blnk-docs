@@ -33,8 +33,12 @@ What we'll cover …
 
 Overdrafts are applied when recording a transacton. To enable overdraft, include the `allow_overdraft` parameter and set its value to `true` in your request body:
 
-```json Request {8}
-{
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 112.30,
     "precision": 100,
     "reference": "ref-ghwe12009",
@@ -45,6 +49,50 @@ Overdrafts are applied when recording a transacton. To enable overdraft, include
     "meta_data": {
       "account_type": "savings"
     }
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 112.30,
+  precision: 100,
+  reference: 'ref-ghwe12009',
+  currency: 'USD',
+  source: '@World',
+  destination: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  allow_overdraft: true,
+  meta_data: { account_type: 'savings' },
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      112.30,
+    Reference:   "ref-ghwe12009",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "@World",
+    Destination: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  },
+  AllowOverdraft: true,
+})
+```
+</CodeGroup>
+
+```json Response expandable
+{
+  "amount": 112.30,
+  "precision": 100,
+  "precise_amount": 11230,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "reference": "ref-ghwe12009",
+  "currency": "USD",
+  "source": "@World",
+  "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "status": "QUEUED",
+  "allow_overdraft": true,
+  "created_at": "2024-12-21T01:36:46.997063436Z"
 }
 ```
 
@@ -58,19 +106,65 @@ By default, when the `allow_overdraft` parameter is set to true without addition
 
 However, in most cases, you’ll want to define a maximum overdraft limit using the `overdraft_limit` parameter.
 
-```json Request
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 112.30,
+    "precision": 100,
+    "reference": "ref-ghwe12009",
+    "currency": "USD",
+    "source": "@World",
+    "destination": "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+    "allow_overdraft": true,
+    "overdraft_limit": 500.00,
+    "meta_data": {
+      "account_type": "savings"
+    }
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 112.30,
+  precision: 100,
+  reference: 'ref-ghwe12009',
+  currency: 'USD',
+  source: '@World',
+  destination: 'bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3',
+  allow_overdraft: true,
+  overdraft_limit: 500.00,
+  meta_data: { account_type: 'savings' },
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      112.30,
+    Reference:   "ref-ghwe12009",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "@World",
+    Destination: "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+  },
+  AllowOverdraft: true,
+  OverdraftLimit: 500.00,
+})
+```
+</CodeGroup>
+
+```json Response expandable
 {
   "amount": 112.30,
   "precision": 100,
-  "reference": "ref-ghwe12009",
-  "currency": "USD",
-  "source": "@World",
-  "destination": "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
   "allow_overdraft": true,
   "overdraft_limit": 500.00,
-  "meta_data": {
-    "account_type": "savings"
-  }
+  "status": "QUEUED",
+  "created_at": "2024-12-21T01:36:46.997063436Z"
 }
 ```
 
