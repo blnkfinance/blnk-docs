@@ -1,0 +1,373 @@
+---
+title: "Transactions"
+sidebarTitle: "Transactions"
+icon: "arrow-left-right"
+description: "Use the Blnk CLI to list, create, and update transactions on your Core instance."
+"og:title": "Transactions • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to list, create, and update transactions on your Core instance."
+---
+
+Use the `transactions` command to list transfers, inspect a single post, create transactions interactively, and commit, void, or refund inflight work. Reach for this command when you are debugging money movement or testing a flow on Core.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | Browse transfers with filters; add `--id` for one transaction |
+| create | c | Post a transfer via interactive prompts |
+| update | u | Commit, void, or refund an existing transaction |
+
+---
+
+## `list`
+
+Monitor money movement in a paginated table with amount, currency, status, and related IDs.
+
+Filter by `--status`, `--currency`, or `--balance-id` to audit queued work, applied posts, or activity on one account.
+
+```bash
+blnk transactions list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--{field}" type="string">
+Filter by any indexed field (for example `--status APPLIED`, `--currency "USD,EUR"`).
+</ParamField>
+
+<ParamField body="-p, --page" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField body="--per-page" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="List all transactions">
+Run the command to view a paginated table of transactions:
+
+```bash wrap
+blnk transactions list
+```
+
+Filter and paginate:
+
+```bash wrap
+blnk transactions list --page 3 --per-page 25
+blnk transactions list --status APPLIED --currency "USD,EUR"
+blnk transactions list --balance-id bln_abc123 --status APPLIED
+```
+
+```text 200 Success icon="circle-check"
+┌────────────────   ─────────   ────────   ────────   ────────   ────────────────   ────────────────   ────────────────   ───────────────────────────┐
+│ Transaction ID   │ Parent ID │ Amount   │ Currency │ Status   │ Source           │ Destination      │ Reference        │ Created At                  │
+| ---------------- | --------- | -------- | -------- | -------- | ---------------- | ---------------- | ---------------- | --------------------------- |
+│ txn_fa19841f...  │ N/A       │     12.4 │ USDC     │ APPLIED  │ bln_c4984d90...  │ bln_d98d6524...  │ ref_4809d836...  │ 2026-06-03T12:35:29.822965Z │
+│ txn_ac1d86a2...  │ N/A       │     12.4 │ USDC     │ INFLIGHT │ bln_c4984d90...  │ bln_d98d6524...  │ ref_94175e3e...  │ 2026-06-03T12:34:52.925262Z │
+│ txn_ff016b8b...  │ N/A       │     12.4 │ USDC     │ QUEUED   │ bln_c4984d90...  │ bln_d98d6524...  │ ref_94175e3e...  │ 2026-06-03T12:34:52.925262Z │
+└────────────────   ─────────   ────────   ────────   ────────   ────────────────   ────────────────   ────────────────   ───────────────────────────┘
+98 results found
+Page 1/33
+```
+
+Status values may appear colorized in your terminal.
+</Step>
+</Steps>
+
+---
+
+## `list --id`
+
+Inspect one transaction end to end: source, destination, reference, status, and metadata.
+
+Pass `--json` when you need precision, inflight flags, or parent/child links exactly as Core returns them.
+
+```bash
+blnk transactions list --id <transaction-id> [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--id" type="string" required>
+Transaction ID to fetch (for example `txn_fa19841f-faa5-4838-9295-b7278a4ff71d`).
+</ParamField>
+
+<ParamField body="--json" type="boolean">
+Print the full API object as JSON instead of a formatted summary.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Get one transaction">
+Run the command with a transaction ID:
+
+```bash wrap
+blnk transactions list --id txn_fa19841f-faa5-4838-9295-b7278a4ff71d
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Transaction details:
+  amount: 12.4 USDC
+  transaction_id: txn_fa19841f-faa5-4838-9295-b7278a4ff71d
+  source: bln_c4984d90-9414-4450-9d94-120f7b2f6b29
+  destination: bln_d98d6524-29d8-472e-99cd-8a89e9e01243
+  reference: ref_4809d836-0e6a-4975-971a-fde118672faa
+  status: APPLIED
+  created_at: 2026-06-03T12:35:29Z
+  meta_data: {"QUEUED_PARENT_TRANSACTION":"txn_ff016b8b-a5c5-4394-90c6-774be65b74bc","allow_overdraft":true}
+```
+```text JSON icon="circle-check"
+{
+  "transaction_id": "txn_fa19841f-faa5-4838-9295-b7278a4ff71d",
+  "amount": 12.4,
+  "currency": "USDC",
+  "precision": 10000,
+  "source": "bln_c4984d90-9414-4450-9d94-120f7b2f6b29",
+  "destination": "bln_d98d6524-29d8-472e-99cd-8a89e9e01243",
+  "reference": "ref_4809d836-0e6a-4975-971a-fde118672faa",
+  "description": "Test",
+  "status": "APPLIED",
+  "inflight": true,
+  "created_at": "2026-06-03T12:35:29.822965Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `create`
+
+Post a transfer between balances (or indicators) through prompts for amount, precision, parties, reference, and inflight options.
+
+Handy for quick manual tests; multi-leg or high-volume flows should go through your application integration instead.
+
+```bash
+blnk transactions create [options]
+```
+
+<Note>
+The interactive flow covers common fields. For complex multi-leg or bulk transactions, use your application integration against Core directly.
+</Note>
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+The CLI prompts for these values. They are not passed on the command line.
+
+<ParamField body="amount" type="string" required>
+Transaction amount. Prompt: `amount >`
+</ParamField>
+
+<ParamField body="precision" type="integer" required>
+Amount precision (for example `100` for cents). Prompt: `precision >`
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+Currency code. Prompt: `currency >`
+</ParamField>
+
+<ParamField body="source" type="string" required>
+Source balance ID or indicator. Prompt: `source >`
+</ParamField>
+
+<ParamField body="destination" type="string" required>
+Destination balance ID or indicator. Prompt: `destination >`
+</ParamField>
+
+<ParamField body="reference" type="string" required>
+Unique reference for the transaction. Prompt: `reference >`
+</ParamField>
+
+<ParamField body="description" type="string" required>
+Short description. Prompt: `description >`
+</ParamField>
+
+<ParamField body="allow_overdraft" type="boolean">
+Whether overdraft is allowed. Prompt: `allow overdraft >`
+</ParamField>
+
+<ParamField body="inflight" type="boolean">
+Whether the transaction is inflight. Prompt: `inflight >`
+</ParamField>
+
+<ParamField body="meta_data" type="object">
+Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip.
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+After a successful create, print the full API response as JSON.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Create new transaction">
+Run the command:
+
+```bash wrap
+blnk transactions create
+```
+
+The CLI prompts for each argument:
+
+```text wrap
+amount >
+precision >
+currency >
+source >
+destination >
+reference >
+description >
+allow overdraft >
+inflight >
+metadata (json) >
+```
+
+Press **Enter** at the metadata prompt to leave it empty.
+</Step>
+<Step title="Transaction created">
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Transaction created:
+  amount: 100 USD
+  transaction_id: txn_abc123
+  source: bln_source
+  destination: bln_destination
+  reference: ref_abc123
+  status: APPLIED
+  created_at: 2026-05-23T17:07:49Z
+  meta_data: {}
+```
+```text JSON icon="circle-check"
+{
+  "transaction_id": "txn_abc123",
+  "amount": 100,
+  "currency": "USD",
+  "source": "bln_source",
+  "destination": "bln_destination",
+  "reference": "ref_abc123",
+  "status": "APPLIED",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `update`
+
+Move an existing transaction through its lifecycle: commit inflight funds, void before settlement, or refund after apply.
+
+Supply the transaction ID and exactly one of `--commit`, `--void`, or `--refund`.
+
+```bash
+blnk transactions update [options] <transaction-id>
+```
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+<ParamField body="transaction-id" type="string" required>
+Transaction ID to update (for example `txn_abc123`).
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--commit" type="boolean">
+Fully commit an inflight transaction.
+</ParamField>
+
+<ParamField body="--void" type="boolean">
+Void an inflight transaction.
+</ParamField>
+
+<ParamField body="--refund" type="boolean">
+Refund a transaction.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Commit a transaction">
+Run the command with `--commit` and an inflight transaction ID:
+
+```bash wrap
+blnk transactions update --commit txn_ac1d86a2-9332-4676-89fb-630ed967e610
+```
+
+```text 200 Success icon="circle-check"
+Transaction committed:
+  amount: 12.4 USDC
+  transaction_id: txn_fa19841f-faa5-4838-9295-b7278a4ff71d
+  source: bln_c4984d90-9414-4450-9d94-120f7b2f6b29
+  destination: bln_d98d6524-29d8-472e-99cd-8a89e9e01243
+  reference: ref_4809d836-0e6a-4975-971a-fde118672faa
+  status: APPLIED
+  created_at: 2026-06-03T12:35:29Z
+  meta_data: {"QUEUED_PARENT_TRANSACTION":"txn_ff016b8b-a5c5-4394-90c6-774be65b74bc","allow_overdraft":true}
+```
+</Step>
+<Step title="Void a transaction">
+Run the command with `--void` and an inflight transaction ID:
+
+```bash wrap
+blnk transactions update --void txn_ff016b8b-a5c5-4394-90c6-774be65b74bc
+```
+
+```text 200 Success icon="circle-check"
+Transaction voided:
+  amount: 12.4 USDC
+  transaction_id: txn_a1b2c3d4-e5f6-7890-abcd-ef1234567890
+  source: bln_c4984d90-9414-4450-9d94-120f7b2f6b29
+  destination: bln_d98d6524-29d8-472e-99cd-8a89e9e01243
+  reference: ref_94175e3e-89ce-41a3-bcdc-83504836637a_q
+  status: VOID
+  created_at: 2026-06-03T12:36:01Z
+  meta_data: {"QUEUED_PARENT_TRANSACTION":"txn_ff016b8b-a5c5-4394-90c6-774be65b74bc","allow_overdraft":true}
+```
+</Step>
+<Step title="Refund a transaction">
+Run the command with `--refund` and an applied transaction ID:
+
+```bash wrap
+blnk transactions update --refund txn_fa19841f-faa5-4838-9295-b7278a4ff71d
+```
+
+```text 200 Success icon="circle-check"
+Transaction refunded:
+  amount: 12.4 USDC
+  transaction_id: txn_1877186d-6841-4b9e-88f5-3170de40f656
+  source: bln_d98d6524-29d8-472e-99cd-8a89e9e01243
+  destination: bln_c4984d90-9414-4450-9d94-120f7b2f6b29
+  reference: ref_c6f94d08-ac0e-4923-8487-26f8202a708b
+  status: QUEUED
+  created_at: 2026-06-04T19:27:16Z
+  meta_data: {"QUEUED_PARENT_TRANSACTION":"txn_1877186d-6841-4b9e-88f5-3170de40f656","allow_overdraft":true}
+```
+</Step>
+</Steps>

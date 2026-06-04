@@ -1,0 +1,130 @@
+---
+title: "Typesense reindex"
+sidebarTitle: "Typesense reindex"
+icon: "refresh-cw"
+description: "Start and monitor Typesense search reindex jobs from the CLI."
+"og:title": "Typesense reindex • Blnk Developer Documentation"
+"og:description": "Start and monitor Typesense search reindex jobs from the CLI."
+---
+
+Use the `reindex` command to start a Typesense search reindex on your connected Core instance and check its progress. Requires CLI **1.8.1** or later.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| create | c | Start a new reindex job |
+| list | l | Check current reindex status |
+
+---
+
+## `create`
+
+Trigger a full reindex that reads records from your database and indexes them into Typesense collections.
+
+Run this after deploying a new Typesense instance or when search results are missing data that still exists in Core.
+
+```bash
+blnk reindex create [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+After a successful create, print the full API response as JSON.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Start reindex">
+Run the command on your connected Core instance:
+
+```bash wrap
+blnk reindex create
+```
+</Step>
+<Step title="Reindex started">
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Reindex started:
+  status: pending
+  total_records: 0
+  processed_records: 0
+```
+```text JSON icon="circle-check"
+{
+  "message": "Reindex operation started",
+  "progress": {
+    "status": "pending",
+    "phase": "",
+    "total_records": 0,
+    "processed_records": 0,
+    "started_at": "0001-01-01T00:00:00Z"
+  }
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `list`
+
+Check the current reindex job, including status, phase, record counts, and timestamps.
+
+Poll with `list` while a job is running; when `status` is `completed`, verify search coverage in Typesense if needed.
+
+```bash
+blnk reindex list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+Print the full API response as JSON instead of a formatted summary.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Check reindex status">
+Run the command:
+
+```bash wrap
+blnk reindex list
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Reindex status:
+  status: completed
+  phase: done
+  total_records: 181
+  processed_records: 181
+  started_at: 2026-06-04T19:42:21Z
+  completed_at: 2026-06-04T19:42:22Z
+```
+```text JSON icon="circle-check"
+{
+  "status": "completed",
+  "phase": "done",
+  "total_records": 181,
+  "processed_records": 181,
+  "started_at": "2026-06-04T19:42:21.267309645Z",
+  "completed_at": "2026-06-04T19:42:22.644924172Z"
+}
+```
+```text wrap No job icon="circle-x"
+No results found.
+```
+</CodeGroup>
+</Step>
+</Steps>

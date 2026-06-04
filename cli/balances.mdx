@@ -1,0 +1,287 @@
+---
+title: "Balances"
+sidebarTitle: "Balances"
+icon: "wallet"
+description: "Use the Blnk CLI to list, create, and update balances on your Core instance."
+"og:title": "Balances • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to list, create, and update balances on your Core instance."
+---
+
+Use the `balances` command to list monetary accounts, inspect one balance by ID, create balances on a ledger, and link balances to identities. Balances hold currency positions and appear as sources or destinations on transactions.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | Browse balances in a table; add `--id` for one record |
+| create | c | Open a balance on a ledger via interactive prompts |
+| update | u | Link an existing balance to an identity |
+
+---
+
+## `list`
+
+Browse balances across your ledgers in a paginated table with amounts, credit/debit totals, and inflight columns.
+
+Use `--{field}` filters (for example `--currency`) to narrow results before you fetch one record with `list --id`.
+
+```bash
+blnk balances list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--{field}" type="string">
+Filter by any indexed field (for example `--currency "USD,EUR"`).
+</ParamField>
+
+<ParamField body="-p, --page" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField body="--per-page" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="List all balances">
+Run the command to view a paginated table of balances:
+
+```bash wrap
+blnk balances list
+```
+
+Filter and paginate:
+
+```bash wrap
+blnk balances list --page 2 --per-page 3
+blnk balances list --currency "USD,EUR" --indicator World
+```
+
+```text 200 Success icon="circle-check"
+┌────────────────   ────────   ─────────   ───────   ───────   ───────   ────────   ────────   ────────   ───────────────────────────┐
+│ Balance ID       │ Currency │ Indicator │ Balance │ Credit  │ Debit   │ Inflight │ Infl. Dr │ Infl. Cr │ Created At                  │
+| ---------------- | -------- | --------- | ------- | ------- | ------- | -------- | -------- | -------- | --------------------------- |
+│ bln_01dab2b7...  │ USDC     │ N/A       │       0 │       0 │       0 │        0 │        0 │        0 │ 2026-06-03T12:37:50.156041Z │
+│ bln_964c5fbc...  │ EUR      │ N/A       │       0 │       0 │       0 │        0 │        0 │        0 │ 2026-06-03T12:37:16.100793Z │
+│ bln_d98d6524...  │ USDC     │ @Artur    │  124000 │  124000 │       0 │        0 │        0 │        0 │ 2026-06-03T12:34:52.961135Z │
+└────────────────   ────────   ─────────   ───────   ───────   ───────   ────────   ────────   ────────   ───────────────────────────┘
+54 results found
+Page 1/18
+```
+</Step>
+</Steps>
+
+---
+
+## `list --id`
+
+Look up one balance by `balance_id` and print a readable summary of ledger link, identity, and balance breakdowns.
+
+Pass `--json` when you need the full API object for scripts or support tickets.
+
+```bash
+blnk balances list --id <balance-id> [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--id" type="string" required>
+Balance ID to fetch (for example `bln_01dab2b7-3ec7-4253-b302-edd947423883`).
+</ParamField>
+
+<ParamField body="--json" type="boolean">
+Print the full API object as JSON instead of a formatted summary.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Get one balance">
+Run the command with a balance ID:
+
+```bash wrap
+blnk balances list --id bln_01dab2b7-3ec7-4253-b302-edd947423883
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Balance details:
+  balance_id: bln_01dab2b7-3ec7-4253-b302-edd947423883
+  ledger_id: ldg_feb41a88-02e0-46b1-813d-e60aba7fe0aa
+  identity_id: idt_fa2e58ba-9826-4614-9ba2-02b62df8c4d0
+  currency: USDC
+  balance: 0
+  debit_balance: 0
+  credit_balance: 0
+  inflight_balance: 0
+  inflight_debit_balance: 0
+  inflight_credit_balance: 0
+  created_at: 2026-06-03T12:37:50Z
+```
+```text JSON icon="circle-check"
+{
+  "balance_id": "bln_01dab2b7-3ec7-4253-b302-edd947423883",
+  "ledger_id": "ldg_feb41a88-02e0-46b1-813d-e60aba7fe0aa",
+  "identity_id": "idt_fa2e58ba-9826-4614-9ba2-02b62df8c4d0",
+  "currency": "USDC",
+  "balance": 0,
+  "credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_balance": 0,
+  "created_at": "2026-06-03T12:37:50.156041Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `create`
+
+Open a new balance on a ledger through prompts for currency, ledger ID, and optional identity.
+
+Every balance belongs to exactly one ledger; you can link an identity now or later with `update`.
+
+```bash
+blnk balances create [options]
+```
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+<ParamField body="currency" type="string" required>
+Balance currency. Prompt: `currency >`
+</ParamField>
+
+<ParamField body="ledger_id" type="string" required>
+Ledger ID for the balance. Prompt: `ledger id >`
+</ParamField>
+
+<ParamField body="identity_id" type="string">
+Optional identity to link. Prompt: `identity id >`. Press **Enter** to skip.
+</ParamField>
+
+<ParamField body="meta_data" type="object">
+Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip.
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+After a successful create, print the full API response as JSON.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Create new balance">
+Run the command:
+
+```bash wrap
+blnk balances create
+```
+
+The CLI prompts for each argument:
+
+```text wrap
+currency >
+ledger id >
+identity id >
+metadata (json) >
+```
+
+Press **Enter** at optional prompts to skip.
+</Step>
+<Step title="Balance created">
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Balance created:
+  balance_id: bln_abc123
+  ledger_id: ldg_abc123
+  identity_id: N/A
+  currency: USD
+  created_at: 2026-05-23T17:07:49Z
+```
+```text JSON icon="circle-check"
+{
+  "balance_id": "bln_abc123",
+  "ledger_id": "ldg_abc123",
+  "identity_id": "N/A",
+  "currency": "USD",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `update`
+
+Attach an identity to a balance that was created without one (or change the linked identity).
+
+Pass the balance ID on the command line; the CLI prompts for the `identity_id` to store on the record.
+
+```bash
+blnk balances update <balance-id> [options]
+```
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+<ParamField body="balance-id" type="string" required>
+Balance ID to update (for example `bln_01dab2b7-3ec7-4253-b302-edd947423883`). Passed on the command line.
+</ParamField>
+
+<ParamField body="identity_id" type="string" required>
+Identity ID to link. 
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Link balance to identity">
+Run the command with a balance ID:
+
+```bash wrap
+blnk balances update bln_01dab2b7-3ec7-4253-b302-edd947423883
+```
+
+The CLI prompts for the identity to link:
+
+```text wrap
+identity id >
+```
+</Step>
+<Step title="Balance updated">
+```text 200 Success icon="circle-check"
+Balance identity updated:
+  balance_id: bln_01dab2b7-3ec7-4253-b302-edd947423883
+  ledger_id: ldg_feb41a88-02e0-46b1-813d-e60aba7fe0aa
+  identity_id: idt_fa2e58ba-9826-4614-9ba2-02b62df8c4d0
+  currency: USDC
+  created_at: 2026-06-03T12:37:50Z
+```
+</Step>
+</Steps>

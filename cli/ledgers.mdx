@@ -1,0 +1,206 @@
+---
+title: "Ledgers"
+sidebarTitle: "Ledgers"
+icon: "book-open"
+description: "Use the Blnk CLI to list and create ledgers on your Core instance."
+"og:title": "Ledgers • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to list and create ledgers on your Core instance."
+---
+
+Use the `ledgers` command to browse ledger containers, open one record by ID, and create new ledgers on your connected Core instance. Ledgers group balances and transactions; start here when you need a `ledger_id` for balance setup.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | Browse all ledgers in a table; add `--id` to fetch one |
+| create | c | Create a ledger via interactive prompts |
+
+---
+
+## `list`
+
+See every ledger on your connected Core instance in a paginated table with ID, name, and created time.
+
+Use this when you need a `ledger_id` before creating balances or when auditing how your books are partitioned.
+
+```bash
+blnk ledgers list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--{field}" type="string">
+Filter by any indexed field. Quote comma-separated values for multiple matches.
+</ParamField>
+
+<ParamField body="-p, --page" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField body="--per-page" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="List all ledgers">
+Run the command to view a paginated table of ledgers:
+
+```bash wrap
+blnk ledgers list
+```
+
+Paginate with `-p` and `--per-page`:
+
+```bash wrap
+blnk ledgers list --page 2 --per-page 3
+```
+
+```text 200 Success icon="circle-check"
+┌----------------   ----------------   ----------------------------┐
+│ ID              │ Name             │ Created At                  │
+| --------------- | ---------------- | --------------------------- |
+│ ldg_46074f0e... │ EUR Operations   │ 2026-05-23T17:07:49.876192Z │
+│ ldg_0b89c4c5... │ Card Programs    │ 2026-05-23T17:07:49.709619Z │
+│ ldg_6a55c36f... │ Savings Accounts │ 2026-05-23T17:07:44.97366Z  │
+└----------------   ----------------   ----------------------------┘
+3 results found
+Page 1/1
+```
+</Step>
+</Steps>
+
+---
+
+## `list --id`
+
+Resolve one ledger by `ledger_id`, including its name and `meta_data`.
+
+Pass `--json` to print the same payload your application receives from the Core API.
+
+```bash
+blnk ledgers list --id <ledger-id> [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--id" type="string" required>
+Ledger ID to fetch (for example `ldg_46074f0e-898d-4b48-bced-d647816168c0`).
+</ParamField>
+
+<ParamField body="--json" type="boolean">
+Print the full API object as JSON instead of a formatted summary.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Get one ledger">
+Run the command with a ledger ID:
+
+```bash wrap
+blnk ledgers list --id ldg_46074f0e-898d-4b48-bced-d647816168c0
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Ledger details:
+  name: EUR Operations
+  ledger_id: ldg_46074f0e-898d-4b48-bced-d647816168c0
+  created_at: 2026-05-23T17:07:49Z
+```
+```text JSON icon="circle-check"
+{
+  "ledger_id": "ldg_46074f0e-898d-4b48-bced-d647816168c0",
+  "name": "EUR Operations",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {
+    "currency_focus": "EUR",
+    "region": "EU"
+  }
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `create`
+
+Add a ledger container through guided prompts for name and optional JSON metadata.
+
+Create ledgers first when you are standing up a new product, region, or currency scope. Balances and transactions hang off a ledger.
+
+```bash
+blnk ledgers create [options]
+```
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+The CLI prompts for these values. They are not passed on the command line.
+
+<ParamField body="name" type="string" required>
+Ledger name. Prompt: `ledger name >`
+</ParamField>
+
+<ParamField body="meta_data" type="object">
+Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip.
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+After a successful create, print the full API response as JSON.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Create new ledger">
+Run the command:
+
+```bash wrap
+blnk ledgers create
+```
+
+The CLI prompts for each argument:
+
+```text wrap
+ledger name >
+metadata (json) >
+```
+
+Press **Enter** at the metadata prompt to leave it empty.
+</Step>
+<Step title="Ledger created">
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Ledger created:
+  name: My Ledger
+  ledger_id: ldg_abc123
+  created_at: 2026-05-23T17:07:49Z
+```
+```text JSON icon="circle-check"
+{
+  "ledger_id": "ldg_abc123",
+  "name": "My Ledger",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
