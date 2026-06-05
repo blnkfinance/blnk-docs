@@ -1,0 +1,85 @@
+---
+title: "Output formats"
+sidebarTitle: "Output formats"
+icon: "terminal"
+description: "How the Blnk CLI outputs results in table, summary, and JSON formats."
+"og:title": "Output formats • Blnk Developer Documentation"
+"og:description": "How the Blnk CLI outputs results in table, summary, and JSON formats."
+---
+
+The Blnk CLI does not use a global `--format` flag. Output depends on the command you run and the flags you pass.
+
+---
+
+## Output modes
+
+The CLI picks a format from the command you run; there is no global `--format` switch. Use this table to know what to expect before you pipe output elsewhere.
+
+| Mode | When you see it | Typical commands |
+|------|-----------------|------------------|
+| **Table** | Paginated list with column headers and a footer | `blnk ledgers list`, `blnk balances list`, … |
+| **Summary** | Labeled fields after create or single-resource fetch | `blnk ledgers create`, `blnk ledgers list --id <id>` |
+| **JSON** | Pretty-printed API object | Any command with `--json` where supported |
+
+---
+
+## Table output
+
+Resource `list` commands (without `--id`) render an ASCII table with column headers, then a footer with total results and page number. Tables are meant for scanning many records in the terminal, not for machine parsing.
+
+<Steps>
+<Step title="List resources">
+Run any resource `list` command without `--id`:
+
+```bash wrap
+blnk ledgers list
+```
+
+```text 200 Success icon="circle-check"
+┌----------------   ----------------   ----------------------------┐
+│ ID              │ Name             │ Created At                  │
+| --------------- | ---------------- | --------------------------- |
+│ ldg_46074f0e... │ EUR Operations   │ 2026-05-23T17:07:49.876192Z │
+│ ldg_0b89c4c5... │ Card Programs    │ 2026-05-23T17:07:49.709619Z │
+│ ldg_6a55c36f... │ Savings Accounts │ 2026-05-23T17:07:44.97366Z  │
+└----------------   ----------------   ----------------------------┘
+7 results found
+Page 1/3
+```
+</Step>
+</Steps>
+
+---
+
+## Summary output
+
+After `create` or when you run `list --id` without `--json`, the CLI prints a short labeled block with the fields most people need day to day. This is the default human-readable detail view; switch to JSON when you need every API field.
+
+```text 200 Success icon="circle-check"
+Ledger details:
+  name: EUR Operations
+  ledger_id: ldg_46074f0e-898d-4b48-bced-d647816168c0
+  created_at: 2026-05-23T17:07:49Z
+```
+
+---
+
+## JSON output
+
+Pass `--json` on supported commands to print the raw Core API response as pretty-printed JSON. Ideal for scripts, `jq`, or comparing CLI behavior to your HTTP integration.
+
+```bash wrap
+blnk ledgers list --id ldg_46074f0e-898d-4b48-bced-d647816168c0 --json
+```
+
+```text 200 Success icon="circle-check"
+{
+  "ledger_id": "ldg_46074f0e-898d-4b48-bced-d647816168c0",
+  "name": "EUR Operations",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {
+    "currency_focus": "EUR",
+    "region": "EU"
+  }
+}
+```

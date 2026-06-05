@@ -1,0 +1,80 @@
+---
+title: "Reconciliation"
+sidebarTitle: "Reconciliation"
+icon: "scale"
+description: "Use the Blnk CLI to list reconciliations on your Core instance."
+"og:title": "Reconciliation • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to list reconciliations on your Core instance."
+---
+
+Use the `reconciliations` command to list reconciliation runs and their status against upload batches on Core. Use it after imports or scheduled jobs to confirm a batch finished or to find runs still in progress.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | Browse reconciliation jobs with filters |
+
+---
+
+## `list`
+
+Review reconciliation jobs and their status in a paginated table, including upload batch IDs.
+
+Filter with `--status` or `--upload-id` when you are tracking a specific import or confirming a run completed.
+
+```bash
+blnk reconciliations list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--{field}" type="string">
+Filter by any indexed field (for example `--status COMPLETED`, `--upload-id upl_abc123`).
+</ParamField>
+
+<ParamField body="-p, --page" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField body="--per-page" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="List all reconciliations">
+Run the command to view reconciliations on your Core instance:
+
+```bash wrap
+blnk reconciliations list
+```
+
+Filter and paginate:
+
+```bash wrap
+blnk reconciliations list --page 2 --per-page 20
+blnk reconciliations list --status COMPLETED --upload-id upl_abc123
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+┌────────────────   ────────────────   ──────────   ───────   ─────────   ───────────────────────────   ───────────────────────────┐
+│ Reconciliation ID │ Upload ID        │ Status     │ Matched │ Unmatched │ Started At                  │ Completed At                │
+| ---------------- | ---------------- | ---------- | ------- | --------- | --------------------------- | --------------------------- |
+│ rec_a8f2c91d...  │ upl_7b3e4f12...  │ COMPLETED  │     142 │         3 │ 2026-05-23T17:05:12.441201Z │ 2026-05-23T17:05:18.902331Z │
+│ rec_2d19e0a4...  │ upl_7b3e4f12...  │ COMPLETED  │      98 │         0 │ 2026-05-22T09:14:01.120000Z │ 2026-05-22T09:14:06.558442Z │
+│ rec_f31b8c67...  │ upl_c4a91e55...  │ RUNNING    │      45 │        12 │ 2026-06-04T14:22:33.000000Z │ N/A                         │
+└────────────────   ────────────────   ──────────   ───────   ─────────   ───────────────────────────   ───────────────────────────┘
+3 results found
+Page 1/1
+```
+```text No results icon="circle-x"
+No results found.
+```
+</CodeGroup>
+</Step>
+</Steps>

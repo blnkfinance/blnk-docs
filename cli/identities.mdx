@@ -1,0 +1,235 @@
+---
+title: "Identities"
+sidebarTitle: "Identities"
+icon: "user-round"
+description: "Use the Blnk CLI to list and create identities on your Core instance."
+"og:title": "Identities • Blnk Developer Documentation"
+"og:description": "Use the Blnk CLI to list and create identities on your Core instance."
+---
+
+Use the `identities` command to list people and organizations on Core, inspect one profile by ID, and register new identities interactively. Link identities to balances when you need a customer or counterparty on a ledger.
+
+| Command | Alias | Description |
+| --- | --- | --- |
+| list | l | Browse and filter identities; add `--id` for one record |
+| create | c | Register an individual or organization via prompts |
+
+---
+
+## `list`
+
+Search and page through individuals and organizations on Core.
+
+Filter on indexed profile fields (email, first name, last name, and others) to find the `identity_id` you will use when linking balances.
+
+```bash
+blnk identities list [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--{field}" type="string">
+Filter by any indexed field (for example `--email-address jane@example.com`).
+</ParamField>
+
+<ParamField body="-p, --page" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField body="--per-page" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="List all identities">
+Run the command to view a paginated table of identities:
+
+```bash wrap
+blnk identities list
+```
+
+Filter and paginate:
+
+```bash wrap
+blnk identities list --page 2 --per-page 20
+blnk identities list --email-address jane@example.com
+blnk identities list --first-name Jane --last-name Doe
+```
+
+```text 200 Success icon="circle-check"
+┌────────────────   ──────────   ──────────   ─────────────────────────────────   ───────────────────────────┐
+│ Identity ID      │ First Name │ Last Name  │ Email Address                     │ Created At                  │
+| ---------------- | ---------- | ---------- | --------------------------------- | --------------------------- |
+│ idt_8ff119a1...  │ N/A        │ N/A        │ contact@northwind-traders.example │ 2026-05-23T13:42:16.547035Z │
+│ idt_9f21736f...  │ N/A        │ N/A        │ accounts@pacific-rim.example      │ 2026-05-23T13:42:15.344356Z │
+│ idt_20e8d4f3...  │ Wei        │ Lin        │ wei.lin@example.com               │ 2026-05-23T13:42:14.258165Z │
+└────────────────   ──────────   ──────────   ─────────────────────────────────   ───────────────────────────┘
+20 results found
+Page 1/2
+```
+</Step>
+</Steps>
+
+---
+
+## `list --id`
+
+Fetch one identity by `identity_id` with type, contact fields, and timestamps in a summary block.
+
+Pass `--json` to include address fields, phone, and full `meta_data` in the output.
+
+```bash
+blnk identities list --id <identity-id> [options]
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--id" type="string" required>
+Identity ID to fetch (for example `idt_8ff119a1-9103-487c-ae07-1449583fb126`).
+</ParamField>
+
+<ParamField body="--json" type="boolean">
+Print the full API object as JSON instead of a formatted summary.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Get one identity">
+Run the command with an identity ID:
+
+```bash wrap
+blnk identities list --id idt_8ff119a1-9103-487c-ae07-1449583fb126
+```
+
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Identity details:
+  identity_id: idt_8ff119a1-9103-487c-ae07-1449583fb126
+  identity_type: organization
+  first_name: N/A
+  last_name: N/A
+  email_address: contact@northwind-traders.example
+  created_at: 2026-05-23T13:42:16Z
+```
+```text JSON icon="circle-check"
+{
+  "identity_id": "idt_8ff119a1-9103-487c-ae07-1449583fb126",
+  "identity_type": "organization",
+  "email_address": "contact@northwind-traders.example",
+  "phone_number": "+47 22 12 34 56",
+  "city": "Oslo",
+  "country": "NO",
+  "created_at": "2026-05-23T13:42:16.547035Z",
+  "meta_data": {
+    "seed_batch": "table_screenshot_20260523"
+  }
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+---
+
+## `create`
+
+Register a new `individual` or `organization` through interactive prompts for type, name, email, and optional metadata.
+
+Use this for manual onboarding or smoke tests. The fields mirror what you send to the Core identities API.
+
+```bash
+blnk identities create [options]
+```
+
+<Icon icon="brackets" size={16} color="#808080" className="cli-section-icon" /> **Arguments**
+
+The CLI prompts for these values. They are not passed on the command line.
+
+<ParamField body="identity_type" type="string" required>
+Identity type (for example `individual` or `organization`). Prompt: `identity type >`
+</ParamField>
+
+<ParamField body="first_name" type="string" required>
+First name. Prompt: `first name >`
+</ParamField>
+
+<ParamField body="last_name" type="string" required>
+Last name. Prompt: `last name >`
+</ParamField>
+
+<ParamField body="email_address" type="string" required>
+Email address. Prompt: `email >`
+</ParamField>
+
+<ParamField body="meta_data" type="object">
+Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip.
+</ParamField>
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Options**
+
+<ParamField body="--json" type="boolean">
+After a successful create, print the full API response as JSON.
+</ParamField>
+
+<ParamField body="-h, --help" type="boolean">
+Show help for this command.
+</ParamField>
+
+<Icon icon="list-ordered" size={16} color="#808080" className="cli-section-icon" /> **Usage**
+
+<Steps>
+<Step title="Create new identity">
+Run the command:
+
+```bash wrap
+blnk identities create
+```
+
+The CLI prompts for each argument:
+
+```text wrap
+identity type >
+first name >
+last name >
+email >
+metadata (json) >
+```
+
+Press **Enter** at the metadata prompt to leave it empty.
+</Step>
+<Step title="Identity created">
+<CodeGroup>
+```text 200 Success icon="circle-check"
+Identity created:
+  identity_id: idt_abc123
+  identity_type: individual
+  first_name: Jane
+  last_name: Doe
+  email_address: jane@example.com
+  created_at: 2026-05-23T17:07:49Z
+```
+```text JSON icon="circle-check"
+{
+  "identity_id": "idt_abc123",
+  "identity_type": "individual",
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "email_address": "jane@example.com",
+  "created_at": "2026-05-23T17:07:49.876192Z",
+  "meta_data": {}
+}
+```
+</CodeGroup>
+</Step>
+</Steps>
