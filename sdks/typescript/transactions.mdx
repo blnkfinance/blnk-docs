@@ -1,0 +1,198 @@
+---
+title: "Transactions"
+sidebarTitle: "Transactions"
+icon: "arrow-left-right"
+description: "Use the Blnk TypeScript SDK to create, retrieve, update, and refund transactions on your Core instance."
+"og:title": "Transactions • Blnk TypeScript SDK"
+"og:description": "Use the Blnk TypeScript SDK to create, retrieve, update, and refund transactions on your Core instance."
+---
+
+Use `blnk.Transactions` to record transfers, submit bulk batches, manage inflight commits and voids, and refund applied posts. Reach for these methods when you are building payment flows, payroll, or any money movement in your application.
+
+Browse methods in the sidebar or use the summary table below. For field definitions and business rules, open the linked Core API reference for each method.
+
+| SDK method | API Reference | Description |
+| :--- | :--- | :--- |
+| `create` | [Create transaction](/reference/create-transaction) | Post a single transfer between balances |
+| `get` | [View transaction details](/reference/get-transaction) | Fetch one transaction by `transaction_id` |
+| `getByReference` | [Get transaction by reference](/reference/get-transaction-by-reference) | Fetch one transaction by your unique `reference` |
+| `createBulk` | [Bulk transactions](/reference/bulk-transactions) | Submit multiple transactions in one request |
+| `updateStatus` | [Update inflight](/reference/update-inflight) | Commit or void an inflight transaction |
+| `refund` | [Refund transaction](/reference/refund-transaction) | Reverse an applied transaction |
+
+<Tip>
+Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
+</Tip>
+
+---
+
+## `create`
+
+Post a transfer between a source and destination balance. Supports inflight, scheduling, split legs, and metadata.
+
+See [Create transaction](/reference/create-transaction) for all request fields, validation rules, and status behavior.
+
+```typescript wrap
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  reference: 'payment_001',
+  description: 'Customer payment',
+  allow_overdraft: true,
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.transaction_id, response.data.status);
+}
+```
+
+---
+
+## `get`
+
+Inspect one transaction when you have its `transaction_id`, for example from a `create` response, refund output, or application logs.
+
+```typescript wrap
+const response = await blnk.Transactions.get(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.transaction_id, response.data.status);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transactionId` | string | Yes | The transaction ID (for example `txn_14706192-e53d-43cc-86a1-b8807a09b351`). |
+
+<Tip>
+CLI equivalent: `blnk transactions list --id <transaction-id>`. See [CLI transactions](/cli/transactions).
+</Tip>
+
+See [View transaction details](/reference/get-transaction) for the full response shape.
+
+---
+
+## `getByReference`
+
+Look up a transaction using the unique `reference` your application supplied at create time. Use this for idempotency checks, support tooling, or reconciliation when you store references but not Blnk IDs.
+
+The SDK URL-encodes the reference in the request path.
+
+```typescript wrap
+const response = await blnk.Transactions.getByReference('payment_001');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.transaction_id, response.data.reference);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `reference` | string | Yes | The unique reference passed when the transaction was created. |
+
+See [Get transaction by reference](/reference/get-transaction-by-reference) for the full response shape.
+
+---
+
+## `createBulk`
+
+Submit multiple transaction records in one request. Use `atomic: true` when every leg must succeed or fail together.
+
+Do not set `status` on bulk create requests. Core manages status during processing.
+
+For concepts and options (`inflight`, `run_async`, `skip_queue`), see the [Bulk transactions guide](/transactions/bulk-transactions).
+
+```typescript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_1',
+      destination: '@dest_1',
+      reference: 'bulk_001',
+      description: 'Payment 1',
+    },
+    {
+      amount: 2000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_2',
+      destination: '@dest_2',
+      reference: 'bulk_002',
+      description: 'Payment 2',
+    },
+  ],
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.batch_id, response.data.status);
+}
+```
+
+See [Bulk transactions](/reference/bulk-transactions) for request and response fields.
+
+---
+
+## `updateStatus`
+
+Commit or void an inflight transaction. Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
+
+```typescript wrap
+const response = await blnk.Transactions.updateStatus(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { status: 'commit' },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+For partial commits, include `amount` or `precise_amount`. See [Update inflight](/reference/update-inflight) and the [Inflight guide](/transactions/inflight).
+
+---
+
+## `refund`
+
+Reverse an applied transaction. Blnk creates a new transaction that swaps source and destination.
+
+```typescript wrap
+const response = await blnk.Transactions.refund(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+);
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+Pass an optional body to process synchronously:
+
+```typescript wrap
+const response = await blnk.Transactions.refund(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { skip_queue: true },
+);
+```
+
+See [Refund transaction](/reference/refund-transaction) and the [Refunds guide](/transactions/refunds).

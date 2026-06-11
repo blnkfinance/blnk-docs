@@ -1,0 +1,105 @@
+---
+title: "Identities"
+sidebarTitle: "Identities"
+icon: "user"
+description: "Use the Blnk TypeScript SDK to create, retrieve, list, and update identities on your Core instance."
+"og:title": "Identities • Blnk TypeScript SDK"
+"og:description": "Use the Blnk TypeScript SDK to create, retrieve, list, and update identities on your Core instance."
+---
+
+Use `blnk.Identity` to register customers or organizations, link them to balances, and maintain profile data on your ledger.
+
+| Method | API Reference | Description |
+| :--- | :--- | :--- |
+| `create` | [Create identity](/reference/create-identity) | Register a new identity |
+| `get` | [Get identity](/reference/get-identity) | Fetch one identity by `identity_id` |
+| `list` | [Get identity](/reference/get-identity) | List all identities |
+| `update` | [Edit identity](/reference/edit-identity) | Update identity fields |
+
+<Tip>
+Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
+</Tip>
+
+---
+
+## `create`
+
+Register an individual or organization identity. Use the returned `identity_id` when linking balances.
+
+See [Create identity](/reference/create-identity) for required fields by `identity_type`.
+
+```typescript wrap expandable
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: 'Jane',
+  last_name: 'Doe',
+  gender: 'female',
+  nationality: 'US',
+  dob: new Date('1990-01-15'),
+  email_address: 'jane@example.com',
+  phone_number: '+1234567890',
+  category: 'customer',
+  street: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  country: 'USA',
+  post_code: '10001',
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+<Tip>
+CLI equivalent: `blnk identities create`. See [CLI identities](/cli/identities).
+</Tip>
+
+---
+
+## `get`
+
+Fetch one identity by ID.
+
+```typescript wrap
+const response = await blnk.Identity.get(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+---
+
+## `list`
+
+Return all identities on your Core instance.
+
+```typescript wrap
+const response = await blnk.Identity.list();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+---
+
+## `update`
+
+Update fields on an existing identity.
+
+```typescript wrap
+const response = await blnk.Identity.update(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  { first_name: 'Jane', last_name: 'Smith' },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+See [Identities guide](/identities/introduction) for linking balances and PII tokenization.

@@ -1,0 +1,85 @@
+---
+title: "Reconciliation"
+sidebarTitle: "Reconciliation"
+icon: "scale"
+description: "Use the Blnk TypeScript SDK to upload external data, define matching rules, and run reconciliations."
+"og:title": "Reconciliation • Blnk TypeScript SDK"
+"og:description": "Use the Blnk TypeScript SDK to upload external data, define matching rules, and run reconciliations."
+---
+
+Use `blnk.Reconciliation` to match external statements against ledger records. Upload a file, define how rows match transactions, then start a reconciliation run.
+
+| Method | API Reference | Description |
+| :--- | :--- | :--- |
+| `upload` | [Upload data](/reference/upload-data) | Upload an external data file |
+| `createMatchingRule` | [Create matching rule](/reference/create-matching-rule) | Define how records match |
+| `run` | [Start reconciliation](/reference/start-reconciliation) | Run reconciliation against an upload |
+
+<Tip>
+Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
+</Tip>
+
+---
+
+## `upload`
+
+Upload a CSV or other external data file for reconciliation. Pass a local file path and a source label.
+
+```typescript wrap
+const response = await blnk.Reconciliation.upload(
+  'statement.csv',
+  'stripe',
+);
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+See [Upload data](/reference/upload-data) and the [Reconciliation overview](/reconciliations/overview).
+
+---
+
+## `createMatchingRule`
+
+Define criteria for matching uploaded rows to ledger transactions.
+
+```typescript wrap
+const response = await blnk.Reconciliation.createMatchingRule({
+  name: 'Amount match',
+  description: 'Match by amount',
+  criteria: [{ field: 'amount', operator: 'equals', allowable_drift: 0.01 }],
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+See [Create matching rule](/reference/create-matching-rule) and [Matching rules](/reconciliations/matching-rules).
+
+---
+
+## `run`
+
+Start a reconciliation run against a previously uploaded file.
+
+```typescript wrap
+const response = await blnk.Reconciliation.run({
+  upload_id: 'upl_f3a8b2c1-9d4e-4a7b-8c6e-1f2d3e4a5b6c',
+  strategy: 'one_to_one',
+  dry_run: true,
+  grouping_criteria: 'amount',
+  matching_rule_ids: ['rule_abc123'],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+<Tip>
+CLI equivalent: `blnk reconciliations`. See [CLI reconciliations](/cli/reconciliations).
+</Tip>
+
+See [Start reconciliation](/reference/start-reconciliation).
