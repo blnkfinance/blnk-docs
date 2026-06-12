@@ -2,17 +2,20 @@
 title: "Ledgers"
 sidebarTitle: "Ledgers"
 icon: "book-open"
-description: "Use the Blnk TypeScript SDK to create and retrieve ledgers on your Core instance."
+description: "Use the Blnk TypeScript SDK to create, retrieve, and update ledgers on your Core instance."
 "og:title": "Ledgers • Blnk TypeScript SDK"
-"og:description": "Use the Blnk TypeScript SDK to create and retrieve ledgers on your Core instance."
+"og:description": "Use the Blnk TypeScript SDK to create, retrieve, and update ledgers on your Core instance."
 ---
 
-Use `blnk.Ledgers` to create ledger containers and fetch ledger records. Ledgers group balances and transactions. Create one before opening balances on a book.
+Use `blnk.Ledgers` to create ledger containers, fetch ledger records, and rename books. Ledgers group balances and transactions. Create one before opening balances on a book.
+
+Browse methods in the sidebar or use the summary table below. For field definitions and business rules, open the linked Core API reference for each method.
 
 | Method | API Reference | Description |
 | :--- | :--- | :--- |
 | `create` | [Create ledger](/reference/create-ledger) | Create a new ledger |
 | `get` | [Get ledger](/reference/get-ledger) | Fetch a ledger by `ledger_id` |
+| `update` | [Update ledger name](/reference/update-ledger-name) | Rename an existing ledger |
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -70,3 +73,31 @@ CLI equivalent: `blnk ledgers list --id <ledger-id>`. See [CLI ledgers](/cli/led
 </Tip>
 
 See [Get ledger](/reference/get-ledger) for the full response shape.
+
+---
+
+## `update`
+
+Rename an existing ledger. Only the `name` field is writable on this endpoint.
+
+```typescript wrap
+const response = await blnk.Ledgers.update(
+  'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
+  { name: 'Updated Customer Savings Ledger' },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.name);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | The ledger ID to update. |
+| `data.name` | string | Yes | The new ledger name. |
+
+See [Update ledger name](/reference/update-ledger-name) for the full response shape.
