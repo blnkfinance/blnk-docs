@@ -7,13 +7,11 @@ description: "Use the Blnk TypeScript SDK to upload external data, define matchi
 "og:description": "Use the Blnk TypeScript SDK to upload external data, define matching rules, and run reconciliations."
 ---
 
+## Overview
+
 Use `blnk.Reconciliation` to match external statements against ledger records. Upload a file, define how rows match transactions, then start a reconciliation run.
 
-| Method | API Reference | Description |
-| :--- | :--- | :--- |
-| `upload` | [Upload data](/reference/upload-data) | Upload an external data file |
-| `createMatchingRule` | [Create matching rule](/reference/create-matching-rule) | Define how records match |
-| `run` | [Start reconciliation](/reference/start-reconciliation) | Run reconciliation against an upload |
+For workflow and concepts, see the [Reconciliation overview](/reconciliations/overview).
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -21,9 +19,9 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 ---
 
-## `upload`
+## Upload reconciliation data
 
-Upload a CSV or other external data file for reconciliation. Pass a local file path and a source label.
+`blnk.Reconciliation.upload` uploads a CSV or other external data file for reconciliation. Pass a local file path and a source label.
 
 ```typescript wrap
 const response = await blnk.Reconciliation.upload(
@@ -36,13 +34,15 @@ if (response.status !== 201 || !response.data) {
 }
 ```
 
-See [Upload data](/reference/upload-data) for all request fields and the response, and the [Reconciliation overview](/reconciliations/overview) for workflow and concepts.
+For workflow and concepts, see the [Reconciliation overview](/reconciliations/overview).
+
+See [Upload data](/reference/upload-data) for request fields, response shape, and validation.
 
 ---
 
-## `createMatchingRule`
+## Create a matching rule
 
-Define criteria for matching uploaded rows to ledger transactions.
+`blnk.Reconciliation.createMatchingRule` defines criteria for matching uploaded rows to ledger transactions.
 
 ```typescript wrap
 const response = await blnk.Reconciliation.createMatchingRule({
@@ -56,13 +56,15 @@ if (response.status !== 201 || !response.data) {
 }
 ```
 
-See [Create matching rule](/reference/create-matching-rule) for all request fields and the response, and [Matching rules](/reconciliations/matching-rules) for criteria and examples.
+For criteria and examples, see [Matching rules](/reconciliations/matching-rules).
+
+See [Create matching rule](/reference/create-matching-rule) for request fields, response shape, and validation.
 
 ---
 
-## `run`
+## Run reconciliation
 
-Start a reconciliation run against a previously uploaded file.
+`blnk.Reconciliation.run` starts a reconciliation run against a previously uploaded file.
 
 ```typescript wrap
 const response = await blnk.Reconciliation.run({
@@ -82,4 +84,59 @@ if (response.status !== 200 || !response.data) {
 CLI equivalent: `blnk reconciliations`. See [CLI reconciliations](/cli/reconciliations).
 </Tip>
 
-See [Start reconciliation](/reference/start-reconciliation) for all request fields and the response.
+See [Start reconciliation](/reference/start-reconciliation) for request fields, response shape, and validation.
+
+---
+
+## Run instant reconciliation
+
+`blnk.Reconciliation.runInstant` reconciles inline external transactions without uploading a file first.
+
+```typescript wrap
+const response = await blnk.Reconciliation.runInstant({
+  external_transactions: [
+    {
+      id: 'txn_1',
+      amount: 5.49,
+      reference: 'INV-2023-002',
+      currency: 'GBP',
+      description: 'Card payment',
+      date: '2024-11-15T14:25:30Z',
+      source: 'bank-api',
+    },
+  ],
+  strategy: 'one_to_one',
+  dry_run: true,
+  matching_rule_ids: ['rule_abc123'],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+For workflow and concepts, see [Instant reconciliation](/reconciliations/overview#option-2-instant-reconciliation).
+
+See [Instant reconciliation](/reference/instant-reconciliation) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Transactions" icon="arrow-left-right" href="/sdks/typescript/transactions">
+Inspect and match ledger transactions.
+</Card>
+
+<Card title="Matching rules" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and examples.
+</Card>
+
+<Card title="SDK examples" icon="github" href="https://github.com/blnkfinance/blnk-ts/tree/main/examples">
+Reconciliation sample in the TypeScript repo.
+</Card>
+
+<Card title="CLI reconciliations" icon="terminal" href="/cli/reconciliations">
+Run reconciliations from the terminal.
+</Card>
+</CardGroup>

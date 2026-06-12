@@ -7,21 +7,11 @@ description: "Use the Blnk TypeScript SDK to create, retrieve, update, refund, a
 "og:description": "Use the Blnk TypeScript SDK to create, retrieve, update, refund, and bulk-process transactions on your Core instance."
 ---
 
+## Overview
+
 Use `blnk.Transactions` to record transfers, submit bulk batches, manage inflight commits and voids, and refund applied posts. Reach for these methods when you are building payment flows, payroll, or any money movement in your application.
 
-Browse methods in the sidebar or use the summary table below. For field definitions and business rules, open the linked Core API reference for each method.
-
-| SDK method | API Reference | Description |
-| :--- | :--- | :--- |
-| `create` | [Create transaction](/reference/create-transaction) | Post a single transfer between balances |
-| `get` | [View transaction details](/reference/get-transaction) | Fetch one transaction by `transaction_id` |
-| `getByReference` | [Get transaction by reference](/reference/get-transaction-by-reference) | Fetch one transaction by your unique `reference` |
-| `getLineage` | [View transaction lineage](/reference/get-transaction-lineage) | Fetch fund allocation and shadow transactions for a transaction |
-| `createBulk` | [Bulk transactions](/reference/bulk-transactions) | Submit multiple transactions in one request |
-| `updateStatus` | [Update inflight](/reference/update-inflight) | Commit or void one inflight transaction, or an entire inflight batch |
-| `bulkCommitInflight` | [Bulk commit inflight](/reference/bulk-commit-inflight) | Commit up to 100 independently-created inflight transactions |
-| `bulkVoidInflight` | [Bulk void inflight](/reference/bulk-void-inflight) | Void up to 100 independently-created inflight transactions |
-| `refund` | [Refund transaction](/reference/refund-transaction) | Reverse an applied transaction |
+For concepts and flows, see the [Transactions guide](/transactions/introduction).
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -29,11 +19,9 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 ---
 
-## `create`
+## Create a transaction
 
-Post a transfer between a source and destination balance. Supports inflight, scheduling, split legs, and metadata.
-
-See [Create transaction](/reference/create-transaction) for all request fields, validation rules, and response fields.
+`blnk.Transactions.create` posts a transfer between a source and destination balance. Supports inflight, scheduling, split legs, and metadata.
 
 ```typescript wrap
 const response = await blnk.Transactions.create({
@@ -54,11 +42,13 @@ if (response.status !== 201 || !response.data) {
 }
 ```
 
+See [Create transaction](/reference/create-transaction) for request fields, response shape, and validation.
+
 ---
 
-## `get`
+## Get a transaction
 
-Inspect one transaction when you have its `transaction_id`, for example from a `create` response, refund output, or application logs.
+`blnk.Transactions.get` inspects one transaction when you have its `transaction_id`, for example from a `create` response, refund output, or application logs.
 
 ```typescript wrap
 const response = await blnk.Transactions.get(
@@ -82,13 +72,13 @@ if (response.status !== 200 || !response.data) {
 CLI equivalent: `blnk transactions list --id <transaction-id>`. See [CLI transactions](/cli/transactions).
 </Tip>
 
-See [View transaction details](/reference/get-transaction) for all response fields.
+See [View transaction details](/reference/get-transaction) for request fields, response shape, and validation.
 
 ---
 
-## `getByReference`
+## Get a transaction by reference
 
-Look up a transaction using the unique `reference` your application supplied at create time. Use this for idempotency checks, support tooling, or reconciliation when you store references but not Blnk IDs.
+`blnk.Transactions.getByReference` looks up a transaction using the unique `reference` your application supplied at create time. Use this for idempotency checks, support tooling, or reconciliation when you store references but not Blnk IDs.
 
 The SDK URL-encodes the reference in the request path.
 
@@ -108,13 +98,13 @@ if (response.status !== 200 || !response.data) {
 | :--- | :--- | :--- | :--- |
 | `reference` | string | Yes | The unique reference passed when the transaction was created. |
 
-See [Get transaction by reference](/reference/get-transaction-by-reference) for all response fields.
+See [Get transaction by reference](/reference/get-transaction-by-reference) for request fields, response shape, and validation.
 
 ---
 
-## `getLineage`
+## Get transaction lineage
 
-Inspect how a transaction's spend was allocated across fund providers and which internal shadow transactions Core created for lineage tracking.
+`blnk.Transactions.getLineage` inspects how a transaction's spend was allocated across fund providers and which internal shadow transactions Core created for lineage tracking.
 
 Most useful for debits from [lineage-enabled balances](/transactions/lineage). Returns how spend was split across providers (`fund_allocation`) and any internal shadow transactions. `fund_allocation` appears on debits from balances with `track_fund_lineage: true` when Core allocated tagged funds; it may be omitted otherwise. `shadow_transactions` may be `null` or an empty array.
 
@@ -138,13 +128,15 @@ if (response.status !== 200 || !response.data) {
 | :--- | :--- | :--- | :--- |
 | `transactionId` | string | Yes | The transaction ID (for example `txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad`). |
 
-See [View transaction lineage](/reference/get-transaction-lineage) for all response fields, and the [Fund lineage guide](/transactions/lineage) for setup and concepts.
+For setup and concepts, see the [Fund lineage guide](/transactions/lineage).
+
+See [View transaction lineage](/reference/get-transaction-lineage) for request fields, response shape, and validation.
 
 ---
 
-## `createBulk`
+## Submit bulk transactions
 
-Submit multiple transaction records in one request. Each item in `transactions` uses the same fields as [`create`](#create).
+`blnk.Transactions.createBulk` submits multiple transaction records in one request. Each item in `transactions` uses the same fields as [`create`](#create-a-transaction).
 
 For concepts, webhooks, and batch retrieval, see the [Bulk transactions guide](/transactions/bulk-transactions).
 
@@ -238,7 +230,7 @@ if (response.status === 201 && response.data) {
 }
 ```
 
-To commit or void the batch later, call [`updateStatus`](#updatestatus) with the `batch_id`. See [Commit or void bulk inflight](/transactions/bulk-transactions#commit-or-void-bulk-inflight).
+To commit or void the batch later, call [`updateStatus`](#update-inflight-status) with the `batch_id`. See [Commit or void bulk inflight](/transactions/bulk-transactions#commit-or-void-bulk-inflight).
 
 </Tab>
 <Tab title="skip_queue">
@@ -266,13 +258,13 @@ const response = await blnk.Transactions.createBulk({
 </Tab>
 </Tabs>
 
-See [Bulk transactions](/reference/bulk-transactions) for all request fields and response fields.
+See [Bulk transactions](/reference/bulk-transactions) for request fields, response shape, and validation.
 
 ---
 
-## `updateStatus`
+## Update inflight status
 
-Commit or void a single inflight transaction, or an entire inflight **batch** created with [`createBulk`](#createbulk). Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
+`blnk.Transactions.updateStatus` commits or voids a single inflight transaction, or an entire inflight **batch** created with [`createBulk`](#submit-bulk-transactions). Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
 
 ```typescript wrap
 // Single inflight transaction
@@ -292,17 +284,19 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-For partial commits, include `amount` or `precise_amount`. See [Update inflight](/reference/update-inflight) for all request fields and response fields, and the [Inflight guide](/transactions/inflight) for commit and void behavior.
+For partial commits, include `amount` or `precise_amount`. For commit and void behavior, see the [Inflight guide](/transactions/inflight).
 
 <Note>
-For independently-created inflight transactions (not from a bulk batch), use [`bulkCommitInflight`](#bulkcommitinflight) or [`bulkVoidInflight`](#bulkvoidinflight) to commit or void up to 100 at once.
+For independently-created inflight transactions (not from a bulk batch), use [`bulkCommitInflight`](#bulk-commit-inflight-transactions) or [`bulkVoidInflight`](#bulk-void-inflight-transactions) to commit or void up to 100 at once.
 </Note>
+
+See [Update inflight](/reference/update-inflight) for request fields, response shape, and validation.
 
 ---
 
-## `bulkCommitInflight`
+## Bulk commit inflight transactions
 
-Commit multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/commit`). Each request accepts up to 100 items.
+`blnk.Transactions.bulkCommitInflight` commits multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/commit`). Each request accepts up to 100 items.
 
 Omit `amount` and `precise_amount` on an item to commit the full remaining inflight amount. When both are set, `precise_amount` takes precedence.
 
@@ -333,13 +327,15 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-See [Bulk commit inflight](/reference/bulk-commit-inflight) for all request fields and response fields, and [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes and when to use batch `updateStatus` instead.
+See [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes and when to use batch `updateStatus` instead.
+
+See [Bulk commit inflight](/reference/bulk-commit-inflight) for request fields, response shape, and validation.
 
 ---
 
-## `bulkVoidInflight`
+## Bulk void inflight transactions
 
-Void multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/void`). Each request accepts up to 100 transaction IDs.
+`blnk.Transactions.bulkVoidInflight` voids multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/void`). Each request accepts up to 100 transaction IDs.
 
 <Info>Available in Core 0.14.2 and later.</Info>
 
@@ -358,13 +354,15 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-See [Bulk void inflight](/reference/bulk-void-inflight) for all request fields and response fields, and [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes.
+See [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes.
+
+See [Bulk void inflight](/reference/bulk-void-inflight) for request fields, response shape, and validation.
 
 ---
 
-## `refund`
+## Refund a transaction
 
-Reverse an applied transaction. Blnk creates a new transaction that swaps source and destination.
+`blnk.Transactions.refund` reverses an applied transaction. Blnk creates a new transaction that swaps source and destination.
 
 ```typescript wrap
 const response = await blnk.Transactions.refund(
@@ -385,4 +383,28 @@ const response = await blnk.Transactions.refund(
 );
 ```
 
-See [Refund transaction](/reference/refund-transaction) for all request fields and the response, and the [Refunds guide](/transactions/refunds) for reversal behavior.
+For reversal behavior, see the [Refunds guide](/transactions/refunds).
+
+See [Refund transaction](/reference/refund-transaction) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Balances" icon="wallet" href="/sdks/typescript/balances">
+Open and manage the accounts you use as `source` and `destination`.
+</Card>
+
+<Card title="Inflight guide" icon="clock" href="/transactions/inflight">
+Commit, void, and bulk inflight workflows.
+</Card>
+
+<Card title="Bulk transactions" icon="layers" href="/transactions/bulk-transactions">
+Batch options, webhooks, and retrieval.
+</Card>
+
+<Card title="CLI transactions" icon="terminal" href="/cli/transactions">
+List and inspect transactions from the terminal.
+</Card>
+</CardGroup>

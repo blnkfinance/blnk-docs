@@ -2,16 +2,28 @@
 title: "Search"
 sidebarTitle: "Search"
 icon: "search"
-description: "Use the Blnk TypeScript SDK to search ledgers, balances, and transactions via Typesense."
+description: "Use the Blnk TypeScript SDK for Typesense full-text search, database filters, and Typesense reindex operations."
 "og:title": "Search • Blnk TypeScript SDK"
-"og:description": "Use the Blnk TypeScript SDK to search ledgers, balances, and transactions via Typesense."
+"og:description": "Use the Blnk TypeScript SDK for Typesense full-text search, database filters, and Typesense reindex operations."
 ---
 
-Use `blnk.Search` for full-text search powered by Typesense. Pass a query object and a collection name to search across ledgers, balances, or transactions.
+## Overview
 
-| Method | API Reference | Description |
-| :--- | :--- | :--- |
-| `search` | [Search via Typesense](/reference/search-typesense) | Full-text search on a collection |
+Use `blnk.Search` to query ledgers, balances, transactions, and identities. Blnk exposes two complementary query modes — pick the one that fits your use case.
+
+Collections for both modes: `'ledgers'`, `'balances'`, `'transactions'`, `'identities'`.
+
+## Key concepts
+
+<Info>
+**Typesense vs database filter**
+
+- Use **`search`** when you need full-text matching (`q`, `query_by`, `filter_by`), relevance ranking, or Typesense-specific features. See [Search a collection](#search-a-collection) and the [Typesense guide](/search/typesense/introduction).
+- Use **`filter`** when you need exact field filters (`eq`, `in`, `gte`, etc.) against Postgres with a JSON filter body. See [Filter a collection](#filter-a-collection) and [DB filtering](/search/db/filtering).
+- Both modes return collection-specific record shapes. `search` returns Typesense-indexed documents; `filter` returns full Core API records.
+</Info>
+
+Reindex helpers rebuild the Typesense index from your database when Typesense is empty or out of sync. See [Start a reindex](#start-a-reindex) and [Get reindex status](#get-reindex-status).
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -19,9 +31,9 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 ---
 
-## `search`
+## Search a collection
 
-Run a Typesense query against a collection. Pass `'ledgers'`, `'transactions'`, or `'balances'` as the second argument.
+`blnk.Search.search` runs a Typesense query against a collection. The second argument narrows the response type to that collection's indexed document shape.
 
 ```typescript wrap
 const response = await blnk.Search.search(
@@ -29,8 +41,10 @@ const response = await blnk.Search.search(
   'transactions',
 );
 
-if (response.status !== 200 || !response.data) {
+if (response.status !== 201 || !response.data) {
   console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.found, response.data.hits[0]?.document.transaction_id);
 }
 ```
 
@@ -39,7 +53,7 @@ if (response.status !== 200 || !response.data) {
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `params` | object | Yes | Search query (for example `{ q: 'payment', per_page: 20 }`). |
-| `collection` | string | Yes | Collection name: `'ledgers'`, `'transactions'`, or `'balances'`. |
+| `collection` | string | Yes | `'ledgers'`, `'transactions'`, `'balances'`, or `'identities'`. |
 
 <CodeGroup>
 ```typescript Transactions wrap
@@ -62,10 +76,144 @@ const response = await blnk.Search.search(
   'ledgers',
 );
 ```
+
+```typescript Identities wrap
+const response = await blnk.Search.search(
+  {
+    q: 'jane',
+    query_by: 'first_name,last_name,email_address',
+    per_page: 10,
+  },
+  'identities',
+);
+```
 </CodeGroup>
 
-See [Search via Typesense](/reference/search-typesense) for all request fields and response fields, and the [Typesense introduction](/search/typesense/introduction) for setup and concepts.
+See [Search via Typesense](/reference/search-typesense) for request fields, response shape, and validation.
 
-<Note>
-For structured DB queries without Typesense, use the [Search via DB](/reference/search-db) HTTP API directly. SDK support for DB filter and reindex is coming soon.
-</Note>
+---
+
+## Filter a collection
+
+`blnk.Search.filter` queries records with structured JSON filters against the database. Use this when Typesense full-text search is not required.
+
+```typescript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [{ field: 'status', operator: 'eq', value: 'APPLIED' }],
+    logical_operator: 'and',
+    sort_by: 'created_at',
+    sort_order: 'desc',
+    include_count: true,
+    limit: 20,
+    offset: 0,
+  },
+  'transactions',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.total_count, response.data.data[0]?.transaction_id);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `params` | object | Yes | Filter body with a `filters` array and optional sort/pagination fields. |
+| `collection` | string | Yes | `'ledgers'`, `'transactions'`, `'balances'`, or `'identities'`. |
+
+<CodeGroup>
+```typescript Transactions wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [{ field: 'status', operator: 'eq', value: 'APPLIED' }],
+    include_count: true,
+    limit: 20,
+  },
+  'transactions',
+);
+```
+
+```typescript Identities wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [{ field: 'identity_type', operator: 'eq', value: 'individual' }],
+    limit: 10,
+  },
+  'identities',
+);
+```
+</CodeGroup>
+
+For supported operators and fields, see [DB filtering](/search/db/filtering).
+
+See [Search via DB](/reference/search-db) for request fields, response shape, and validation.
+
+---
+
+## Start a reindex
+
+`blnk.Search.startReindex` populates or rebuilds Typesense from your existing database — for example after spinning up a new Typesense instance. The job runs asynchronously on Core.
+
+```typescript wrap
+const response = await blnk.Search.startReindex({ batch_size: 1000 });
+
+if (response.status !== 202 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.message, response.data.progress.status);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `options` | object | No | Optional `{ batch_size: number }`. Omit to send `{}` and use the Core default. |
+
+See [Start reindex](/reference/start-reindex) for request fields, response shape, and validation.
+
+---
+
+## Get reindex status
+
+`blnk.Search.getReindexStatus` polls reindex progress after calling `startReindex`.
+
+```typescript wrap
+const response = await blnk.Search.getReindexStatus();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.status, response.data.phase);
+}
+```
+
+Returns `404` when no reindex has been started on the instance.
+
+See [Get reindex status](/reference/get-reindex) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Identities" icon="user" href="/sdks/typescript/identities">
+CRUD plus identity search examples.
+</Card>
+
+<Card title="Typesense guide" icon="search" href="/search/typesense/introduction">
+Indexing, query syntax, and setup.
+</Card>
+
+<Card title="DB filtering" icon="database" href="/search/db/filtering">
+Operators and fields for `filter`.
+</Card>
+
+<Card title="Transactions" icon="arrow-left-right" href="/sdks/typescript/transactions">
+Post and query ledger movements.
+</Card>
+</CardGroup>

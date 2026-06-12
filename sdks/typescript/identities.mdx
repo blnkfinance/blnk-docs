@@ -2,19 +2,20 @@
 title: "Identities"
 sidebarTitle: "Identities"
 icon: "user"
-description: "Use the Blnk TypeScript SDK to create, retrieve, list, and update identities on your Core instance."
+description: "Use the Blnk TypeScript SDK to create, retrieve, list, update, and search identities on your Core instance."
 "og:title": "Identities • Blnk TypeScript SDK"
-"og:description": "Use the Blnk TypeScript SDK to create, retrieve, list, and update identities on your Core instance."
+"og:description": "Use the Blnk TypeScript SDK to create, retrieve, list, update, and search identities on your Core instance."
 ---
+
+## Overview
 
 Use `blnk.Identity` to register customers or organizations, link them to balances, and maintain profile data on your ledger.
 
-| Method | API Reference | Description |
-| :--- | :--- | :--- |
-| `create` | [Create identity](/reference/create-identity) | Register a new identity |
-| `get` | [Get identity](/reference/get-identity) | Fetch one identity by `identity_id` |
-| `list` | [Get identity](/reference/get-identity) | List all identities |
-| `update` | [Edit identity](/reference/edit-identity) | Update identity fields |
+For concepts and PII handling, see the [Identities guide](/identities/introduction).
+
+## Key concepts
+
+For large datasets, prefer `blnk.Search` over `list` — see [Search identities](#search-identities) and the [Search SDK page](/sdks/typescript/search).
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -22,22 +23,37 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 ---
 
-## `create`
+## Create an identity
 
-Register an individual or organization identity. Use the returned `identity_id` when linking balances.
+`blnk.Identity.create` registers an individual or organization identity. Use the returned `identity_id` when linking balances.
 
-See [Create identity](/reference/create-identity) for all request fields and the response. Required fields vary by `identity_type`.
+Only `identity_type` is required. All other fields are optional and validated by the SDK when provided (for example `identity_id`, `dob`, `gender`).
+
+**Minimal create** — only `identity_type`:
+
+```typescript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+**Full create** with optional caller-supplied `identity_id` (`idt_` + UUID) and ISO 8601 `dob`:
 
 ```typescript wrap expandable
 const response = await blnk.Identity.create({
+  identity_id: 'idt_11111111-1111-4111-8111-111111111111',
   identity_type: 'individual',
   first_name: 'Jane',
   last_name: 'Doe',
   gender: 'female',
-  nationality: 'US',
-  dob: new Date('1990-01-15'),
+  dob: '1990-01-15T00:00:00Z',
   email_address: 'jane@example.com',
   phone_number: '+1234567890',
+  nationality: 'US',
   category: 'customer',
   street: '123 Main St',
   city: 'New York',
@@ -55,11 +71,13 @@ if (response.status !== 201 || !response.data) {
 CLI equivalent: `blnk identities create`. See [CLI identities](/cli/identities).
 </Tip>
 
+See [Create identity](/reference/create-identity) for request fields, response shape, and validation.
+
 ---
 
-## `get`
+## Get an identity
 
-Fetch one identity by ID.
+`blnk.Identity.get` fetches one identity by ID.
 
 ```typescript wrap
 const response = await blnk.Identity.get(
@@ -71,13 +89,13 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-See [Get identity](/reference/get-identity) for all response fields.
+See [Get identity](/reference/get-identity) for request fields, response shape, and validation.
 
 ---
 
-## `list`
+## List identities
 
-Return all identities on your Core instance.
+`blnk.Identity.list` returns all identities on your Core instance. For large datasets, prefer `Search.search` or `Search.filter` — see [Search identities](#search-identities).
 
 ```typescript wrap
 const response = await blnk.Identity.list();
@@ -87,13 +105,13 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-See [Get identity](/reference/get-identity) for all response fields.
+See [Get identity](/reference/get-identity) for request fields, response shape, and validation.
 
 ---
 
-## `update`
+## Update an identity
 
-Update fields on an existing identity.
+`blnk.Identity.update` changes fields on an existing identity.
 
 ```typescript wrap
 const response = await blnk.Identity.update(
@@ -106,4 +124,63 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-See [Edit identity](/reference/edit-identity) for all request fields and the response. See the [Identities guide](/identities/introduction) for linking balances and PII tokenization.
+For linking balances and PII tokenization, see the [Identities guide](/identities/introduction).
+
+See [Edit identity](/reference/edit-identity) for request fields, response shape, and validation.
+
+---
+
+## Search identities
+
+Use `blnk.Search` when you need to query identities without loading the full list.
+
+**Typesense** — full-text search on indexed fields:
+
+```typescript wrap
+const response = await blnk.Search.search(
+  {
+    q: 'jane',
+    query_by: 'first_name,last_name,email_address',
+    per_page: 10,
+  },
+  'identities',
+);
+```
+
+**Database filter** — structured filters on identity fields:
+
+```typescript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [{ field: 'identity_type', operator: 'eq', value: 'individual' }],
+    limit: 20,
+  },
+  'identities',
+);
+```
+
+For when to use Typesense vs DB filters, reindex helpers, and response typing, see [Search](/sdks/typescript/search).
+
+See [Search via Typesense](/reference/search-typesense) for Typesense query fields and [Search via DB](/reference/search-db) for filter fields.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Balances" icon="wallet" href="/sdks/typescript/balances">
+Link identities to balances with `updateIdentity`.
+</Card>
+
+<Card title="Search" icon="search" href="/sdks/typescript/search">
+Full search and filter reference for all collections.
+</Card>
+
+<Card title="Identities guide" icon="book-open" href="/identities/introduction">
+Linking, tokenization, and use cases.
+</Card>
+
+<Card title="CLI identities" icon="terminal" href="/cli/identities">
+Create and manage identities from the terminal.
+</Card>
+</CardGroup>

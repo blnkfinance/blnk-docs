@@ -7,19 +7,11 @@ description: "Use the Blnk TypeScript SDK to create, retrieve, and manage ledger
 "og:description": "Use the Blnk TypeScript SDK to create, retrieve, and manage ledger balances on your Core instance."
 ---
 
-Use `blnk.LedgerBalances` to open monetary accounts on a ledger, look them up by ID or indicator, link identities, trigger snapshots, and inspect historical or lineage-tracked funds. Balances are the sources and destinations on transactions.
+## Overview
 
-Browse methods in the sidebar or use the summary table below. For field definitions and business rules, open the linked Core API reference for each method.
+Use `blnk.LedgerBalances` to create accounts on a ledger, fetch them by ID or indicator, link identities, trigger snapshots, and inspect historical or lineage-tracked funds. Balances are the sources and destinations on transactions.
 
-| Method | API Reference | Description |
-| :--- | :--- | :--- |
-| `create` | [Create balance](/reference/create-balance) | Open a balance on a ledger |
-| `get` | [Get balance](/reference/get-balance) | Fetch a balance by `balance_id` |
-| `getByIndicator` | [Get balance by indicator](/reference/get-balance-by-indicator) | Fetch a balance by indicator and currency |
-| `updateIdentity` | [Update balance identity](/reference/update-balance-identity) | Link a balance to an identity |
-| `createSnapshot` | [Balance snapshots](/reference/balances-snapshots) | Trigger daily balance snapshots in batches |
-| `getAt` | [Historical balances](/reference/historical-balances) | Fetch a balance at a specific timestamp |
-| `getLineage` | [View balance lineage](/reference/get-balance-lineage) | Fetch provider breakdown when fund lineage is enabled |
+For concepts and setup, see the [Balances guide](/balances/introduction).
 
 <Tip>
 Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
@@ -27,11 +19,9 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 ---
 
-## `create`
+## Create a balance
 
-Create a balance on an existing ledger. Returns a `balance_id` you use as `source` or `destination` on transactions.
-
-See [Create balance](/reference/create-balance) for all request fields and the response.
+`blnk.LedgerBalances.create` creates a balance on an existing ledger. Returns a `balance_id` you use as `source` or `destination` on transactions.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.create({
@@ -62,13 +52,13 @@ const response = await blnk.LedgerBalances.create({
 CLI equivalent: `blnk balances create`. See [CLI balances](/cli/balances).
 </Tip>
 
+See [Create balance](/reference/create-balance) for request fields, response shape, and validation.
+
 ---
 
-## `get`
+## Get a balance
 
-Fetch one balance by ID, including credit/debit totals and currency. Pass `{ from_source: true }` to reconstruct the balance from transactions instead of snapshots.
-
-See [Get balance](/reference/get-balance) and [Balance from source](/reference/balance-from-source) for query parameters and response fields.
+`blnk.LedgerBalances.get` fetches one balance by ID, including credit/debit totals and currency. Pass `{ from_source: true }` to reconstruct the balance from transactions instead of snapshots.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.get(
@@ -100,11 +90,13 @@ CLI equivalent: `blnk balances list --id <balance-id>`. See [CLI balances](/cli/
 
 For concepts, see the [Balances guide](/balances/introduction).
 
+See [Get balance](/reference/get-balance) for request fields and response shape. For `from_source` queries, see [Balance from source](/reference/balance-from-source).
+
 ---
 
-## `getByIndicator`
+## Get a balance by indicator
 
-Look up a balance using its indicator and currency, for example `@World` and `USD`. The SDK URL-encodes the indicator in the request path.
+`blnk.LedgerBalances.getByIndicator` looks up a balance using its indicator and currency, for example `@World` and `USD`. The SDK URL-encodes the indicator in the request path.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.getByIndicator('@World', 'USD');
@@ -123,13 +115,13 @@ if (response.status !== 200 || !response.data) {
 | `indicator` | string | Yes | The balance indicator (for example `@World`). |
 | `currency` | string | Yes | The currency code (for example `USD`). |
 
-See [Get balance by indicator](/reference/get-balance-by-indicator) for all response fields.
+See [Get balance by indicator](/reference/get-balance-by-indicator) for request fields, response shape, and validation.
 
 ---
 
-## `updateIdentity`
+## Link a balance to an identity
 
-Link a balance to an identity. Required before enabling fund lineage on balances that were created without an `identity_id`.
+`blnk.LedgerBalances.updateIdentity` links a balance to an identity. Required before enabling fund lineage on balances that were created without an `identity_id`.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.updateIdentity(
@@ -151,13 +143,13 @@ if (response.status !== 200 || !response.data) {
 | `balanceId` | string | Yes | The balance ID to update. |
 | `data.identity_id` | string | Yes | The identity ID to link. |
 
-See [Update balance identity](/reference/update-balance-identity) for all request fields and the response.
+See [Update balance identity](/reference/update-balance-identity) for request fields, response shape, and validation.
 
 ---
 
-## `createSnapshot`
+## Trigger balance snapshots
 
-Trigger daily balance snapshots in batches. Omit `batch_size` or pass `0` to use the server default (1000).
+`blnk.LedgerBalances.createSnapshot` triggers daily balance snapshots in batches. Omit `batch_size` or pass `0` to use the server default (1000).
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.createSnapshot({ batch_size: 500 });
@@ -175,13 +167,15 @@ if (response.status !== 200 || !response.data) {
 | :--- | :--- | :--- | :--- |
 | `options.batch_size` | number | No | Balances processed per batch. Positive values are sent as a query param; omit or pass `0` for the server default. |
 
-See [Balance snapshots](/reference/balances-snapshots) for query parameters and the response, and the [Balance snapshots guide](/balances/balance-snapshots) for setup and concepts.
+For setup and concepts, see the [Balance snapshots guide](/balances/balance-snapshots).
+
+See [Balance snapshots](/reference/balances-snapshots) for request fields, response shape, and validation.
 
 ---
 
-## `getAt`
+## Get historical balance
 
-Retrieve a balance at a specific point in time. Pass an ISO 8601 timestamp (RFC3339). Set `from_source: true` to reconstruct from transactions instead of snapshots.
+`blnk.LedgerBalances.getAt` retrieves a balance at a specific point in time. Pass an ISO 8601 timestamp (RFC3339). Set `from_source: true` to reconstruct from transactions instead of snapshots.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.getAt(
@@ -211,13 +205,15 @@ const response = await blnk.LedgerBalances.getAt(
 | `options.timestamp` | string | Yes | ISO 8601 timestamp (for example `2025-02-24T08:55:26Z`). |
 | `options.from_source` | boolean | No | When `true`, reconstruct from transactions instead of snapshots. |
 
-See [Historical balances](/reference/historical-balances) for query parameters and response fields, and the [Historical balances guide](/balances/historical-balances) for concepts.
+For concepts, see the [Historical balances guide](/balances/historical-balances).
+
+See [Historical balances](/reference/historical-balances) for request fields, response shape, and validation.
 
 ---
 
-## `getLineage`
+## Get balance lineage
 
-Inspect provider-level fund breakdown for a balance with [fund lineage](/transactions/lineage) enabled. Returns received, spent, and available amounts per provider in minor units.
+`blnk.LedgerBalances.getLineage` inspects provider-level fund breakdown for a balance with [fund lineage](/transactions/lineage) enabled. Returns received, spent, and available amounts per provider in minor units.
 
 ```typescript wrap
 const response = await blnk.LedgerBalances.getLineage(
@@ -237,4 +233,28 @@ if (response.status !== 200 || !response.data) {
 | :--- | :--- | :--- | :--- |
 | `balanceId` | string | Yes | The balance ID with fund lineage enabled. |
 
-See [View balance lineage](/reference/get-balance-lineage) for all response fields, and the [Fund lineage guide](/transactions/lineage) for setup and concepts.
+For setup and concepts, see the [Fund lineage guide](/transactions/lineage).
+
+See [View balance lineage](/reference/get-balance-lineage) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Transactions" icon="arrow-left-right" href="/sdks/typescript/transactions">
+Move funds between balances with `blnk.Transactions`.
+</Card>
+
+<Card title="Identities" icon="user" href="/sdks/typescript/identities">
+Register customers and link them to balances.
+</Card>
+
+<Card title="Balance monitoring" icon="bell" href="/sdks/typescript/balance-monitors">
+Attach webhook conditions to balances.
+</Card>
+
+<Card title="CLI balances" icon="terminal" href="/cli/balances">
+Create and list balances from the terminal.
+</Card>
+</CardGroup>
