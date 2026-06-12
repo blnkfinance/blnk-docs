@@ -2,9 +2,9 @@
 title: "Transactions"
 sidebarTitle: "Transactions"
 icon: "arrow-left-right"
-description: "Use the Blnk TypeScript SDK to create, retrieve, update, and refund transactions on your Core instance."
+description: "Use the Blnk TypeScript SDK to create, retrieve, update, refund, and bulk-process transactions on your Core instance."
 "og:title": "Transactions • Blnk TypeScript SDK"
-"og:description": "Use the Blnk TypeScript SDK to create, retrieve, update, and refund transactions on your Core instance."
+"og:description": "Use the Blnk TypeScript SDK to create, retrieve, update, refund, and bulk-process transactions on your Core instance."
 ---
 
 Use `blnk.Transactions` to record transfers, submit bulk batches, manage inflight commits and voids, and refund applied posts. Reach for these methods when you are building payment flows, payroll, or any money movement in your application.
@@ -16,8 +16,11 @@ Browse methods in the sidebar or use the summary table below. For field definiti
 | `create` | [Create transaction](/reference/create-transaction) | Post a single transfer between balances |
 | `get` | [View transaction details](/reference/get-transaction) | Fetch one transaction by `transaction_id` |
 | `getByReference` | [Get transaction by reference](/reference/get-transaction-by-reference) | Fetch one transaction by your unique `reference` |
+| `getLineage` | [View transaction lineage](/reference/get-transaction-lineage) | Fetch fund allocation and shadow transactions for a transaction |
 | `createBulk` | [Bulk transactions](/reference/bulk-transactions) | Submit multiple transactions in one request |
-| `updateStatus` | [Update inflight](/reference/update-inflight) | Commit or void an inflight transaction |
+| `updateStatus` | [Update inflight](/reference/update-inflight) | Commit or void one inflight transaction, or an entire inflight batch |
+| `bulkCommitInflight` | [Bulk commit inflight](/reference/bulk-commit-inflight) | Commit up to 100 independently-created inflight transactions |
+| `bulkVoidInflight` | [Bulk void inflight](/reference/bulk-void-inflight) | Void up to 100 independently-created inflight transactions |
 | `refund` | [Refund transaction](/reference/refund-transaction) | Reverse an applied transaction |
 
 <Tip>
@@ -30,7 +33,7 @@ Every method returns an `ApiResponse<T>`. Check `response.status` and `response.
 
 Post a transfer between a source and destination balance. Supports inflight, scheduling, split legs, and metadata.
 
-See [Create transaction](/reference/create-transaction) for all request fields, validation rules, and status behavior.
+See [Create transaction](/reference/create-transaction) for all request fields, validation rules, and response fields.
 
 ```typescript wrap
 const response = await blnk.Transactions.create({
@@ -79,7 +82,7 @@ if (response.status !== 200 || !response.data) {
 CLI equivalent: `blnk transactions list --id <transaction-id>`. See [CLI transactions](/cli/transactions).
 </Tip>
 
-See [View transaction details](/reference/get-transaction) for the full response shape.
+See [View transaction details](/reference/get-transaction) for all response fields.
 
 ---
 
@@ -105,17 +108,60 @@ if (response.status !== 200 || !response.data) {
 | :--- | :--- | :--- | :--- |
 | `reference` | string | Yes | The unique reference passed when the transaction was created. |
 
-See [Get transaction by reference](/reference/get-transaction-by-reference) for the full response shape.
+See [Get transaction by reference](/reference/get-transaction-by-reference) for all response fields.
+
+---
+
+## `getLineage`
+
+Inspect how a transaction's spend was allocated across fund providers and which internal shadow transactions Core created for lineage tracking.
+
+Most useful for debits from [lineage-enabled balances](/transactions/lineage). Returns how spend was split across providers (`fund_allocation`) and any internal shadow transactions. `fund_allocation` appears on debits from balances with `track_fund_lineage: true` when Core allocated tagged funds; it may be omitted otherwise. `shadow_transactions` may be `null` or an empty array.
+
+```typescript wrap
+const response = await blnk.Transactions.getLineage(
+  'txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.transaction_id);
+  console.log(response.data.fund_allocation);
+  console.log(response.data.shadow_transactions);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transactionId` | string | Yes | The transaction ID (for example `txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad`). |
+
+See [View transaction lineage](/reference/get-transaction-lineage) for all response fields, and the [Fund lineage guide](/transactions/lineage) for setup and concepts.
 
 ---
 
 ## `createBulk`
 
-Submit multiple transaction records in one request. Use `atomic: true` when every leg must succeed or fail together.
+Submit multiple transaction records in one request. Each item in `transactions` uses the same fields as [`create`](#create).
 
-Do not set `status` on bulk create requests. Core manages status during processing.
+For concepts, webhooks, and batch retrieval, see the [Bulk transactions guide](/transactions/bulk-transactions).
 
-For concepts and options (`inflight`, `run_async`, `skip_queue`), see the [Bulk transactions guide](/transactions/bulk-transactions).
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Batch options**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `atomic` | boolean | When `true`, every transaction in the batch succeeds or fails together. When `false`, each transaction is processed independently. |
+| `inflight` | boolean | When `true`, transactions are created in `INFLIGHT` status and require a later commit or void. When `false`, transactions post immediately (unless `run_async` is used). |
+| `run_async` | boolean | When `true`, Core processes the batch in the background and returns `status: 'queued'`. Results arrive via webhook. When `false` or omitted, processing is synchronous. |
+| `skip_queue` | boolean | When `true`, transactions bypass the queue and process synchronously. Useful for hot balances. Default: `false`. |
+| `transactions` | array | Required. Each entry must pass the same validation as a single `create` call. References must be unique within the batch. |
+
+<Tabs>
+<Tab title="Sync atomic">
+
+Set `atomic: true` when every transaction in the batch must succeed or fail together. Leave `run_async` unset for synchronous processing and an immediate response with `batch_id` and `transaction_count`.
 
 ```typescript wrap expandable
 const response = await blnk.Transactions.createBulk({
@@ -129,6 +175,7 @@ const response = await blnk.Transactions.createBulk({
       destination: '@dest_1',
       reference: 'bulk_001',
       description: 'Payment 1',
+      allow_overdraft: true,
     },
     {
       amount: 2000,
@@ -138,6 +185,7 @@ const response = await blnk.Transactions.createBulk({
       destination: '@dest_2',
       reference: 'bulk_002',
       description: 'Payment 2',
+      allow_overdraft: true,
     },
   ],
 });
@@ -149,17 +197,93 @@ if (response.status !== 201 || !response.data) {
 }
 ```
 
-See [Bulk transactions](/reference/bulk-transactions) for request and response fields.
+</Tab>
+<Tab title="Async inflight">
+
+Set `inflight: true` and `run_async: true` to create an inflight batch in the background. The response returns `status: 'queued'` and `message` instead of `transaction_count`.
+
+```typescript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: true,
+  run_async: true,
+  transactions: [
+    {
+      amount: 5000,
+      precision: 100,
+      currency: 'USD',
+      source: '@payroll_pool',
+      destination: '@employee_1',
+      reference: 'payroll_bulk_001',
+      description: 'Payroll run',
+      allow_overdraft: true,
+      inflight_expiry_date: new Date(Date.now() + 48 * 60 * 60 * 1000),
+    },
+    {
+      amount: 3200,
+      precision: 100,
+      currency: 'USD',
+      source: '@payroll_pool',
+      destination: '@employee_2',
+      reference: 'payroll_bulk_002',
+      description: 'Payroll run',
+      allow_overdraft: true,
+      inflight_expiry_date: new Date(Date.now() + 48 * 60 * 60 * 1000),
+    },
+  ],
+});
+
+if (response.status === 201 && response.data) {
+  console.log(response.data.batch_id, response.data.status, response.data.message);
+}
+```
+
+To commit or void the batch later, call [`updateStatus`](#updatestatus) with the `batch_id`. See [Commit or void bulk inflight](/transactions/bulk-transactions#commit-or-void-bulk-inflight).
+
+</Tab>
+<Tab title="skip_queue">
+
+Set `skip_queue: true` to process the batch synchronously without queuing. Useful for [hot balances](/guides/hot-balances).
+
+```typescript wrap
+const response = await blnk.Transactions.createBulk({
+  skip_queue: true,
+  transactions: [
+    {
+      amount: 750,
+      precision: 100,
+      currency: 'USD',
+      source: '@FundingPool',
+      destination: '@MyBalance',
+      reference: 'bulk_skip_001',
+      description: 'Hot balance payout',
+      allow_overdraft: true,
+    },
+  ],
+});
+```
+
+</Tab>
+</Tabs>
+
+See [Bulk transactions](/reference/bulk-transactions) for all request fields and response fields.
 
 ---
 
 ## `updateStatus`
 
-Commit or void an inflight transaction. Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
+Commit or void a single inflight transaction, or an entire inflight **batch** created with [`createBulk`](#createbulk). Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
 
 ```typescript wrap
+// Single inflight transaction
 const response = await blnk.Transactions.updateStatus(
   'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { status: 'commit' },
+);
+
+// Entire inflight batch (use batch_id from createBulk)
+const batchResponse = await blnk.Transactions.updateStatus(
+  'bulk_c62f200b-905f-4983-a349-cadd279234aa',
   { status: 'commit' },
 );
 
@@ -168,7 +292,73 @@ if (response.status !== 200 || !response.data) {
 }
 ```
 
-For partial commits, include `amount` or `precise_amount`. See [Update inflight](/reference/update-inflight) and the [Inflight guide](/transactions/inflight).
+For partial commits, include `amount` or `precise_amount`. See [Update inflight](/reference/update-inflight) for all request fields and response fields, and the [Inflight guide](/transactions/inflight) for commit and void behavior.
+
+<Note>
+For independently-created inflight transactions (not from a bulk batch), use [`bulkCommitInflight`](#bulkcommitinflight) or [`bulkVoidInflight`](#bulkvoidinflight) to commit or void up to 100 at once.
+</Note>
+
+---
+
+## `bulkCommitInflight`
+
+Commit multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/commit`). Each request accepts up to 100 items.
+
+Omit `amount` and `precise_amount` on an item to commit the full remaining inflight amount. When both are set, `precise_amount` takes precedence.
+
+<Info>Available in Core 0.14.2 and later.</Info>
+
+```typescript wrap expandable
+const response = await blnk.Transactions.bulkCommitInflight({
+  transactions: [
+    { transaction_id: 'txn_11111111-1111-4111-8111-111111111111' },
+    {
+      transaction_id: 'txn_22222222-2222-4222-8222-222222222222',
+      amount: 40,
+    },
+    {
+      transaction_id: 'txn_33333333-3333-4333-8333-333333333333',
+      precise_amount: 125034,
+    },
+  ],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.succeeded, response.data.failed);
+  for (const result of response.data.results) {
+    console.log(result.transaction_id, result.status, result.code);
+  }
+}
+```
+
+See [Bulk commit inflight](/reference/bulk-commit-inflight) for all request fields and response fields, and [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes and when to use batch `updateStatus` instead.
+
+---
+
+## `bulkVoidInflight`
+
+Void multiple independently-created inflight transactions in one request (`POST /transactions/inflight/bulk/void`). Each request accepts up to 100 transaction IDs.
+
+<Info>Available in Core 0.14.2 and later.</Info>
+
+```typescript wrap
+const response = await blnk.Transactions.bulkVoidInflight({
+  transaction_ids: [
+    'txn_11111111-1111-4111-8111-111111111111',
+    'txn_22222222-2222-4222-8222-222222222222',
+  ],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.succeeded, response.data.failed);
+}
+```
+
+See [Bulk void inflight](/reference/bulk-void-inflight) for all request fields and response fields, and [Bulk inflight updates](/transactions/inflight#bulk-inflight-updates) for per-item failure codes.
 
 ---
 
@@ -195,4 +385,4 @@ const response = await blnk.Transactions.refund(
 );
 ```
 
-See [Refund transaction](/reference/refund-transaction) and the [Refunds guide](/transactions/refunds).
+See [Refund transaction](/reference/refund-transaction) for all request fields and the response, and the [Refunds guide](/transactions/refunds) for reversal behavior.
