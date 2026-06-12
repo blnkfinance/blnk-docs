@@ -1,0 +1,126 @@
+---
+title: "API keys"
+sidebarTitle: "API keys"
+icon: "key"
+description: "Use the Blnk TypeScript SDK to create, list, and revoke scoped API keys."
+"og:title": "API keys • Blnk TypeScript SDK"
+"og:description": "Use the Blnk TypeScript SDK to create, list, and revoke scoped API keys."
+---
+
+## Overview
+
+Use `blnk.ApiKeys` to issue scoped keys for service accounts and revoke keys you no longer need. Management requires the **master key** or scoped permissions (`api-keys:write`, `api-keys:read`, `api-keys:delete`).
+
+The raw `key` value is only returned once at creation — store it securely.
+
+For server security concepts, see [Secure Blnk](/advanced/secure-blnk).
+
+| Method | API Reference | Description |
+| :--- | :--- | :--- |
+| `create` | [Create API key](/reference/create-api-key) | Issue a scoped API key |
+| `list` | [Get API key](/reference/get-api-key) | List keys for an owner |
+| `delete` | [Revoke API key](/reference/delete-api-key) | Revoke a key by ID |
+
+<Tip>
+Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
+</Tip>
+
+---
+
+## Create an API key
+
+`blnk.ApiKeys.create` issues a new key with scopes and an expiration time.
+
+```typescript wrap
+const response = await blnk.ApiKeys.create({
+  name: 'Service Account',
+  owner: 'merchant_a',
+  scopes: ['ledgers:read', 'balances:write'],
+  expires_at: '2026-12-31T23:59:59Z',
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.api_key_id, response.data.key);
+}
+```
+
+<Warning>
+`response.data.key` is shown only at creation. List responses return a hashed value, not the plaintext secret.
+</Warning>
+
+See [Create API key](/reference/create-api-key) for request fields, response shape, and validation.
+
+---
+
+## List API keys
+
+`blnk.ApiKeys.list` returns keys for an owner. When using the master key, pass `{ owner: 'merchant_a' }` — Core requires the `owner` query param.
+
+```typescript wrap
+const response = await blnk.ApiKeys.list({ owner: 'merchant_a' });
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data[0]?.api_key_id, response.data[0]?.scopes);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `options.owner` | string | No | Owner filter. Required when authenticating with the master key. |
+
+See [Get API key](/reference/get-api-key) for request fields, response shape, and validation.
+
+---
+
+## Revoke an API key
+
+`blnk.ApiKeys.delete` revokes a key immediately. Pass `{ owner }` when using the master key.
+
+```typescript wrap
+const response = await blnk.ApiKeys.delete('api_key_abc123', {
+  owner: 'merchant_a',
+});
+
+if (response.status !== 204) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | The API key ID to revoke. |
+| `options.owner` | string | No | Owner filter. Required when authenticating with the master key. |
+
+Returns **204 No Content** on success; `response.data` is `null`.
+
+See [Revoke API key](/reference/delete-api-key) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+Master key, scopes, and auth model.
+</Card>
+
+<Card title="Install" icon="code" href="/sdks/typescript">
+Initialize the client with your API key.
+</Card>
+
+<Card title="Ledgers" icon="book-open" href="/sdks/typescript/ledgers">
+Typical first scope: `ledgers:read` / `ledgers:write`.
+</Card>
+
+<Card title="Server security" icon="lock" href="/advanced/configuration/server-security">
+Core `server.secure` and secret key configuration.
+</Card>
+</CardGroup>

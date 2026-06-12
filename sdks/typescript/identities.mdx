@@ -13,6 +13,14 @@ Use `blnk.Identity` to register customers or organizations, link them to balance
 
 For concepts and PII handling, see the [Identities guide](/identities/introduction).
 
+| Method | API Reference | Description |
+| :--- | :--- | :--- |
+| `create` | [Create identity](/reference/create-identity) | Register an individual or organization |
+| `get` | [Get identity](/reference/get-identity) | Fetch one identity by ID |
+| `list` | [Get identity](/reference/get-identity) | List all identities on the instance |
+| `update` | [Edit identity](/reference/edit-identity) | Update profile fields |
+| `tokenize` | [Tokenize identity](/reference/tokenize-identity) | Tokenize PII fields on an identity |
+
 ## Key concepts
 
 For large datasets, prefer `blnk.Search` over `list` — see [Search identities](#search-identities) and the [Search SDK page](/sdks/typescript/search).
@@ -127,6 +135,38 @@ if (response.status !== 200 || !response.data) {
 For linking balances and PII tokenization, see the [Identities guide](/identities/introduction).
 
 See [Edit identity](/reference/edit-identity) for request fields, response shape, and validation.
+
+---
+
+## Tokenize identity fields
+
+`blnk.Identity.tokenize` replaces sensitive fields with tokens. Pass **PascalCase** struct field names (`FirstName`, `EmailAddress`) — not the snake_case keys on `IdentityData` (`first_name`, `email_address`). Core rejects snake_case with "field is not tokenizable".
+
+```typescript wrap
+const response = await blnk.Identity.tokenize(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  { fields: ['FirstName', 'EmailAddress'] },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.message);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | The identity ID. |
+| `data.fields` | string[] | Yes | Tokenizable fields: `FirstName`, `LastName`, `OtherNames`, `EmailAddress`, `PhoneNumber`, `Street`, `PostCode`. |
+
+<Info>
+Tokenization must be enabled on Core (`tokenization_secret` in `blnk.json`). See [PII tokenization](/identities/pii-tokenization).
+</Info>
+
+See [Tokenize identity](/reference/tokenize-identity) for request fields, response shape, and validation.
 
 ---
 

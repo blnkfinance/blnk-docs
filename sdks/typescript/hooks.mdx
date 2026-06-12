@@ -1,0 +1,151 @@
+---
+title: "Hooks"
+sidebarTitle: "Hooks"
+icon: "webhook"
+description: "Use the Blnk TypeScript SDK to register and manage pre- and post-transaction webhooks."
+"og:title": "Hooks • Blnk TypeScript SDK"
+"og:description": "Use the Blnk TypeScript SDK to register and manage pre- and post-transaction webhooks."
+---
+
+## Overview
+
+Use `blnk.Hooks` to register webhooks that run before or after transactions. Hook management requires the **master key** in `X-Blnk-Key`; regular API keys return `403`.
+
+For concepts and examples, see [Create hooks](/hooks/create-hooks).
+
+| Method | API Reference | Description |
+| :--- | :--- | :--- |
+| `create` | [Create hooks](/reference/create-hooks) | Register a `PRE_TRANSACTION` or `POST_TRANSACTION` webhook |
+| `list` | [List hooks by type](/reference/list-hooks-by-type) | List hooks, optionally filtered by `type` |
+| `get` | [View hooks](/reference/view-hooks) | Fetch one hook by ID |
+| `update` | [Update hooks](/reference/update-hooks) | Replace hook configuration |
+| `delete` | [Delete hooks](/reference/delete-hooks) | Remove a webhook |
+
+<Tip>
+Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](/sdks/typescript#error-handling) on the install page.
+</Tip>
+
+---
+
+## Register a hook
+
+`blnk.Hooks.create` registers a webhook URL that Core calls on transaction events.
+
+```typescript wrap
+const response = await blnk.Hooks.create({
+  name: 'Pre-transaction validation',
+  url: 'https://api.example.com/validate',
+  type: 'PRE_TRANSACTION',
+  active: true,
+  timeout: 30,
+  retry_count: 3,
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+See [Create hooks](/reference/create-hooks) for request fields, response shape, and validation.
+
+---
+
+## List hooks
+
+`blnk.Hooks.list` returns registered hooks. Pass `{ type: 'PRE_TRANSACTION' }` or `{ type: 'POST_TRANSACTION' }` to filter.
+
+```typescript wrap
+const allHooks = await blnk.Hooks.list();
+const preTxnHooks = await blnk.Hooks.list({ type: 'PRE_TRANSACTION' });
+
+if (preTxnHooks.status !== 200 || !preTxnHooks.data) {
+  console.error(`Error ${preTxnHooks.status}: ${preTxnHooks.message}`);
+}
+```
+
+See [List hooks by type](/reference/list-hooks-by-type) for request fields, response shape, and validation.
+
+---
+
+## Get a hook
+
+`blnk.Hooks.get` fetches one hook by ID.
+
+```typescript wrap
+const response = await blnk.Hooks.get('hk_test_123');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+<Icon icon="sliders-horizontal" size={16} color="#808080" className="cli-section-icon" /> **Parameters**
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | Yes | The hook ID. |
+
+See [View hooks](/reference/view-hooks) for request fields, response shape, and validation.
+
+---
+
+## Update a hook
+
+`blnk.Hooks.update` replaces hook configuration. Pass the full payload Core expects on `PUT`.
+
+```typescript wrap
+const response = await blnk.Hooks.update('hk_test_123', {
+  name: 'Pre-transaction validation (updated)',
+  url: 'https://api.example.com/validate-v2',
+  type: 'PRE_TRANSACTION',
+  active: false,
+  timeout: 45,
+  retry_count: 5,
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
+
+See [Update hooks](/reference/update-hooks) for request fields, response shape, and validation.
+
+---
+
+## Delete a hook
+
+`blnk.Hooks.delete` removes a webhook registration.
+
+```typescript wrap
+const response = await blnk.Hooks.delete('hk_test_123');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.message);
+}
+```
+
+See [Delete hooks](/reference/delete-hooks) for request fields, response shape, and validation.
+
+---
+
+## What's next
+
+<CardGroup cols={2}>
+<Card title="Transactions" icon="arrow-left-right" href="/sdks/typescript/transactions">
+Post transfers that trigger your hooks.
+</Card>
+
+<Card title="Create hooks guide" icon="book-open" href="/hooks/create-hooks">
+Hook types, payloads, and examples.
+</Card>
+
+<Card title="Balance monitors" icon="bell" href="/sdks/typescript/balance-monitors">
+Webhook alerts on balance conditions.
+</Card>
+
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+Master key and API key management.
+</Card>
+</CardGroup>
