@@ -14,6 +14,10 @@ Reindexing is typically needed after deploying a fresh Typesense instance, migra
 
 In this scenario, Typesense is empty while your primary database holds transactions, balances, ledgers, and identities. Reindexing populates Typesense with all existing records so search works correctly.
 
+<Tip>
+Blnk continues to index new and updated records live while a reindex runs. You do not need to wait for the bulk reindex to finish before searching recently created transactions.
+</Tip>
+
 ---
 
 ## How it works
@@ -87,6 +91,41 @@ results, resp, err := client.Search.SearchDocument(
 Compare `found` and `out_of` values with your expected record counts. If anything is missing, run the reindex again.
 </Step>
 </Steps>
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+Starting a second reindex while one is already running returns `409 Conflict` with `error_detail.code` set to `SRCH_REINDEX_IN_PROGRESS`.
+
+```json 409 Conflict wrap
+{
+  "error": "A reindex operation is already in progress",
+  "error_detail": {
+    "code": "SRCH_REINDEX_IN_PROGRESS",
+    "message": "A reindex operation is already in progress",
+    "details": {
+      "status": "in_progress",
+      "phase": "create_collections",
+      "total_records": 0,
+      "processed_records": 0,
+      "started_at": "2026-06-13T00:36:38.149512Z"
+    }
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `SRCH_REINDEX_IN_PROGRESS` | Poll [Check reindex progress](/reference/get-reindex) until `status` is `completed`, then start a new reindex if needed. |
+
+For the full error catalogue, see [API error codes](/advanced/error-codes).
 
 ---
 
