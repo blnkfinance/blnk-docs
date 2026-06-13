@@ -20,10 +20,14 @@ import Key from "/snippets/key.mdx";
   Unique ids of the independently-created inflight transactions to void. Max number of transaction IDs allowed is 100.
 </ParamField>
 
+<ParamField body="skip_queue" type="boolean" default="false">
+  When `false` (default), each item is enqueued for asynchronous processing. Per-item results return `status: "queued"` with code `QUEUED` or `ALREADY_QUEUED`, and both codes count toward `succeeded`. When `true`, Blnk processes each item synchronously and returns `status: "succeeded"` or `"failed"`. See [Update inflight](/transactions/inflight#update-inflight-transactions).
+</ParamField>
+
 ### Response
 
 <ResponseField name="succeeded" type="integer" required>
-  Number of transactions voided successfully.
+  Number of transactions voided or queued successfully. Items with `QUEUED` or `ALREADY_QUEUED` count here.
 </ResponseField>
 
 <ResponseField name="failed" type="integer" required>
@@ -38,11 +42,11 @@ import Key from "/snippets/key.mdx";
     </ResponseField>
 
     <ResponseField name="status" type="string" required>
-      `succeeded` or `failed`.
+      `succeeded`, `failed`, or `queued` (when `skip_queue` is `false`).
     </ResponseField>
 
     <ResponseField name="code" type="string">
-      Stable failure code, such as `NOT_FOUND`, `ALREADY_VOIDED`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`, `LOCKED`, or `INTERNAL_ERROR`.
+      When queued: `QUEUED` or `ALREADY_QUEUED`. When synchronous: failure codes such as `NOT_FOUND`, `ALREADY_VOIDED`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`, `LOCKED`, or `INTERNAL_ERROR`.
     </ResponseField>
 
     <ResponseField name="message" type="string">
@@ -67,7 +71,27 @@ curl -X POST "http://localhost:5001/transactions/inflight/bulk/void" \
 </RequestExample>
 
 <ResponseExample>
-```json 200
+```json 200 Queued (default)
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "queued",
+      "code": "QUEUED"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "queued",
+      "code": "ALREADY_QUEUED",
+      "message": "a commit or void is already queued for this transaction"
+    }
+  ]
+}
+```
+
+```json 200 Synchronous (skip_queue: true)
 {
   "succeeded": 2,
   "failed": 1,
