@@ -2,9 +2,9 @@
 title: "Server and Security Configuration"
 sidebarTitle: "Server & security"
 icon: "shield-check"
-description: "Configure server runtime, secure mode, tokenization, and rate limiting in Blnk."
+description: "Configure server runtime, secure mode, request size limits, tokenization, and rate limiting in Blnk."
 "og:title": "Server and Security Configuration • Blnk Developer Documentation"
-"og:description": "Configure server runtime, secure mode, tokenization, and rate limiting in Blnk."
+"og:description": "Configure server runtime, secure mode, request size limits, tokenization, and rate limiting in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
@@ -108,6 +108,48 @@ When enabled, Blnk uses this secret for AES-GCM encryption in standard tokenizat
 <Note>
 **Note:** Store this secret securely and keep it stable for each environment. If you change it after data has already been tokenized, previously tokenized values may no longer detokenize correctly.
 </Note>
+
+---
+
+## Request and payload limits
+
+Use these settings to limit request body size and upload size.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB=5
+BLNK_SERVER_MAX_UPLOAD_SIZE_MB=256
+```
+
+```json blnk.json
+{
+  "server": {
+    "max_request_body_size_mb": 5,
+    "max_upload_size_mb": 256
+  }
+}
+```
+
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB` | Max size in MB for JSON request bodies. | `5` |
+| `BLNK_SERVER_MAX_UPLOAD_SIZE_MB` | Max size in MB for multipart uploads. Applies to [reconciliation upload](/reference/upload-data). | `256` |
+
+## How limits are applied
+
+| Request type | Config key | When exceeded |
+| :-- | :-- | :-- |
+| JSON API requests | `BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB` | `400 Bad Request` with `GEN_MALFORMED_REQUEST` and message `"http: request body too large"`. |
+| Multipart uploads | `BLNK_SERVER_MAX_UPLOAD_SIZE_MB` | Upload rejected. |
+
+<Note>
+These size limits are separate from per-endpoint item limits. A request can be within the item-count limit and still exceed the body-size limit. 
+
+For example, a bulk transaction request with the accepted count may exceed 5 MB if each transaction contains large metadata or long field values.
+</Note>
+
 
 ---
 
