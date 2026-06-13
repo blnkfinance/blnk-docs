@@ -1,0 +1,134 @@
+---
+title: "API Key Scopes"
+sidebarTitle: "Scopes"
+icon: "list-check"
+description: "Choose the right permissions for each API key using 'resource:action' scopes."
+"og:title": "API Key Scopes • Blnk Developer Documentation"
+"og:description": "Choose the right permissions for each API key using 'resource:action' scopes."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Scopes control what an API key is allowed to do.
+
+Each scope uses `resource:action` format. For example, `ledgers:read` allows a key to read ledgers, while `transactions:write` allows it to create transactions.
+
+Instead of giving every service full access, use scopes to create keys that match what each service actually does.
+
+These patterns cover most setups:
+
+| Use case | Scopes | What the key can do |
+| :-- | :-- | :-- |
+| Read-only reporting | `ledgers:read`, `balances:read` | View ledgers and balances |
+| Payment processing | `transactions:write`, `balances:read` | Create transactions and check balances |
+| Identity management | `identities:write`, `identities:read` | Create and view identities |
+| Key administration | `api-keys:read`, `api-keys:write`, `api-keys:delete` | Manage keys within its owner context |
+
+<Warning>
+Avoid `*:*` unless you truly need full access. For most cases, create a scoped key with only the permissions required.
+</Warning>
+
+---
+
+## How scopes work
+
+Each scope has two parts: a resource and an action, separated by a colon: `resource:action`.
+
+<Tabs>
+<Tab title="Resources">
+
+The resource defines the area of Blnk the key can access. The action defines what the key can do in that area.
+
+| Resource | Description |
+| :-- | :-- |
+| `*` | All resources |
+| `ledgers` | Ledger management |
+| `balances` | Balance operations |
+| `accounts` | Account operations |
+| `identities` | Identity management |
+| `transactions` | Transaction processing |
+| `balance-monitors` | Balance monitoring |
+| `api-keys` | API key management |
+| `search` | Search operations |
+| `reconciliation` | Reconciliation tasks |
+| `metadata` | Metadata management |
+| `backup` | Backup operations |
+
+</Tab>
+<Tab title="Actions">
+
+Blnk maps HTTP methods to actions automatically:
+
+| Action | HTTP methods | Description |
+| :-- | :-- | :-- |
+| `*` | Any | All actions on the resource |
+| `read` | `GET`, `HEAD` | View operations |
+| `write` | `POST`, `PUT`, `PATCH` | Create and modify operations |
+| `delete` | `DELETE` | Delete operations |
+
+</Tab>
+</Tabs>
+
+<Tip>
+You can use `*` as a wildcard on either side. `ledgers:*` grants all ledger actions. `*:read` grants read access to every resource.
+</Tip>
+
+<Warning>
+Hook management requires the [master key](/advanced/secure-blnk#master-key). Scoped keys cannot manage hooks.
+</Warning>
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+When a scoped key is valid but lacks permission for the endpoint you called, Blnk returns a `403 Forbidden` response.
+
+| Code | When it happens |
+| :-- | :-- |
+| `AUTH_INSUFFICIENT_PERMISSIONS` | The key is missing the scope required for that endpoint. |
+| `AUTH_UNKNOWN_RESOURCE` | The request path does not map to a known Blnk resource. |
+| `AUTH_MASTER_KEY_REQUIRED` | The endpoint requires the master key, such as hook management. |
+
+```json 403 Forbidden wrap
+{
+  "error": "Insufficient permissions for transactions:write",
+  "error_detail": {
+    "code": "AUTH_INSUFFICIENT_PERMISSIONS",
+    "message": "Insufficient permissions for transactions:write"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `AUTH_INSUFFICIENT_PERMISSIONS` | Check which scope the endpoint needs, then create a new key with that scope or call an endpoint the key already covers. |
+| `AUTH_UNKNOWN_RESOURCE` | Verify the request path matches a supported API route. |
+| `AUTH_MASTER_KEY_REQUIRED` | Use the [master key](/advanced/secure-blnk#master-key) for that operation. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Overview" icon="lock-keyhole" href="/api-keys/overview">
+  Create and use scoped keys.
+</Card>
+
+<Card title="Owner context" icon="users" href="/api-keys/owner-context">
+  How Blnk isolates key management.
+</Card>
+
+<Card title="Manage keys" icon="list" href="/api-keys/manage-keys">
+  List, revoke, and delegate keys.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

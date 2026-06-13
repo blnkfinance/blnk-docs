@@ -9,9 +9,9 @@ description: "Enable secure mode, manage secret keys, and follow best practices 
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-This guide will walk you through the steps to run your Blnk server in secure mode and implement best practices for maintaining a secure environment.
+This guide walks you through running your Blnk server in secure mode and protecting your master key. For day-to-day API access, create [scoped API keys](/api-keys/overview).
 
-Before you start, please ensure that you have a working instance of Blnk Core:
+Before you start, ensure you have a working instance of Blnk Core:
 
 <Card title="Deploy Blnk" icon="sparkles" href="/home/install">
 Local install or Blnk Cloud.
@@ -19,9 +19,15 @@ Local install or Blnk Cloud.
 
 ---
 
-## Enable secure mode
+## Enable authentication
 
-Modify your `blnk.json` configuration file to enable secure mode. Set `server.secure` to true and provide a strong `server.secret_key`.
+Enable secure mode by setting `server.secure` to `true` and providing a strong `server.secret_key`:
+
+<CodeGroup>
+```bash blnk.env
+BLNK_SERVER_SECURE=true
+BLNK_SERVER_SECRET_KEY=your_strong_secret_key
+```
 
 ```json blnk.json
 {
@@ -32,197 +38,134 @@ Modify your `blnk.json` configuration file to enable secure mode. Set `server.se
 }
 ```
 
----
+</CodeGroup>
 
-## Authentication methods
+When secure mode is enabled, every API request must include a valid key in the `X-Blnk-Key` header. Requests without a key are rejected.
 
-Blnk supports authentication via the **X-Blnk-Key header.**
+The `secret_key` value becomes your **master key**. It has full access to every endpoint on the server, so use it only for administrative tasks and initial setup. For regular service traffic, create scoped API keys.
 
-### Master key authentication
+Pass the master key in the `X-Blnk-Key` header:
 
-The master key (`server.secret_key`) provides full access to all API endpoints. Use it only for administrative tasks and initial setup.
-
-```bash
-curl --request GET \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>'
+```bash cURL wrap
+curl -X GET "http://localhost:5001/ledgers" \
+  -H "X-Blnk-Key: <master-key>"
 ```
 
-### Generating fine-grained API keys
-
-<Info>Available on version 0.10.1 or later.</Info>
-
-For regular operations, create API keys with specific permissions to enforce fine-grained access control.
-
-#### Create an API key
-
-Use the master key to bootstrap keys for each owner. Starting in **0.14.3**, a non-master key with `api-keys:write` can also create keys, but only within its own owner context and with scopes it already holds. See the [Create API key](/reference/create-api-key) reference for complete documentation.
-
-```json
-curl --request POST \
-  --url http://localhost:5001/api-keys \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "name": "Service Account",
-    "owner": "owner_id", 
-    "scopes": ["ledgers:read", "balances:write"],
-    "expires_at": "2026-03-11T00:00:00Z"
-  }'
-```
-
-| Parameter   | Description |
-| :--- | :--- |
-| `name`        | The name of the API key or service account. |
-| `owner`       | Owner identifier for the new key. You choose this value (e.g. team name, service name, user ID). It is stored as `owner_id` on the key record and defines the key's owner context. When you authenticate with a non-master API key, Blnk always uses the caller's `owner_id` — a different `owner` value in the request returns `403 Forbidden`. |
-| `scopes`      | A list of permissions granted to the API key (e.g., `ledgers:read`, `balances:write`). |
-| `expires_at`  | The expiration date and time for the API key in ISO 8601 format. |
-
-<Tip>
-For managing API keys, see the [API Keys reference documentation](/reference/create-api-key): create, list, and delete API keys.
-</Tip>
-
-#### Owner context
-
-<Info>Available on version 0.14.3 or later.</Info>
-
-Every stored API key belongs to an **owner context** — the `owner_id` field on the key record. When you call the API key management endpoints (create, list, revoke), Blnk checks whether the caller is allowed to act on that owner.
-
-| Caller | What it can manage |
-| :-- | :-- |
-| **Master key** (`server.secret_key`) | Keys for **any** owner. Pass `owner` in the request to target a specific owner. The master key is a global server secret and is not bound to an `owner_id`. |
-| **Non-master API key** | Keys for **its own** `owner_id` only. Blnk resolves the effective owner from the authenticated key, not from caller-supplied `owner` values. |
-
-For example, key `k1` has `owner_id = merchant_a`.
-
-- `k1` can create, list, and revoke keys for `merchant_a`
-- `k1` cannot manage keys for `merchant_b`, even if the request body or query includes `"owner": "merchant_b"`
-- The master key can manage keys for both `merchant_a` and `merchant_b`
-
-Non-master keys with `api-keys:read`, `api-keys:write`, or `api-keys:delete` can delegate key management within their owner context, subject to two additional rules:
-
-- **Scope inheritance:** A non-master key can grant only scopes it already holds. You cannot mint a key with broader permissions than the caller.
-- **No cross-owner access:** The effective owner always comes from the caller's `owner_id`, never from a different value in the request.
-
-#### Use the API key
-
-```bash
-curl --request GET \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>'
-```
+<Warning>
+Do not commit the master key to version control. In production, store it in a secret manager or inject it through environment variables.
+</Warning>
 
 ---
 
-## Understanding Scopes
+## About the master key
 
-Scopes define what resources an API key can access and what actions it can perform, formatted as `resource:action`.
+The master key is the `secret_key` from your configuration. Unlike [scoped API keys](/api-keys/overview), it is not bound to an owner or scopes, and it can call any endpoint on the server.
 
-### Available resources
+We recommend using the master key only for initial setup and administrative tasks listed below. For regular API calls, use the scoped keys you create.
 
-| **Resources** | **Description** |
-| :-- | :-- |
-| `*` | All resources |
-| `ledgers` | Ledger management |
-| `balances` | Balance operations |
-| `accounts` | Account operations |
-| `identities` | Identity management |
-| `transactions` | Transaction processing |
-| `balance-monitors` | Balance monitoring |
-| `hooks` | Hook-related permissions (hook **management** endpoints require the master key as of 0.14.3) |
-| `api-keys` | API key management |
-| `search` | Search operations |
-| `reconciliation` | Reconciliation tasks |
-| `metadata` | Metadata management |
-| `backup` | Backup operations |
+1. **Create scoped keys.** Create your first scoped keys with `POST /api-keys`. After that, services should use scoped keys, not the master key.
 
-### Available actions
+2. **Manage keys across owners.** List, create, and revoke keys for any owner by passing `owner` in the request. Scoped keys can manage keys only within their own `owner_id`. See [Owner context](/api-keys/owner-context).
 
-| **Actions** | **Description** |
-| :-- | :-- |
-| `*` | All actions |
-| `read` | View operations — `GET/HEAD` |
-| `write` | Modify operations — `POST/PUT/PATCH` |
-| `delete` | Delete operations — `DELETE` |
-
-### Examples
-
-* `ledgers:read`: Can only view ledgers
-* `transactions:write`: Can create/modify transactions
-* `*:*`: Full access to all resources and actions
+3. **Manage hooks.** Register, update, list, and delete [transaction hooks](/hooks/create-hooks). Hook management rejects scoped keys, even with `hooks:*` scopes.
 
 ---
 
-## Security best practices
+## Security check list
 
-### Master key management
+Enabling secure mode is only the start. Work through this checklist to protect your master key, keep configuration out of version control, and limit API access to what each service needs.
 
-* Use a strong, randomly generated master key
-* Never share or commit it to version control
-* Store it in environment variables or secret management tools
-* Rotate keys regularly
+<Steps>
+<Step title="Master key management">
+- Use a strong, randomly generated master key
+- Never share or commit it to version control
+- Store it in environment variables or a secret management tool
+- Rotate it on a regular schedule
+</Step>
 
-### API key management
+<Step title="Configuration management">
+- Exclude `blnk.json` from version control (`.gitignore`)
+- Store sensitive configuration in environment variables
+- Implement secure secret rotation procedures
+</Step>
 
-* Create separate API keys for different services
-* Set expiration dates for API keys
-* Grant only necessary scopes
-* Regularly audit and revoke unused keys
-* Monitor API key usage
+<Step title="Access control">
+- Follow the principle of least privilege: use scoped keys for services, not the master key
+- Regularly review API key permissions. See [Manage API keys](/api-keys/manage-keys)
+- Register and manage [transaction hooks](/hooks/create-hooks) with the master key only
+</Step>
 
-### Configuration management
+<Step title="Monitoring and auditing">
+- Track failed authentication attempts
+- Monitor API key usage patterns
+- Set up alerts for suspicious activity
+- Regularly review access logs
+</Step>
 
-* Exclude `blnk.json` from version control (`.gitignore`)
-* Store sensitive configurations in environment variables
-* Implement secure secret rotation procedures
-
-### Access control
-
-* Follow the principle of least privilege
-* Regularly review API key permissions
-* Implement role-based access control (RBAC)
-* Maintain audit logs of key activities
-* Register and manage [transaction hooks](/hooks/create-hooks) with the master key only
-
-### Monitoring and auditing
-
-* Track failed authentication attempts
-* Monitor API key usage patterns
-* Set up alerts for suspicious activity
-* Regularly review access logs
-
-### Regular updates
-
-* Keep all components up to date
-* Monitor security advisories
-* Schedule regular maintenance windows
+<Step title="Regular updates">
+- Keep all components up to date
+- Monitor security advisories
+- Schedule regular maintenance windows
+</Step>
+</Steps>
 
 ---
 
 ## Error handling
 
 <Info>
-Structured error responses and `AUTH_*` codes are documented in [API error codes](/advanced/error-codes). Available from Blnk Core 0.15.0.
+Structured errors are available from Blnk Core 0.15.0 and later.
 </Info>
 
-Authentication failures return specific error messages:
+When authentication fails, Blnk returns `401 Unauthorized`. These errors apply whether you use the master key or a scoped key.
 
-| **Status Code** | **Message** |
+| Code | When it happens |
 | :-- | :-- |
-| **401 Unauthorized** | "Authentication required. Use X-Blnk-Key header" <br/> "Invalid API key" <br/> "API key is expired or revoked" |
-| **403 Forbidden** | "Insufficient permissions for resource:action" <br/> "Unknown resource type" <br/> "cannot manage API keys for another owner" <br/> "cannot grant scopes broader than caller" <br/> "hook management requires master key" |
+| `AUTH_MISSING_API_KEY` | No `X-Blnk-Key` header was sent with the request. |
+| `AUTH_INVALID_API_KEY` | The key value is unknown or malformed. |
+| `AUTH_EXPIRED_API_KEY` | The key has expired or has been revoked. |
 
-### Example error response
-
-```json
+```json 401 Unauthorized wrap
 {
-  "error": "Insufficient permissions for transactions:write",
+  "error": "Authentication required. Use X-Blnk-Key header",
   "error_detail": {
-    "code": "AUTH_INSUFFICIENT_PERMISSIONS",
-    "message": "Insufficient permissions for transactions:write"
+    "code": "AUTH_MISSING_API_KEY",
+    "message": "Authentication required. Use X-Blnk-Key header"
   }
 }
 ```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `AUTH_MISSING_API_KEY` | Add the `X-Blnk-Key` header to your request. |
+| `AUTH_INVALID_API_KEY` | Verify the key value wasn't truncated or swapped with another environment's key. |
+| `AUTH_EXPIRED_API_KEY` | Create a replacement key before revoking the old one. See [Manage API keys](/api-keys/manage-keys). |
+
+Permission errors for missing scopes are covered in [Scopes](/api-keys/scopes#error-handling). Owner and delegation errors are covered in [Owner context](/api-keys/owner-context#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Scoped API keys" icon="lock-keyhole" href="/api-keys/overview">
+  Create and use scoped keys.
+</Card>
+
+<Card title="Scopes" icon="list-check" href="/api-keys/scopes">
+  Pick the right permissions.
+</Card>
+
+<Card title="Owner context" icon="users" href="/api-keys/owner-context">
+  Owner labels and cross-owner admin.
+</Card>
+
+<Card title="Manage keys" icon="list" href="/api-keys/manage-keys">
+  List, revoke, and delegate keys.
+</Card>
+</CardGroup>
 
 ---
 

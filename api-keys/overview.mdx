@@ -1,0 +1,265 @@
+---
+title: "Scoped API Keys"
+sidebarTitle: "Overview"
+icon: "lock-keyhole"
+description: "Create scoped API keys so each service gets only the permissions it needs."
+"og:title": "Scoped API Keys • Blnk Developer Documentation"
+"og:description": "Create scoped API keys so each service gets only the permissions it needs."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available on Blnk Core 0.10.1 and later.</Info>
+
+Your master key has full access to your Blnk server. Use it only for admin actions, like creating and revoking API keys.
+
+For everything else, use scoped API keys.
+
+Each key can be limited to a specific owner, set of scopes, and expiry date. For example, your payments service might only need `transactions:write` and `balances:read`, while your reporting service might only need `*:read`.
+
+This keeps each service limited to the access it needs. If a key is exposed, you can revoke that key without rotating your master key or affecting the rest of your system.
+
+---
+
+## Before you start
+
+Scoped API keys require secure mode. When secure mode is enabled, Blnk requires every request to include a valid key in the `X-Blnk-Key` header.
+
+Start by enabling secure mode and setting a strong `secret_key` in your configuration:
+
+<CodeGroup>
+```bash blnk.env
+BLNK_SERVER_SECURE=true
+BLNK_SERVER_SECRET_KEY=your_strong_secret_key
+```
+
+```json blnk.json
+{
+  "server": {
+    "secure": true,
+    "secret_key": "your_strong_secret_key"
+  }
+}
+```
+
+</CodeGroup>
+
+The `secret_key` becomes your master key. Use it once to create your first scoped API key with `POST /api-keys`.
+
+After that, use scoped keys for normal API traffic.
+
+<Warning>
+Do not commit the master key to version control. In production, store it in a secret manager or inject it through environment variables.
+</Warning>
+
+---
+
+## Create and use a scoped key
+
+<Steps>
+<Step title="Create a scoped key">
+
+Use the master key to create your first scoped key. In this example, we create a key for a payments service:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/api-keys" \
+  -H "X-blnk-key: <master-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Payments Service",
+    "owner": "payments-team",
+    "scopes": ["transactions:write", "balances:read"],
+    "expires_at": "2027-06-13T00:00:00Z"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.ApiKeys.create({
+  name: 'Payments Service',
+  owner: 'payments-team',
+  scopes: ['transactions:write', 'balances:read'],
+  expires_at: '2027-06-13T00:00:00Z',
+});
+```
+</CodeGroup>
+
+| Parameter | Description |
+| :-- | :-- |
+| `name` | A readable label for the key, such as a service or environment name. |
+| `owner` | The team, service, or tenant that owns the key. Blnk stores this as `owner_id`. See [Owner context](/api-keys/owner-context). |
+| `scopes` | The permissions assigned to the key, using `resource:action` format. See [Scopes](/api-keys/scopes). |
+| `expires_at` | When the key stops working, in ISO 8601 format. |
+
+A successful request returns `201 Created`.
+
+</Step>
+
+<Step title="Save the key">
+
+On success, the response includes the plaintext key in the `key` field:
+
+```json 201 Created wrap
+{
+  "api_key_id": "api_key_879f0ecb-e29f-4137-801b-1048366381db",
+  "key": "YVLIhuIplUzLRCcT9r7DQ_jsGKCXAn39JQ3n_o-Ll2Q=",
+  "name": "Payments Service",
+  "owner_id": "payments-team",
+  "scopes": ["transactions:write", "balances:read"],
+  "expires_at": "2027-06-13T00:00:00Z",
+  "created_at": "2026-06-13T10:30:00Z",
+  "last_used_at": "0001-01-01T00:00:00Z",
+  "is_revoked": false
+}
+```
+
+Copy the `key` value immediately and store it in your secrets manager or as an environment variable. Wire that value into the service that will call Blnk.
+
+<Warning>
+Blnk shows the plaintext key only once. After creation, the key is hashed at rest and cannot be retrieved again. 
+
+If you lose it, create a new key and revoke the old one.
+</Warning>
+
+</Step>
+
+<Step title="Use the scoped key">
+
+Pass the scoped key in the `X-Blnk-Key` header on every request. 
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <scoped-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 100,
+    "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "currency": "USD",
+    "precision": 100,
+    "source": "bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94",
+    "destination": "bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "description": "Payment transfer",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const scopedKey = process.env.BLNK_SCOPED_API_KEY ?? '';
+const blnk = BlnkInit(scopedKey, { baseUrl: 'http://localhost:5001' });
+
+const response = await blnk.Transactions.create({
+  amount: 100,
+  reference: 'ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+  currency: 'USD',
+  precision: 100,
+  source: 'bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94',
+  destination: 'bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+  description: 'Payment transfer',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+baseURL, _ := url.Parse("http://localhost:5001/")
+scopedKey := os.Getenv("BLNK_SCOPED_API_KEY")
+client := blnkgo.NewClient(baseURL, &scopedKey)
+
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      100,
+    Reference:   "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94",
+    Destination: "bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    Description: "Payment transfer",
+  },
+  AllowOverdraft: true,
+})
+```
+</CodeGroup>
+
+Blnk checks that the key is valid, not expired or revoked, and that its scopes cover the endpoint you're calling. This key has `transactions:write`, so it can create transactions but cannot create ledgers without `ledgers:write`.
+</Step>
+</Steps>
+
+---
+
+## API key tracking
+
+When you create a record with a scoped API key, Blnk adds the key’s `api_key_id` to the resource `meta_data` under `BLNK_GENERATED_BY`.
+
+This lets you trace which key created a ledger, balance, transaction, or identity.
+
+The master key does not add this field. Only scoped API keys authenticated through `X-Blnk-Key` do.
+
+```json API key tracking wrap
+"meta_data": {
+  "purpose": "customer_wallet",
+  "BLNK_GENERATED_BY": "api_key_879f0ecb-e29f-4137-801b-1048366381db"
+}
+```
+
+Blnk sets `BLNK_GENERATED_BY` automatically on `POST` requests. You do not need to include it in your request body. If you send your own `meta_data`, Blnk merges this field into it.
+
+<Tip>
+You can use `BLNK_GENERATED_BY` for audit trails, service attribution, and tenant-level tracing. For example, if each tenant or service uses its own scoped key, you can filter records by `meta_data.BLNK_GENERATED_BY` to see what that key created.
+</Tip>
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+When a scoped key fails authentication, Blnk returns a `401 Unauthorized` response.
+
+| Code | When it happens |
+| :-- | :-- |
+| `AUTH_INVALID_API_KEY` | The key is incorrect, malformed, incomplete, or sent with the wrong header. |
+| `AUTH_EXPIRED_API_KEY` | The key has expired or has been revoked. |
+
+```json 401 Unauthorized wrap
+{
+  "error": "API key is expired or revoked",
+  "error_detail": {
+    "code": "AUTH_EXPIRED_API_KEY",
+    "message": "API key is expired or revoked"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `AUTH_INVALID_API_KEY` | Check that the full key value is being sent in the `X-Blnk-Key` header. |
+| `AUTH_EXPIRED_API_KEY` | Create a replacement key with the same scopes, update the service using it, then revoke the old key. See [Manage API keys](/api-keys/manage-keys). |
+
+Other authentication errors, such as a missing `X-Blnk-Key` header, are covered in [Secure your Blnk server](/advanced/secure-blnk#error-handling).
+
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Scopes" icon="list-check" href="/api-keys/scopes">
+  Pick the right permissions.
+</Card>
+
+<Card title="Owner context" icon="users" href="/api-keys/owner-context">
+  How Blnk isolates key management.
+</Card>
+
+<Card title="Manage keys" icon="list" href="/api-keys/manage-keys">
+  List, revoke, and delegate keys.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
