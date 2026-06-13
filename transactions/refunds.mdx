@@ -9,99 +9,222 @@ description: "Learn how to manage refunds in your Blnk Ledger"
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Sometimes, you need to refund a transaction. Blnk allows you to process a refund using the `transaction_id` of the original transaction.
+In general, when you refund a transaction, Blnk reverses the money movement from the original — funds return from the destination balance to the source balance. 
 
-Refunds only happen on transactions that have been applied. This means that the participating balances have been updated with the transaction amount from the original transaction.
+Blnk records the reversal as a new transaction; the original record is not modified. You can refund each original transaction only once. A second attempt is rejected.
 
-When you refund a transaction, Blnk creates a new transaction record and switches the `source` and `destination` balances of the original transaction — debiting the amount from the balance that initially received it and crediting it to the balance that initially sent it.
+---
+
+## Which transactions can be refunded
+
+Not every transaction in your ledger can be refunded. Eligibility depends on the transaction's status and, for inflight or split transactions, which ID you pass in the request. Use the table below to choose the right ID before calling the refund endpoint.
+
+| Transaction ID | Refundable? | Notes |
+| :--- | :--- | :--- |
+| `APPLIED` | Yes | The source and destination balances are reversed. |
+| `INFLIGHT` | Yes | Only if the inflight transaction has been committed or voided. |
+| `QUEUED` | Yes | Refunds all child `APPLIED` transactions linked to the queued parent. |
+| `VOID` | No | To refund a voided transaction, use its parent inflight transaction ID instead. |
+| `SCHEDULED`, `REJECTED` | No | Not refundable. |
 
 ---
 
 ## Applying refunds
 
-Use the **refund-transaction** endpoint and pass the transaction_id of the transaction that you want to refund.
+<Steps>
+<Step title="Request a refund">
 
+Use the [Refund transaction API](/reference/refund-transaction) and pass the `transaction_id` of the transaction you want to refund.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}" \
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_b0468e80-5941-4ca8-b5d2-e44f4572926e" \
   -H "X-blnk-key: <api-key>"
 ```
 
-```bash cURL (synchronous) wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "skip_queue": true
-  }'
-```
-
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 const response = await blnk.Transactions.refund(
-  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  'txn_b0468e80-5941-4ca8-b5d2-e44f4572926e',
 );
 ```
 
 ```go Go wrap
-txn, resp, err := client.Transaction.Refund("txn_14706192-e53d-43cc-86a1-b8807a09b351")
+txn, resp, err := client.Transaction.Refund("txn_b0468e80-5941-4ca8-b5d2-e44f4572926e")
 ```
 </CodeGroup>
 
-```json Response expandable
+</Step>
+
+<Step title="Queued refund (default)">
+
+By default, Blnk queues the refund, `skip_queue: false`. 
+
+The response returns `status: "QUEUED"` and sets `reference` to `{original_txn_id}_refund`. 
+
+Blnk later applies the refund and creates the final `{original_txn_id}_refund_q` record; using the same `_q` convention as other queued transactions.
+
+```json 201 Created (queued) {13} wrap expandable
 {
-  "amount": 1250.34,
-  "rate": 0,
+  "amount": 50,
+  "amount_string": "50",
   "precision": 100,
-  "precise_amount": 125034,
-  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
-  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
-  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
-  "destination": "@WorldUSD",
-  "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
+  "precise_amount": 5000,
+  "transaction_id": "txn_af70986c-fbdc-450a-bf81-c1af034ce840",
+  "parent_transaction": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e",
+  "source": "bln_f76360da-68db-410d-8a8b-1d960e2a766f",
+  "destination": "bln_b1bd741e-eeb6-4dd4-a562-df35374bbaf9",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
   "currency": "USD",
   "description": "Card payment on Stripe",
   "status": "QUEUED",
-  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
   "allow_overdraft": false,
   "inflight": false,
   "created_at": "2024-11-26T09:33:35.265582042Z"
 }
 ```
 
-<Tip>
-Set `skip_queue: true` in the request body to process the refund synchronously instead of queuing it.
-</Tip>
+</Step>
+
+<Step title="Synchronous refund">
+
+To apply the refund immediately, set `skip_queue: true` in the request body.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_b0468e80-5941-4ca8-b5d2-e44f4572926e" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"skip_queue": true}'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.refund(
+  'txn_b0468e80-5941-4ca8-b5d2-e44f4572926e',
+  { skip_queue: true },
+);
+```
+</CodeGroup>
+
+```json 201 Created (synchronous) {13} wrap expandable
+{
+  "amount": 50,
+  "amount_string": "50",
+  "precision": 100,
+  "precise_amount": 5000,
+  "transaction_id": "txn_4c8be5c7-7c40-493f-b4a1-c09fcf8e7e7b",
+  "parent_transaction": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e",
+  "source": "bln_f76360da-68db-410d-8a8b-1d960e2a766f",
+  "destination": "bln_b1bd741e-eeb6-4dd4-a562-df35374bbaf9",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+</Step>
+</Steps>
 
 ---
 
-## Refunding transactions with multiple sources/destinations
+## Refunding inflight transactions
 
-Multiple sources let you send from several sources to one destination at once; multiple destinations let you send from one source to several destinations at once.
+Only [inflight](/transactions/inflight) transactions that have been **committed** or **voided** can be refunded. Active inflight holds cannot. 
 
-Learn more: [Multiple Sources](/transactions/multiple-sources) and [Multiple Destinations](/transactions/multiple-destinations).
+Use the inflight transaction ID to refund its children.
 
-<Info>
-Refunding the **entire** split in one call works when the original transaction used the **default transaction queue** (`skip_queue: false`). 
+<Steps>
+<Step title="Refund a committed inflight">
 
-Blnk records each leg separately, then links every related transaction with the same `meta_data.QUEUED_PARENT_TRANSACTION` value.
-</Info>
+Pass the inflight transaction ID to the [Refund transaction API](/reference/refund-transaction). 
 
-When you create a split with the queue, the top-level `transaction_id` in the response is the queued parent. 
+Blnk reverses the committed amount the same way as a standard `APPLIED` refund. 
 
-That same value is stored on child legs in `meta_data.QUEUED_PARENT_TRANSACTION`. Use it to refund the whole split.
+</Step>
 
-Call the same **refund-transaction** endpoint as above, with that id:
+<Step title="Refund a voided inflight">
+
+Do not use the `VOID` child's ID for refund. Use the inflight transaction ID instead.
+
+When you refund a voided inflight, Blnk puts the void amount back in `INFLIGHT` as a reverse-direction hold rather than immediately `APPLIED`.
+
+</Step>
+</Steps>
+
+---
+
+## Refunding split transactions
+
+Use this flow when the original payment was a [multiple sources](/transactions/multiple-sources) or [multiple destinations](/transactions/multiple-destinations) split.
+
+<Steps>
+<Step title="Confirm the original used the queue">
+
+Refunding the entire split in one call only works when the original transaction request uses the queue (`skip_queue: false`). 
+
+When you submit the split, Blnk returns a queued parent response. Each child leg is recorded separately and linked through `meta_data.QUEUED_PARENT_TRANSACTION`:
+
+```json Split response {33} wrap expandable
+{
+  "precise_amount": 3000000,
+  "amount": 30000,
+  "amount_string": "30000",
+  "precision": 100,
+  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "parent_transaction": "",
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "description": "Payment from Sarah",
+  "status": "QUEUED",
+  "skip_queue": false,
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "10000",
+      "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+    }
+  ],
+  "created_at": "2025-09-18T01:26:30.648049042Z",
+  "meta_data": {
+    "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab"
+  }
+}
+```
+
+</Step>
+
+<Step title="Refund using the queued parent ID">
+
+Use the value in `meta_data.QUEUED_PARENT_TRANSACTION` as the ID to refund. 
+
+Keep `skip_queue: false` so all legs refund together.
 
 <CodeGroup>
 ```bash cURL wrap
 curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab" \
-  -H "X-blnk-key: <api-key>"
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"skip_queue": false}'
 ```
 
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 const response = await blnk.Transactions.refund(
   'txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab',
+  { skip_queue: false },
 );
 ```
 
@@ -110,6 +233,29 @@ txn, resp, err := client.Transaction.Refund("txn_0b59f6e-6c4a-4efa-915c-526f77ef
 ```
 </CodeGroup>
 
-The response has the same transaction object shape as [Applying refunds](#applying-refunds) above. Blnk refunds all legs in the split from their destinations back to their sources.
+Blnk refunds every `APPLIED` child from its destination back to its source. The response matches the shape in [Applying refunds](#applying-refunds).
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Parent transactions" icon="git-fork" href="/transactions/parent-transactions">
+Lineage and parent-child links.
+</Card>
+
+<Card title="Inflight" icon="plane" href="/transactions/inflight">
+Hold, commit, and void flows.
+</Card>
+
+<Card title="Refund transaction API" icon="code" href="/reference/refund-transaction">
+Endpoint parameters and responses.
+</Card>
+</CardGroup>
+
+---
 
 <NeedHelp />
