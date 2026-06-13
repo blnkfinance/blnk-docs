@@ -27,6 +27,20 @@ Blnk uses webhooks to send you real-time notifications about crucial transaction
 
 ---
 
+## Delivery semantics
+
+Blnk delivers webhooks **at least once**. Your endpoint may receive the same event more than once, often with an identical payload and `X-Blnk-Signature`.
+
+Make handlers **idempotent**. Dedupe on a stable key such as `event` plus a resource identifier in `data` (for example `transaction_id` or `batch_id`), or on the combination of `X-Blnk-Signature` and the raw request body.
+
+For Hooks, if your endpoint is unreachable or returns a non-2xx response, Blnk **retries delivery with backoff up until the max number of retries** instead of dropping the event. A delivery that failed while your receiver was down can arrive minutes later once the endpoint recovers.
+
+<Warning>
+Return a `2xx` response only after you have safely recorded or processed the event. Slow handlers can delay retries and increase duplicate deliveries under load.
+</Warning>
+
+---
+
 ## Supported events
 
 Here are a list of supported events:

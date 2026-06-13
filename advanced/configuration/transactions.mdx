@@ -136,4 +136,49 @@ If locks are not acquired in time, the **operation fails with a lock error**. Fo
 
 ---
 
+## Hash chain settings
+
+<Info>Available in version 0.15.0 and later.</Info>
+
+The optional [transaction hash chain](/transactions/hash) seals applied transactions into a global tamper-evident sequence. It is **disabled by default**. When enabled, a background processor backfills unchained rows and appends new transactions after a trailing delay. 
+
+Run `blnk verify-chain` from your Core deployment to check chain integrity.
+
+In `blnk.json`, `poll_interval` and `trailing_delay` are **integer seconds**. Environment variables accept Go duration format (for example `5s`, `30s`).
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_HASHCHAIN_ENABLED=false
+BLNK_TRANSACTION_HASHCHAIN_POLL_INTERVAL=5s
+BLNK_TRANSACTION_HASHCHAIN_BATCH_SIZE=1000
+BLNK_TRANSACTION_HASHCHAIN_TRAILING_DELAY=30s
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "hash_chain": {
+      "enabled": false,
+      "poll_interval": 5,
+      "batch_size": 1000,
+      "trailing_delay": 30
+    }
+  }
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_TRANSACTION_HASHCHAIN_ENABLED` | Enables the background hash-chain processor. | `false` |
+| `BLNK_TRANSACTION_HASHCHAIN_POLL_INTERVAL` | How often the processor polls for unchained transactions. Env: Go duration (for example `5s`). JSON: seconds. | `5s` / `5` |
+| `BLNK_TRANSACTION_HASHCHAIN_BATCH_SIZE` | Maximum transactions sealed per processor batch. | `1000` |
+| `BLNK_TRANSACTION_HASHCHAIN_TRAILING_DELAY` | Wait time before sealing the newest transactions, so in-flight writes can settle. Env: Go duration (for example `30s`). JSON: seconds. | `30s` / `30` |
+
+<Card title="Transaction hashing" icon="link" href="/transactions/hash">
+  Per-row hashes, chain verification, and sealed fields.
+</Card>
+
+---
+
 <NeedHelp />
