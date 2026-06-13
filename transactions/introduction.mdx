@@ -124,7 +124,7 @@ Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](
     <Tab title="Request">
         | Field | Description | Required | Type
         | --- | --- | --- | ---
-        | `amount` | The transaction amount.| Yes | `float`
+        | `amount` | Transaction amount. Send either `amount` or `precise_amount`, not both — see [Precision](/transactions/precision#using-both-precision-options-together). | Yes | `float`
         | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
         | `currency` | Short code for your asset class. | Yes | `string`
         | `precision` | Precision for the currency/asset passed. See also: [Precision](/transactions/precision) | No | `int64`
@@ -187,11 +187,7 @@ To learn about filtering directly with operators like `eq`, `gt`, `between`, and
 
 ---
 
-## Verifying transactions
-
-After recording a transaction, you can verify its status using different methods depending on whether you're using the default queue system or the skip queue feature.
-
-### Verifying transactions with queue (default)
+## Verifying transactions with queue enabled
 
 When using the default queue system, every transaction starts as `QUEUED`. To verify your transaction status, you have two options:
 
@@ -310,7 +306,9 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
       </Tab>
     </Tabs>
 
-### Verifying transactions without queue (skip queue)
+---
+
+## Verifying transactions without queue disabled
 
 When using `skip_queue: true`, transactions are processed immediately and you can verify them from the direct response. Learn more about [skip queue](/transactions/transaction-lifecycle#skip-transaction-queue).
 
@@ -408,22 +406,16 @@ Available in version 0.11.0 and later. For versions 0.10.8 and older, see our [i
 
 Blnk performs comprehensive balance checks before processing any transaction to ensure you have sufficient funds available. The system computes an available balance by calculating `balance - inflight_debit_balance` on the source balance. 
 
-<Info>
-  Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Inflight transactions](/transactions/inflight).
-</Info>
+Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Inflight transactions](/transactions/inflight).
 
 If the transaction amount is more than the available balance, the source has insufficient funds and:
 
 1. The transaction is rejected and status is recorded as `REJECTED`.
 2. A webhook notification to inform your system of the rejected transaction and a reason in its `meta_data`.
 
-### Using overdrafts
-
-If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request.
-
-<Card title="Learn about overdrafts" icon="credit-card" href="/transactions/overdrafts">
-  Overdrafts and negative balances.
-</Card>
+<Note>
+If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request. [Learn more](/transactions/overdrafts).
+</Note>
 
 ---
 
