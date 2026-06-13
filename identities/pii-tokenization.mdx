@@ -34,6 +34,22 @@ The following identity fields can be tokenized in Blnk Ledger:
 * `Street`
 * `PostCode`
 
+<Warning>
+Identity JSON uses **snake_case** (`first_name`, `email_address`). Tokenization paths and `fields` arrays use **PascalCase** (`FirstName`, `EmailAddress`). They are not interchangeable.
+</Warning>
+
+| Identity JSON field | Tokenization name |
+| :-- | :-- |
+| `first_name` | `FirstName` |
+| `last_name` | `LastName` |
+| `other_names` | `OtherNames` |
+| `email_address` | `EmailAddress` |
+| `phone_number` | `PhoneNumber` |
+| `street` | `Street` |
+| `post_code` | `PostCode` |
+
+Use PascalCase in tokenize and detokenize URLs, and in the `fields` array for multi-field requests.
+
 ---
 
 ## Tokenize a specific field
@@ -158,6 +174,45 @@ Original Email: `alice.smith@example.com`
 Tokenized Email: `FPT:utlgv.jtwka@ifvnpgq.dfe:8jygO668erXz6F+2sQbaGh3StrdkiI7++8nthzFzk7lVtPtZqNgscpsUDWav9jYv4J8x`
 
 The tokenized value preserves the email format while securing the actual content. This allows systems that rely on email formatting to continue functioning properly with tokenized data.
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+Tokenization requests can return `400 Bad Request`, `403 Forbidden`, or `409 Conflict` depending on the field state and server configuration.
+
+| Code | When it happens |
+| :-- | :-- |
+| `IDT_FIELD_NOT_TOKENIZABLE` | Field name is wrong or not in the [tokenizable set](#tokenizable-fields). **Wrong casing is a common cause** — `first_name` returns this code even though `FirstName` is tokenizable. |
+| `IDT_FIELD_ALREADY_TOKENIZED` | You tokenize a field that is already tokenized |
+| `IDT_FIELD_NOT_TOKENIZED` | You detokenize a field that is not tokenized |
+| `IDT_TOKENIZATION_DISABLED` | Tokenization is not configured on the server |
+
+```json 400 Bad Request wrap
+{
+  "error": "field first_name is not tokenizable",
+  "error_detail": {
+    "code": "IDT_FIELD_NOT_TOKENIZABLE",
+    "message": "field first_name is not tokenizable",
+    "details": {}
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `IDT_FIELD_NOT_TOKENIZABLE` | Use the PascalCase name from the [mapping table](#tokenizable-fields). For example, tokenize `/tokenize/FirstName`, not `/tokenize/first_name`. |
+| `IDT_FIELD_ALREADY_TOKENIZED` | Skip tokenization or detokenize the field first if you need to replace the value |
+| `IDT_FIELD_NOT_TOKENIZED` | Tokenize the field before calling detokenize |
+| `IDT_TOKENIZATION_DISABLED` | Configure `tokenization_secret` on your Blnk Core instance |
+
+For the full error catalogue, see [API error codes](/advanced/error-codes).
 
 ---
 
