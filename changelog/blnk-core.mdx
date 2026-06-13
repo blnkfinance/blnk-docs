@@ -7,6 +7,53 @@ description: "Latest features, releases, and improvements."
 "og:description": "Explore the Blnk Core changelog. Track our releases, fixes, enhancements, and version history for Blnk's core platform"
 ---
 
+<Update label="0.15.0" description="Jul 6, 2026">
+  ## Structured API errors
+
+  Error responses include a structured `error_detail` object with a stable code and clear messages. The response also includes the `error` field.
+
+  ```json Error response
+  {
+    "error": "transaction not found",
+    "error_detail": {
+      "code": "TXN_NOT_FOUND",
+      "message": "transaction not found",
+      "details": { }
+    }
+  }
+  ```
+
+  <Warning>
+    If your app checks status codes or error message text, review the [0.15.0 migration guide](/changelog/v15-migration) before upgrading.
+  </Warning>
+
+  [API error codes →](/advanced/error-codes)
+
+  ## Queued inflight commit and void
+
+  Commit and void for inflight transactions now go through the queue by default. Bulk commit and void also follow the same default. 
+  
+  Enable `skip_queue` in the request body when you need the previous synchronous behavior.
+
+  [Updating inflight transactions →](/transactions/inflight)
+
+  ## Transaction hash chain
+
+  Blnk now supports an optional global hash chain to detect tampering in your transaction history and confirm ledger integrity on demand. 
+  
+  It is disabled by default; enable it in config and run `blnk verify-chain` from your Core deployment.
+
+  [Transaction hashing →](/transactions/hash)
+
+  ## Fixes & improvements
+
+  1. Added DELETE endpoints for balance monitors and [identities](/reference/delete-identity).
+  2. Removed `rate`, `currency_multiplier`, and `modification_ref` from API responses.
+  3. Added a `system.error` webhook for internal failures during async processing.
+  4. Increased default worker and database pool limits and added configurable request and upload size caps.
+  5. Changed reconciliation start endpoints to return only `reconciliation_id`; poll for full status.
+</Update>
+
 <Update label="0.14.5" description="Jun 8, 2026">
   ## Fixes & improvements
 
@@ -76,7 +123,9 @@ description: "Latest features, releases, and improvements."
 
   [Handling hot balances →](/guides/hot-balances)
 
-  [Transaction configuration →](/advanced/configuration/transactions) · [Queue configuration →](/advanced/configuration/queue)
+  [Transaction configuration →](/advanced/configuration/transactions) 
+  
+  [Queue configuration →](/advanced/configuration/queue)
 
   ## Fixes & improvements
 
