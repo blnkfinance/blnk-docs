@@ -17,7 +17,9 @@ Blnk records the reversal as a new transaction; the original record is not modif
 
 ## Which transactions can be refunded
 
-Not every transaction in your ledger can be refunded. Eligibility depends on the transaction's status and, for inflight or split transactions, which ID you pass in the request. Use the table below to choose the right ID before calling the refund endpoint.
+Not every transaction can be refunded. Refund eligibility depends on the transaction’s status and the type of transaction you want to refund.
+
+For inflight or split transactions, the ID you pass matters. Use the table below to understand which transaction ID to send and what Blnk does with it.
 
 | Transaction ID | Refundable? | Notes |
 | :--- | :--- | :--- |
@@ -57,11 +59,11 @@ txn, resp, err := client.Transaction.Refund("txn_b0468e80-5941-4ca8-b5d2-e44f457
 
 <Step title="Queued refund (default)">
 
-By default, Blnk queues the refund, `skip_queue: false`. 
+By default, refunds are queued with `skip_queue: false`.
 
-The response returns `status: "QUEUED"` and sets `reference` to `{original_txn_id}_refund`. 
+The initial response returns `status: "QUEUED"` and sets the refund `reference` to `{original_txn_id}_refund`.
 
-Blnk later applies the refund and creates the final `{original_txn_id}_refund_q` record; using the same `_q` convention as other queued transactions.
+When the queue processes the refund, Blnk creates the final applied transaction with the reference `{original_txn_id}_refund_q`, following the same `_q` convention used for other queued transactions.
 
 ```json 201 Created (queued) {13} wrap expandable
 {
@@ -132,24 +134,27 @@ const response = await blnk.Transactions.refund(
 
 ## Refunding inflight transactions
 
-Only [inflight](/transactions/inflight) transactions that have been **committed** or **voided** can be refunded. Active inflight holds cannot. 
+Only [inflight](/transactions/inflight) transactions that have been committed or voided can be refunded. Active inflight holds cannot be refunded. 
 
-Use the inflight transaction ID to refund its children.
+Always pass the original `INFLIGHT` transaction_id to the API, not the ID of its `APPLIED` or `VOID` child.
 
 <Steps>
 <Step title="Refund a committed inflight">
 
-Pass the inflight transaction ID to the [Refund transaction API](/reference/refund-transaction). 
+Pass the inflight transaction ID.
 
-Blnk reverses the committed amount the same way as a standard `APPLIED` refund. 
-
+Blnk reverses the committed amount the same way it refunds a standard `APPLIED` transaction.
 </Step>
 
 <Step title="Refund a voided inflight">
 
-Do not use the `VOID` child's ID for refund. Use the inflight transaction ID instead.
+Pass the inflight transaction ID. Do not pass the `VOID` child transaction ID.
 
-When you refund a voided inflight, Blnk puts the void amount back in `INFLIGHT` as a reverse-direction hold rather than immediately `APPLIED`.
+Blnk restores the voided amount as a reverse-direction `INFLIGHT` hold instead of applying it immediately.
+
+<Warning>
+Using the `VOID` child ID to refund will result in a `404 TXN_NOT_FOUND` error. This is because the `VOID` child is not considered a valid transaction to refund.
+</Warning>
 
 </Step>
 </Steps>
