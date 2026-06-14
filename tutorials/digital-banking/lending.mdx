@@ -329,7 +329,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 500,
+    "precise_amount": 50000,
     "precision": 100,
     "reference": "LOAN-DISBURSE-1709741652384",
     "currency": "USD",
@@ -352,7 +352,7 @@ async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
   const reference = `LOAN-DISBURSE-${Date.now()}`;
   
   const disbursement = await Transactions.create({
-    amount: loanAmount,
+    precise_amount: loanAmount * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -392,7 +392,7 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
 
     disbursement, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      loanAmount,
+            PreciseAmount: loanAmount * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",
@@ -455,7 +455,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 5,
+    "precise_amount": 500,
     "precision": 100,
     "reference": "INTEREST-1709741780214",
     "currency": "USD",
@@ -494,7 +494,7 @@ async function calculateAndChargeInterest(loanBalanceId, interestRate) {
   
   // Transfer interest from loan balance to interest revenue balance
   const interestTransaction = await Transactions.create({
-    amount: roundedInterest,
+    precise_amount: roundedInterest * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -532,7 +532,7 @@ func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (str
 
     interestTransaction, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      roundedInterest,
+            PreciseAmount: roundedInterest * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",
@@ -569,7 +569,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 200,
+    "precise_amount": 20000,
     "precision": 100,
     "reference": "LOAN-REPAY-1709741952867",
     "currency": "USD",
@@ -593,7 +593,7 @@ async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentA
   
   // Transfer from customer's balance to loan balance
   const repayment = await Transactions.create({
-    amount: repaymentAmount,
+    precise_amount: repaymentAmount * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -643,7 +643,7 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
 
     repayment, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      repaymentAmount,
+            PreciseAmount: repaymentAmount * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",

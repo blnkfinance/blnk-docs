@@ -131,7 +131,7 @@ const emilyMaticBalance = await Balances.create({
 ```javascript TypeScript wrap expandable
 // Fund John's ETH balance
 await Transactions.create({
-  amount: 1, 
+  precise_amount: 100, 
   currency: "ETH",
   reference: `ref_${uuidv4()}`,
   precision: 100,
@@ -143,7 +143,7 @@ await Transactions.create({
 
 // Fund Emily's MATIC balance
 await Transactions.create({
-  amount: 10,
+  precise_amount: 1000,
   currency: "MATIC",
   reference: `ref_${uuidv4()}`,
   precision: 100,
@@ -185,7 +185,7 @@ When John or Emily creates an order, we need to:
       const { Transactions } = blnk;
       
       const inflightResponse = await Transactions.create({
-        amount: amount,
+        precise_amount: amount * 100,
         currency: currency,
         precision: 100,
         source: balanceId,
@@ -352,7 +352,7 @@ async function settleMatchedOrders(
 
         // Step 3: Move ETH from escrow to Emily
         const ethTransfer = await Transactions.create({
-            amount: johnTx.amount, // 1 ETH 
+            precise_amount: johnTx.precise_amount, 
             currency: 'ETH',
             precision: 100,
             source: '@ETH_Escrow',
@@ -366,7 +366,7 @@ async function settleMatchedOrders(
 
         // Step 4: Move MATIC from escrow to John
         const maticTransfer = await Transactions.create({
-            amount: emilyTx.amount, // 10 MATIC 
+            precise_amount: emilyTx.precise_amount, // 10 MATIC 
             currency: 'MATIC',
             precision: 100,
             source: '@MATIC_Escrow',

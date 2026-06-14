@@ -14,11 +14,15 @@ import Key from "/snippets/key.mdx";
 
 ### Body
 
-<ParamField body="amount" type="float" required>  
-  The transaction amount. If you need to work with amounts that have more than 15 digits, use `precise_amount` instead. See also: [Precision](/transactions/precision).
-</ParamField>
 <ParamField body="precise_amount" type="integer">  
-  The transaction amount with precision applied. Recommended for amounts with more than 15 digits. 
+  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. See [Precision](/transactions/precision).
+
+  <Warning>
+  Either `precise_amount` or `amount` should be provided, not both.
+  </Warning>
+</ParamField>
+<ParamField body="amount" type="float">  
+  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`. The `amount` field supports up to 15 digits; use `precise_amount` for larger values. See also: [Precision](/transactions/precision).
 </ParamField>
 <ParamField body="currency" type="string" required>
   The currency of the transaction amount is in.
@@ -84,7 +88,7 @@ import Key from "/snippets/key.mdx";
 <Info>All parameters from the request body also mean the same in the corresponding response JSON.</Info>
 
 <ResponseField name="precise_amount" type="integer">
-  This is computed by `amount` x `precision`. Learn why this is important: [Why use precision](/transactions/precision#1-why-use-precision)
+  The amount stored in the ledger in its smallest unit. When you pass `amount`, Blnk computes this as `amount` x `precision`. See [Precision](/transactions/precision).
 </ResponseField>
 <ResponseField name="transaction_id" type="string">
   Unique id of the transaction.
@@ -113,7 +117,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 1250.34,
+    "precise_amount": 125034,
     "currency": "USD",
     "precision": 100,
     "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",

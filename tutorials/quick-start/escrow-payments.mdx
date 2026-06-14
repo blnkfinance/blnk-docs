@@ -108,7 +108,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 100.43,
+    "precise_amount": 10043,
     "precision": 100,
     "reference": "escrow_ref_12345",
     "description": "Escrow payment",
@@ -131,7 +131,7 @@ async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, un
   const { Transactions } = blnk;
   
   const escrow = await Transactions.create({
-    amount: amount,
+    precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Escrow payment",
@@ -160,7 +160,7 @@ func createEscrowTransaction(buyerWalletID, sellerWalletID string, amount float6
     }
     escrow, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -308,7 +308,7 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
   -H "Content-Type: application/json" \
   -d '{
     "status": "commit",
-    "amount": 30
+    "precise_amount": 3000
   }'
 ```
 
@@ -320,7 +320,7 @@ async function commitPartialInflightTransaction(transactionId, partialAmount) {
   try {
     const response = await Transactions.updateStatus(transactionId, {
       status: 'commit',
-      amount: partialAmount,
+      precise_amount: partialAmount * 100,
     });
     if (response.status !== 200 || !response.data) {
       throw new Error(response.message ?? 'Failed to commit partial transaction');
@@ -339,7 +339,7 @@ func commitPartialInflightTransaction(transactionID string, partialAmount float6
     client := getClient()
     committed, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
         Status: blnkgo.InflightStatusCommit,
-        Amount: partialAmount,
+        PreciseAmount: partialAmount * 100,
     })
     if err != nil {
         return nil, err

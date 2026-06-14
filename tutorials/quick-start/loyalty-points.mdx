@@ -334,7 +334,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 100,
+    "precise_amount": 10000,
     "precision": 100,
     "reference": "purchase-123456789",
     "currency": "USD",
@@ -351,7 +351,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 10,
+    "precise_amount": 10,
     "precision": 1,
     "reference": "points-purchase-123456789",
     "currency": "POINTS",
@@ -376,7 +376,7 @@ async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purch
   
   // Step 1: Process the purchase payment
   const purchase = await Transactions.create({
-    amount: purchaseAmount,
+    precise_amount: purchaseAmount * 100,
     precision: 100,
     reference: purchaseReference,
     currency: "USD",
@@ -390,7 +390,7 @@ async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purch
   
   // Step 2: Award loyalty points
   const pointsAward = await Transactions.create({
-    amount: pointsToAward,
+    precise_amount: pointsToAward,
     precision: 1,  // Points typically don't have decimal places
     reference: `points-${purchaseReference}`,
     currency: "POINTS",
@@ -421,7 +421,7 @@ func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchase
 
     purchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      purchaseAmount,
+            PreciseAmount: purchaseAmount * 100,
             Precision:   100,
             Reference:   purchaseReference,
             Currency:    "USD",
@@ -439,7 +439,7 @@ func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchase
 
     pointsAward, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      pointsToAward,
+            PreciseAmount: pointsToAward,
             Precision:   1,
             Reference:   "points-" + purchaseReference,
             Currency:    "POINTS",
@@ -497,7 +497,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 200,
+    "precise_amount": 200,
     "precision": 1,
     "reference": "redemption-123456789",
     "currency": "POINTS",
@@ -515,7 +515,7 @@ curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 80,
+    "precise_amount": 8000,
     "precision": 100,
     "reference": "purchase-redemption-123456789",
     "currency": "USD",
@@ -543,7 +543,7 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   
   // Step 1: Redeem points
   const pointsRedemption = await Transactions.create({
-    amount: pointsToRedeem,
+    precise_amount: pointsToRedeem,
     precision: 1,
     reference: redemptionReference,
     currency: "POINTS",
@@ -560,7 +560,7 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   const discountedAmount = purchaseAmount - convertedAmount;
   
   const discountedPurchase = await Transactions.create({
-    amount: discountedAmount,
+    precise_amount: discountedAmount * 100,
     precision: 100,
     reference: `purchase-${redemptionReference}`,
     currency: "USD",
@@ -592,7 +592,7 @@ func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount
 
     pointsRedemption, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      pointsToRedeem,
+            PreciseAmount: pointsToRedeem,
             Precision:   1,
             Reference:   redemptionReference,
             Currency:    "POINTS",
@@ -612,7 +612,7 @@ func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount
     discountedAmount := purchaseAmount - convertedAmount
     discountedPurchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      discountedAmount,
+            PreciseAmount: discountedAmount * 100,
             Precision:   100,
             Reference:   "purchase-" + redemptionReference,
             Currency:    "USD",
