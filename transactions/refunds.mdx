@@ -25,7 +25,7 @@ For inflight or split transactions, the ID you pass matters. Use the table below
 | :--- | :--- | :--- |
 | `APPLIED` | Yes | The source and destination balances are reversed. |
 | `INFLIGHT` | Yes | Only if the inflight transaction has been committed or voided. |
-| `QUEUED` | Yes | Refunds all child `APPLIED` transactions linked to the queued parent. |
+| `QUEUED` | Yes | Refunds all child `APPLIED` transactions linked to the queued parent. Use the `meta_data.QUEUED_PARENT_TRANSACTION` to refund. |
 | `VOID` | No | To refund a voided transaction, use its parent inflight transaction ID instead. |
 | `SCHEDULED`, `REJECTED` | No | Not refundable. |
 
@@ -38,32 +38,31 @@ For inflight or split transactions, the ID you pass matters. Use the table below
 
 Use the [Refund transaction API](/reference/refund-transaction) and pass the `transaction_id` of the transaction you want to refund.
 
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_b0468e80-5941-4ca8-b5d2-e44f4572926e" \
-  -H "X-blnk-key: <api-key>"
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Transactions.refund(
-  'txn_b0468e80-5941-4ca8-b5d2-e44f4572926e',
-);
-```
-
-```go Go wrap
-txn, resp, err := client.Transaction.Refund("txn_b0468e80-5941-4ca8-b5d2-e44f4572926e")
-```
-</CodeGroup>
-
-</Step>
-
-<Step title="Queued refund (default)">
+<Tabs>
+<Tab title="Using the queue">
 
 By default, refunds are queued with `skip_queue: false`.
 
 The initial response returns `status: "QUEUED"` and sets the refund `reference` to `{original_txn_id}_refund`.
 
 When the queue processes the refund, Blnk creates the final applied transaction with the reference `{original_txn_id}_refund_q`, following the same `_q` convention used for other queued transactions.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.refund(
+  '{transaction_id}',
+);
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Refund("{transaction_id}")
+```
+</CodeGroup>
 
 ```json 201 Created (queued) {13} wrap expandable
 {
@@ -85,23 +84,25 @@ When the queue processes the refund, Blnk creates the final applied transaction 
 }
 ```
 
-</Step>
+</Tab>
 
-<Step title="Synchronous refund">
+<Tab title="Skipped queue">
 
 To apply the refund immediately, set `skip_queue: true` in the request body.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_b0468e80-5941-4ca8-b5d2-e44f4572926e" \
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
-  -d '{"skip_queue": true}'
+  -d '{
+    "skip_queue": true
+  }'
 ```
 
 ```typescript TypeScript wrap
 const response = await blnk.Transactions.refund(
-  'txn_b0468e80-5941-4ca8-b5d2-e44f4572926e',
+  '{transaction_id}',
   { skip_queue: true },
 );
 ```
@@ -127,6 +128,9 @@ const response = await blnk.Transactions.refund(
 }
 ```
 
+</Tab>
+</Tabs>
+
 </Step>
 </Steps>
 
@@ -134,19 +138,37 @@ const response = await blnk.Transactions.refund(
 
 ## Refunding inflight transactions
 
-Only [inflight](/transactions/inflight) transactions that have been committed or voided can be refunded. Active inflight holds cannot be refunded. 
+Only [inflight](/transactions/inflight/creating-inflight) transactions that have been committed or voided can be refunded. Active inflight holds cannot be refunded. 
 
-Always pass the original `INFLIGHT` transaction_id to the API, not the ID of its `APPLIED` or `VOID` child.
+Always pass the original `INFLIGHT` transaction ID to the API, not the ID of its `APPLIED` or `VOID` child.
 
-<Steps>
-<Step title="Refund a committed inflight">
+<Tabs>
+<Tab title="Committed inflight">
 
 Pass the inflight transaction ID.
 
 Blnk reverses the committed amount the same way it refunds a standard `APPLIED` transaction.
-</Step>
 
-<Step title="Refund a voided inflight">
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{inflight_transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.refund(
+  '{inflight_transaction_id}',
+);
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Refund("{inflight_transaction_id}")
+```
+</CodeGroup>
+
+</Tab>
+
+<Tab title="Voided inflight">
 
 Pass the inflight transaction ID. Do not pass the `VOID` child transaction ID.
 
@@ -156,8 +178,25 @@ Blnk restores the voided amount as a reverse-direction `INFLIGHT` hold instead o
 Using the `VOID` child ID to refund will result in a `404 TXN_NOT_FOUND` error. This is because the `VOID` child is not considered a valid transaction to refund.
 </Warning>
 
-</Step>
-</Steps>
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{inflight_transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.refund(
+  '{inflight_transaction_id}',
+);
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Refund("{inflight_transaction_id}")
+```
+</CodeGroup>
+
+</Tab>
+</Tabs>
 
 ---
 
@@ -220,7 +259,7 @@ Keep `skip_queue: false` so all legs refund together.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab" \
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{queued_parent_transaction_id}" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{"skip_queue": false}'
@@ -228,13 +267,13 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/txn_0b59f6e-6c4a-
 
 ```typescript TypeScript wrap
 const response = await blnk.Transactions.refund(
-  'txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab',
+  '{queued_parent_transaction_id}',
   { skip_queue: false },
 );
 ```
 
 ```go Go wrap
-txn, resp, err := client.Transaction.Refund("txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab")
+txn, resp, err := client.Transaction.Refund("{queued_parent_transaction_id}")
 ```
 </CodeGroup>
 
@@ -252,7 +291,7 @@ Blnk refunds every `APPLIED` child from its destination back to its source. The 
 Lineage and parent-child links.
 </Card>
 
-<Card title="Inflight" icon="plane" href="/transactions/inflight">
+<Card title="Create inflight" icon="plane" href="/transactions/inflight/creating-inflight">
 Hold, commit, and void flows.
 </Card>
 

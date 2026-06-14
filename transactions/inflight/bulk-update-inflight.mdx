@@ -1,0 +1,409 @@
+---
+title: "Bulk Commit & Void Inflight"
+sidebarTitle: "Bulk commit & void"
+description: "Commit or void multiple independently-created inflight transactions in one request."
+"og:title": "Bulk Commit & Void Inflight • Blnk Developer Documentation"
+"og:description": "Commit or void multiple independently-created inflight transactions in one request."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.14.2 and later.</Info>
+
+Use the bulk inflight endpoints to commit or void many independently-created inflight transactions in one request. For a single inflight transaction, use the [Update inflight API](/reference/update-inflight) instead.
+
+**Important distinction:** Bulk inflight updates are for multiple individual transactions. If you created inflight transactions through the [Bulk transactions API](/reference/bulk-transactions), commit them using that batch's `batch_id` via the single update endpoint, not the bulk inflight endpoints.
+
+---
+
+## Bulk commit
+
+To bulk commit in one request, use:
+
+```text Bulk commit inflight
+POST /transactions/inflight/bulk/commit
+```
+
+Each request accepts a maximum of **100** items in the `transactions` array.
+
+<Tabs>
+<Tab title="Using the queue" icon="clock">
+
+<Info>From Blnk Core 0.15.0, bulk commit and void go through the queue by default.</Info>
+
+When using the queue, Blnk validates each inflight transaction and enqueues a commit job. The response returns immediately; the `queued` status means the job is queued, not committed. Parents stay INFLIGHT until workers create APPLIED children.
+
+Per item results:
+
+| Status | Code | Meaning |
+| :-- | :-- | :-- |
+| `queued` | `QUEUED` | New commit job added. |
+| `queued` | `ALREADY_QUEUED` | Has already been queued; duplicate skipped. |
+
+<Note>Failures are per-item. One does not block the batch.</Note>
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk/commit" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactions": [
+      {
+        "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+      },
+      {
+        "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+        "amount": 40
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.bulkCommitInflight({
+  transactions: [
+    {
+      transaction_id: 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+    },
+    {
+      transaction_id: 'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+      amount: 40,
+    },
+  ],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Transaction.BulkCommitInflight(blnkgo.BulkCommitInflightRequest{
+  Transactions: []blnkgo.BulkCommitInflightItem{
+    {
+      TransactionID: "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    },
+    {
+      TransactionID: "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      Amount:        40,
+    },
+  },
+})
+```
+</CodeGroup>
+
+```json 200 Queued wrap
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "queued",
+      "code": "QUEUED"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "queued",
+      "code": "ALREADY_QUEUED"
+    }
+  ]
+}
+```
+
+The worker later creates `APPLIED` child records for each committed item. Verify outcomes with [webhooks or polling](/transactions/inflight/updating-inflight#verify-with-webhooks) — same as single commit and void.
+
+</Tab>
+
+<Tab title="Skipped queue" icon="bolt">
+
+Set `skip_queue: true` to process each item immediately. The response reflects the final outcome for each inflight transaction.
+
+Per item results:
+
+| Status | Code | Meaning |
+| :-- | :-- | :-- |
+| `succeeded` | — | Inflight committed in this response. |
+| `failed` | `NOT_FOUND` | Transaction ID does not exist. |
+| `failed` | `ALREADY_COMMITTED` | Inflight was already committed. |
+| `failed` | `ALREADY_VOIDED` | Inflight was already voided. |
+| `failed` | `NOT_INFLIGHT` | Transaction is not in `INFLIGHT` status. |
+| `failed` | `INVALID_AMOUNT` | Partial commit amount exceeds the remaining inflight amount. |
+| `failed` | `LOCKED` | Concurrent operation on the same transaction (for example duplicate IDs in one request). |
+| `failed` | `INTERNAL_ERROR` | Unexpected server failure for this item. |
+
+<Note>Failures are per-item. One does not block the batch.</Note>
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk/commit" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "skip_queue": true,
+    "transactions": [
+      {
+        "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+      },
+      {
+        "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+        "amount": 40
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {2}
+const response = await blnk.Transactions.bulkCommitInflight({
+  skip_queue: true,
+  transactions: [
+    {
+      transaction_id: 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+    },
+    {
+      transaction_id: 'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+      amount: 40,
+    },
+  ],
+});
+```
+
+</CodeGroup>
+
+```json 200 Skipped queue wrap
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "succeeded"
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
+---
+
+## Bulk void
+
+To bulk void in one request, use:
+
+```text Bulk void inflight
+POST /transactions/inflight/bulk/void
+```
+
+Bulk void expects a `transaction_ids` array, not the `transactions` shape used by bulk commit.
+
+Each request accepts a maximum of **100** IDs in the `transaction_ids` array.
+
+<Tabs>
+<Tab title="Using the queue" icon="clock">
+
+By default, Blnk uses the queue to process each item. The response returns immediately; the `queued` status means the job is queued, not committed. Parents stay INFLIGHT until workers create APPLIED children.
+
+Per item results:
+
+| Status | Code | Meaning |
+| :-- | :-- | :-- |
+| `queued` | `QUEUED` | New void job added. |
+| `queued` | `ALREADY_QUEUED` | Has already been queued; duplicate skipped. |
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk/void" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_ids": [
+      "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.bulkVoidInflight({
+  transaction_ids: [
+    'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+    'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+  ],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Transaction.BulkVoidInflight(blnkgo.BulkVoidInflightRequest{
+  TransactionIDs: []string{
+    "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  },
+})
+```
+</CodeGroup>
+
+```json 200 Queued wrap
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "queued",
+      "code": "QUEUED"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "queued",
+      "code": "QUEUED"
+    }
+  ]
+}
+```
+
+</Tab>
+
+<Tab title="Skipped queue" icon="bolt">
+
+Set `skip_queue: true` to process each item immediately. The response reflects the final outcome for each inflight transaction.
+
+Bulk void expects a `transaction_ids` array (not the `transactions` shape used by bulk commit).
+
+Per item results:
+
+| Status | Code | Meaning |
+| :-- | :-- | :-- |
+| `succeeded` | — | Inflight voided in this response. |
+| `failed` | `NOT_FOUND` | Transaction ID does not exist. |
+| `failed` | `ALREADY_COMMITTED` | Inflight was already committed. |
+| `failed` | `ALREADY_VOIDED` | Inflight was already voided. |
+| `failed` | `NOT_INFLIGHT` | Transaction is not in `INFLIGHT` status. |
+| `failed` | `LOCKED` | Concurrent operation on the same transaction (for example duplicate IDs in one request). |
+| `failed` | `INTERNAL_ERROR` | Unexpected server failure for this item. |
+
+<Note>Failures are per-item. One does not block the batch.</Note>
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk/void" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "skip_queue": true,
+    "transaction_ids": [
+      "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {2}
+const response = await blnk.Transactions.bulkVoidInflight({
+  skip_queue: true,
+  transaction_ids: [
+    'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+    'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+  ],
+});
+```
+
+</CodeGroup>
+
+```json 200 Skipped queue wrap
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "succeeded"
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+Bulk inflight endpoints return `400` when the request body fails validation before processing starts. Per-item failures return `200` with `failed` entries in `results[]`; one failed item does not block the batch.
+
+<Tabs>
+<Tab title="Request validation">
+
+| Code | When it happens |
+| :-- | :-- |
+| `TXN_BULK_EMPTY` | `transactions` or `transaction_ids` is missing, empty, or the wrong shape for the endpoint. |
+| `TXN_BULK_LIMIT_EXCEEDED` | More than **100** items in one bulk commit or void request. |
+
+Bulk commit expects a `transactions` array. Bulk void expects `transaction_ids`. Sending the wrong shape returns `TXN_BULK_EMPTY` because unrecognized fields are dropped.
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_BULK_EMPTY",
+    "message": "transactions array is required and cannot be empty"
+  },
+  "errors": "transactions array is required and cannot be empty"
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `TXN_BULK_EMPTY` | Add at least one item. Use `transactions` for bulk commit and `transaction_ids` for bulk void. |
+| `TXN_BULK_LIMIT_EXCEEDED` | Split the request into batches of 100 or fewer items. |
+
+</Tab>
+
+<Tab title="Per-item results">
+
+On the default queued path, `ALREADY_QUEUED` counts toward `succeeded` (idempotent success, not a new queue job). On the skipped-queue path, per-item `failed` codes such as `NOT_FOUND`, `ALREADY_COMMITTED`, `ALREADY_VOIDED`, `NOT_INFLIGHT`, and `INVALID_AMOUNT` are listed in the tabs above.
+
+</Tab>
+</Tabs>
+
+Single inflight commit and void errors like `TXN_COMMIT_AMOUNT_EXCEEDED` apply when you use [Update inflight](/reference/update-inflight) instead of these bulk endpoints. 
+
+See [Commit & void inflight — Error handling](/transactions/inflight/updating-inflight#error-handling) and [API error codes](/advanced/error-codes).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Commit & void inflight" icon="circle-check" href="/transactions/inflight/updating-inflight">
+  Single commit, void, and verify flows.
+</Card>
+
+<Card title="Bulk transactions" icon="layers" href="/transactions/bulk-transactions">
+  Batch inflight create and commit by batch_id.
+</Card>
+
+<Card title="Create inflight" icon="plane" href="/transactions/inflight/creating-inflight">
+  Record an inflight transaction.
+</Card>
+
+<Card title="API error codes" icon="triangle-alert" href="/advanced/error-codes">
+  Bulk and inflight error codes.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

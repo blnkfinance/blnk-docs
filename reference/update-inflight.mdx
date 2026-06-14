@@ -26,10 +26,14 @@ import Key from "/snippets/key.mdx";
   - `void` means the conditions were not met and amount should be rolled back.
 </ParamField>
 <ParamField body="amount" type="integer">
-  Specifies the amount to be committed in the case of a partial commit. Learn more: [Partial commits for inflight transactions](/transactions/inflight#partial-commits).
+  Specifies the amount to be committed in the case of a partial commit. Learn more: [Partial commits for inflight transactions](/transactions/inflight/updating-inflight#partial-commits).
 </ParamField>
 <ParamField body="precise_amount" type="integer">
   Optional precision-applied amount to commit in the case of a partial commit. When set, `precise_amount` takes precedence over `amount`.
+</ParamField>
+
+<ParamField body="skip_queue" type="boolean" default="false">
+  When `false` (default), the commit or void is enqueued for asynchronous processing and the response includes `queued: true`. When `true`, Blnk processes the action synchronously and returns an immediate `APPLIED` or `VOID` child. See [Commit & void inflight](/transactions/inflight/updating-inflight).
 </ParamField>
 
 <Tip>
@@ -52,7 +56,15 @@ curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
 </RequestExample>
 
 <ResponseExample>
-```json 201
+```json 200 Queued (default)
+{
+  "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+```json 200 Synchronous (skip_queue: true)
 {
     "amount": 1250.34,
     "precision": 100,
@@ -64,7 +76,7 @@ curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
     "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
     "currency": "USD",
     "description": "Card payment on Stripe",
-    "status": "COMMIT",
+    "status": "APPLIED",
     "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
     "allow_overdraft": false,
     "inflight": false,

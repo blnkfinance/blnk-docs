@@ -1,0 +1,476 @@
+---
+title: "Inflight for Multiple Sources & Destinations"
+sidebarTitle: "Inflight for multiple sources & destinations"
+description: "Create and update inflight transactions across multiple sources or destinations."
+"og:title": "Inflight for Multiple Sources & Destinations • Blnk Developer Documentation"
+"og:description": "Create and update inflight transactions across multiple sources or destinations in Blnk."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+When you combine `inflight: true` with [multiple sources](/transactions/multiple-sources) or [multiple destinations](/transactions/multiple-destinations), Blnk records each leg as a separate inflight transaction linked to a root split ID.
+
+---
+
+## Record split inflight
+
+<Tabs>
+<Tab title="Using the queue" icon="clock">
+
+<Info>From Blnk Core 0.15.0, inflight commit and void go through the queue by default.</Info>
+
+To use the queue, set `"skip_queue": false` or omit `skip_queue`.
+
+<Steps>
+<Step title="Record the split">
+
+Create a split transaction with `"inflight": true`:
+
+<CodeGroup>
+```bash cURL wrap {11,12}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 30000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "description": "Payment from Sarah",
+    "inflight": true,
+    "skip_queue": false,
+    "destinations": [
+      {
+        "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+        "distribution": "20%"
+      },
+      {
+        "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+        "distribution": "10000"
+      },
+      {
+        "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+        "distribution": "left"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {8,9}
+const response = await blnk.Transactions.create({
+  amount: 30000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
+  description: 'Payment from Sarah',
+  inflight: true,
+  skip_queue: false,
+  destinations: [
+    {
+      identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f',
+      distribution: '20%',
+    },
+    {
+      identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d',
+      distribution: '10000',
+    },
+    {
+      identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b',
+      distribution: 'left',
+    },
+  ],
+});
+```
+
+```go Go wrap {9,25}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      30000,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    Description: "Payment from Sarah",
+    SkipQueue:   false,
+    Destinations: []blnkgo.Source{
+      {
+        Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+        Distribution: "20%",
+      },
+      {
+        Identifier:   "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+        Distribution: "10000",
+      },
+      {
+        Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+        Distribution: "left",
+      },
+    },
+  },
+  Inflight: true,
+})
+```
+</CodeGroup>
+
+</Step>
+
+<Step title="Read the response">
+
+The response returns immediately with `status: "QUEUED"` for the split request itself. Blnk then queues each leg separately for processing.
+
+The worker then records each split leg as a separate INFLIGHT transaction. Every leg, and any later commit or void child, shares the same `meta_data.QUEUED_PARENT_TRANSACTION`.
+
+```json 201 Queued wrap expandable {4,5}
+{
+  "amount": 30000,
+  "precision": 100,
+  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "status": "QUEUED",
+  "skip_queue": false,
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "description": "Payment from Sarah",
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "10000",
+      "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+    }
+  ],
+  "meta_data": {
+    "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab"
+  }
+}
+```
+
+</Step>
+
+<Step title="Store the queued parent">
+
+Save `meta_data.QUEUED_PARENT_TRANSACTION` from the create response. 
+
+Use this ID, not the per-leg IDs in `destinations`, when you commit, void, verify, or refund the split.
+
+</Step>
+
+<Step title="Commit or void the split">
+
+Call [Update inflight](/reference/update-inflight) with the queued parent ID. Blnk commits or voids every pending inflight leg in one request.
+
+```text Update inflight
+PUT /transactions/inflight/{queued_parent_transaction_id}
+```
+
+<CodeGroup>
+```bash cURL wrap
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{queued_parent_transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit",
+    "skip_queue": false
+  }'
+```
+
+```typescript TypeScript wrap {5}
+const response = await blnk.Transactions.updateStatus(
+  '{queued_parent_transaction_id}',
+  {
+    status: 'commit',
+    skip_queue: false,
+  },
+);
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update(
+  "{queued_parent_transaction_id}",
+  blnkgo.UpdateStatus{
+    Status: "commit",
+  },
+)
+```
+</CodeGroup>
+
+```json 200 Queued wrap
+{
+  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+The worker creates an `APPLIED` or `VOID` child for each leg. Every child keeps the same `meta_data.QUEUED_PARENT_TRANSACTION`, so you can verify the whole split with [webhooks or polling](/transactions/inflight/updating-inflight#verify-with-webhooks).
+
+</Step>
+</Steps>
+
+</Tab>
+
+<Tab title="Skipped queue" icon="bolt">
+
+To skip the queue, set `"skip_queue": true` on create and on commit or void.
+
+<Steps>
+<Step title="Record the split">
+
+Create a split transaction with `"inflight": true` and `"skip_queue": true`:
+
+<CodeGroup>
+```bash cURL wrap {11,12}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 30000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "description": "Payment from Sarah",
+    "inflight": true,
+    "skip_queue": true,
+    "destinations": [
+      {
+        "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+        "distribution": "20%"
+      },
+      {
+        "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+        "distribution": "10000"
+      },
+      {
+        "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+        "distribution": "left"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {8,9}
+const response = await blnk.Transactions.create({
+  amount: 30000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
+  description: 'Payment from Sarah',
+  inflight: true,
+  skip_queue: true,
+  destinations: [
+    {
+      identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f',
+      distribution: '20%',
+    },
+    {
+      identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d',
+      distribution: '10000',
+    },
+    {
+      identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b',
+      distribution: 'left',
+    },
+  ],
+});
+```
+
+```go Go wrap {9,25}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    Amount:      30000,
+    Reference:   "ref_001adcfgf",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    Description: "Payment from Sarah",
+    SkipQueue:   true,
+    Destinations: []blnkgo.Source{
+      {
+        Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+        Distribution: "20%",
+      },
+      {
+        Identifier:   "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+        Distribution: "10000",
+      },
+      {
+        Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+        Distribution: "left",
+      },
+    },
+  },
+  Inflight: true,
+})
+```
+</CodeGroup>
+
+</Step>
+
+<Step title="Read the response">
+
+The response returns with `status: "INFLIGHT"` for the split request itself. Blnk records each leg in the same request, not through a background worker.
+
+Each split leg is written as a separate `INFLIGHT` transaction. Every leg shares the same `parent_transaction`, the root `transaction_id`. 
+
+```json 201 Created wrap expandable {4,5}
+{
+  "amount": 30000,
+  "precision": 100,
+  "transaction_id": "txn_a8c3e7f1-4b2d-4e91-9c3d-2f8e6a1b5d94",
+  "status": "INFLIGHT",
+  "skip_queue": true,
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "description": "Payment from Sarah",
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "10000",
+      "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+    }
+  ]
+}
+```
+
+</Step>
+
+<Step title="Store the root split ID">
+
+Save the root `transaction_id` from the create response.
+
+Use this ID, not the per-leg IDs in `destinations`, when you commit, void, or verify the split.
+
+</Step>
+
+<Step title="Commit or void the split">
+
+Call [Update inflight](/reference/update-inflight) with the root split ID. Blnk commits or voids every inflight leg in one request.
+
+```text Update inflight
+PUT /transactions/inflight/{transaction_id}
+```
+
+<CodeGroup>
+```bash cURL wrap {6}
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit",
+    "skip_queue": true
+  }'
+```
+
+```typescript TypeScript wrap {5}
+const response = await blnk.Transactions.updateStatus(
+  '{transaction_id}',
+  {
+    status: 'commit',
+    skip_queue: true,
+  },
+);
+```
+
+</CodeGroup>
+
+```json 200 Skipped queue wrap
+{
+  "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3",
+  "status": "APPLIED",
+  "parent_transaction": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+}
+```
+
+The HTTP response reflects the first leg processed. Each leg's `APPLIED` or `VOID` child links only to that leg's inflight ID through `parent_transaction`. 
+
+Nothing is shared across legs, so verify each leg separately with [webhooks or polling](/transactions/inflight/updating-inflight#verify-with-webhooks).
+
+</Step>
+</Steps>
+
+</Tab>
+</Tabs>
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+Split inflight commit and void use the same [Update inflight](/reference/update-inflight) endpoint as single inflight transactions. Blnk returns `400`, `404`, and `409` when the request ID or state is wrong.
+
+| Code | When it happens |
+| :-- | :-- |
+| `GEN_CONFLICT` | A commit or void is already queued for the split parent (default queue path). |
+| `TXN_NOT_FOUND` | The ID in the path is not the root split or queued parent. |
+
+```json 404 Not Found wrap
+{
+  "error": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `GEN_CONFLICT` | Wait for the queued job to finish. See [Verify with webhooks](/transactions/inflight/updating-inflight#verify-with-webhooks). |
+| `TXN_NOT_FOUND` | Use the root `transaction_id` or `QUEUED_PARENT_TRANSACTION` from the create response, not a leg ID. |
+
+Other commit and void errors match [Commit & void inflight — Error handling](/transactions/inflight/updating-inflight#error-handling). See [API error codes](/advanced/error-codes) for the full catalogue.
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Multiple sources" icon="arrow-up-from-line" href="/transactions/multiple-sources">
+  Send from several balances at once.
+</Card>
+
+<Card title="Multiple destinations" icon="arrow-down-to-line" href="/transactions/multiple-destinations">
+  Send to several balances at once.
+</Card>
+
+<Card title="Commit & void inflight" icon="circle-check" href="/transactions/inflight/updating-inflight">
+  Commit, void, and verify inflight transactions.
+</Card>
+
+<Card title="Refunding split transactions" icon="undo-2" href="/transactions/refunds#refunding-split-transactions">
+  Refund queued split parents together.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
