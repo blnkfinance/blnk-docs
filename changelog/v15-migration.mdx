@@ -26,7 +26,7 @@ Most integrations can upgrade without major changes. Review this guide carefully
 | HTTP status codes corrected | Integrations that branch on old HTTP statuses | Some errors now return more specific statuses, such as `404`, `409`, `423`, and `500`. |
 | `NOT_FOUND:` message prefix removed | Integrations that parse error message text | Error messages no longer include the `NOT_FOUND:` prefix. |
 | Inflight commit and void are queued by default | Integrations that expect immediate `APPLIED` or `VOID` responses | Commit and void requests now return a queued response by default. |
-| Reconciliation start response changed | Integrations that read reconciliation status from the start response | Start endpoints now return only `reconciliation_id`. |
+| Reconciliation start response changed | Integrations that read reconciliation status from the start response | Start endpoints return only `reconciliation_id`. Handle `reconciliation.completed` and `reconciliation.failed` webhooks for results. |
 | Per-endpoint item limits | Integrations that send large bulk or reconciliation requests | Bulk create and instant reconciliation: max **10,000** items per request. Bulk commit and void: max **100** transactions. |
 | Request and upload size caps | Integrations with large JSON bodies or file uploads | Configurable caps apply to JSON request bodies and multipart uploads. See [Server and security configuration](/advanced/configuration/server-security#request-and-payload-limits). |
 | Transaction hash chain (optional) | Operators who want ledger-wide tamper detection | New opt-in global hash chain; disabled by default. Enable in config and run `blnk verify-chain`. See [Transaction hashing](/transactions/hash). |
@@ -151,31 +151,19 @@ const response = await blnk.Transactions.updateStatus('{transaction_id}', {
 
 ---
 
-## Reconciliation start response changed
+## Reconciliation response changed
 
-[Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) no longer return run status, match counts, or timestamps in the start response. 
+[Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) no longer return run status, match counts, or timestamps in the start response.
 
-Both endpoints now return only the `reconciliation_id`.
+Both endpoints now return only `reconciliation_id`.
 
-If your code reads `status`, `matched_transactions`, or similar fields from the start response, move that logic to [Get reconciliation](/reference/get-reconciliations). Here's how it works now with 0.15.0:
+Here's the new flow:
 
-1. Start the reconciliation.
-2. Save the returned reconciliation_id.
-3. Poll `GET /reconciliation/{reconciliation_id}`.
-4. Continue polling until status is completed or failed.
-5. Read match counts and results from the GET response.
+1. Start the reconciliation and save the returned `reconciliation_id`.
+2. Handle `reconciliation.completed` or `reconciliation.failed` on your webhook endpoint.
+3. Read status, match counts, and timestamps from the webhook payload.
 
-Save `reconciliation_id` from the start call, then poll `GET /reconciliation/{reconciliation_id}` until `status` is `completed` or `failed`.
-
-1. Move that logic to [Get reconciliation](/reference/get-reconciliations).
-2. Save `reconciliation_id` from the start call.
-3. Poll `GET /reconciliation/{reconciliation_id}` until `status` is `completed` or `failed`.
-
-For batch runs, early polls may return `status: "in_progress"`.
-
-For instant runs, the job may already be complete by the time you poll. You still need the GET call to read match counts and verify the result.
-
-See [Reconciliations](/reconciliations/overview) documentation.
+See [Reconciliations](/reconciliations/overview) and [Webhooks](/advanced/notifications).
 
 ---
 
@@ -200,7 +188,7 @@ Before upgrading to v0.15.0:
 - Replace message-text parsing with `error_detail.code`.
 - Review any logic that depends on HTTP status codes.
 - Update inflight commit and void flows to handle queued responses or use `skip_queue: true` to keep existing synchronous behavior.
-- Update reconciliation flows to fetch status using `reconciliation_id`.
+- Update reconciliation flows to handle `reconciliation.completed` and `reconciliation.failed` webhooks instead of reading status from the start response.
 
 ---
 
