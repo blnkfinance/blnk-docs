@@ -30,9 +30,18 @@ Use this guide to deploy Blnk Production License on AWS, GCP, Azure, or any clou
 
 <Steps>
 <Step title="Get your Production License">
-After purchasing a Production License, you'll receive an email with your license details.
+After purchasing a Production License, you'll receive an email with a license file named `{license-name}.lic`.
 
-Your license details will include a base64-encoded license string, which is the recommended way to activate your license. You may also receive a license file named `blnk-enterprise.lic`. Both contain the same license information and enabled features.
+You can activate your license in either of these ways:
+
+1. **Use the license file directly:** Set `ENTERPRISE_LICENSE_FILE` to the license file path in step 4.
+2. **Convert the file to base64:** Use the output as `ENTERPRISE_LICENSE_B64` in step 4.
+
+To convert your license file to base64:
+
+```bash
+base64 -i ./licenses/cust_001.lic | tr -d '\n'
+```
 </Step>
 <Step title="Prepare your databases">
 Set up a managed Postgres instance and a managed Redis instance in your cloud provider before continuing.
@@ -93,7 +102,7 @@ ENTERPRISE_LICENSE_B64=your_base64_license_string
 | `HOSTNAME` | Use `127.0.0.1` so health checks and internal services communicate through the container loopback interface. |
 | `ENTERPRISE_POSTGRES_URL` | Connection string for your Postgres instance. |
 | `ENTERPRISE_REDIS_URL` | Connection string for your Redis instance. |
-| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from Step 1. Takes precedence over `ENTERPRISE_LICENSE_FILE`. To use a file instead, set `ENTERPRISE_LICENSE_FILE` to the path of your `.lic` file. |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from Step 1. Takes precedence over `ENTERPRISE_LICENSE_FILE`. To use a file instead, set `ENTERPRISE_LICENSE_FILE` to the absolute path of your `.lic` file. |
 </Step>
 <Step title="Set up public app config">
 Add these variables to the same environment file. They configure how users access the Cloud Dashboard.
