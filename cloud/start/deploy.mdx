@@ -30,18 +30,9 @@ Use this guide to deploy Blnk Production License on AWS, GCP, Azure, or any clou
 
 <Steps>
 <Step title="Get your Production License">
-After purchasing a Production License, you'll receive an email with a license file named `{license-name}.lic`.
+When you purchase a Production License, you'll receive an email with your license key. 
 
-You can activate your license in either of these ways:
-
-1. **Use the license file directly:** Set `ENTERPRISE_LICENSE_FILE` to the license file path in step 4.
-2. **Convert the file to base64:** Use the output as `ENTERPRISE_LICENSE_B64` in step 4.
-
-To convert your license file to base64:
-
-```bash
-base64 -i ./licenses/{license-name}.lic | tr -d '\n'
-```
+Use that value as `ENTERPRISE_LICENSE_B64` in step 4.
 </Step>
 <Step title="Prepare your databases">
 Set up a managed Postgres instance and a managed Redis instance in your cloud provider before continuing.
@@ -78,7 +69,7 @@ Use a version compatible with your provider's managed offering and enable TLS if
 Pull the enterprise image from GitHub Container Registry:
 
 ```bash Docker
-docker pull ghcr.io/blnkfinance/blnk-enterprise:latest
+docker pull ghcr.io/blnkfinance/blnk-enterprise:0.1.10
 ```
 
 <Note>
@@ -88,7 +79,7 @@ Using a custom image? Use the image name provided in your license email or onboa
 <Step title="Add primary environment variables">
 Create an environment file, such as `.env` or `enterprise.env`.
 
-Add the following variables and replace the placeholder values with your Postgres URL, Redis URL, and license string.
+Add the following variables and replace the placeholder values with your Postgres URL, Redis URL, and license key.
 
 ```dotenv .env wrap
 HOSTNAME=127.0.0.1
@@ -102,7 +93,7 @@ ENTERPRISE_LICENSE_B64=your_base64_license_string
 | `HOSTNAME` | Use `127.0.0.1` so health checks and internal services communicate through the container loopback interface. |
 | `ENTERPRISE_POSTGRES_URL` | Connection string for your Postgres instance. |
 | `ENTERPRISE_REDIS_URL` | Connection string for your Redis instance. |
-| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from Step 1. Takes precedence over `ENTERPRISE_LICENSE_FILE`. To use a file instead, set `ENTERPRISE_LICENSE_FILE` to the absolute path of your `.lic` file. |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license key from step 1. |
 </Step>
 <Step title="Set up public app config">
 Add these variables to the same environment file. They configure how users access the Cloud Dashboard.
@@ -171,14 +162,10 @@ docker run -d \
   --name blnk-enterprise \
   -p 8080:8080 \
   --env-file ./enterprise.env \
-  ghcr.io/blnkfinance/blnk-enterprise:latest
+  ghcr.io/blnkfinance/blnk-enterprise:0.1.10
 ```
 
-<Note>
-If you use a license file instead of `ENTERPRISE_LICENSE_B64`, mount `blnk-enterprise.lic` into the container and set `ENTERPRISE_LICENSE_FILE` to its path in your env file.
-</Note>
-
-Confirm that your deployment is live: 
+Confirm that your deployment is live:
 
 ```bash Check deployment status
 docker ps
