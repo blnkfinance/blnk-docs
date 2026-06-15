@@ -1,0 +1,179 @@
+---
+title: "Metrics reference"
+sidebarTitle: "Metrics reference"
+icon: "chart-line"
+description: "Prometheus metric names, types, and attributes for Blnk Core."
+"og:title": "Metrics reference • Blnk Developer Documentation"
+"og:description": "Metric names, types, and attributes for Blnk Core."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Blnk emits metrics as numeric time-series measurements from the server and workers: transaction throughput, queue depth, inflight lifecycle events, worker retries, and related operational signals.
+
+This page catalogs every metric sent by Blnk: name, instrument type, attributes, and allowed values. Scrape them from two [`GET /metrics`](/reference/get-metrics) endpoints — one on the server (`server.port`, default `5001`) and one on the worker (`queue.monitoring_port`, default `5004`). For setup and export modes, see [Observability](/advanced/observability).
+
+---
+
+## Metrics
+
+<Tabs>
+<Tab title="Transactions">
+
+Track ledger writes from acceptance through final status. Use these metrics for throughput, latency SLOs, and rejection spikes by reason or currency.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_transaction_total` | Counter | `status`, `currency` | Total transactions by final status and currency |
+| `blnk_transaction_duration_seconds` | Histogram | `status` | Wall-clock time of `RecordTransaction()` in seconds |
+| `blnk_transaction_rejected_total` | Counter | `reason` | Rejected transactions by reason |
+
+Allowed values for each attribute label:
+
+| Attribute | Values |
+| :-- | :-- |
+| `status` | `APPLIED` · `REJECTED` · `INFLIGHT` · `VOID` · `COMMIT` |
+| `reason` | `insufficient_funds` · `overdraft_limit` · `lock_contention` · `max_retries` · `other` |
+| `currency` | ISO currency code from the transaction (for example `USD`, `NGN`, `EUR`) |
+
+</Tab>
+
+<Tab title="Queue">
+
+Measure async processing on workers after a transaction is enqueued. 
+
+Use enqueue rate to spot API-to-worker inflow. Use processing duration to detect worker slowdown or backlog buildup.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_queue_enqueued_total` | Counter | `queue_name` | Transactions enqueued for async processing |
+| `blnk_queue_processing_duration_seconds` | Histogram | `result` | Time spent processing a transaction in the worker |
+
+Allowed values for each attribute label:
+
+| Attribute | Values |
+| :-- | :-- |
+| `queue_name` | `new:transaction_1` … `new:transaction_N` (sharded queues) · `hot_transactions` (hot lane) |
+| `result` | `success` |
+
+</Tab>
+
+<Tab title="Balance">
+
+Count balance creation over time. Useful for growth tracking and correlating new account activity with transaction volume.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_balance_created_total` | Counter | — | Total balances created |
+
+</Tab>
+
+<Tab title="Inflight">
+
+Count two-phase inflight lifecycle events: commits that finalize a hold and voids that release it without applying. 
+
+Use these to monitor inflight resolution volume, not inflight creation (see the **Transactions** tab).
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_inflight_commit_total` | Counter | — | Inflight transactions committed |
+| `blnk_inflight_void_total` | Counter | — | Inflight transactions voided |
+
+</Tab>
+
+<Tab title="Batch coalescing">
+
+Track how the worker groups queued transactions into batches for bulk processing. 
+
+Batch size shows coalescing efficiency; outcome counters show success, failure, and skipped attempts.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_transaction_batch_size` | Histogram | — | Transactions per coalesced batch |
+| `blnk_transaction_batch_total` | Counter | `result` | Coalescing attempts by outcome |
+
+Allowed values for each attribute label:
+
+| Attribute | Values |
+| :-- | :-- |
+| `result` | `success` · `failure` · `skipped` |
+
+</Tab>
+
+<Tab title="Hot pairs">
+
+Monitor contention on frequently updated balance pairs. 
+
+Contention counters rise when lock acquisition fails; lane routing shows how much traffic goes to the dedicated hot queue versus normal shards.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_hotpairs_contention_total` | Counter | — | Lock acquisition failures |
+| `blnk_hotpairs_lane_routed_total` | Counter | `lane` | Transactions routed to queue lanes |
+
+Allowed values for each attribute label:
+
+| Attribute | Values |
+| :-- | :-- |
+| `lane` | `normal` · `hot` |
+
+</Tab>
+
+<Tab title="Worker">
+
+Count worker retry events when async processing fails and the job is re-attempted. 
+
+Sustained retries often point to transient failures or lock contention worth correlating with queue and hot-pair metrics.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_worker_retries_total` | Counter | `reason` | Worker retry events |
+
+Allowed values for each attribute label:
+
+| Attribute | Values |
+| :-- | :-- |
+| `reason` | `insufficient_funds` · `other` |
+
+</Tab>
+
+<Tab title="Hash chain">
+
+Gauge hash-chain sealing progress when [transaction hash chain](/transactions/hash) is enabled. 
+
+Backlog and lag show unsealed transactions and processing delay; head sequence tracks the current chain tip.
+
+| Name | Type | Attributes | Description |
+| :-- | :-- | :-- | :-- |
+| `blnk_chain_backlog` | Gauge | — | Transactions not yet sealed into the hash chain |
+| `blnk_chain_head_seq` | Gauge | — | Sequence number of the hash-chain head |
+| `blnk_chain_lag_seconds` | Gauge | — | Seconds since the hash chain last advanced |
+
+</Tab>
+</Tabs>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Metrics endpoint" icon="chart-line" href="/reference/get-metrics">
+  Server and worker `GET /metrics` scrape targets.
+</Card>
+
+<Card title="Health check" icon="circle-check" href="/reference/get-health">
+  Server and worker `GET /health` probes.
+</Card>
+
+<Card title="Observability in Blnk" icon="activity" href="/advanced/observability">
+  Setup, export, and troubleshooting.
+</Card>
+
+<Card title="Observability configuration" icon="activity" href="/advanced/configuration/observability">
+  Flags and environment variables.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

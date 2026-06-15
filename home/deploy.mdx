@@ -79,10 +79,6 @@ Before you start, make sure you have the following set up (required):
       For live deployments, we recommend connecting your managed Postgres and Redis databases. This means you can exclude the `redis` and `postgres` services from your `docker-compose.yaml` file.
     </Note>
 
-    <Note>
-      The default image tag is `jerryenebeli/blnk:0.14.5`. Override it with the `BLNK_IMAGE` environment variable when you deploy — for example `BLNK_IMAGE=jerryenebeli/blnk:latest docker compose up -d`.
-    </Note>
-
     ```yaml docker-compose.yaml wrap expandable
     version: "3.8"
 
@@ -96,13 +92,10 @@ Before you start, make sure you have the following set up (required):
           - "blnk migrate up && blnk start"
         environment:
           TZ: ${TZ:-Etc/UTC}
-          OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
         ports:
           - "5001:5001"
           - "80:80"
           - "443:443"
-        depends_on:
-          - jaeger
         volumes:
           - ./blnk.json:/blnk.json
 
@@ -111,27 +104,10 @@ Before you start, make sure you have the following set up (required):
         container_name: worker
         restart: on-failure
         entrypoint: ["blnk", "workers"]
-        environment:
-          OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
-        depends_on:
-          - jaeger
+        ports:
+          - "5004:5004"
         volumes:
           - ./blnk.json:/blnk.json
-
-      jaeger:
-        image: jaegertracing/all-in-one:latest
-        container_name: jaeger
-        ports:
-          - "16686:16686" # Jaeger UI
-          - "4317:4317" # OTLP gRPC
-          - "4318:4318" # OTLP HTTP
-        environment:
-          - COLLECTOR_OTLP_ENABLED=true
-        healthcheck:
-          test: ["CMD", "wget", "--spider", "http://localhost:16686"]
-          interval: 10s
-          timeout: 5s
-          retries: 3
     ```
 
     <Check>
@@ -187,9 +163,127 @@ Once your Blnk Core is deployed in your own environment, you can connect it to a
 
 <img src="/cloud/img/transactions/transactions-table.png" alt="Transactions table" className="rounded-lg" />
 
+<CardGroup cols={2}>
 <Card title="Connect Core to Blnk Cloud" href="/cloud/instances/create" icon="link">
   Self-hosted Core connected to Cloud.
 </Card>
+
+<Card title="Monitoring and observability" href="/advanced/observability" icon="activity">
+  Use Blnk Cloud for monitoring
+</Card>
+</CardGroup>
+
+---
+
+## Setting up observability
+
+To monitor logs, traces, and metrics for your Docker deployment:
+
+<Steps>
+<Step title="Enable observability in Core">
+  Set `"enable_observability": true` in `blnk.json`, then restart server and worker after you finish the compose changes below.
+</Step>
+
+<Step title="Add Prometheus config">
+  Create `prometheus.yml` beside your compose file:
+
+  ```yaml prometheus.yml wrap
+  global:
+    scrape_interval: 15s
+
+  scrape_configs:
+    - job_name: 'blnk-server'
+      authorization:
+        type: Bearer
+        credentials: '<metrics-bearer-token>'
+      static_configs:
+        - targets: ['server:5001']
+    - job_name: 'blnk-worker'
+      authorization:
+        type: Bearer
+        credentials: '<metrics-bearer-token>'
+      static_configs:
+        - targets: ['worker:5004']
+  ```
+</Step>
+
+<Step title="Add Jaeger and Prometheus services">
+  Update your `docker-compose.yaml` to include Jaeger and Prometheus. This example extends the [base compose](#deployment-guide) with trace export on server and worker:
+
+  ```yaml docker-compose.yaml {13,18-19,28-29,32-33,37-49,51-62} wrap expandable
+  version: "3.8"
+
+  services:
+    server:
+      image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.14.5}
+      container_name: server
+      restart: on-failure
+      entrypoint: ["/bin/sh", "-c"]
+      command:
+        - "blnk migrate up && blnk start"
+      environment:
+        TZ: ${TZ:-Etc/UTC}
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      ports:
+        - "5001:5001"
+        - "80:80"
+        - "443:443"
+      depends_on:
+        - jaeger
+      volumes:
+        - ./blnk.json:/blnk.json
+
+    worker:
+      image: ${BLNK_IMAGE:-jerryenebeli/blnk:0.14.5}
+      container_name: worker
+      restart: on-failure
+      entrypoint: ["blnk", "workers"]
+      environment:
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      ports:
+        - "5004:5004"
+      depends_on:
+        - jaeger
+      volumes:
+        - ./blnk.json:/blnk.json
+
+    jaeger:
+      image: jaegertracing/all-in-one:latest
+      container_name: jaeger
+      ports:
+        - "16686:16686"
+        - "4318:4318"
+      environment:
+        - COLLECTOR_OTLP_ENABLED=true
+      healthcheck:
+        test: ["CMD", "wget", "--spider", "http://localhost:16686"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+
+    prometheus:
+      image: prom/prometheus:latest
+      container_name: prometheus
+      profiles:
+        - monitoring
+      ports:
+        - "9090:9090"
+      volumes:
+        - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      depends_on:
+        - server
+        - worker
+  ```
+</Step>
+
+<Step title="Start or restart the stack">
+  Run `docker compose --profile monitoring up -d` to start Core, Jaeger, and Prometheus together.
+
+  Open Jaeger at `http://localhost:16686` and Prometheus at `http://localhost:9090` to confirm data is flowing.
+
+To learn more, see [Observability in Blnk](/advanced/observability).
+</Step>
+</Steps>
 
 ---
 

@@ -22,6 +22,7 @@ Use the server settings below to configure how Blnk exposes its API and enforces
 BLNK_SERVER_SECURE=false
 BLNK_SERVER_SECRET_KEY=
 BLNK_SERVER_PORT=5001
+BLNK_METRICS_BEARER_TOKEN=
 ```
 
 ```json blnk.json
@@ -29,7 +30,8 @@ BLNK_SERVER_PORT=5001
   "server": {
     "secure": false,
     "secret_key": "",
-    "port": "5001"
+    "port": "5001",
+    "metrics_bearer_token": ""
   }
 }
 ```
@@ -40,6 +42,7 @@ BLNK_SERVER_PORT=5001
 | `BLNK_SERVER_SECURE` | Enables additional secure-mode protections for the server. | `false` |
 | `BLNK_SERVER_SECRET_KEY` | Secret used for signing and other cryptographic operations. | None |
 | `BLNK_SERVER_PORT` | The port Blnk listens on for incoming HTTP requests. | `5001` |
+| `BLNK_METRICS_BEARER_TOKEN` | Bearer token required to access `/metrics` when set. See [Metrics endpoint](#metrics-endpoint). | None |
 
 ### `BLNK_SERVER_SECURE`
 
@@ -76,6 +79,19 @@ Make sure to keep `BLNK_SERVER_SECRET_KEY` out of version control. Store it in a
 1. Set `BLNK_SERVER_SECURE=true` in any real deployment.
 2. Use a strong secret for `BLNK_SERVER_SECRET_KEY`, and make sure to store secrets outside version control.
 3. Keep the server secret stable within an environment unless you are prepared to update any systems that verify webhook signatures.
+
+### Metrics endpoint
+
+When [observability](/advanced/observability) is enabled, Blnk serves Prometheus metrics at `GET /metrics` on the API port and on the [worker monitoring port](/advanced/monitoring-port). Set `metrics_bearer_token` to require `Authorization: Bearer <token>` on scrape requests.
+
+| `server.secure` | Token set | `/metrics` access |
+| :-- | :-- | :-- |
+| `false` | no | Open |
+| `false` | yes | Bearer required |
+| `true` | yes | Bearer required |
+| `true` | no | Blocked |
+
+The same rules apply on the worker monitoring port. Auth failures return structured JSON — see [API error codes](/advanced/error-codes).
 
 ---
 
