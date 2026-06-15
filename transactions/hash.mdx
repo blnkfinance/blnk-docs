@@ -26,13 +26,17 @@ The global hash chain is available in Blnk Core **0.15.0** and later. It is **di
 
 ## Why hashing matters
 
-Transaction records are the audit trail of your ledger. If a transaction amount, source or destination balance, currency, status, or reference changes after it is recorded, your balances and audit reports can no longer be trusted.
+Transaction records are the audit trail of your ledger. If amount, balance, currency, status, or reference changes after recording, your balances and reports can no longer be trusted.
 
 Blnk uses hashing to make that history <Tooltip tip="You can detect if protected fields were changed after recording. Any change leaves a visible sign in the hash or chain.">tamper-evident</Tooltip>:
 
-- The per-row `hash` fingerprints important fields on each transaction.
-- The global hash chain links sealed transactions together in order.
-- `blnk verify-chain` replays the chain and reports the first broken link if protected data changed.
+1. Per-row hash — fingerprints important fields on each transaction.
+2. Global hash chain — links sealed transactions together in order.
+3. `blnk verify-chain` — replays the chain and reports the first broken link if protected data changed.
+
+<Frame caption="Global hash chain linking sealed transactions in order, where each seal depends on the previous chain head">
+<img src="/images/hash-chain.png" alt="Diagram showing transactions sealed into an ordered hash chain from genesis to chain head" />
+</Frame>
 
 Hashing does not replace database security, backups, access controls, or audit logs. It gives operators a way to verify that ledger history still matches what Blnk originally sealed.
 
@@ -116,17 +120,19 @@ Compare the `hash` from when you first recorded a transaction with the hash on a
 
 ## Global hash chain
 
-When you enable the hash chain, transaction rows are linked in order. Each seal depends on the one before it, so your full history acts as one tamper-evident record.
+When you enable the hash chain, transaction rows are linked in order. Each seal depends on the previous one, so your full history acts as one tamper-evident record.
 
-The chain is stronger than checking each row independently because every sealed transaction depends on the previous chain head. 
+<Frame caption="Broken hash chain where a tampered or reordered transaction breaks verification at the first invalid link">
+<img src="/images/hash-chain-broken.png" alt="Diagram showing a hash chain with a broken link where verification fails" />
+</Frame>
 
-If a sealed transaction is changed, removed from the sequence, or reordered, verification fails at the point where the history no longer matches.
+This is stronger than checking rows independently because every sealed transaction depends on the previous chain head. If a transaction is changed, removed, or reordered, verification fails where the history breaks.
 
-- When you turn the chain on, existing transaction rows are sealed automatically.
-- New transactions seal after a short wait (the **trailing delay**) so recent writes can finish.
-- The chain can include all transaction statuses, including queued, inflight, applied, voided, rejected, and refund transactions.
+1. Existing transactions seal automatically when you turn the chain on.
+2. New transactions seal after a short trailing delay so recent writes can finish.
+3. The chain includes all statuses: queued, inflight, applied, voided, rejected, and refund.
 
-The chain checks these fields on each sealed transaction: `transaction_id`, `source`, `destination`, `amount`, `precise_amount`, `currency`, `status`, `reference`, `created_at`. If any of them change after sealing, the chain will fail verification.
+The chain checks these fields: `transaction_id`, `source`, `destination`, `amount`, `precise_amount`, `currency`, `status`, `reference`, `created_at`. Change any after sealing and verification fails.
 
 <Note>
 Fields such as `description` and `meta_data` are not integrity-protected by the chain. Changing them does not fail verification. Protected transaction fields are also guarded by the database immutability trigger.
