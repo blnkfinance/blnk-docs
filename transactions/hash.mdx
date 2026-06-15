@@ -1,89 +1,198 @@
 ---
-title: "Transaction Hashing"
+title: "Transaction integrity and hashing"
 sidebarTitle: "Transaction hashing"
 icon: "hash"
-description: "Learn how Blnk uses transaction hashing for immutability."
-"og:title": "Transaction Hashing • Blnk Developer Documentation"
-"og:description": "Blnk uses SHA-256 hashing to ensure transaction integrity and security in your application."
+description: "How Blnk uses per-row hashes and an optional global hash chain to keep transaction history tamper-evident."
+"og:title": "Transaction integrity and hashing • Blnk Developer Documentation"
+"og:description": "Per-row SHA-256 hashes and an optional global hash chain for tamper detection in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-In the world of digital transactions, maintaining the integrity and immutability of transaction data is paramount. Blnk leverages `SHA-256` hashing to ensure that every transaction is securely recorded, verifiable, and immutable.
+Blnk makes your transaction history <Tooltip tip="You can detect if protected fields were changed after recording. Any change leaves a visible sign in the hash or chain.">tamper-evident</Tooltip> through hashing. 
 
-Data hashing is a cryptographic process that converts input data of any size into a fixed-size string of characters, which is typically a digest representing the data. Blnk uses the SHA-256 hashing algorithm for this purpose, ensuring that each transaction is accompanied by a unique hash value that serves as its digital fingerprint.
+Every transaction gets a fingerprint you can check on its own; optionally, your full transaction history can also be sealed into one ordered chain you verify on demand.
 
----
+| Layer | What it protects | Where you see it | When it's on |
+| :-- | :-- | :-- | :-- |
+| **Per-row `hash`** | A single transaction's core details | Transaction API responses (`hash` field) | Always |
+| **Global hash chain** | Your full transaction history in order | Verify with `blnk verify-chain` | Optional, disabled by default |
 
-## How Blnk implements SHA-256 hashing
-
-When a transaction is processed in Blnk, the system generates a SHA-256 hash of the transaction's details, including the amount, source, destination, reference, and any other relevant information. This hash is then stored alongside the transaction record. The SHA-256 algorithm ensures that even the slightest change in the transaction details would result in a completely different hash, thereby safeguarding against unauthorized modifications.
-
----
-
-## Verifying transaction integrity
-
-Users can verify the integrity of a transaction by recomputing the SHA-256 hash of the transaction details and comparing it with the hash stored in the Blnk. If the computed hash matches the stored hash, the transaction is confirmed to be intact and unaltered.
+<Info>
+The global hash chain is available in Blnk Core **0.15.0** and later. It is **disabled by default**.
+</Info>
 
 ---
 
-## Verifying a transaction hash
+## Why hashing matters
 
-Consider a transaction with the following details:
+Transaction records are the audit trail of your ledger. If a transaction amount, source or destination balance, currency, status, or reference changes after it is recorded, your balances and audit reports can no longer be trusted.
 
-```json Request
+Blnk uses hashing to make that history <Tooltip tip="You can detect if protected fields were changed after recording. Any change leaves a visible sign in the hash or chain.">tamper-evident</Tooltip>:
+
+- The per-row `hash` fingerprints important fields on each transaction.
+- The global hash chain links sealed transactions together in order.
+- `blnk verify-chain` replays the chain and reports the first broken link if protected data changed.
+
+Hashing does not replace database security, backups, access controls, or audit logs. It gives operators a way to verify that ledger history still matches what Blnk originally sealed.
+
+---
+
+## Quick start
+
+<Steps>
+<Step title="Enable the hash chain">
+Set on the `server` service, then restart.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_HASHCHAIN_ENABLED=true
+```
+
+```json blnk.json
 {
-    "amount": 750000,
-    "reference": "ref123",
-    "currency": "USD",
-    "source": "bln_source123",
-    "destination": "bln_dest123"
+  "transaction": {
+    "hash_chain": {
+      "enabled": true
+    }
+  }
 }
 ```
+</CodeGroup>
 
-To verify this transaction, concatenate the above details into a single string (excluding the hash) and compute the SHA-256 hash of this string. Using a SHA-256 hash function in your preferred programming language or a tool, you can generate the hash.
+See [Hash chain settings](/advanced/configuration/transactions#hash-chain-settings) for all options.
+</Step>
 
-For example, in Python:
+<Step title="Wait for sealing">
+Existing transaction rows are sealed automatically. New ones seal after the trailing delay, `default: 30s`.
+</Step>
 
-```python
-import hashlib
+<Step title="Verify the chain">
+To verify the chain, run in the same directory as your `docker-compose.yaml`:
 
-# Concatenate your transaction details
-transaction_details = '750000ref123USDbln_source123bln_dest123'
-
-# Compute the SHA-256 hash
-hash_value = hashlib.sha256(transaction_details.encode()).hexdigest()
-
-print(hash_value)
+```bash
+docker compose run --rm server blnk verify-chain
 ```
 
-Compare this `hash_value` with the hash provided by Blnk for the transaction. If they match, the transaction's integrity is verified.
+Exit code `0` means the chain is intact.
+
+```text Success wrap
+chain verified: 153 transactions sealed, head 18526b69d80e7c0b200da69cfc0f9a4e661a55c724b4f984ebf4ebd9b32e92f9 at seq 153
+```
+
+<Note>
+`verify-chain` is a Core CLI command, not an HTTP API. The one-off container uses the same Postgres connection and config as your server.
+</Note>
+</Step>
+
+<Step title="Monitor sealing progress">
+Track backlog and sealing delay over time through [Observability](/advanced/observability). When the hash chain is enabled, these gauges appear on the metrics endpoint:
+
+| Metric | Description |
+| :-- | :-- |
+| `blnk_chain_backlog` | Transactions not yet sealed into the hash chain |
+| `blnk_chain_head_seq` | Sequence number of the hash-chain head |
+| `blnk_chain_lag_seconds` | Seconds since the hash chain last advanced |
+
+See [Metrics reference](/advanced/metrics-reference) for attribute details and other Core metrics.
+</Step>
+</Steps>
 
 ---
 
-## Benefits of hashing transactions
+## Per-row hash
 
-1. **Immutability**: Once a transaction is recorded with its hash, it cannot be altered without changing the hash. This makes every transaction in Blnk immutable and secure against tampering.
+Every transaction in Blnk gets a `hash` — a SHA-256 fingerprint built from five fields. If any of them change after recording, the fingerprint no longer matches.
 
-2. **Verification**: Users can independently verify the integrity of their transactions without relying on Blnk's internal systems, enhancing trust and transparency.
+Blnk concatenates these values in order, hashes the string with SHA-256, and returns the hex digest as `hash`: `amount`, `reference`, `currency`, `source`, `destination`.
 
-3. **Security**: SHA-256 is a cryptographic hash function, which means it is designed to be secure against collision attacks (where two different inputs produce the same output hash) and preimage attacks (finding an input based on its output hash).
+<Note>
+The per-row hash uses `amount` (the display float), not `precise_amount`. Fields such as `description`, `status`, and `meta_data` are not included.
+</Note>
 
-4. **Efficiency**: Hashing is a fast computational process, allowing for quick verification of transaction integrity without the need to compare all transaction details line by line.
+Compare the `hash` from when you first recorded a transaction with the hash on a later fetch to confirm those fingerprinted fields are unchanged. Built-in integrity verification is handled by the global hash chain and `blnk verify-chain`.
 
 ---
 
-## Protecting Transaction Integrity in Blnk
-While SHA-256 ensures that transaction data remains verifiable, additional measures can help protect stored hashes from unauthorized modifications. Since Blnk records transaction hashes in its system, it is important to safeguard them against potential tampering. 
+## Global hash chain
 
-To enhance transaction integrity, we recommend implementing the following safeguards:
+When you enable the hash chain, transaction rows are linked in order. Each seal depends on the one before it, so your full history acts as one tamper-evident record.
 
-1. **External hash logging:** Periodically logging transaction hashes to an immutable external storage system can provide an independent verification layer. This ensures that even if transaction data is modified internally, an external record remains intact for comparison.
+The chain is stronger than checking each row independently because every sealed transaction depends on the previous chain head. 
 
-2. **Audit trails:** Enabling detailed logging of database changes helps detect and trace any unauthorized modifications to transaction records.
+If a sealed transaction is changed, removed from the sequence, or reordered, verification fails at the point where the history no longer matches.
 
-3. **Access controls:** Restricting database and system access ensures that only authorized users or services can modify transaction data. Implementing role-based access control (RBAC) can further limit who can alter sensitive records.
+- When you turn the chain on, existing transaction rows are sealed automatically.
+- New transactions seal after a short wait (the **trailing delay**) so recent writes can finish.
+- The chain can include all transaction statuses, including queued, inflight, applied, voided, rejected, and refund transactions.
 
-4. **Automated integrity checks:** Running scheduled integrity checks by recomputing hashes and comparing them against logged values helps identify inconsistencies and unauthorized changes.
+The chain checks these fields on each sealed transaction: `transaction_id`, `source`, `destination`, `amount`, `precise_amount`, `currency`, `status`, `reference`, `created_at`. If any of them change after sealing, the chain will fail verification.
+
+<Note>
+Fields such as `description` and `meta_data` are not integrity-protected by the chain. Changing them does not fail verification. Protected transaction fields are also guarded by the database immutability trigger.
+</Note>
+
+Chain seals are not returned in transaction API or [search](/search/typesense/introduction) responses. Check integrity with `blnk verify-chain`, not by reading a response field.
+
+---
+
+## Verification
+
+`blnk verify-chain` tells you whether your full sealed history is intact or where it broke. 
+
+Exit code `0` means the chain passed; any other exit code means it failed.
+
+| Result | What it means |
+| :-- | :-- |
+| **Pass** | The full transaction history is intact. Output states how many transactions are sealed. |
+| **Fail** | History was tampered with or broken. Output names the position where verification stopped. |
+
+<Tabs>
+<Tab title="Pass">
+
+When verification passes, output looks like this:
+
+```text Success wrap
+chain verified: 153 transactions sealed, head 18526b69d80e7c0b200da69cfc0f9a4e661a55c724b4f984ebf4ebd9b32e92f9 at seq 153
+```
+
+</Tab>
+
+<Tab title="Fail">
+
+Verification fails when one of these conditions is true:
+
+| Condition | What happened |
+| :-- | :-- |
+| Protected field changed | A sealed transaction detail was altered after sealing |
+| Chain link altered | A seal in the ordered chain no longer matches its transaction |
+| Order disrupted | Transactions are no longer in the expected sequence |
+
+The output looks like this:
+
+```text Failure wrap
+chain BROKEN at seq 6 (txn txn_c1dfaf42-93c1-4371-8918-4d3d6ed2d2be): non-contiguous chain_seq: expected 5, got 6
+```
+
+</Tab>
+</Tabs>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Hash chain settings" icon="gear" href="/advanced/configuration/transactions#hash-chain-settings">
+Full config and env vars.
+</Card>
+
+<Card title="Metrics reference" icon="chart-line" href="/advanced/metrics-reference">
+Chain backlog, head sequence, and lag gauges.
+</Card>
+
+<Card title="About transactions" icon="arrow-left-right" href="/transactions/introduction">
+Immutability and recording basics.
+</Card>
+</CardGroup>
 
 <NeedHelp />
