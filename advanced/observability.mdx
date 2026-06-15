@@ -11,7 +11,7 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Running a ledger means caring about correctness, latency, and throughput. Observability shows whether Blnk is healthy and where problems show up, without inferring system state from API responses alone.
 
-This guide helps you choose the right signal for a problem, connect Blnk to your monitoring setup, and verify that data is flowing. 
+This guide helps you choose the right signal for a problem, connect Blnk to Blnk Cloud or your own monitoring stack, and verify that data is flowing. 
 
 For configuration flags, see [Observability configuration](/advanced/configuration/observability).
 
@@ -95,18 +95,11 @@ See the full catalog in [Metrics reference](/advanced/metrics-reference).
 
 ---
 
-## Set up observability
-
-**Most teams use Blnk Cloud for managed Core monitoring.** 
-
-However, if you run your own stack, export traces, metrics, and logs to the tools you already operate.
-
-<Tabs>
-<Tab title="Blnk Cloud">
+## Quick setup: Blnk Cloud
 
 Blnk Cloud includes built-in monitoring for your ledger. 
 
-Once connected, your Core instance sends logs, traces, and metrics to your Cloud workspace; investigate incidents and track health where you manage your instance.
+Once connected, your Core instance sends logs, traces, and metrics to your Cloud workspace so you can investigate incidents and track health where you manage your instance.
 
 <Steps>
 <Step title="Sign in to Blnk Cloud">
@@ -114,15 +107,19 @@ Once connected, your Core instance sends logs, traces, and metrics to your Cloud
 </Step>
 
 <Step title="Connect your instance">
-  If you have not already, connect your Core deployment to Cloud. 
-  
+  If you have not already, connect your Core deployment to Cloud.
+
   For a self-hosted Core, follow [Connect your self-hosted Core](/cloud/instances/create). For a managed instance, see [Deploy a managed instance](/cloud/instances/deploy).
 </Step>
 
 <Step title="Enable monitoring and copy the DSN">
-  Open the instance in Cloud, turn on monitoring in the instance settings, then copy the Blnk Cloud DSN. 
-  
+  Open the instance in Cloud, turn on monitoring in the instance settings, then copy the `Blnk Cloud DSN`.
+
   You will add it to your Core configuration in the next step.
+
+  <Frame>
+  <img src="/cloud/img/instances/instance-monitoring-dsn.png" alt="Blnk Cloud instance settings with monitoring enabled and the Blnk Cloud DSN field visible" />
+  </Frame>
 </Step>
 
 <Step title="Set the Blnk Cloud DSN in your Core config">
@@ -146,11 +143,33 @@ BLNK_CLOUD_DSN=https://<write-key>@observe.blnk.cloud/<project-id>
 </Step>
 
 <Step title="Confirm data is flowing">
-  Check server logs for a message that observability is enabled, then open your Blnk Cloud monitoring workspace and confirm Blnk data is arriving. 
-  
-  It may take a few minutes for the first data to show up.
+  Check server logs for a message that observability is enabled, then open your Blnk Cloud monitoring workspace and confirm Blnk data is arriving.
 
-  Logs, traces, and metrics from both the server and workers appear in Cloud.
+  It may take a few minutes for the first data to show up. Logs, traces, and metrics from both the server and workers appear in Cloud.
+
+  <Tabs>
+  <Tab title="Logs">
+
+  <Frame>
+  <img src="/cloud/img/monitoring/cloud-logs.png" alt="Blnk Cloud monitoring workspace showing log lines from the server and worker" />
+  </Frame>
+
+  </Tab>
+  <Tab title="Traces">
+
+  <Frame>
+  <img src="/cloud/img/monitoring/cloud-traces.png" alt="Blnk Cloud monitoring workspace showing a distributed trace timeline" />
+  </Frame>
+
+  </Tab>
+  <Tab title="Metrics">
+
+  <Frame>
+  <img src="/cloud/img/monitoring/cloud-metrics.png" alt="Blnk Cloud monitoring workspace showing Blnk metrics over time" />
+  </Frame>
+
+  </Tab>
+  </Tabs>
 
 <Note>
 When you export to Blnk Cloud, sensitive values (such as tokens and connection strings) are removed before they leave your instance.
@@ -158,11 +177,11 @@ When you export to Blnk Cloud, sensitive values (such as tokens and connection s
 </Step>
 </Steps>
 
-</Tab>
+---
 
-<Tab title="Self-hosted">
+## Connect to other tools
 
-You can run Blnk with your own observability stack: Jaeger, Prometheus, Grafana, OpenTelemetry Collector, or any tool you choose.
+Export traces, metrics, and logs to Jaeger, Prometheus, Grafana, OpenTelemetry Collector, Datadog, or any stack you already operate. 
 
 Blnk exposes traces and metrics via OpenTelemetry and Prometheus. Logs are written to process output; forward them with your log shipper.
 
@@ -183,6 +202,10 @@ BLNK_ENABLE_OBSERVABILITY=true
 </CodeGroup>
 
   Restart both processes after updating configuration.
+</Step>
+
+<Step title="Export logs">
+  Collect `stdout` and `stderr` with your log agent or shipper and forward to any backend.
 </Step>
 
 <Step title="Export traces">
@@ -295,12 +318,6 @@ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
 </Tabs>
 </Step>
 
-<Step title="Export logs">
-  Collect `stdout` and `stderr` with your log agent or shipper and forward to any backend.
-
-  For managed log export, use Blnk Cloud instead.
-</Step>
-
 <Step title="Confirm each signal">
   After restart and a test API call, verify observability is working end to end. Server and worker logs should report that observability is active.
 
@@ -309,11 +326,20 @@ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
   curl http://localhost:5004/health
   ```
 
-  ```json 200 OK wrap
+  <CodeGroup>
+  ```json Server 200 OK wrap
   {
     "status": "UP"
   }
   ```
+
+  ```json Worker 200 OK wrap
+  {
+    "status": "UP",
+    "service": "worker"
+  }
+  ```
+  </CodeGroup>
 
   Probe metrics on both processes (omit the header when no bearer token is configured):
 
@@ -326,9 +352,6 @@ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
   Check traces in your OTLP backend and log lines in your log store.
 </Step>
 </Steps>
-
-</Tab>
-</Tabs>
 
 ---
 
