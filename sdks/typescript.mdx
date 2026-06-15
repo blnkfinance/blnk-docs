@@ -43,9 +43,9 @@ npm install -D tsx typescript
 
 <Step title="Client initialization">
 
-Call `BlnkInit` to create a client. Pass your API key as the first argument when your instance requires authentication. The SDK sends it as the `X-Blnk-Key` header.
+Call `BlnkInit` to create a client. Pass your API key as the first argument when your instance requires authentication. See [Authentication](#authentication) for how the SDK sends credentials.
 
-Use an empty string when running locally without auth. `BlnkInit` is synchronous: do not `await` it.
+`BlnkInit` is synchronous: do not `await` it.
 
 ```typescript client.ts wrap
 import { BlnkInit } from '@blnkfinance/blnk-typescript';
@@ -54,6 +54,8 @@ const apiKey = process.env.BLNK_API_KEY ?? '';
 const blnk = BlnkInit(apiKey, {
   baseUrl: 'http://localhost:5001',
   timeout: 10000,
+  retryCount: 3,
+  retryDelayMs: 2000,
 });
 ```
 
@@ -125,19 +127,50 @@ Internal balances like `@FundingPool` are created automatically. See [Internal b
 
 ---
 
+## Authentication
+
+Blnk Core authenticates API requests with the `X-Blnk-Key` header. The TypeScript SDK sets this header from the first argument to `BlnkInit`.
+
+| API key argument | `X-Blnk-Key` header | When to use |
+| :--- | :--- | :--- |
+| Non-empty string | Sent with the key value | Production, Blnk Cloud, or any secured Core instance |
+| `''` (empty string) | Omitted | Local development when Core runs without auth |
+
+```typescript wrap
+// Local Core without authentication
+const local = BlnkInit('', { baseUrl: 'http://localhost:5001' });
+
+// Secured instance
+const prod = BlnkInit(process.env.BLNK_API_KEY!, {
+  baseUrl: 'https://core.example.com',
+});
+```
+
+Some admin endpoints require the **master key** (`server.secret_key`), not a regular API key. For example, `blnk.Hooks` and `blnk.ApiKeys` return `403` when called with a scoped API key. See [Hooks](/sdks/typescript/hooks) and [API keys](/sdks/typescript/api-keys).
+
+Do not set `X-Blnk-Key` manually in your application code — pass the key to `BlnkInit` and the SDK adds the header on every request.
+
+---
+
 ## Error handling
 
-Every SDK method returns an `ApiResponse<T>` envelope:
+Every SDK method returns an `ApiResponse<T>` envelope. The SDK does not throw on HTTP or network failures — check `status` and `data` after every call.
 
 ```typescript wrap
 interface ApiResponse<T> {
   status: number;
   message: string;
   data: T;
+  /** Structured Core API error when the response body includes `error_detail`. */
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  } | null;
 }
 ```
 
-Check `status` and `data` after every call:
+### Basic pattern
 
 ```typescript Error handling {5} wrap
 const response = await blnk.Ledgers.create({
@@ -152,11 +185,54 @@ if (response.status !== 201 || !response.data) {
 console.log('Ledger ID:', response.data.ledger_id);
 ```
 
-The SDK handles three failure modes:
+### Structured API errors
 
-1. **HTTP errors**: Non-2xx responses return the status code, a message, and the error body in `data`.
-2. **Client-side validation**: SDK validators return `status: 400` with a message before the network call (for example, a missing `reference` or an invalid bulk payload).
-3. **Network or timeout errors**: Caught internally and returned as a failed `ApiResponse` with a logged error.
+When Core returns a JSON error body, the SDK parses `error_detail` into `response.error`:
+
+```typescript wrap
+const response = await blnk.Ledgers.get('ldg_missing');
+
+if (response.status !== 200) {
+  if (response.error) {
+    console.error(response.error.code, response.error.message);
+    if (response.error.details) {
+      console.error('Details:', response.error.details);
+    }
+  } else {
+    console.error(response.status, response.message);
+  }
+  return;
+}
+```
+
+Legacy error bodies that only include an `error` string are mapped to `error.code: 'UNKNOWN'`.
+
+### Failure modes
+
+| Mode | `status` | What happened |
+| :--- | :--- | :--- |
+| **HTTP error** | Core status (4xx/5xx) | Non-2xx response. `message` summarizes the failure; `data` holds the raw body; `error` holds structured details when available. |
+| **Client validation** | `400` | SDK validators rejected the input before any network call (for example, a missing `reference` or an invalid bulk payload). |
+| **Timeout** | `408` | The request exceeded `timeout` (default `10000` ms). Timeouts are not retried. |
+| **Network error** | `500` | DNS, connection, or other fetch failure. Logged internally with sensitive values redacted. |
+
+```typescript wrap
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  reference: 'payment_001',
+  allow_overdraft: true,
+});
+
+if (response.status === 408) {
+  console.error('Request timed out — increase timeout or check Core health');
+} else if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+}
+```
 
 ---
 
@@ -203,15 +279,52 @@ await blnk.Transactions.create({
 
 Pass options as the second argument to `BlnkInit`:
 
-1. `baseUrl`: Required. A trailing `/` is appended automatically if missing.
-2. `timeout`: HTTP timeout in milliseconds. Defaults to `3000`.
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `baseUrl` | `string` | — | **Required.** Core base URL. A trailing `/` is appended if missing. |
+| `timeout` | `number` | `10000` | HTTP timeout in milliseconds. |
+| `retryCount` | `number` | `1` | Total request attempts including the first. Retries apply only to idempotent `GET` requests — not `POST`, `PUT`, or `DELETE`. |
+| `retryDelayMs` | `number` | `2000` | Base delay between retry attempts in milliseconds. Uses linear backoff. |
+| `logger` | `BlnkLogger` | `console` | Custom logger for SDK info and error output. |
 
 ```typescript wrap
 const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
   baseUrl: 'http://localhost:5001',
   timeout: 30000,
+  retryCount: 3,
+  retryDelayMs: 2000,
 });
 ```
+
+Invalid `retryCount` and `retryDelayMs` values (`NaN`, `Infinity`, negatives) fall back to the defaults. `retryCount` is floored to a minimum of `1`.
+
+<Note>
+Retries are intentionally limited to `GET` requests so mutating calls are never sent twice. Timeouts (`408`) are also not retried.
+</Note>
+
+### HTTP transport
+
+The SDK uses the platform [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) API. On Node.js 18 and later, that is `globalThis.fetch`. The client no longer depends on `node-fetch`.
+
+Each request uses an `AbortSignal` for timeouts. When uploading multipart data (for example, reconciliation file uploads), the SDK sets `duplex: 'half'` on the request so streaming bodies work with native fetch.
+
+Successful responses with no body (for example, `204 No Content` from `ApiKeys.delete`) return `{ status, message: "Success", data: null }` without attempting JSON parsing.
+
+### Custom logger
+
+Attach a logger to control SDK output in production:
+
+```typescript wrap
+const blnk = BlnkInit(apiKey, {
+  baseUrl: 'http://localhost:5001',
+  logger: {
+    info: (message, ...meta) => myLogger.info(message, meta),
+    error: (message, ...meta) => myLogger.error(message, meta),
+  },
+});
+```
+
+The SDK redacts API keys and auth headers from error logs. Do not log the raw `ApiResponse` object if it may contain sensitive metadata from your application.
 
 ### Module formats
 

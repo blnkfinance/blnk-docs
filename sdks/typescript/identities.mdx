@@ -19,7 +19,11 @@ For concepts and PII handling, see the [Identities guide](/identities/introducti
 | `get` | [Get identity](/reference/get-identity) | Fetch one identity by ID |
 | `list` | [Get identity](/reference/get-identity) | List all identities on the instance |
 | `update` | [Edit identity](/reference/edit-identity) | Update profile fields |
-| `tokenize` | [Tokenize identity](/reference/tokenize-identity) | Tokenize PII fields on an identity |
+| `getTokenizedFields` | [Get tokenized fields](/reference/get-tokenized-fields) | List fields currently tokenized |
+| `tokenizeField` | [Tokenize field](/reference/tokenize-field) | Tokenize one PII field |
+| `tokenize` | [Tokenize identity](/reference/tokenize-identity) | Tokenize multiple PII fields |
+| `detokenizeField` | [Detokenize field](/reference/detokenize-field) | Read one tokenized field's original value |
+| `detokenize` | [Detokenize identity](/reference/detokenize-identity) | Detokenize multiple fields (or all) |
 
 ## Key concepts
 
@@ -167,6 +171,89 @@ Tokenization must be enabled on Core (`tokenization_secret` in `blnk.json`). See
 </Info>
 
 See [Tokenize identity](/reference/tokenize-identity) for request fields, response shape, and validation.
+
+---
+
+## Get tokenized fields
+
+`blnk.Identity.getTokenizedFields` returns the list of fields currently tokenized on an identity.
+
+```typescript wrap
+const response = await blnk.Identity.getTokenizedFields(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.tokenized_fields);
+}
+```
+
+See [Get tokenized fields](/reference/get-tokenized-fields) for response shape and validation.
+
+---
+
+## Tokenize one field
+
+`blnk.Identity.tokenizeField` tokenizes a single field. Pass a **PascalCase** struct name in the path (`FirstName`, `EmailAddress`).
+
+```typescript wrap
+const response = await blnk.Identity.tokenizeField(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  'EmailAddress',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.message);
+}
+```
+
+See [Tokenize field](/reference/tokenize-field) for response shape and validation.
+
+---
+
+## Detokenize one field
+
+`blnk.Identity.detokenizeField` returns the original value of one tokenized field without changing the stored identity record.
+
+```typescript wrap
+const response = await blnk.Identity.detokenizeField(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  'EmailAddress',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.field, response.data.value);
+}
+```
+
+See [Detokenize field](/reference/detokenize-field) for response shape and validation.
+
+---
+
+## Detokenize multiple fields
+
+`blnk.Identity.detokenize` returns original values for the fields you specify. Pass an **empty** `fields` array to detokenize all currently tokenized fields.
+
+```typescript wrap
+const response = await blnk.Identity.detokenize(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  { fields: ['FirstName', 'EmailAddress'] },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+} else {
+  console.log(response.data.fields);
+}
+```
+
+See [Detokenize identity](/reference/detokenize-identity) for request fields, response shape, and validation.
 
 ---
 
