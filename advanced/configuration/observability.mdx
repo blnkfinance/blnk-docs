@@ -2,55 +2,111 @@
 title: "Observability Configuration"
 sidebarTitle: "Observability"
 icon: "activity"
-description: "Control OpenTelemetry traces and HTTP metrics, optional remote monitoring export, and product telemetry (heartbeat) in Blnk."
+description: "Enable observability and configure Cloud DSN and OTLP endpoints in Blnk."
 "og:title": "Observability Configuration • Blnk Developer Documentation"
-"og:description": "Control OpenTelemetry traces and HTTP metrics, optional remote monitoring export, and product telemetry in Blnk."
+"og:description": "Enable observability and configure Cloud DSN and OTLP endpoints in Blnk."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-This page covers the top-level flags that control **operational** observability (OpenTelemetry and metrics), optional **remote monitoring export**, and **product** heartbeat telemetry. These settings are independent from [queue monitoring](/advanced/monitoring-port), which exposes a separate HTTP port for queue inspection.
+This page lists the flags that control **operational observability** in Blnk Core. For how to think about logs, traces, and metrics, and for setup walkthroughs for Blnk Cloud and self-hosted export, see [Monitoring in Blnk](/advanced/monitoring).
+
+These settings are independent from [queue monitoring](/advanced/monitoring-port), which exposes a separate HTTP port for queue inspection.
 
 ---
 
-## Telemetry and observability flags
-
-Use these boolean flags to opt in to traces and metrics, or to product usage telemetry.
+## Observability flags
 
 <CodeGroup>
 ```bash blnk.env
-BLNK_ENABLE_TELEMETRY=false
 BLNK_ENABLE_OBSERVABILITY=false
-BLNK_MONITORING_DSN=https://your-write-key@monitoring.example.com/your-project-id
+BLNK_CLOUD_DSN=
 ```
 
 ```json blnk.json
 {
-  "enable_telemetry": false,
   "enable_observability": false,
-  "monitoring_dsn": "https://your-write-key@monitoring.example.com/your-project-id"
+  "cloud_dsn": ""
+}
+```
+</CodeGroup>
+
+| | Outcome when set | Default |
+| :-- | :-- | :-- |
+| `BLNK_ENABLE_OBSERVABILITY` | Core emits logs, traces, and metrics; `/metrics` is registered on the API port and worker monitoring port. | `false` |
+| `BLNK_CLOUD_DSN` | Blnk Cloud DSN. Forwards logs, traces, and metrics to your Blnk Cloud monitoring project. Requires observability to be on. Format: `https://<write-key>@<host>/<project-id>` | none |
+
+For `/metrics` bearer authentication, see [Server & security](/advanced/configuration/server-security#metrics-endpoint).
+
+<Warning>
+`BLNK_CLOUD_DSN` has no effect when `BLNK_ENABLE_OBSERVABILITY` is `false`.
+</Warning>
+
+Exported logs have sensitive values redacted before they leave your instance.
+
+---
+
+## Blnk Cloud DSN
+
+Set the Blnk Cloud DSN when you export logs, traces, and metrics to Blnk Cloud monitoring:
+
+- Environment: `BLNK_CLOUD_DSN`
+- JSON: `cloud_dsn`
+
+Requires `enable_observability=true` on the server and workers. See [Quick setup: Blnk Cloud](/advanced/monitoring#quick-setup-blnk-cloud) in [Monitoring in Blnk](/advanced/monitoring).
+
+---
+
+## OpenTelemetry endpoints
+
+For self-hosted export, Blnk reads standard OpenTelemetry environment variables. Set them on **both** the server and worker. Observability must be enabled.
+
+Blnk exports traces and metrics over **OTLP HTTP** (port **4318** in typical Jaeger or Collector setups, not gRPC port 4317). Set a separate endpoint per signal on **both** the server and worker. Observability must be enabled.
+
+<CodeGroup>
+```bash blnk.env
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://jaeger:4318
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
+```
+</CodeGroup>
+
+These variables are environment-only. They are not set in `blnk.json`.
+
+| | Outcome when set |
+| :-- | :-- |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | OTLP HTTP endpoint for trace export. |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | OTLP HTTP endpoint for metric push export. |
+
+<Note>
+Endpoint values accept common formats: `host:port`, `http://host:port`, or a full path such as `http://jaeger:4318/v1/traces`. Blnk normalizes the value before export.
+</Note>
+
+Metrics push runs on a 60-second interval. Prometheus-compatible metrics are also available at `/metrics` on the API port and worker monitoring port regardless of OTLP settings. See [Connect to other tools](/advanced/monitoring#connect-to-other-tools) in [Monitoring in Blnk](/advanced/monitoring).
+
+Logs are not exported through these endpoints. Collect process output with your log shipper, or set the Blnk Cloud DSN for managed log export.
+
+---
+
+## Product telemetry
+
+<Warning>
+`enable_telemetry` is not operational observability. Turn on `enable_observability` for logs, traces, and metrics in Prometheus, Jaeger, or Blnk Cloud. `enable_telemetry` is optional product usage heartbeat telemetry for the Blnk team.
+</Warning>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_ENABLE_TELEMETRY=false
+```
+
+```json blnk.json
+{
+  "enable_telemetry": false
 }
 ```
 </CodeGroup>
 
 | | Description | Default |
 | :-- | :-- | :-- |
-| `BLNK_ENABLE_TELEMETRY` | When `true`, Blnk sends **product heartbeat / usage** telemetry (for example to PostHog) so the team can understand usage trends. It is **not** the same switch as distributed traces or `/metrics`. | `false` |
-| `BLNK_ENABLE_OBSERVABILITY` | When `true`, Blnk initializes the **OpenTelemetry** SDK, exports **traces**, and serves the **HTTP `/metrics` endpoint** (Prometheus-style metrics) as wired in the server. Use this for APM, dashboards, and SRE visibility. | `false` |
-| `BLNK_MONITORING_DSN` | HTTPS DSN for remote export of logs, traces, and metrics. | none |
-
-### `BLNK_MONITORING_DSN`
-
-**`BLNK_MONITORING_DSN`** works only when **`BLNK_ENABLE_OBSERVABILITY`** is `true`. If observability is off, the DSN is ignored.
-
-When a valid DSN is configured:
-
-1. **Logs** — Application logs are forwarded asynchronously. Sensitive values are redacted from log messages and fields (including bearer tokens, DSNs, URLs, and query parameters).
-2. **Traces** — OpenTelemetry traces are exported over OTLP/HTTP to your monitoring backend.
-3. **Metrics** — OpenTelemetry metrics are exported over OTLP/HTTP on a 60-second interval, in addition to the local Prometheus `/metrics` endpoint.
-
-<Tip>
-Use `BLNK_MONITORING_DSN` when you want a managed monitoring sink without running your own OpenTelemetry Collector. For self-hosted OTLP export, you can still use standard `OTEL_EXPORTER_OTLP_*` environment variables alongside observability.
-</Tip>
+| `BLNK_ENABLE_TELEMETRY` | When `true`, Blnk sends optional product usage heartbeat telemetry so the Blnk team can understand usage trends. | `false` |
 
 <NeedHelp />

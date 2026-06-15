@@ -51,7 +51,7 @@ curl -X POST http://localhost:5001/transactions \
   -H "Content-Type: application/json" \
   -H "X-Blnk-Key: <api-key>" \
   -d '{
-    "amount": 30000,
+    "precise_amount": 3000000,
     "precision": 100,
     "reference": "ref_001adcfgf",
     "currency": "USD",
@@ -62,7 +62,7 @@ curl -X POST http://localhost:5001/transactions \
         },
         {
             "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-            "distribution": "20000"
+            "precise_distribution": "2000000"
         },
         {
             "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
@@ -76,13 +76,13 @@ curl -X POST http://localhost:5001/transactions \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 30000,
+  precise_amount: 3000000,
   precision: 100,
   reference: 'ref_001adcfgf',
   currency: 'USD',
   sources: [
     { identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f', distribution: '10%' },
-    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', distribution: '20000' },
+    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', precise_distribution: '2000000' },
     { identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b', distribution: 'left' },
   ],
   destination: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
@@ -93,14 +93,14 @@ const response = await blnk.Transactions.create({
 ```go Go wrap expandable
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      30000,
+    PreciseAmount: 3000000,
     Precision:   100,
     Reference:   "ref_001adcfgf",
     Currency:    "USD",
     Description: "Payment to Sarah",
     Sources: []blnkgo.Source{
       {Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f", Distribution: "10%"},
-      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", Distribution: "20000"},
+      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", PreciseDistribution: "2000000"},
       {Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b", Distribution: "left"},
     },
     Destination: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
@@ -115,8 +115,9 @@ blnk transactions create
 
 | Field | Description | Required | Type |
 | :--- | :--- | :--- | :--- |
-| `amount` | Total amount to be received | Yes | `float` |
-| `precision` | Converts amount to lowest unit. See [Understanding precision](/transactions/precision) | No | `int64` |
+| `precise_amount` | Total amount to be received in its smallest unit. Send either `precise_amount` or `amount`, not both — see [Precision](/transactions/precision#using-both-precision-options-together). | Yes | `integer` |
+| `amount` | Total amount to be received as a float. Blnk multiplies by `precision` to store `precise_amount`. | Yes | `float` |
+| `precision` | Precision for the transaction currency. See [Understanding precision](/transactions/precision) | No | `int64` |
 | `reference` | Unique transaction reference | Yes | `string` |
 | `currency` | Asset class code. | Yes | `string` |
 | `sources` | Array of source objects with `identifier` and `distribution` fields | Yes | `array` |
@@ -144,7 +145,7 @@ curl -X POST http://localhost:5001/transactions \
   -H "Content-Type: application/json" \
   -H "X-Blnk-Key: <api-key>" \
   -d '{
-    "amount": 30000,
+    "precise_amount": 3000000,
     "precision": 100,
     "reference": "ref_001adcfgf",
     "currency": "USD",
@@ -156,7 +157,7 @@ curl -X POST http://localhost:5001/transactions \
         },
         {
             "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-            "distribution": "20000"
+            "precise_distribution": "2000000"
         },
         {
             "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
@@ -170,14 +171,14 @@ curl -X POST http://localhost:5001/transactions \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 30000,
+  precise_amount: 3000000,
   precision: 100,
   reference: 'ref_001adcfgf',
   currency: 'USD',
   atomic: true,
   sources: [
     { identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f', distribution: '10%' },
-    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', distribution: '20000' },
+    { identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d', precise_distribution: '2000000' },
     { identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b', distribution: 'left' },
   ],
   destination: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
@@ -188,14 +189,14 @@ const response = await blnk.Transactions.create({
 ```go Go wrap expandable
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      30000,
+    PreciseAmount: 3000000,
     Precision:   100,
     Reference:   "ref_001adcfgf",
     Currency:    "USD",
     Description: "Payment to Sarah",
     Sources: []blnkgo.Source{
       {Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f", Distribution: "10%"},
-      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", Distribution: "20000"},
+      {Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", PreciseDistribution: "2000000"},
       {Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b", Distribution: "left"},
     },
     Destination: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
@@ -330,7 +331,7 @@ You can specify distribution amounts in three ways:
 
 | Type | Description | Example |
 | :--- | :--- | :--- |
-| **Specific amount** | Fixed amount to send | `"distribution": "20000"` |
+| **Specific amount** | Fixed amount to send. Use `precise_distribution` when the transaction uses `precise_amount`. | `"precise_distribution": "2000000"` |
 | **Percentage** | Percentage of total amount | `"distribution": "10%"` |
 | **Remaining** | Leftover amount after other distributions | `"distribution": "left"` |
 

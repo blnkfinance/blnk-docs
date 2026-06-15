@@ -95,11 +95,10 @@ Create a balance with the `ledger_id` of your `Customer Savings Ledger` to repre
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "<customer-savings-ledger-id>",
     "identity_id": "<customer-identity-id>",
     "currency": "USD",
@@ -174,12 +173,11 @@ Schedule a transaction on the ledger with the `scheduled_for` parameter:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 1000,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 100000,
     "precision": 100,
     "reference": "SAV_0001",
     "description": "Scheduled savings deposit",
@@ -199,7 +197,7 @@ async function createScheduledSavingsTransaction(savingsBalanceId, savingsAmount
   const { Transactions } = blnk;
   
   const scheduledSavings = await Transactions.create({
-    amount: savingsAmount,
+    precise_amount: savingsAmount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Scheduled savings deposit",
@@ -225,7 +223,7 @@ func createScheduledSavingsTransaction(savingsBalanceID string, savingsAmount fl
     }
     scheduledSavings, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      savingsAmount,
+            PreciseAmount: savingsAmount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -264,23 +262,21 @@ Update balance metadata and create the next scheduled savings transaction:
 <CodeGroup>
 ```bash cURL wrap expandable
 # After a scheduled savings transaction is applied, update balance metadata:
-curl --request POST \
-  --url http://localhost:5001/balances/<savings-balance-id>/metadata \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances/<savings-balance-id>/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "meta_data": {
       "next_scheduled_savings": "2026-01-25T02:42:19Z"
     }
   }'
 
 # Then create the next scheduled transaction:
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 10000,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 1000000,
     "precision": 100,
     "reference": "sch-savings-1709741652384",
     "description": "Scheduled savings deposit",
@@ -343,7 +339,7 @@ app.post('/webhooks/transactions', async (req, res) => {
         // 2. Create a new scheduled transaction
         const uniqueReference = `sch-savings-${Date.now()}`;
         const scheduledSavings = await Transactions.create({
-          amount: amount,
+          precise_amount: amount * 100,
           precision: 100,
           reference: uniqueReference,
           description: "Scheduled savings deposit",
@@ -452,7 +448,7 @@ func handleTransactionWebhook(w http.ResponseWriter, r *http.Request) {
     uniqueReference := fmt.Sprintf("sch-savings-%d", time.Now().Unix())
     scheduledSavings, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: "Scheduled savings deposit",
@@ -486,11 +482,10 @@ Update the savings frequency on the customer balance:
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/balances/<balance-id>/metadata \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances/<balance-id>/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
   "meta_data": {
     "savings_frequency": "daily"
   }

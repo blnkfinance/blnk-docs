@@ -14,11 +14,15 @@ import Key from "/snippets/key.mdx";
 
 ### Body
 
-<ParamField body="amount" type="float" required>  
-  The transaction amount. If you need to work with amounts that have more than 15 digits, use `precise_amount` instead. See also: [Precision](/transactions/precision).
-</ParamField>
 <ParamField body="precise_amount" type="integer">  
-  The transaction amount with precision applied. Recommended for amounts with more than 15 digits. 
+  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. See [Precision](/transactions/precision).
+
+  <Warning>
+  Either `precise_amount` or `amount` should be provided, not both.
+  </Warning>
+</ParamField>
+<ParamField body="amount" type="float">  
+  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`. The `amount` field supports up to 15 digits; use `precise_amount` for larger values. See also: [Precision](/transactions/precision).
 </ParamField>
 <ParamField body="currency" type="string" required>
   The currency of the transaction amount is in.
@@ -47,7 +51,7 @@ import Key from "/snippets/key.mdx";
   Specifies whether the transaction should proceed even if the source’s balance is insufficient. If enabled and the source has less than the required amount, the balance will become negative. See also: [Overdrafts](/transactions/overdrafts)
 </ParamField>
 <ParamField body="inflight" type="boolean" default="false">
-  Specifies that the transaction should be held until certain conditions are met. See also: [Inflight transactions](/transactions/inflight).
+  Specifies that the transaction should be held until certain conditions are met. See also: [Create inflight](/transactions/inflight/creating-inflight).
 </ParamField>
 <ParamField body="inflight_expiry_date" type="string">
   Specifies the date and time when an inflight transaction should expire. Once expired, the transaction is voided and the amount is rolled back.
@@ -55,7 +59,7 @@ import Key from "/snippets/key.mdx";
   Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
 </ParamField>
 <ParamField body="inflight_commit_date" type="string">
-  When **`inflight`** is true, the date and time when Blnk should **automatically commit** the inflight transaction (same ledger outcome as [Update Inflight](/reference/update-inflight) with **`commit`**). See [Schedule inflight commits](/transactions/inflight#schedule-inflight-commits).
+  When **`inflight`** is true, the date and time when Blnk should **automatically commit** the inflight transaction (same ledger outcome as [Update Inflight](/reference/update-inflight) with **`commit`**). See [Schedule inflight commits](/transactions/inflight/updating-inflight#schedule-inflight-commits).
 
   Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
 </ParamField>
@@ -84,7 +88,7 @@ import Key from "/snippets/key.mdx";
 <Info>All parameters from the request body also mean the same in the corresponding response JSON.</Info>
 
 <ResponseField name="precise_amount" type="integer">
-  This is computed by `amount` x `precision`. Learn why this is important: [Why use precision](/transactions/precision#1-why-use-precision)
+  The amount stored in the ledger in its smallest unit. When you pass `amount`, Blnk computes this as `amount` x `precision`. See [Precision](/transactions/precision).
 </ResponseField>
 <ResponseField name="transaction_id" type="string">
   Unique id of the transaction.
@@ -98,7 +102,7 @@ import Key from "/snippets/key.mdx";
   The status of the transaction. See the following: [Transaction statuses](/transactions/transaction-lifecycle#statuses).
 </ResponseField>
 <ResponseField name="hash" type="string">
-  `SHA-256` hash of the transaction details. Learn more: [Transaction hashing](/transactions/hash)
+  Per-row SHA-256 fingerprint of the transaction's core details. The optional global hash chain is separate and not returned in API responses. Learn more: [Transaction hashing](/transactions/hash)
 </ResponseField>
 <ResponseField name="created_at" type="string">
   Indicates the date & time the transaction was created.
@@ -109,12 +113,11 @@ import Key from "/snippets/key.mdx";
 
 <RequestExample>
 ```bash
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 1250.34,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 125034,
     "currency": "USD",
     "precision": 100,
     "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
@@ -130,7 +133,6 @@ curl --request POST \
 ```json 201
 {
     "amount": 1250.34,
-    "rate": 0,
     "precision": 100,
     "precise_amount": 125034,
     "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
@@ -148,6 +150,47 @@ curl --request POST \
     "scheduled_for": "0001-01-01T00:00:00Z",
     "inflight_expiry_date": "0001-01-01T00:00:00Z",
     "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 400
+{
+  "errors": "amount: either amount or precise_amount is required.",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount is required."
+  }
+}
+```
+
+```json 400
+{
+  "error": "failed to apply transaction to balances: insufficient funds in source balance",
+  "error_detail": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "message": "failed to apply transaction to balances: insufficient funds in source balance"
+  }
+}
+```
+
+```json 404
+{
+  "error": "Balance with ID 'bln_00000000-0000-0000-0000-000000000000' not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "Balance with ID 'bln_00000000-0000-0000-0000-000000000000' not found",
+    "details": {}
+  }
+}
+```
+
+```json 409
+{
+  "error": "transaction validation failed: reference errcompat-dup-4075 has already been used",
+  "error_detail": {
+    "code": "TXN_DUPLICATE_REFERENCE",
+    "message": "transaction validation failed: reference errcompat-dup-4075 has already been used"
+  }
 }
 ```
 </ResponseExample>

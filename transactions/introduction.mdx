@@ -45,7 +45,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 750,
+    "precise_amount": 75000,
     "reference": "ref_001adcfgf",
     "currency": "USD",
     "precision": 100,
@@ -60,7 +60,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 750,
+  precise_amount: 75000,
   reference: 'ref_001adcfgf',
   currency: 'USD',
   precision: 100,
@@ -76,7 +76,7 @@ const response = await blnk.Transactions.create({
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      750,
+    PreciseAmount: 75000,
     Reference:   "ref_001adcfgf",
     Currency:    "USD",
     Precision:   100,
@@ -124,7 +124,8 @@ Learn more about [Overdrafts](/transactions/overdrafts) and [Negative Balances](
     <Tab title="Request">
         | Field | Description | Required | Type
         | --- | --- | --- | ---
-        | `amount` | The transaction amount.| Yes | `float`
+        | `precise_amount` | Transaction amount in its smallest unit (recommended). Send either `precise_amount` or `amount`, not both — see [Precision](/transactions/precision#using-both-precision-options-together). | Yes | `integer`
+        | `amount` | Transaction amount as a float. Blnk multiplies by `precision` to store `precise_amount`. | Yes | `float`
         | `reference` | Your unique reference to ensure idempotency. | Yes | `string`
         | `currency` | Short code for your asset class. | Yes | `string`
         | `precision` | Precision for the currency/asset passed. See also: [Precision](/transactions/precision) | No | `int64`
@@ -187,15 +188,11 @@ To learn about filtering directly with operators like `eq`, `gt`, `between`, and
 
 ---
 
-## Verifying transactions
-
-After recording a transaction, you can verify its status using different methods depending on whether you're using the default queue system or the skip queue feature.
-
-### Verifying transactions with queue (default)
+## Verifying transactions with queue enabled
 
 When using the default queue system, every transaction starts as `QUEUED`. To verify your transaction status, you have two options:
 
-1. **Webhooks**: Blnk sends [webhook notifications](/advanced/notifications) when transaction states change.
+1. **Webhooks**: Blnk sends [webhook notifications](/webhooks/events#transactions) when transaction states change.
 2. **Direct API calls**: Query the transaction status using the reference or transaction ID. See below: <br/>
     <Tabs>
       <Tab title="By reference (direct endpoint)">
@@ -310,7 +307,9 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
       </Tab>
     </Tabs>
 
-### Verifying transactions without queue (skip queue)
+---
+
+## Verifying transactions without queue disabled
 
 When using `skip_queue: true`, transactions are processed immediately and you can verify them from the direct response. Learn more about [skip queue](/transactions/transaction-lifecycle#skip-transaction-queue).
 
@@ -320,7 +319,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 750,
+    "precise_amount": 75000,
     "reference": "ref_001adcfgf",
     "currency": "USD",
     "precision": 100,
@@ -334,7 +333,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 750,
+  precise_amount: 75000,
   reference: 'ref_001adcfgf',
   currency: 'USD',
   precision: 100,
@@ -349,7 +348,7 @@ const response = await blnk.Transactions.create({
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      750,
+    PreciseAmount: 75000,
     Reference:   "ref_001adcfgf",
     Currency:    "USD",
     Precision:   100,
@@ -408,22 +407,16 @@ Available in version 0.11.0 and later. For versions 0.10.8 and older, see our [i
 
 Blnk performs comprehensive balance checks before processing any transaction to ensure you have sufficient funds available. The system computes an available balance by calculating `balance - inflight_debit_balance` on the source balance. 
 
-<Info>
-  Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Inflight transactions](/transactions/inflight).
-</Info>
+Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Create inflight](/transactions/inflight/creating-inflight).
 
 If the transaction amount is more than the available balance, the source has insufficient funds and:
 
 1. The transaction is rejected and status is recorded as `REJECTED`.
 2. A webhook notification to inform your system of the rejected transaction and a reason in its `meta_data`.
 
-### Using overdrafts
-
-If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request.
-
-<Card title="Learn about overdrafts" icon="credit-card" href="/transactions/overdrafts">
-  Overdrafts and negative balances.
-</Card>
+<Note>
+If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request. [Learn more](/transactions/overdrafts).
+</Note>
 
 ---
 

@@ -18,7 +18,9 @@ Precision is a feature that converts these decimals into integers by converting 
 * Bitcoin to satoshi (BTC 0.248917 becomes 24891700 satoshis)
 * Ethereum to wei (ETH 0.189207535698279 becomes 189207535698279000 wei)
 
-Blnk uses the `precise_amount` parameter to store amounts with precision applied in your ledger.
+When recording transactions, pass the smallest unit in `precise_amount` and include `precision` so Blnk can derive the human-readable `amount` in responses. 
+
+Alternatively, you can pass a float in `amount` and let Blnk convert it to an integer using `precision`.
 
 ---
 
@@ -52,21 +54,119 @@ Follow these steps to calculate the best precision value for an asset class:
 
 ## Applying precision
 
-You can apply precision to amounts in your ledger using one of two options:
+You can apply precision to amounts in your ledger in one of two ways. 
 
-1. The `amount` field
-2. The `precise_amount` field
+1. Use **`precise_amount`** (recommended) to pass the smallest unit directly, or 
+2. Pass a float in **`amount`** and let Blnk convert it using `precision`.
 
-### Option 1: Using the `amount` field
+<Tabs>
+<Tab title="Using precise amount">
 
-To apply precision with the `amount` field, enter the amount as a floating-point value and specify its precision value when recording a transaction.
+<Info>Available in version 0.10.1 or later</Info>
+
+Pass the amount in its smallest unit in `precise_amount`, and include the corresponding `precision` value. 
+
+Blnk stores `precise_amount` as the ledger integer and returns the human-readable `amount` in responses (`amount = precise_amount / precision`).
+
+* Convert the amount to its smallest unit. [Learn how](#determining-your-precision-value)
+* Enter this value directly into the `precise_amount` field of your request.
+* Include the corresponding `precision` value.
+
+<CodeGroup>
+```bash cURL wrap {5,6}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 75023,
+    "precision": 100,
+    "reference": "ref_abc123",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet funding"
+  }'
+```
+
+```javascript TypeScript wrap {2,3}
+const response = await blnk.Transactions.create({
+  precise_amount: 75023,
+  precision: 100,
+  reference: 'ref_abc123',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Wallet funding',
+});
+```
+
+```go Go wrap {3,4}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    PreciseAmount: 75023,
+    Precision:     100,
+    Reference:     "ref_abc123",
+    Currency:      "USD",
+    Source:        "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    Destination:   "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Description:   "Wallet funding",
+  },
+})
+```
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `precise_amount` | Integer | The transaction value in its smallest unit (e.g. 75023 cents for USD 750.23). |
+| `precision` | Number | The precision value (e.g. 100 converts USD to cents) |
+
+```json Response {6,8}
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_001adcfgf",
+  "amount": 750.23,
+  "precision": 100,
+  "precise_amount": 75023,
+  "currency": "USD",
+  "description": "For fees",
+  "status": "QUEUED",
+  "created_at": "2024-02-20 05:28:03 UTC"
+}
+```
+
+When using `precise_amount` with multiple sources or destinations, use `precise_distribution` instead of `distribution` for fixed amounts in your `sources` or `destinations` array. 
+
+Percentages (`"10%"`) and the remainder (`"left"`) still use `distribution`.
+
+```json Example with precise_distribution wrap
+{
+  ...
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "precise_distribution": "2300000"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "left"
+    }
+  ]
+}
+```
+
+See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations) for more details.
+
+</Tab>
+
+<Tab title="Using amount">
+
+Pass the amount as a floating-point value in `amount` and specify its `precision` value. Blnk multiplies `amount` by `precision` to store `precise_amount`.
 
 <Warning>
-**Important to note:**
-
-The `amount` field supports up to 15 digits. Exceeding this will throw [a rounding error](/transactions/precision#more-than-15-digits-in-the-amount-field) or truncation; switch to `precise_amount` for accuracy with larger values.
+The `amount` field only supports up to 15 digits. Exceeding this will throw [a rounding error](/transactions/precision#more-than-15-digits-in-the-amount-field) or truncation; switch to `precise_amount` for accuracy with larger values.
 </Warning>
-
 
 <CodeGroup>
 ```bash cURL wrap
@@ -116,131 +216,17 @@ transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequ
 | `amount` | Float | The transaction value as is. |
 | `precision` | Number | The precision value (e.g. 100 converts USD to cents) |
 
-The resulting `precise_amount` is stored and used to compute your ledger balances. 
+The resulting `precise_amount` is stored and used to compute your ledger balances.
 
-```json Response
-{
-  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-  "reference": "ref_001adcfgf",
-  "amount": 750.23,
-  "precision": 100,
-  "precise_amount": 75023,
-  "currency": "USD",
-  "description": "For fees",
-  "status": "QUEUED",
-  "created_at": "2024-02-20 05:28:03 UTC"
-}
-```
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `precise_amount` | Number | The amount with precision applied. |
-
-### Option 2: Using the `precise_amount` field
-
-<Info>Available in version 0.10.1 or later</Info>
-
-To apply precision with the `precise_amount` field:
-
-* Convert the amount to its smallest unit.
-* Enter this value directly into the `precise_amount` field of your request.
-* Include the corresponding `precision` value.
-
-
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "precise_amount": 189207535698279000,
-    "precision": 1000000000000000000,
-    "reference": "ref_abc123",
-    "currency": "ETH",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "description": "Wallet funding"
-  }'
-```
-
-```javascript TypeScript wrap
-const response = await blnk.Transactions.create({
-  precise_amount: 189207535698279000,
-  precision: 1000000000000000000,
-  reference: 'ref_abc123',
-  currency: 'ETH',
-  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
-  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
-  description: 'Wallet funding',
-});
-```
-
-```go Go wrap
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: 189207535698279000,
-    Precision:     1000000000000000000,
-    Reference:     "ref_abc123",
-    Currency:      "ETH",
-    Source:        "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    Destination:   "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    Description:   "Wallet funding",
-  },
-})
-```
-</CodeGroup>
-
-The example above correctly logs an ETH amount (18 digits) with full precision down to the smallest unit as shown below: 
-
-```json Response
-{
-    "precise_amount": 189207535698279000,
-    "amount": 0.189207535698279,
-    "amount_string": "0.189207535698279",
-    "rate": 1,
-    "precision": 1000000000000000000,
-    "transaction_id": "txn_d2616e76-5ec6-4621-afe0-c4e3b1d848cb",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "reference": "ref_abc123",
-    "currency": "ETH",
-    "description": "Wallet funding",
-    "status": "QUEUED"
-}
-```
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `amount_string` | String | Returns the amount with precision applied without rounding errors or cut offs. |
-
-> **Please note:** <br/> When using `precise_amount` with multiple sources or destinations, use `precise_distribution` instead of `distribution` in your `sources` or `destinations` array. <br/> <br/> This ensures accuracy when specifying fixed amounts with precision applied. 
-
-```json Example with precise_distribution wrap
-{
-  ...
-  "destinations": [
-    {
-      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-      "precise_distribution": "2300000"
-    },
-    {
-      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-      "distribution": "left"
-    }
-  ]
-}
-```
-
-> See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations) for more details.
+</Tab>
+</Tabs>
 
 ---
 
 ## Important considerations
 
-1. `amount` and `precise_amount` cannot be passed simultaneously when recording a transaction.
-2. Ensure that your precision value converts the target amount to the lowest unit possible for its asset class. For example, while 100 works for most fiat currencies, it is not advisable to use it for cryptocurrencies like Bitcoin or Ethereum. 
+1. `amount` and `precise_amount` cannot be passed simultaneously when recording a transaction. Prefer `precise_amount` for consistency across your integration.
+2. Ensure that your precision value converts the target amount to the lowest unit possible for its asset class. For example, while 100 works for most fiat currencies, it is not advisable to use it for cryptocurrencies like Bitcoin or Ethereum.
 
 3. Be consistent with how precision is applied in your application. Transactions with the same `currency` should always have the same precision applied to their amounts.
 
@@ -250,25 +236,61 @@ The example above correctly logs an ETH amount (18 digits) with full precision d
 
 ## Error handling
 
-### More than 15 digits in the `amount` field
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
 
-When you pass a number with more than 15 digits in the `amount` field:
+[Create transaction](/reference/create-transaction) returns `400 TXN_VALIDATION_ERROR` when the amount fields in your request fail validation.
 
-```json
+<Tabs>
+<Tab title="Missing amount fields">
+
+Neither `amount` nor `precise_amount` is set:
+
+```json 400 Bad Request wrap
 {
-  "errors:": "amount: amount has more than 15 significant digits which may cause rounding errors; use precise_amount instead"
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount is required."
+  },
+  "errors": "amount: either amount or precise_amount is required."
 }
 ```
 
-### Using both precision options together
+</Tab>
 
-When you pass both the `amount` and `precise_amount` fields in your request:
+<Tab title="Both fields exist">
 
-```json
+Both `amount` and `precise_amount` are sent in the same request:
+
+```json 400 Bad Request wrap
 {
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount should be provided, not both."
+  },
   "errors": "amount: either amount or precise_amount should be provided, not both."
 }
 ```
+
+</Tab>
+
+<Tab title="15-digit limit">
+
+`amount` has more than 15 significant digits:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount has more than 15 significant digits which may cause rounding errors; use precise_amount instead"
+  },
+  "errors": "amount: amount has more than 15 significant digits which may cause rounding errors; use precise_amount instead"
+}
+```
+
+</Tab>
+</Tabs>
 
 ---
 

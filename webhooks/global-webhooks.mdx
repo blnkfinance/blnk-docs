@@ -1,0 +1,128 @@
+---
+title: "Global webhooks"
+sidebarTitle: "Global webhooks"
+icon: "bell-ring"
+description: "Configure a global webhook URL, understand delivery semantics, and handle ledger-wide event notifications from Blnk."
+"og:title": "Global webhooks • Blnk Developer Documentation"
+"og:description": "Configure global webhooks in Blnk, handle payloads, and understand delivery behavior."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Global webhooks send ledger-wide events to a single URL you configure in Blnk. Use them for notifications, reconciliation outcomes, and system errors across your instance.
+
+<Info>Available in version 0.8.4 and later.</Info>
+
+---
+
+## Payload contract
+
+Each delivery is an HTTP `POST` with a JSON body in this shape:
+
+```json transaction.applied wrap expandable
+{
+  "event": "transaction.applied",
+  "data": {
+    "precise_amount": 20000,
+    "amount": 200,
+    "precision": 100,
+    "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
+    "parent_transaction": "",
+    "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+    "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+    "reference": "INV-2025-0008912",
+    "currency": "GBP",
+    "description": "Wallet top-up",
+    "status": "APPLIED",
+    "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+    "allow_overdraft": true,
+    "inflight": false,
+    "skip_queue": false,
+    "created_at": "2025-02-23T09:43:49.623494+01:00",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z"
+  }
+}
+```
+
+| Field | Description | Type |
+| :-- | :-- | :-- |
+| `event` | Event name, for example `transaction.applied`. See [Supported events](/webhooks/events). | String |
+| `data` | Payload for the event—resource fields, error details, or reconciliation results. | Object |
+
+---
+
+## Delivery semantics
+
+Blnk delivers webhooks at least once. Your endpoint may receive the same event more than once, often with an identical payload and `X-Blnk-Signature`.
+
+Make handlers idempotent so a duplicate delivery does not trigger the same side effect twice, for example, sending two emails or crediting a balance twice. Dedupe on a stable key such as the event name plus the resource identifier in data, e.g. `transaction_id`.
+
+<Warning>
+Return a `2xx` response only after you have safely recorded or processed the event.
+</Warning>
+
+<Note>
+If your global webhook endpoint returns a non-`2xx` response, Blnk does not retry the delivery. For configurable retries, use [transaction hooks](/webhooks/transaction-hooks) instead.
+</Note>
+
+---
+
+## Configuration
+
+<Steps>
+<Step title="Set your webhook URL">
+  Add the following to your Blnk configuration:
+
+  <CodeGroup>
+  ```bash blnk.env wrap
+  BLNK_WEBHOOK_URL=https://api.example.com/blnk/webhooks
+  BLNK_WEBHOOK_HEADERS={"Content-Type":"application/json","Authorization":"Bearer <your_auth_token>"}
+  ```
+
+  ```json blnk.json
+  {
+    "notification": {
+      "webhook": {
+        "url": "https://api.example.com/blnk/webhooks",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_auth_token>"
+        }
+      }
+    }
+  }
+  ```
+  </CodeGroup>
+</Step>
+<Step title="Implement your endpoint">
+  1. Accept `POST` requests with a JSON body matching the [payload contract](#payload-contract).
+  2. Optionally verify signatures per [Webhook security](/webhooks/overview#webhook-security-signature-verification).
+  3. Return `2xx` only after you have safely recorded or processed the event.
+</Step>
+<Step title="Handle supported events">
+  Use the `event` field to identify what happened, then route the payload in `data` to the right handler. 
+  
+  See [Supported events](/webhooks/events) for every event name and when it fires.
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Supported events" icon="list" href="/webhooks/events">
+  Event names and descriptions.
+</Card>
+<Card title="Webhooks overview" icon="webhook" href="/webhooks/overview">
+  Global vs transaction hooks and security.
+</Card>
+<Card title="Notification configuration" icon="bell" href="/advanced/configuration/notifications">
+  Set your global webhook URL
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

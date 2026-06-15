@@ -1,0 +1,68 @@
+---
+title: "Metrics"
+sidebarTitle: "Metrics"
+description: "Scrape Prometheus-compatible metrics from the Blnk server and worker processes."
+api: "GET /metrics"
+noindex: true
+"og:title": "Metrics • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Returns OpenTelemetry metrics in **Prometheus text format**. Requires [`enable_observability`](/advanced/configuration/observability) to be `true` on each process you scrape. See [Metrics reference](/advanced/metrics-reference) for metric names, types, and attributes.
+
+Blnk runs the **server** and **worker** as separate processes. Each registers its own `GET /metrics` endpoint on a different port. The path is the same, but the series differ — scrape **both** targets in Prometheus to capture API and async processing signals.
+
+| Endpoint | Process | Port setting | Default URL |
+| :-- | :-- | :-- | :-- |
+| `GET /metrics` | Server | `server.port` | `http://localhost:5001/metrics` |
+| `GET /metrics` | Worker | `queue.monitoring_port` | `http://localhost:5004/metrics` |
+
+See [Health check](/reference/get-health) for the same server/worker split on `GET /health`.
+
+<Warning>
+When observability is disabled, or the process was not restarted after enabling it, `GET /metrics` returns `404`.
+</Warning>
+
+### Authentication
+
+`/metrics` uses `Authorization: Bearer <token>`, not `X-Blnk-Key`. When `metrics_bearer_token` is set, or [secure mode](/advanced/configuration/server-security#secure-mode) is on without a token configured, bearer authentication applies. See [Metrics endpoint](/advanced/configuration/server-security#metrics-endpoint).
+
+<ParamField header="Authorization" type="string">
+  Bearer token when required. Format: `Bearer <metrics-bearer-token>`.
+</ParamField>
+
+<RequestExample>
+```bash Server
+curl -X GET "http://localhost:5001/metrics" \
+  -H "Authorization: Bearer <metrics-bearer-token>"
+```
+
+```bash Worker
+curl -X GET "http://localhost:5004/metrics" \
+  -H "Authorization: Bearer <metrics-bearer-token>"
+```
+</RequestExample>
+
+<ResponseExample>
+```text 200 OK
+# HELP blnk_transaction_total Total transactions by final status and currency
+# TYPE blnk_transaction_total counter
+blnk_transaction_total{currency="USD",status="APPLIED"} 128
+```
+</ResponseExample>
+
+When authentication fails, responses use structured JSON errors. See [API error codes](/advanced/error-codes) for `AUTH_METRICS_TOKEN_REQUIRED`, `AUTH_INVALID_BEARER_TOKEN`, and `AUTH_METRICS_DISABLED`.
+
+```json 401 Unauthorized wrap
+{
+  "error": "metrics bearer token required",
+  "error_detail": {
+    "code": "AUTH_METRICS_TOKEN_REQUIRED",
+    "message": "metrics bearer token required",
+    "details": {}
+  }
+}
+```
+
+<NeedHelp />

@@ -1,0 +1,131 @@
+---
+title: "v13.2 breaking change"
+sidebarTitle: "0.13.2"
+icon: "arrow-right"
+description: "Migration guide for upgrading to Blnk v0.13.2, covering the unique reference database constraint on transactions.reference."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+This migration guide covers the breaking database change introduced in Blnk v0.13.2. Blnk now enforces a **unique index** on `transactions.reference` at the PostgreSQL layer.
+
+If you are upgrading from **v0.13.1 or earlier** and your ledger already contains transaction data, audit for duplicate references before you upgrade.
+
+---
+
+## Breaking changes summary
+
+- **From:** Non-unique index on `reference`; uniqueness enforced only in application logic (with gaps on some queued and bulk paths).
+- **To:** Unique index `idx_transactions_reference_unique` on `blnk.transactions(reference)`.
+- **Impact:** The database migration fails at startup if duplicate references already exist. After upgrade, duplicate references are rejected at the database layer, not only by application checks.
+
+---
+
+## What changed
+
+1. **Unique reference constraint:** Every transaction `reference` must be unique in the database. If two rows share the same reference, the upgrade fails until you fix them.
+2. **Queue recovery index:** The same release also improves recovery of transactions stuck in `QUEUED`. This does not change how you post transactions. See [Queue recovery](/advanced/queue-recovery).
+
+---
+
+## Migration steps
+
+<Steps>
+<Step title="Audit duplicate references">
+  Before upgrading, check whether your database already contains duplicate `reference` values:
+
+  ```sql
+  SELECT reference, COUNT(*) AS duplicate_count
+  FROM blnk.transactions
+  WHERE reference IS NOT NULL AND reference <> ''
+  GROUP BY reference
+  HAVING COUNT(*) > 1
+  ORDER BY duplicate_count DESC, reference;
+  ```
+
+  ```text Example output wrap
+   reference | duplicate_count
+  -----------+---------------
+   ref_123   |               3
+   ref_abc   |               2
+  (2 rows)
+  ```
+
+  <Check>
+  If this query returns no rows, you can proceed to upgrade.
+  </Check>
+</Step>
+
+<Step title="Resolve duplicates before upgrade">
+  This query finds duplicate references, keeps the oldest row in each group unchanged, and renames every later row by appending `_dup_` plus its `transaction_id`.
+
+  ```sql
+  UPDATE blnk.transactions t
+  SET reference = t.reference || '_dup_' || t.transaction_id
+  FROM (
+    SELECT transaction_id,
+           ROW_NUMBER() OVER (
+             PARTITION BY reference
+             ORDER BY created_at ASC
+           ) AS row_num
+    FROM blnk.transactions
+    WHERE reference IS NOT NULL AND reference <> ''
+  ) ranked
+  WHERE t.transaction_id = ranked.transaction_id
+    AND ranked.row_num > 1;
+  ```
+
+  ```text Example output wrap
+  transaction_id     | reference
+  -------------------+---------------------------------
+  txn_f482a1b3-...   | ref_123
+  txn_c5d9e2a1-...   | ref_123_dup_txn_c5d9e2a1-...
+  txn_a8b3c1d2-...   | ref_123_dup_txn_a8b3c1d2-...
+  (3 rows)
+  ```
+
+  The earliest `ref_123` row stays as-is. The two later rows get unique references so the upgrade can proceed.
+
+  Re-run the audit query from step 1 until it returns no rows.
+</Step>
+
+<Step title="Upgrade Blnk to v0.13.2 or later">
+  Deploy Blnk **v0.13.2** or a later release. Migrations run automatically on startup and apply `1770611011.sql`.
+
+  <Note>
+  The unique index ships in **v0.13.2**. Later releases (including all **v0.14.x** patches) inherit the same migration unchanged — none of them introduce this constraint separately.
+  </Note>
+</Step>
+
+<Step title="Verify the constraint">
+  Confirm the unique index exists:
+
+  ```sql
+  SELECT indexname, indexdef
+  FROM pg_indexes
+  WHERE schemaname = 'blnk'
+    AND tablename = 'transactions'
+    AND indexname = 'idx_transactions_reference_unique';
+  ```
+
+  Optionally, post a transaction with a `reference` that already exists in your ledger. Blnk should reject the duplicate.
+
+  <Check>
+  The index is present and duplicate references are rejected.
+  </Check>
+</Step>
+</Steps>
+
+---
+
+## Technical details
+
+- **Migration file:** `1770611011.sql`
+- **Index name:** `idx_transactions_reference_unique`
+- **Legacy index:** Before 0.13.2, `reference` had a non-unique index (`idx_transactions_reference` from the initial schema).
+
+<Note>This migration guide covers the breaking change in Blnk v0.13.2. For other features in this release, such as Search via Database, refer to the [release notes](/changelog/blnk-core).</Note>
+
+---
+
+<NeedHelp />

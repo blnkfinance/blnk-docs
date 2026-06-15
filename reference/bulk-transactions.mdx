@@ -25,14 +25,14 @@ import Key from "/snippets/key.mdx";
   When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response.
 </ParamField>
 <ParamField body="skip_queue" type="boolean" default="false">  
-  When `true`, transactions bypass the queue system. Learn more: [Why we use queueing](/guides/concurrency#queuing-transactions).
+  When `true`, transactions bypass the queue and are processed inline in the request. Duplicate-reference handling differs from the default queued path. See [Duplicate references](/transactions/bulk-transactions#duplicate-references).
 </ParamField>
 <ParamField body="transactions" type="object[]" required>
-  An array of transaction objects.
+  An array of transaction objects. Max number of transactions allowed is 10,000.
 
   ```json Sample transaction object
   {
-    "amount": 358.90,
+    "precise_amount": 35890,
     "precision": 100,
     "reference": "unique_reference_1",
     "description": "Transaction description",
@@ -50,28 +50,65 @@ import Key from "/snippets/key.mdx";
   Identifier for the bulk batch. Use this value as `parent_transaction` when [searching for child transactions](/transactions/bulk-transactions#retrieving-transactions-in-a-batch), or when [committing or voiding](/transactions/bulk-transactions#commit-or-void-bulk-inflight) an inflight batch.
 </ResponseField>
 <ResponseField name="status" type="string" required>
-  When `run_async` is false, value is `applied` if transactions posted immediately, or `inflight` if the batch was created in inflight status. When `run_async` is true, value is `queued` while the batch runs in the background.
+  When `run_async` is `false`, `applied` means the bulk request was accepted. With default queueing (`skip_queue: false`), children are processed asynchronously — `applied` does not mean every child is already `APPLIED` on balances. With `skip_queue: true`, children are processed inline before the response returns. Value is `inflight` when `inflight: true`. When `run_async` is `true`, value is `processing`.
 </ResponseField>
 <ResponseField name="transaction_count" type="integer">
-  Number of transactions in the batch. Present when processing finished synchronously and the batch succeeded (or when reported in webhooks for async success).
+  Number of transactions in the request. Present on successful synchronous responses. On the default queued path, this reflects items submitted, not necessarily rows created — see [Duplicate references](/transactions/bulk-transactions#duplicate-references).
 </ResponseField>
 <ResponseField name="message" type="string">
   Human-readable status message. Included on the immediate response when `run_async` is `true` (for example, confirming that background processing started).
 </ResponseField>
 
 <ResponseExample>
-```json run_async = false
+```json 200
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "applied",
   "transaction_count": 4
 }
 ```
-```json run_async = true
+
+```json 400
 {
-  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-  "status": "queued",
-  "message": "Bulk transaction processing started"
+  "error": "transactions cannot be empty",
+  "error_detail": {
+    "code": "TXN_BULK_EMPTY",
+    "message": "transactions cannot be empty"
+  }
+}
+```
+
+```json 400
+{
+  "error": "too many transactions; max is 10000",
+  "error_detail": {
+    "code": "TXN_BULK_LIMIT_EXCEEDED",
+    "message": "too many transactions; max is 10000"
+  }
+}
+```
+
+```json 400
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "transactions[1]: currency: cannot be blank; destination: either destination or destinations is required, not both.",
+    "details": {
+      "index": 1
+    }
+  },
+  "errors": "transactions[1]: currency: cannot be blank; destination: either destination or destinations is required, not both."
+}
+```
+
+```json 409
+{
+  "batch_id": "bulk_305873c0-518a-470c-bf3a-bc3f3e0b562c",
+  "error": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded.",
+  "error_detail": {
+    "code": "TXN_DUPLICATE_REFERENCE",
+    "message": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded."
+  }
 }
 ```
 </ResponseExample>

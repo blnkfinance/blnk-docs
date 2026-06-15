@@ -7,6 +7,60 @@ description: "Latest features, releases, and improvements."
 "og:description": "Explore the Blnk Core changelog. Track our releases, fixes, enhancements, and version history for Blnk's core platform"
 ---
 
+<Update label="0.15.0" description="Jul 6, 2026 · Pre-release">
+  <Info>
+  0.15.0 is a pre-release.
+  </Info>
+
+  ## Structured API errors
+
+  Error responses include a structured `error_detail` object with a stable code and clear messages. The response also includes the `error` field.
+
+  ```json Error response
+  {
+    "error": "transaction not found",
+    "error_detail": {
+      "code": "TXN_NOT_FOUND",
+      "message": "transaction not found",
+      "details": { }
+    }
+  }
+  ```
+
+  <Warning>
+    If your app checks status codes or error message text, review the [0.15.0 migration guide](/changelog/v15-migration) before upgrading.
+  </Warning>
+
+  [API error codes →](/advanced/error-codes)
+
+  ## Queued inflight commit and void
+
+  Commit and void for inflight transactions now go through the queue by default. Bulk commit and void also follow the same default. 
+  
+  Enable `skip_queue` in the request body when you need the previous synchronous behavior.
+
+  [Commit & void inflight →](/transactions/inflight/updating-inflight)
+
+  ## Transaction hash chain
+
+  Blnk now supports an optional global hash chain to detect tampering in your transaction history and confirm ledger integrity on demand. 
+  
+  It is disabled by default; enable it in config and run `blnk verify-chain` from your Core deployment.
+
+  [Transaction hashing →](/transactions/hash)
+
+  ## Fixes & improvements
+
+  1. Added DELETE endpoints for balance monitors and [identities](/reference/delete-identity).
+  2. **Reconciliation webhooks:** Blnk now sends `reconciliation.completed` and `reconciliation.failed` webhooks when a run completes or fails. [Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) now return only `reconciliation_id` in the start response. [0.15.0 migration guide →](/changelog/v15-migration#reconciliation-response-changed) · [Supported events →](/webhooks/events#reconciliations)
+  3. Removed `rate`, `currency_multiplier`, and `modification_ref` from API responses.
+  4. Added a `system.error` webhook for internal failures during async processing.
+  5. Increased default worker and database pool limits. 
+  6. Added configurable [request and upload size caps](/advanced/configuration/server-security#request-and-payload-limits). 
+  7. [Bulk create](/reference/bulk-transactions) and [instant reconciliation](/reference/instant-reconciliation) now enforce max **10,000** items per request.
+  8. General bug fixes and performance improvements.
+</Update>
+
 <Update label="0.14.5" description="Jun 8, 2026">
   ## Fixes & improvements
 
@@ -17,13 +71,13 @@ description: "Latest features, releases, and improvements."
 <Update label="0.14.4" description="Jun 6, 2026">
   ## Remote monitoring exporter
 
-  Blnk now supports optional remote export of logs, traces, and metrics through a monitoring DSN. Set **`BLNK_MONITORING_DSN`** to forward observability data to your monitoring backend. Exported log payloads redact sensitive fields, bearer tokens, DSNs, and query values.
+  Blnk now supports optional remote export of logs, traces, and metrics through a Cloud DSN. Set **`BLNK_CLOUD_DSN`** to forward observability data to your Blnk Cloud monitoring project. Exported logs have sensitive values redacted.
 
-  [Observability configuration →](/advanced/configuration/observability)
+  [Monitoring in Blnk →](/advanced/monitoring)
 
   ## Fixes & improvements
 
-  1. **Scheduled inflight commits:** Fixed a bug where [scheduled inflight commits](/transactions/inflight#schedule-inflight-commits) did not commit at the time you set. Transactions with `inflight_commit_date` now commit automatically as expected.
+  1. **Scheduled inflight commits:** Fixed a bug where [scheduled inflight commits](/transactions/inflight/updating-inflight#schedule-inflight-commits) did not commit at the time you set. Transactions with `inflight_commit_date` now commit automatically as expected.
   2. **Typesense search:** Fixed a bug that prevented transactions from reliably indexing into [Typesense search](/search/typesense/introduction), so recorded transactions could not be found when searching.
 </Update>
 
@@ -34,11 +88,11 @@ description: "Latest features, releases, and improvements."
   
   The master key still has full access to create, list, and revoke keys for any owner.
 
-  [Learn more →](/advanced/secure-blnk#owner-context)
+  [Learn more →](/api-keys/owner-context)
 
   ## Fixes & improvements
 
-  1. **Hook management:** Creating, updating, viewing, listing, and deleting [transaction hooks](/hooks/create-hooks) now requires the master key. Regular API keys return `403 Forbidden`.
+  1. **Hook management:** Creating, updating, viewing, listing, and deleting [transaction hooks](/webhooks/transaction-hooks) now requires the master key. Regular API keys return `403 Forbidden`.
 </Update>
 
 <Update label="0.14.2" description="May 18, 2026">
@@ -64,7 +118,7 @@ description: "Latest features, releases, and improvements."
   
   This lets Blnk reserve funds immediately like a normal inflight transaction and **automatically commits** at the date and time you specify, without calling manually committing the transaction yourself.
 
-  [Schedule inflight commits →](/transactions/inflight#schedule-inflight-commits)
+  [Schedule inflight commits →](/transactions/inflight/updating-inflight#schedule-inflight-commits)
 </Update>
 
 <Update label="0.14.0" description="Apr 9, 2026">
@@ -76,7 +130,9 @@ description: "Latest features, releases, and improvements."
 
   [Handling hot balances →](/guides/hot-balances)
 
-  [Transaction configuration →](/advanced/configuration/transactions) · [Queue configuration →](/advanced/configuration/queue)
+  [Transaction configuration →](/advanced/configuration/transactions) 
+  
+  [Queue configuration →](/advanced/configuration/queue)
 
   ## Fixes & improvements
 
@@ -109,6 +165,16 @@ description: "Latest features, releases, and improvements."
   Filter ledgers, balances, transactions, and identities directly from your database using the new Filter API. To use, just send POST requests to `/{collection}/filter` with JSON filters, sorting, and pagination; no Typesense setup required.
   
   [Read docs](/search/db/filtering)
+
+  ## Fixes & improvements
+
+  1. **Unique reference constraint:** Blnk now enforces a unique database index on `transactions.reference` (`idx_transactions_reference_unique`), strengthening idempotency guarantees at the storage layer.
+
+  <Warning>
+    This release includes a breaking database change: transaction `reference` values must be unique. Upgrade fails if your database already contains duplicate references. 
+    
+    Review the [0.13.2 migration guide](/changelog/v13-2-migration) before upgrading.
+  </Warning>
 </Update>
 
 <Update label="0.13.1" description="Feb 5, 2026">
@@ -429,7 +495,7 @@ description: "Latest features, releases, and improvements."
   }
   ```
 
-  [Set your API keys →](/advanced/secure-blnk#authentication-methods)
+  [Set your API keys →](/api-keys/overview)
 
   ## Overdraft limits
 
@@ -579,7 +645,7 @@ description: "Latest features, releases, and improvements."
 
   ## Added queued balances
 
-  [Queued balances](/balances/introduction#queued-balances) help estimate the available or expected balance of a ledger. Unlike [inflight balances](/transactions/inflight), which require certain conditions to be met (commit or void) before being applied, queued balances simply represent the total amount of transactions waiting in the queue, regardless of conditions.
+  [Queued balances](/balances/introduction#queued-balances) help estimate the available or expected balance of a ledger. Unlike [inflight balances](/transactions/inflight/creating-inflight#inflight-balance-tracking), which require certain conditions to be met (commit or void) before being applied, queued balances simply represent the total amount of transactions waiting in the queue, regardless of conditions.
 
   To view the queued balances of a ledger balance, call the [Get Balance](/reference/get-balance) endpoint:
 

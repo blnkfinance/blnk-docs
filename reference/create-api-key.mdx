@@ -71,13 +71,12 @@ Available on version 0.10.1 or later. Requires the master key or an API key with
 
 <RequestExample>
 ```json
-curl --request POST \
-  --url http://localhost:5001/api-keys \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/api-keys" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "Service Account",
-    "owner": "owner_id", 
+    "owner": "owner_id",
     "scopes": ["ledgers:read", "balances:write"],
     "expires_at": "2026-03-11T00:00:00Z"
   }'
@@ -96,6 +95,26 @@ curl --request POST \
   "created_at": "2025-11-18T13:39:50.390457762Z",
   "last_used_at": "0001-01-01T00:00:00Z",
   "is_revoked": false
+}
+```
+
+```json 400
+{
+  "error": "owner is required",
+  "error_detail": {
+    "code": "APIKEY_OWNER_REQUIRED",
+    "message": "owner is required"
+  }
+}
+```
+
+```json 403
+{
+  "error": "cannot grant scopes broader than caller",
+  "error_detail": {
+    "code": "AUTH_SCOPE_ESCALATION",
+    "message": "cannot grant scopes broader than caller"
+  }
 }
 ```
 </ResponseExample>

@@ -114,11 +114,10 @@ Create a [ledger](/ledgers/introduction) to organize all customer wallets — ma
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "Customer Wallets Ledger",
     "meta_data": {
         "description": "Ledger for managing customer wallets",
@@ -176,11 +175,10 @@ Create a customer [identity](/identities/introduction) to store user profile inf
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/identities \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/identities" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "identity_type": "individual",
     "first_name": "Alice",
     "last_name": "Johnson",
@@ -250,11 +248,10 @@ func createCustomerIdentity(customerData CustomerData) (string, error) {
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "<customer-wallets-ledger-id>",
     "identity_id": "<customer-identity-id>",
     "currency": "USD",
@@ -323,12 +320,11 @@ Record a deposit from an external source to fund the main wallet:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 1000,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 100000,
     "precision": 100,
     "reference": "DEP-20250225-103000",
     "description": "Initial deposit",
@@ -349,7 +345,7 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
   const { Transactions } = blnk;
   
   const deposit = await Transactions.create({
-    amount: amount,
+    precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Deposit to wallet",
@@ -376,7 +372,7 @@ func depositToWallet(customerBalanceID string, amount float64, uniqueReference, 
     }
     deposit, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -413,12 +409,11 @@ Record a withdrawal from the main wallet to an external destination:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 100,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10000,
     "precision": 100,
     "reference": "WDR-20250225-104500",
     "description": "Wallet withdrawal",
@@ -438,7 +433,7 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
   const { Transactions } = blnk;
   
   const withdrawal = await Transactions.create({
-    amount: amount,
+    precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Withdrawal from wallet",
@@ -464,7 +459,7 @@ func withdrawFromWallet(customerBalanceID string, amount float64, uniqueReferenc
     }
     withdrawal, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -494,11 +489,10 @@ To create a card balance and link it to the customer:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "<customer-wallets-ledger-id>",
     "identity_id": "<customer-identity-id>",
     "currency": "USD",
@@ -576,12 +570,11 @@ Record a transaction between both balances to fund your card balance:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 200,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 20000,
     "precision": 100,
     "reference": "TRF-20250225-110000",
     "description": "Transfer to card wallet",
@@ -601,7 +594,7 @@ async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, unique
   const { Transactions } = blnk;
   
   const transfer = await Transactions.create({
-    amount: amount,
+    precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Transfer to card wallet",
@@ -627,7 +620,7 @@ func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, u
     }
     transfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -655,7 +648,7 @@ func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, u
 
 You should now have a fully functional and scalable wallet management system. 
 
-As your application grows, you can expand its capabilities with features like [transaction history](/search/typesense/introduction), [scheduled transfers](/transactions/scheduling), [balance monitors](/balances/balance-monitoring), and [notifications](/hooks/overview) to enhance performance and user experience.
+As your application grows, you can expand its capabilities with features like [transaction history](/search/typesense/introduction), [scheduled transfers](/transactions/scheduling), [balance monitors](/balances/balance-monitoring), and [webhooks](/webhooks/overview) to enhance performance and user experience.
 
 ---
 

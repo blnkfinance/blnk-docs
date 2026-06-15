@@ -1,0 +1,409 @@
+---
+title: "Monitoring in Blnk"
+sidebarTitle: "Monitoring"
+icon: "activity"
+description: "Monitor and debug Blnk Core with logs, traces, and metrics in Blnk Cloud or your own stack."
+"og:title": "Monitoring in Blnk • Blnk Developer Documentation"
+"og:description": "Monitor and debug Blnk Core with logs, traces, and metrics in Blnk Cloud or your own stack."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Running a ledger means caring about correctness, latency, and throughput. 
+
+Monitoring shows whether Blnk is healthy and where problems show up, without inferring system state from API responses alone.
+
+This guide helps you set up monitoring for your Core. For configuration flags, see [Observability configuration](/advanced/configuration/observability).
+
+---
+
+## Quick setup: Blnk Cloud
+
+<Info>Requires Blnk Core 0.14.4 or later.</Info>
+
+When something breaks in your production ledger, you need to see what happened: which request failed, where time was spent, etc. 
+
+Waiting on another team for logs slows that down and creates bottlenecks.
+
+<Frame>
+  <img src="/cloud/img/monitoring/cloud-logs.png" alt="Blnk Cloud monitoring workspace showing log lines from the server and worker" />
+</Frame>
+
+Blnk Cloud includes built-in monitoring for your ledger. No Jaeger or Prometheus setup required.
+
+Simply connect your Core instance via a Blnk Cloud DSN and you can start viewing logs, traces, and metrics in the same workspace where you manage your ledger operations. 
+
+To get started:
+
+<Steps>
+<Step title="Sign in to Blnk Cloud">
+  Open your [Blnk Cloud](https://cloud.blnkfinance.com) workspace.
+</Step>
+
+<Step title="Connect your instance">
+  If you have not already, connect your Core deployment to Cloud.
+
+  For a self-hosted Core, follow [Connect your self-hosted Core](/cloud/instances/create). For a managed instance, see [Deploy a managed instance](/cloud/instances/deploy).
+</Step>
+
+<Step title="Enable monitoring and copy the DSN">
+  Open the instance in Cloud, turn on monitoring in the instance settings, then copy the `Blnk Cloud DSN`.
+
+  You will add it to your Core configuration in the next step.
+
+  <Frame>
+  <img src="/cloud/img/instances/instance-monitoring-dsn.png" alt="Blnk Cloud instance settings with monitoring enabled and the Blnk Cloud DSN field visible" />
+  </Frame>
+</Step>
+
+<Step title="Set the Blnk Cloud DSN in your Core config">
+  Turn on observability and add the Blnk Cloud DSN to your configuration file.
+
+<CodeGroup>
+```bash blnk.env wrap
+BLNK_ENABLE_OBSERVABILITY=true
+BLNK_CLOUD_DSN=https://<write-key>@observe.blnk.cloud/<project-id>
+```
+
+```json blnk.json wrap
+{
+  "enable_observability": true,
+  "cloud_dsn": "https://<write-key>@observe.blnk.cloud/<project-id>"
+}
+```
+</CodeGroup>
+
+  Restart the server and worker processes after updating configuration.
+</Step>
+
+<Step title="Confirm data is flowing">
+  Check server logs for a message that monitoring export is enabled, then open your Blnk Cloud monitoring workspace and confirm Blnk data is arriving.
+
+  It may take a few minutes for the first data to show up.
+
+  <Frame>
+  <img src="/cloud/img/monitoring/cloud-traces.png" alt="Blnk Cloud monitoring workspace showing a distributed trace timeline" />
+  </Frame>
+
+<Note>
+When you export to Blnk Cloud, sensitive values (such as tokens and connection strings) are removed before they leave your instance.
+</Note>
+</Step>
+</Steps>
+
+---
+
+## Connect to other tools
+
+If your team already runs a dedicated observability stack, you canexport Blnk logs, traces, and metrics to Jaeger, Prometheus, Grafana, OpenTelemetry Collector, Datadog, or any backend you operate.
+
+Blnk exposes traces and metrics via OpenTelemetry and Prometheus. Logs are written to process output; forward them with your log shipper.
+
+<Steps>
+<Step title="Enable observability in Core">
+  Set `BLNK_ENABLE_OBSERVABILITY=true` on the server and workers.
+
+<CodeGroup>
+```bash blnk.env wrap
+BLNK_ENABLE_OBSERVABILITY=true
+```
+
+```json blnk.json wrap
+{
+  "enable_observability": true
+}
+```
+</CodeGroup>
+
+  Restart both processes after updating configuration.
+</Step>
+
+<Step title="Export logs">
+  Collect `stdout` and `stderr` with your log agent or shipper and forward to any backend.
+</Step>
+
+<Step title="Export traces">
+Set the traces OTLP HTTP endpoint in the environment for the server and worker. Jaeger, Grafana Tempo, and the OpenTelemetry Collector accept OTLP:
+
+```bash blnk.env wrap
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://jaeger:4318
+```
+
+After restart, call any API endpoint and confirm traces for service `BLNK` appear in your backend (Jaeger UI defaults to port `16686`).
+</Step>
+
+<Step title="Export metrics">
+  Blnk supports two export modes. Use one or both.
+
+<Tabs>
+<Tab title="Pull">
+
+Scrape `GET /metrics` from the server and worker. Targets depend on your setup:
+
+| Setup | Server target | Worker target |
+| :-- | :-- | :-- |
+| [Docker Compose](/home/deploy#setting-up-monitoring) | `server:5001` | `worker:5004` |
+| Local Prometheus | `localhost:5001` | `localhost:5004` |
+| Managed service | Your server metrics URL | Your worker metrics URL |
+
+<CodeGroup>
+```yaml No auth wrap
+scrape_configs:
+  - job_name: blnk-server
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["server:5001"]
+
+  - job_name: blnk-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["worker:5004"]
+```
+
+```yaml Auth enabled wrap
+scrape_configs:
+  - job_name: blnk-server
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["server:5001"]
+    authorization:
+      type: Bearer
+      credentials: "<metrics-bearer-token>"
+
+  - job_name: blnk-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["worker:5004"]
+    authorization:
+      type: Bearer
+      credentials: "<metrics-bearer-token>"
+```
+</CodeGroup>
+
+<Warning>
+`/metrics` never accepts `X-Blnk-Key`. Set the [metrics bearer token](/advanced/configuration/server-security#metrics-endpoint) in Core before using the Auth enabled scrape config.
+</Warning>
+
+<CodeGroup>
+```bash blnk.env wrap
+BLNK_METRICS_BEARER_TOKEN=<metrics-bearer-token>
+```
+
+```json blnk.json wrap
+{
+  "server": {
+    "metrics_bearer_token": "<metrics-bearer-token>"
+  }
+}
+```
+</CodeGroup>
+
+Restart both processes after changing the token. Verify scrapes against each target:
+
+<CodeGroup>
+```bash No auth wrap
+curl -X GET "http://localhost:5001/metrics"
+
+curl -X GET "http://localhost:5004/metrics"
+```
+
+```bash Auth enabled wrap
+curl -X GET "http://localhost:5001/metrics" \
+  -H "Authorization: Bearer <metrics-bearer-token>"
+
+curl -X GET "http://localhost:5004/metrics" \
+  -H "Authorization: Bearer <metrics-bearer-token>"
+```
+</CodeGroup>
+
+</Tab>
+
+<Tab title="Push">
+
+Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to send metrics over `OTLP HTTP` to an OpenTelemetry Collector or compatible backend.
+
+Blnk pushes on a 60-second interval.
+
+```bash blnk.env wrap
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
+```
+
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Confirm each signal">
+  After restart and a test API call, verify monitoring export is working end to end. Server and worker logs should report that monitoring export is active.
+
+  ```bash wrap
+  curl http://localhost:5001/health
+  curl http://localhost:5004/health
+  ```
+
+  <CodeGroup>
+  ```json Server 200 OK wrap
+  {
+    "status": "UP"
+  }
+  ```
+
+  ```json Worker 200 OK wrap
+  {
+    "status": "UP",
+    "service": "worker"
+  }
+  ```
+  </CodeGroup>
+
+  Probe metrics on both processes (omit the header when no bearer token is configured):
+
+  ```bash wrap
+  curl -H "Authorization: Bearer <metrics-bearer-token>" http://localhost:5001/metrics | grep blnk_
+
+  curl -H "Authorization: Bearer <metrics-bearer-token>" http://localhost:5004/metrics | grep blnk_
+  ```
+
+  Check traces in your OTLP backend and log lines in your log store.
+</Step>
+</Steps>
+
+---
+
+## Common Blnk scenarios
+
+Match the symptom to the signal that answers it fastest. Start with the recommended signal, then drill into the others if you still need context.
+
+<AccordionGroup>
+<Accordion title="API feels slow">
+**Start with:** Traces
+
+Open a trace for a slow request and compare step duration across the timeline. Look for time spent in database writes, queue enqueue, or external calls rather than assuming the API handler is the bottleneck.
+
+If traces are unavailable, check server logs for the request window and correlate with queue processing logs on the worker.
+</Accordion>
+
+<Accordion title="Transactions stuck in QUEUED">
+**Start with:** Logs and [queue monitoring](/advanced/monitoring-port)
+
+Confirm workers are running and processing jobs. In the queue dashboard, check depth and whether items are moving.
+
+In logs, look for worker startup messages, processing errors, or repeated retries on the same transaction. A healthy queue should show enqueue activity on the server and dequeue/processing activity on workers.
+</Accordion>
+
+<Accordion title="Ledger integrity or processing delay">
+**Start with:** Metrics
+
+Watch background processing signals over time. Rising processing duration or falling throughput can mean hash-chain sealing or related integrity work is falling behind.
+
+Compare server and worker metrics together. Delay on the worker while the API looks healthy often points to queue backlog rather than API saturation.
+</Accordion>
+
+<Accordion title="Errors or 5xx spikes">
+**Start with:** Logs, then traces
+
+Filter logs around the spike window and capture the error message and `transaction_id` or request ID when present. That gives you the failure reason without opening a trace first.
+
+When you need timing context, open the trace for the same request and see which step returned the error or timed out.
+</Accordion>
+
+<Accordion title="Rejection rate spike">
+**Start with:** Metrics, then logs
+
+Check rejection counters grouped by reason (for example insufficient funds, overdraft limit, lock contention). A sudden change in one reason usually narrows the investigation quickly.
+
+Use logs to find example rejected transactions and confirm whether the spike matches a product change, balance issue, or concurrency pattern.
+</Accordion>
+
+<Accordion title="Worker retries climbing">
+**Start with:** Metrics and logs
+
+Sustained worker retries often mean transactions are failing transiently or hitting lock contention. Compare retry rate with queue processing duration on the worker.
+
+In logs, search for retry messages on the worker and note the error text. Repeated retries on the same balance pair may indicate hot-lane or lock contention worth correlating with transaction volume.
+</Accordion>
+
+<Accordion title="Inflight commit or void not completing">
+**Start with:** Logs, then traces
+
+Find the inflight transaction ID in logs and follow commit or void processing on the worker. Confirm the original inflight transaction exists and the follow-up request reached Core.
+
+If processing started but did not finish, use a trace on the commit or void request to see whether failure happened in validation, balance update, or queue handling.
+</Accordion>
+
+<Accordion title="After a deploy, latency or errors increased">
+**Start with:** Traces and metrics
+
+Compare request latency and error rate before and after the deploy window. Open traces for representative slow and failed requests in each window and note which step changed.
+
+Check that both server and worker were restarted with the same monitoring export and configuration changes. Mismatched config between processes is a common post-deploy regression.
+</Accordion>
+
+<Accordion title="Monitoring data not showing up">
+**Start with:** Logs
+
+After restart, server logs should report that monitoring export is enabled. For Blnk Cloud, confirm monitoring is on in the instance settings and the Blnk Cloud DSN is set. For self-hosted export, confirm OTLP or scrape targets are configured on **both** server and worker.
+
+Cloud ingestion can take a few minutes for the first data. For self-hosted setups, send a test API request and check your trace backend, metrics scraper, and log store separately.
+</Accordion>
+
+<Accordion title="/metrics returns 404">
+Monitoring export is disabled or the process was not restarted after enabling it.
+
+Set `enable_observability=true` on the server and worker, then restart both processes.
+</Accordion>
+
+<Accordion title="/metrics returns 403">
+[Secure mode](/advanced/configuration/server-security#secure-mode) is on but `metrics_bearer_token` is not set.
+
+Configure a bearer token and restart Core.
+</Accordion>
+
+<Accordion title="/metrics returns 401">
+A bearer token is required but missing or invalid. Include `Authorization: Bearer <token>` in scrape or curl requests.
+</Accordion>
+
+<Accordion title="No traces in Jaeger">
+Blnk exports traces over OTLP HTTP.
+
+Confirm `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set on both server and worker. Use port **4318** for OTLP HTTP, not gRPC port 4317.
+</Accordion>
+
+<Accordion title="Queue dashboard works but metrics do not">
+The queue dashboard is at `/monitoring` on the worker port. Metrics are at `/metrics` on the server and worker ports. Monitoring export must be enabled for `/metrics` to be registered.
+</Accordion>
+
+<Accordion title="Production health baseline">
+**Start with:** Metrics
+
+Establish normal ranges for resource use, transaction throughput, queue processing time, and rejection rate during steady traffic. Use those baselines for alerts rather than fixed thresholds copied from another environment.
+
+Confirm scrapes or Cloud ingestion succeed on a schedule so gaps in data do not look like an incident.
+</Accordion>
+</AccordionGroup>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+
+<Card title="Observability configuration" icon="activity" href="/advanced/configuration/observability">
+  Flags and environment variables.
+</Card>
+
+<Card title="Metrics reference" icon="chart-line" href="/advanced/metrics-reference">
+  Full Prometheus metric catalog.
+</Card>
+
+<Card title="Queue monitoring" icon="radio" href="/advanced/monitoring-port">
+  Queue dashboard and worker port.
+</Card>
+
+<Card title="Deploy Blnk" icon="rocket" href="/home/deploy">
+  Docker deployment and optional monitoring export.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

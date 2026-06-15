@@ -30,7 +30,7 @@ For our escrow payments workflow, here's our map:
 
 [Explore the map yourself here](https://map.blnkfinance.xyz/IgmT0FSLzG)
 
-Read more: [Inflight transactions →](/transactions/inflight)
+Read more: [Create inflight →](/transactions/inflight/creating-inflight)
 
 This map shows three key aspects of the escrow fund flow:
 
@@ -104,12 +104,11 @@ func getClient() *blnkgo.Client {
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 100.43,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10043,
     "precision": 100,
     "reference": "escrow_ref_12345",
     "description": "Escrow payment",
@@ -132,7 +131,7 @@ async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, un
   const { Transactions } = blnk;
   
   const escrow = await Transactions.create({
-    amount: amount,
+    precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
     description: description || "Escrow payment",
@@ -161,7 +160,7 @@ func createEscrowTransaction(buyerWalletID, sellerWalletID string, amount float6
     }
     escrow, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      amount,
+            PreciseAmount: amount * 100,
             Precision:   100,
             Reference:   uniqueReference,
             Description: description,
@@ -198,11 +197,10 @@ For a successful escrow payment, commit the inflight transaction to apply it to 
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/<inflight-transaction-id> \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-id>" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "commit"
   }'
 ```
@@ -251,11 +249,10 @@ If the escrow failed, void the inflight transaction instead:
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/<inflight-transaction-id> \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-id>" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "void"
   }'
 ```
@@ -306,13 +303,12 @@ Commit a partial amount from the inflight escrow transaction:
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/<inflight-transaction-id> \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-id>" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "commit",
-    "amount": 30
+    "precise_amount": 3000
   }'
 ```
 
@@ -324,7 +320,7 @@ async function commitPartialInflightTransaction(transactionId, partialAmount) {
   try {
     const response = await Transactions.updateStatus(transactionId, {
       status: 'commit',
-      amount: partialAmount,
+      precise_amount: partialAmount * 100,
     });
     if (response.status !== 200 || !response.data) {
       throw new Error(response.message ?? 'Failed to commit partial transaction');
@@ -343,7 +339,7 @@ func commitPartialInflightTransaction(transactionID string, partialAmount float6
     client := getClient()
     committed, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
         Status: blnkgo.InflightStatusCommit,
-        Amount: partialAmount,
+        PreciseAmount: partialAmount * 100,
     })
     if err != nil {
         return nil, err
@@ -366,7 +362,7 @@ This tutorial demonstrated how to build a secure escrow payment system using Bln
 
 With Blnk's flexible architecture, you can easily adapt this escrow system to various business models, including from marketplace transactions and freelancer payments to real estate deals and complex business contracts.
 
-<Card title="Inflight transactions" icon="plane" href="/transactions/inflight">
+<Card title="Inflight transactions" icon="plane" href="/transactions/inflight/creating-inflight">
   Hold, commit, void, and best practices.
 </Card>
 

@@ -1,0 +1,420 @@
+---
+title: "API Error Codes"
+sidebarTitle: "Error codes"
+icon: "circle-alert"
+description: "Structured API error responses, error codes, and HTTP status reference for Blnk Core 0.15.0 and later."
+"og:title": "API Error Codes • Blnk Developer Documentation"
+"og:description": "Reference for Blnk API error_detail codes, response shape, and HTTP status mappings."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available from Blnk Core 0.15.0.</Info>
+
+Blnk returns a stable `error_detail.code` on API errors. Use this code for programmatic handling. 
+
+Treat `error`, `errors`, and `error_detail.message` as display text only.
+
+---
+
+## Error response shape
+
+Error responses include `error_detail` and `error` (or `errors` on some list and filter endpoints):
+
+```json Error response
+{
+  "error": "transaction not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "transaction not found",
+    "details": {}
+  }
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `error_detail.code` | Stable code from the catalog below. Branch on this field, not on message text or `error` / `errors`. |
+| `error_detail.message` | Human-readable message. May change between releases. |
+| `error_detail.details` | Optional structured context (filter parse errors, reindex progress, batch IDs, and similar). |
+| `error` or `errors` | Exist for backwards compatibility and display. |
+
+<Note>
+Unclassified server failures return HTTP `500` with the sanitized message `"internal server error"`. The underlying error is logged server-side and is not echoed to clients.
+</Note>
+
+---
+
+## How to handle errors
+
+Handle Blnk API errors in two steps:
+
+1. Use the HTTP status code to understand the type of failure.
+2. Use `error_detail.code` to decide what your application should do.
+
+```js Recommended flow wrap expandable
+const body = await response.json();
+
+if (!response.ok) {
+  const code = body.error_detail?.code;
+
+  switch (code) {
+    case "TXN_NOT_FOUND":
+      // Show a not found state or retry with a valid transaction ID.
+      break;
+    case "TXN_DUPLICATE_REFERENCE":
+      // Treat as a conflict. You may fetch the existing transaction by reference.
+      break;
+    case "TXN_INSUFFICIENT_FUNDS":
+      // Ask the user to fund the source balance or choose another source.
+      break;
+    default:
+      // Fall back to status-based handling.
+      break;
+  }
+}
+```
+
+When debugging, log: 
+
+- HTTP status `code`
+- `error_detail.code`
+- `error_detail.details` when present
+
+These fields give you the clearest context without depending on message text.
+
+<Warning>
+Do not build logic around `error`, `errors`, or `error_detail.message`. These fields are meant for display and may change between releases.
+</Warning>
+
+---
+
+## Error-code catalog
+
+Codes are domain-prefixed. Each code has one default HTTP status.
+
+### Platform
+
+<Tabs>
+<Tab title="Generic">
+
+Errors that apply across endpoints: malformed requests, validation failures, rate limits, lock contention, and unexpected server failures. Codes use the `GEN_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `GEN_MALFORMED_REQUEST` | 400 | Request body could not be parsed (invalid JSON, wrong types, or body too large) |
+| `GEN_VALIDATION_ERROR` | 400 | Request failed validation (invalid params, filters, fields) |
+| `GEN_MISSING_PARAMETER` | 400 | A required route or query parameter is missing |
+| `GEN_BAD_REQUEST` | 400 | Request rejected; no more specific code applies |
+| `GEN_NOT_FOUND` | 404 | Resource not found; no domain-specific code applies |
+| `GEN_CONFLICT` | 409 | Request conflicts with current resource state |
+| `GEN_RESOURCE_LOCKED` | 423 | A concurrent operation holds the lock; retry shortly |
+| `GEN_RATE_LIMITED` | 429 | Too many requests |
+| `GEN_INTERNAL` | 500 | Unexpected server failure; message is sanitized |
+
+</Tab>
+
+<Tab title="Authentication">
+
+Errors from API key authentication, authorization scopes, and metrics bearer tokens. Codes use the `AUTH_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `AUTH_MISSING_API_KEY` | 401 | No `X-Blnk-Key` header supplied |
+| `AUTH_INVALID_API_KEY` | 401 | API key is unknown |
+| `AUTH_EXPIRED_API_KEY` | 401 | API key is expired or revoked |
+| `AUTH_MISSING_PRINCIPAL` | 401 | Authenticated API key principal missing from request context |
+| `AUTH_INSUFFICIENT_PERMISSIONS` | 403 | API key lacks the required `resource:action` scope |
+| `AUTH_UNKNOWN_RESOURCE` | 403 | Request path maps to no known resource |
+| `AUTH_MASTER_KEY_REQUIRED` | 403 | Endpoint (hooks management) requires the master key |
+| `AUTH_CROSS_OWNER_ACCESS` | 403 | Attempt to manage another owner's API keys |
+| `AUTH_SCOPE_ESCALATION` | 403 | Attempt to grant scopes broader than the caller's |
+| `AUTH_METRICS_TOKEN_REQUIRED` | 401 | `/metrics` requires `Authorization: Bearer <token>` |
+| `AUTH_INVALID_BEARER_TOKEN` | 401 | `/metrics` bearer token mismatch |
+| `AUTH_METRICS_DISABLED` | 403 | Secure mode on but no metrics bearer token configured |
+
+</Tab>
+
+<Tab title="API keys">
+
+Errors when creating, listing, or validating API keys. Codes use the `APIKEY_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `APIKEY_NOT_FOUND` | 404 | API key does not exist |
+| `APIKEY_OWNER_REQUIRED` | 400 | `owner` is required when creating or listing with the master key |
+| `APIKEY_INVALID` | 400 | API key payload validation failure |
+
+</Tab>
+</Tabs>
+
+### Core resources
+
+<Tabs>
+<Tab title="Ledgers">
+
+Errors when creating or fetching ledgers. Codes use the `LGR_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `LGR_NOT_FOUND` | 404 | Ledger does not exist |
+| `LGR_DUPLICATE` | 409 | Ledger with this name or ID already exists |
+
+</Tab>
+
+<Tab title="Balances">
+
+Errors for balance lookups, historical snapshots, monitors, and validation. Codes use the `BAL_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `BAL_NOT_FOUND` | 404 | Balance does not exist |
+| `BAL_HISTORY_NOT_FOUND` | 404 | No balance snapshot or history at the requested time |
+| `BAL_INVALID_TIMESTAMP` | 400 | Timestamp must be ISO 8601 |
+| `BAL_VALIDATION_ERROR` | 400 | Balance (or linked identity) validation failure |
+| `BAL_MONITOR_NOT_FOUND` | 404 | Balance monitor does not exist |
+
+</Tab>
+
+<Tab title="Transactions">
+
+Errors when recording, validating, committing, voiding, or bulk-processing transactions. Codes use the `TXN_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `TXN_NOT_FOUND` | 404 | Transaction, refundable transaction, or queued source was not found |
+| `TXN_INSUFFICIENT_FUNDS` | 400 | Source balance cannot cover the transaction |
+| `TXN_INVALID_AMOUNT` | 400 | Transaction amount must be positive |
+| `TXN_PRECISION_NOT_INTEGER` | 400 | `precision` must be an integer value |
+| `TXN_INVALID_DISTRIBUTION` | 400 | Multi-source or destination distribution is invalid |
+| `TXN_DUPLICATE_REFERENCE` | 409 | The `reference` has already been used |
+| `TXN_NOT_INFLIGHT` | 400 | Transaction is not in `INFLIGHT` status |
+| `TXN_ALREADY_COMMITTED` | 409 | Inflight transaction was already committed |
+| `TXN_ALREADY_VOIDED` | 409 | Inflight transaction was already voided |
+| `TXN_COMMIT_AMOUNT_EXCEEDED` | 400 | Commit exceeds the original or remaining inflight amount |
+| `TXN_INVALID_STATUS_ACTION` | 400 | Inflight update status must be `commit` or `void` |
+| `TXN_BULK_EMPTY` | 400 | Bulk payload contains no transactions or IDs |
+| `TXN_BULK_LIMIT_EXCEEDED` | 400 | Bulk payload exceeds the per-request item limit |
+| `TXN_VALIDATION_ERROR` | 400 | Transaction payload failed validation |
+
+</Tab>
+
+<Tab title="Identities">
+
+Errors for identity records and field tokenization. Codes use the `IDT_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `IDT_NOT_FOUND` | 404 | Identity does not exist |
+| `IDT_VALIDATION_ERROR` | 400 | Identity payload validation failure |
+| `IDT_FIELD_NOT_TOKENIZABLE` | 400 | Field is not in the tokenizable set |
+| `IDT_FIELD_ALREADY_TOKENIZED` | 409 | Field is already tokenized |
+| `IDT_FIELD_NOT_TOKENIZED` | 400 | Field is not tokenized and cannot be detokenized. |
+| `IDT_FIELD_NOT_FOUND` | 400 | Field does not exist on the identity |
+| `IDT_TOKENIZATION_DISABLED` | 403 | Tokenization is not configured on this server |
+
+</Tab>
+
+<Tab title="Reconciliation">
+
+Errors for reconciliation runs, matching rules, and external data uploads. Codes use the `RECON_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `RECON_NOT_FOUND` | 404 | Reconciliation run does not exist |
+| `RECON_RULE_NOT_FOUND` | 404 | Matching rule does not exist |
+| `RECON_UPLOAD_FAILED` | 400 | External data file upload failed because of the request. |
+| `RECON_UPLOAD_PROCESSING_FAILED` | 500 | Server failed to process the uploaded file |
+| `RECON_RULE_INVALID` | 400 | Matching rule failed validation. This can include name, criteria, operator, field, or drift errors. |
+| `RECON_MATCHING_RULES_REQUIRED` | 400 | `matching_rule_ids` is required |
+| `RECON_EXTERNAL_TXNS_REQUIRED` | 400 | `external_transactions` is required |
+| `RECON_START_FAILED` | 500 | Reconciliation could not be started |
+
+</Tab>
+</Tabs>
+
+### Other operations
+
+<Tabs>
+<Tab title="Metadata">
+
+Errors when updating metadata on ledgers, balances, transactions, and other entities. Codes use the `META_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `META_ENTITY_NOT_FOUND` | 404 | Entity for metadata update does not exist |
+| `META_UNSUPPORTED_ENTITY` | 400 | Entity type does not support metadata |
+| `META_INVALID_ENTITY_ID` | 400 | Entity ID is missing or malformed |
+
+</Tab>
+
+<Tab title="Hooks">
+
+Errors for transaction hook registration and management. Codes use the `HOOK_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `HOOK_NOT_FOUND` | 404 | Hook does not exist |
+| `HOOK_INVALID` | 400 | Hook payload validation failure |
+| `HOOK_OPERATION_FAILED` | 500 | Hook registration, update, list, or delete infrastructure failure |
+
+</Tab>
+
+<Tab title="Search">
+
+Errors from search queries and Typesense reindex jobs. Codes use the `SRCH_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `SRCH_QUERY_INVALID` | 400 | Search payload is invalid |
+| `SRCH_FAILED` | 500 | Search backend failure |
+| `SRCH_REINDEX_IN_PROGRESS` | 409 | A reindex is already running. `details` carries progress when available. |
+| `SRCH_REINDEX_NOT_STARTED` | 404 | No reindex has been started |
+
+</Tab>
+
+<Tab title="Admin">
+
+Errors from admin operations such as database backup. Codes use the `ADMIN_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `ADMIN_BACKUP_FAILED` | 500 | Database backup failed |
+
+</Tab>
+</Tabs>
+
+### Bulk commit and void
+
+Bulk commit and void have two types of failures:
+
+1. Request-level failures
+2. Per-item failures
+
+Request-level failures reject the whole request, i.e. they reject the whole call before any item runs. Per-item failures are returned inside the bulk result.
+
+<Tabs>
+<Tab title="Request-level">
+
+Request-level failures reject the whole request, i.e. they reject the whole call before any item runs. Per-item failures are returned inside the bulk result.
+
+The response applies the standard transaction error shape with codes such as `TXN_BULK_EMPTY` or `TXN_BULK_LIMIT_EXCEEDED`.
+
+```json Empty batch
+{
+  "error": "transactions cannot be empty",
+  "error_detail": {
+    "code": "TXN_BULK_EMPTY",
+    "message": "transactions cannot be empty"
+  }
+}
+```
+
+Bulk commit expects a `transactions` array. Bulk void expects `transaction_ids`. Sending the wrong shape returns `TXN_BULK_EMPTY` because unrecognized fields are dropped.
+
+</Tab>
+
+<Tab title="Per-item">
+
+Valid requests return HTTP `200` with `succeeded`, `failed`, and `results`. Branch on `results[].code`, not the HTTP status. Per-item codes are specific to bulk processing and are not part of the `TXN_*` catalog.
+
+| Code | Meaning |
+| --- | --- |
+| `NOT_FOUND` | Transaction ID does not exist |
+| `ALREADY_COMMITTED` | Inflight transaction was already committed |
+| `ALREADY_VOIDED` | Inflight transaction was already voided |
+| `NOT_INFLIGHT` | Transaction is not in `INFLIGHT` status |
+| `INVALID_AMOUNT` | Commit amount is invalid |
+| `LOCKED` | Concurrent operation on the same transaction |
+| `INTERNAL_ERROR` | Unexpected server failure for this item |
+| `QUEUED` | Item was queued for processing |
+| `ALREADY_QUEUED` | A commit or void is already queued for this transaction |
+
+```json Mixed batch (skip_queue: true) wrap
+{
+  "succeeded": 1,
+  "failed": 2,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "failed",
+      "code": "NOT_FOUND",
+      "message": "Transaction with ID 'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30' not found"
+    },
+    {
+      "transaction_id": "txn_7c91e4b2-3d8a-4f6e-b1c2-9a8d7e6f5b4a",
+      "status": "failed",
+      "code": "ALREADY_COMMITTED",
+      "message": "Transaction is already committed"
+    }
+  ]
+}
+```
+
+Loop through `results` and handle failed items by code. Queued items use `status: "queued"` and do not need the same error paths.
+
+```js Recommended flow wrap expandable
+const { results } = await response.json();
+
+for (const item of results) {
+  if (item.status === "succeeded") {
+    continue;
+  }
+
+  if (item.status === "queued") {
+    // Item was queued for processing.
+    // No error handling is needed unless your application treats queued items separately.
+    continue;
+  }
+
+  if (item.status === "failed") {
+    switch (item.code) {
+      case "NOT_FOUND":
+        // Confirm the transaction ID.
+        break;
+      case "ALREADY_COMMITTED":
+      case "ALREADY_VOIDED":
+        // Treat as already processed.
+        break;
+      case "LOCKED":
+        // Retry shortly with backoff.
+        break;
+      default:
+        // Handle NOT_INFLIGHT, INVALID_AMOUNT, INTERNAL_ERROR, and other failures.
+        break;
+    }
+  }
+}
+```
+
+</Tab>
+</Tabs>
+
+---
+
+## Legacy codes
+
+Blnk normalizes older generic error names to canonical `error_detail.code` values before the response leaves the server. 
+
+You will not receive legacy error names in `error_detail.code`. To handle legacy behaviour:
+
+- Use `error_detail.code` from the catalog above.
+- Prefer domain-specific codes over generic codes. For example, a missing transaction returns `TXN_NOT_FOUND`, not `GEN_NOT_FOUND`.
+- Do not parse `error`, `errors`, or `error_detail.message` to infer the code.
+
+| Legacy internal code | Canonical `error_detail.code` |
+| --- | --- |
+| `NOT_FOUND` | `GEN_NOT_FOUND` |
+| `CONFLICT` | `GEN_CONFLICT` |
+| `BAD_REQUEST` | `GEN_BAD_REQUEST` |
+| `INVALID_INPUT` | `GEN_VALIDATION_ERROR` |
+| `INTERNAL_SERVER_ERROR` | `GEN_INTERNAL` |
+| `RATE_LIMITED` | `GEN_RATE_LIMITED` |
+
+---
+
+<NeedHelp />

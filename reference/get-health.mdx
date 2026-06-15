@@ -1,7 +1,7 @@
 ---
-title: "Health Check"
+title: "Health check"
 sidebarTitle: "Health check"
-description: "Check the health status of the Blnk API server."
+description: "Check whether the Blnk server and worker processes are running and responsive."
 api: "GET /health"
 noindex: true
 "og:title": "Health Check • Blnk API Reference"
@@ -9,21 +9,42 @@ noindex: true
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-<Info>Available in version 0.10.3 and later. Public access (no authentication required) in v0.10.4.</Info>
+The **Health check** endpoint reports process health for liveness and readiness probes. It is always available and does not require authentication.
 
-The **Health Check** endpoint allows you to verify that your Blnk API server is running and responsive. It is typically used for readiness and liveness checks in deployment environments (e.g., Docker, Kubernetes, load balancers).
+Blnk runs the **server** and **worker** as separate processes. Each registers its own `GET /health` endpoint on a different port. Probe both processes in production.
+
+| Endpoint | Process | Port setting | Default URL |
+| :-- | :-- | :-- | :-- |
+| `GET /health` | Server | `server.port` | `http://localhost:5001/health` |
+| `GET /health` | Worker | `queue.monitoring_port` | `http://localhost:5004/health` |
+
+See [Metrics](/reference/get-metrics) for the same server/worker split on `GET /metrics`.
+
+<Info>
+Available in version 0.10.3 and later. Public access (no authentication required) in v0.10.4.
+</Info>
 
 <RequestExample>
-```bash
-curl --request GET \
-  --url http://localhost:5001/health
+```bash Server
+curl -X GET "http://localhost:5001/health"
+```
+
+```bash Worker
+curl -X GET "http://localhost:5004/health"
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200
+```json Server 200 OK
 {
   "status": "UP"
+}
+```
+
+```json Worker 200 OK
+{
+  "status": "UP",
+  "service": "worker"
 }
 ```
 </ResponseExample>
