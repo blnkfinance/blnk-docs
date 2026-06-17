@@ -26,16 +26,22 @@ You are responsible for deployment, upgrades, configuration, and day-to-day oper
 
 ## Deployment guide
 
-There are two ways to self-host Blnk Core in your environment: via [Docker](#using-docker) or [Kubernetes](#using-kubernetes).
+There are three ways to self-host Blnk Core in your environment: 
+
+- **Single server:** Use Docker Compose on a Linux VM you control, e.g. a DO Droplet, EC2, GCE, or Azure VM.
+- **Platform-as-a-Service (PaaS):** Use a platform hosting service like Railway, Render, Fly.io, etc.
+- **Kubernetes:** Use Kubernetes to deploy Blnk Core.
 
 <Tabs>
-<Tab title="Docker">
+<Tab title="Single server">
+
+Use Docker Compose on a Linux VM you control; for example a DO Droplet, EC2, GCE, or Azure VM.
 
 Before you start, make sure you have the following set up (required):
 
 1. Managed PostgreSQL instance
 2. Managed Redis instance
-3. Docker or k8s installed 
+3. Docker and Docker Compose installed
 4. Linux server (Ubuntu 20.04 LTS or newer recommended)
 
 <Steps>
@@ -55,6 +61,8 @@ Before you start, make sure you have the following set up (required):
         "dns": "redis://:<password>@<host>:6379"
       },
       "server": {
+        "secure": true,
+        "secret_key": "set-your-master-blnk-key-here",
         "port": "5001"
       },
       "queue": {
@@ -65,12 +73,18 @@ Before you start, make sure you have the following set up (required):
 
     ```bash .env
     BLNK_PROJECT_NAME=Blnk
-    BLNK_DATA_SOURCE_DNS=postgres://<user>:<password>@<host>:5432/blnk?sslmode=require
-    BLNK_REDIS_DNS=redis://:<password>@<host>:6379
+    BLNK_DATA_SOURCE_DNS='postgres://<user>:<password>@<host>:5432/blnk?sslmode=require'
+    BLNK_REDIS_DNS='redis://:<password>@<host>:6379'
+    BLNK_SERVER_SECURE=true
+    BLNK_SERVER_SECRET_KEY='set-your-master-blnk-key-here'
     BLNK_SERVER_PORT=5001
     BLNK_QUEUE_MONITORING_PORT=5004
     ```
     </CodeGroup>
+
+    <Note>
+      If you use a secrets manager (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, etc.), fetch secrets onto the VM and write them to `.env` before you run `docker compose up`.
+    </Note>
   </Step>
   <Step title="Create a 'docker-compose.yml' file">
     Add the following configuration to provision the server, worker, and supporting services if needed. You can use the default `docker-compose.yml` file in the [Blnk repository](https://github.com/blnkfinance/blnk/blob/main/docker-compose.yaml).
@@ -92,6 +106,8 @@ Before you start, make sure you have the following set up (required):
           - "blnk migrate up && blnk start"
         environment:
           TZ: ${TZ:-Etc/UTC}
+        env_file:
+          - .env
         ports:
           - "5001:5001"
           - "80:80"
@@ -104,15 +120,13 @@ Before you start, make sure you have the following set up (required):
         container_name: worker
         restart: on-failure
         entrypoint: ["blnk", "workers"]
+        env_file:
+          - .env
         ports:
           - "5004:5004"
         volumes:
           - ./blnk.json:/blnk.json
     ```
-
-    <Check>
-      For PaaS deployments like Railway, Render, etc., you'll need to deploy each service separately, with their respective start commands.
-    </Check>
   </Step>
   <Step title="Start deployment">
     Run these commands in your terminal to start and validate your deployment:
@@ -130,6 +144,78 @@ Before you start, make sure you have the following set up (required):
 
     <Check>
       Blnk should be running and accessible at port 5001 and available for requests.
+    </Check>
+  </Step>
+</Steps>
+
+</Tab>
+<Tab title="PaaS (Railway, etc.)">
+
+Deploy Blnk Core on a platform hosting service like Railway, Render, or Fly.io.
+
+<Steps>
+  <Step title="Set up Postgres and Redis">
+    In your project, provision a managed PostgreSQL database and a managed Redis instance if you do not already have them. 
+    
+    You can also connect to a third-party database if you prefer. Make sure that the database and Redis are reachable from the platform.
+
+    Copy each connection string from your provider. You will use them in the next step.
+
+    <Note>
+      If Postgres and Redis run in the same project as Blnk, use the provider's **internal** connection URLs for lower latency and to avoid public network egress.
+    </Note>
+  </Step>
+  <Step title="Set environment variables">
+    Add these environment variables to your project. Use your managed Postgres and Redis connection strings.
+
+    ```bash .env wrap
+    BLNK_PROJECT_NAME=Blnk
+    BLNK_DATA_SOURCE_DNS='postgres://<user>:<password>@<host>:5432/blnk?sslmode=require'
+    BLNK_REDIS_DNS='redis://:<password>@<host>:6379'
+    BLNK_SERVER_SECURE=true
+    BLNK_SERVER_SECRET_KEY='set-your-master-blnk-key-here'
+    BLNK_SERVER_PORT=5001
+    BLNK_QUEUE_MONITORING_PORT=5004
+    ```
+
+    You can add more environment variables later as you need, go to [Blnk Configuration](/advanced/configuration/overview).
+
+    <Note>
+      Use the **direct** Postgres connection string, not a pooled URL, if your provider offers both.
+    </Note>
+  </Step>
+  <Step title="Deploy the server">
+    Create a service from the Blnk Docker image:
+
+    - **Docker image:** `jerryenebeli/blnk:0.14.5`
+    - **Start command:** `blnk migrate up && blnk start`
+    - **Port:** `5001`
+
+    Connect this service to the environment variables from the previous step, or copy them into the service settings.
+
+    Point your project's public URL to port `5001` so you can reach the Blnk server from outside the project.
+
+    Deploy the server and wait for migrations to finish in the logs.
+  </Step>
+  <Step title="Deploy the worker">
+    Create a second service using the same Docker image and the **same environment variables** as the server.
+
+    - **Docker image:** `jerryenebeli/blnk:0.14.5`
+    - **Start command:** `blnk workers`
+
+    The worker does not need a public HTTP port. Deploy it after the server is healthy.
+  </Step>
+  <Step title="Verify deployment">
+    Check the server logs for a successful migration and startup. Send a request to your service URL:
+
+    ```bash
+    curl https://<your-server-url>/health
+    ```
+
+    Confirm the worker service is running in its logs.
+
+    <Check>
+      Blnk should now be running and accessible on your platform's public URL.
     </Check>
   </Step>
 </Steps>
@@ -183,7 +269,21 @@ To manually export logs, traces, and metrics for your local deployment:
 
 <Steps>
 <Step title="Enable observability in Core">
-  Set `"enable_observability": true` in `blnk.json`, then restart server and worker after you finish the compose changes below.
+  Enable observability in your configuration file:
+
+  <CodeGroup>
+  ```bash .env wrap
+  BLNK_ENABLE_OBSERVABILITY=true
+  ```
+
+  ```json blnk.json wrap
+  {
+    "enable_observability": true
+  }
+  ```
+  </CodeGroup>
+
+  Restart server and worker after you finish the compose changes below.
 </Step>
 
 <Step title="Add Prometheus config">
@@ -226,6 +326,8 @@ To manually export logs, traces, and metrics for your local deployment:
       environment:
         TZ: ${TZ:-Etc/UTC}
         OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      env_file:
+        - .env
       ports:
         - "5001:5001"
         - "80:80"
@@ -242,6 +344,8 @@ To manually export logs, traces, and metrics for your local deployment:
       entrypoint: ["blnk", "workers"]
       environment:
         OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      env_file:
+        - .env
       ports:
         - "5004:5004"
       depends_on:
