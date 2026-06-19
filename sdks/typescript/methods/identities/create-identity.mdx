@@ -1,0 +1,159 @@
+---
+title: "Create identity"
+sidebarTitle: "Create identity"
+icon: "user-plus"
+description: "Use the Blnk TypeScript SDK to create an individual or organization identity."
+"og:title": "Create identity • Blnk TypeScript SDK"
+"og:description": "Use blnk.Identity.create to create a customer or organization on your Core instance."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Create an individual or organization identity with `blnk.Identity.create`. Core returns an `identity_id` you use when linking balances or enabling fund lineage.
+
+For identity concepts and field definitions, see the [Identities](/identities/introduction) guide and the [Create identity](/reference/create-identity) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Identity.create(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Identity` |
+| **SDK method** | `create` |
+| **HTTP** | `POST /identities` |
+| **Returns** | `Promise<ApiResponse<IdentityDataResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `create` when you need a new identity record before linking balances. Only `identity_type` is required. Add profile fields when you have them.
+
+---
+
+## Example
+
+Minimal create with only `identity_type`:
+
+```typescript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.identity_id);
+```
+
+Full profile with optional caller-supplied `identity_id` and ISO 8601 `dob`:
+
+```typescript wrap expandable
+const full = await blnk.Identity.create({
+  identity_id: 'idt_11111111-1111-4111-8111-111111111111',
+  identity_type: 'individual',
+  first_name: 'Jane',
+  last_name: 'Doe',
+  gender: 'female',
+  dob: '1990-01-15T00:00:00Z',
+  email_address: 'jane@example.com',
+  phone_number: '+1234567890',
+  nationality: 'US',
+  category: 'customer',
+  street: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  country: 'USA',
+  post_code: '10001',
+});
+```
+
+<Tip>
+CLI equivalent: `blnk identities create`. See [CLI identities](/cli/identities).
+</Tip>
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `identity_type` | `string` | Yes | `individual` or `organization`. |
+| `identity_id` | `string` | No | Optional caller-supplied ID (`idt_` + UUID). |
+| `first_name`, `last_name`, etc. | various | No | Optional profile fields. |
+| `dob` | `string` | No | ISO 8601 date string. |
+| `gender` | `string` | No | `male`, `female`, or `other`. |
+| `meta_data` | `object` | No | Optional key-value metadata. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`first_name`, `email_address`, not `firstName`).
+</Tip>
+
+For all optional fields, see [Create identity](/reference/create-identity).
+
+---
+
+## Response
+
+Returns an identity object in `response.data` when `status` is `201`. Key fields include `identity_id` and `identity_type`. See [Create identity](/reference/create-identity) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or invalid `identity_type`
+- Invalid `identity_id` format (must be `idt_` + UUID)
+- Invalid `dob`, `gender`, or `meta_data`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Create identity" icon="book-open" href="/reference/create-identity">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Identities" icon="user" href="/identities/introduction">
+Product guide for linking balances and PII handling.
+</Card>
+
+<Card title="Update identity" icon="user-cog" href="/sdks/typescript/methods/identities/edit-identity">
+Update profile fields after create.
+</Card>
+
+<Card title="CLI identities" icon="terminal" href="/cli/identities">
+Create identities from the terminal.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

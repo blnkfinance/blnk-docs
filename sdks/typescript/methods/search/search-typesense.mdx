@@ -1,0 +1,137 @@
+---
+title: "Search via Typesense"
+sidebarTitle: "Search Typesense"
+icon: "search"
+description: "Use the Blnk TypeScript SDK for full-text search on a collection."
+"og:title": "Search via Typesense • Blnk TypeScript SDK"
+"og:description": "Use blnk.Search.search to run Typesense queries against ledgers, balances, transactions, or identities."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Run a Typesense full-text query against a collection with `blnk.Search.search`. Use this when you need text matching, relevance ranking, or Typesense query features.
+
+For query syntax and indexing, see the [Typesense guide](/search/typesense/introduction) and the [Search via Typesense](/reference/search-typesense) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Search.search(params, collection)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Search` |
+| **SDK method** | `search` |
+| **HTTP** | `POST /search/{collection}` |
+| **Returns** | `Promise<ApiResponse<SearchResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `search` for full-text lookups across indexed fields, for example finding transactions by description or identities by name. For exact field filters against Postgres, use [`filter`](/sdks/typescript/methods/search/search-db) instead.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Search.search(
+  { q: 'payment', per_page: 20 },
+  'transactions',
+);
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.found, response.data.hits[0]?.document.transaction_id);
+```
+
+Search identities with explicit `query_by` fields:
+
+```typescript wrap
+const identities = await blnk.Search.search(
+  {
+    q: 'jane',
+    query_by: 'first_name,last_name,email_address',
+    per_page: 10,
+  },
+  'identities',
+);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `params` | `object` | Yes | Typesense query body. Must include `q`. |
+| `collection` | `string` | Yes | `ledgers`, `transactions`, `balances`, or `identities`. |
+
+Common `params` fields: `q`, `query_by`, `filter_by`, `sort_by`, `page`, `per_page` (max 250).
+
+---
+
+## Response
+
+Returns a Typesense search result in `response.data` when `status` is `201`. Key fields include `found` and `hits`. See [Search via Typesense](/reference/search-typesense) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK validates the collection and query params. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Invalid `collection`
+- Missing or empty `q`
+- Invalid `page`, `per_page`, or optional string fields
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Search via Typesense" icon="book-open" href="/reference/search-typesense">
+HTTP API reference for query fields and response schema.
+</Card>
+
+<Card title="Typesense guide" icon="search" href="/search/typesense/introduction">
+Indexing, query syntax, and setup.
+</Card>
+
+<Card title="Search via DB" icon="database" href="/sdks/typescript/methods/search/search-db">
+Structured Postgres filters when full-text search is not needed.
+</Card>
+
+<Card title="Start reindex" icon="hard-drive-upload" href="/sdks/typescript/methods/search/start-reindex">
+Rebuild Typesense from your database.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

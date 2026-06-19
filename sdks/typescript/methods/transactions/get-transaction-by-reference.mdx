@@ -1,0 +1,116 @@
+---
+title: "Get transaction by reference"
+sidebarTitle: "Get by reference"
+icon: "hash"
+description: "Use the Blnk TypeScript SDK to fetch a transaction by your unique reference."
+"og:title": "Get transaction by reference • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.getByReference to look up a transaction by the reference you supplied at create time."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Look up a transaction using the unique `reference` your application supplied at create time with `blnk.Transactions.getByReference`. The SDK URL-encodes the reference in the request path.
+
+For transaction behavior and response fields, see the [Transactions](/transactions/introduction) guide and the [Get transaction by reference](/reference/get-transaction-by-reference) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.getByReference(reference)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `getByReference` |
+| **HTTP** | `GET /transactions/reference/{reference}` |
+| **Returns** | `Promise<ApiResponse<Transaction \| null>>` |
+
+---
+
+## When to use
+
+Call `getByReference` for idempotency checks, support tooling, or reconciliation when you store your own references but not Blnk transaction IDs.
+
+---
+
+## Example
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.getByReference('payment_001');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.transaction_id, response.data.reference);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `reference` | `string` | Yes | The unique reference passed when the transaction was created. |
+
+---
+
+## Response
+
+Returns a transaction object in `response.data` when `status` is `200`. Key fields include `transaction_id`, `reference`, and `status`. See [Get transaction by reference](/reference/get-transaction-by-reference) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `reference`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.getByReference('unknown_ref');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get by reference" icon="book-open" href="/reference/get-transaction-by-reference">
+HTTP API reference for reference lookups.
+</Card>
+
+<Card title="Create transaction" icon="arrow-left-right" href="/sdks/typescript/methods/transactions/create-transaction">
+Post a transfer with a unique `reference`.
+</Card>
+
+<Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
+Product guide for money movement and statuses.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

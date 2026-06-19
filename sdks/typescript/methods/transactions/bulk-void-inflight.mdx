@@ -1,0 +1,126 @@
+---
+title: "Bulk void inflight"
+sidebarTitle: "Bulk void inflight"
+icon: "ban"
+description: "Use the Blnk TypeScript SDK to void multiple independently-created inflight transactions."
+"og:title": "Bulk void inflight • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.bulkVoidInflight to void up to 100 inflight transactions in one request."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Void multiple independently-created inflight transactions in one request with `blnk.Transactions.bulkVoidInflight`. Each request accepts up to 100 transaction IDs.
+
+For per-item failure codes, see the [Inflight](/transactions/inflight#bulk-inflight-updates) guide and the [Bulk void inflight](/reference/bulk-void-inflight) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.bulkVoidInflight(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `bulkVoidInflight` |
+| **HTTP** | `POST /transactions/inflight/bulk/void` |
+| **Returns** | `Promise<ApiResponse<BulkInflightVoidResp \| null>>` |
+
+---
+
+## When to use
+
+Call `bulkVoidInflight` when you have multiple independently-created inflight transactions (not from a single bulk batch) that should be cancelled and rolled back together.
+
+<Info>Available in Core 0.14.2 and later.</Info>
+
+---
+
+## Example
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.bulkVoidInflight({
+  transaction_ids: [
+    'txn_11111111-1111-4111-8111-111111111111',
+    'txn_22222222-2222-4222-8222-222222222222',
+  ],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.succeeded, response.data.failed);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transaction_ids` | `string[]` | Yes | Up to 100 inflight transaction IDs to void. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`transaction_ids`, not `transactionIds`).
+</Tip>
+
+---
+
+## Response
+
+Returns a bulk void result in `response.data` when `status` is `200`. Key fields include `succeeded`, `failed`, and per-transaction results. See [Bulk void inflight](/reference/bulk-void-inflight) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `transaction_ids` array
+- More than 100 IDs in `transaction_ids`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk void inflight" icon="book-open" href="/reference/bulk-void-inflight">
+HTTP API reference for bulk void requests.
+</Card>
+
+<Card title="Bulk inflight updates" icon="plane" href="/transactions/inflight#bulk-inflight-updates">
+Per-item failure codes and rollback behavior.
+</Card>
+
+<Card title="Update inflight" icon="ban" href="/sdks/typescript/methods/transactions/update-inflight">
+Void a single tx or an entire batch.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

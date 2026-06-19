@@ -1,0 +1,145 @@
+---
+title: "Instant reconciliation"
+sidebarTitle: "Instant reconciliation"
+icon: "zap"
+description: "Use the Blnk TypeScript SDK to reconcile inline external transactions without uploading a file."
+"og:title": "Instant reconciliation • Blnk TypeScript SDK"
+"og:description": "Use blnk.Reconciliation.runInstant to reconcile external_transactions in one request."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Run instant reconciliation with `blnk.Reconciliation.runInstant`. Pass external transaction rows directly instead of uploading a file first.
+
+For when to use instant vs batch reconciliation, see the [Reconciliation overview](/reconciliations/overview) guide and the [Instant reconciliation](/reference/instant-reconciliation) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Reconciliation.runInstant(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Reconciliation` |
+| **SDK method** | `runInstant` |
+| **HTTP** | `POST /reconciliation/start-instant` |
+| **Returns** | `Promise<ApiResponse<RunInstantReconResp \| null>>` |
+
+---
+
+## When to use
+
+Call `runInstant` when external records are already in your application memory or API, and you do not need a persisted upload file. Useful for real-time or low-volume matching.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Reconciliation.runInstant({
+  external_transactions: [
+    {
+      id: 'txn_1',
+      amount: 5.49,
+      reference: 'INV-2023-002',
+      currency: 'GBP',
+      description: 'Card payment',
+      date: '2024-11-15T14:25:30Z',
+      source: 'bank-api',
+    },
+  ],
+  strategy: 'one_to_one',
+  dry_run: true,
+  matching_rule_ids: ['rule_abc123'],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.reconciliation_id);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `external_transactions` | `array` | Yes | Non-empty array of external rows (max 10,000). |
+| `external_transactions[].id` | `string` | Yes | External transaction ID. |
+| `external_transactions[].amount` | `number` | Yes | Transaction amount. |
+| `external_transactions[].reference` | `string` | Yes | External reference. |
+| `external_transactions[].currency` | `string` | Yes | ISO 4217 currency code. |
+| `external_transactions[].description` | `string` | Yes | Transaction description. |
+| `external_transactions[].date` | `string` | Yes | Transaction date and time. |
+| `external_transactions[].source` | `string` | Yes | Data origin label. |
+| `strategy` | `string` | Yes | `one_to_one`, `one_to_many`, or `many_to_one`. |
+| `matching_rule_ids` | `string[]` | Yes | One or more matching rule IDs. |
+| `dry_run` | `boolean` | No | `true` to test without persisting matches. |
+| `grouping_criteria` | `string` | No | Field used to group records during matching. |
+
+---
+
+## Response
+
+Returns a reconciliation job reference in `response.data` when `status` is `200`. Key field: `reconciliation_id`. Poll status with [`blnk.Reconciliation.get`](/sdks/typescript/methods/reconciliation/get-reconciliations). See [Instant reconciliation](/reference/instant-reconciliation) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `external_transactions` (or more than 10,000 rows)
+- Invalid external transaction fields (`id`, `amount`, `reference`, etc.)
+- Missing or invalid `strategy` or `matching_rule_ids`
+- Invalid `dry_run` or `grouping_criteria` when provided
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Instant reconciliation" icon="book-open" href="/reference/instant-reconciliation">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Reconciliation overview" icon="scale" href="/reconciliations/overview">
+Batch vs instant reconciliation workflows.
+</Card>
+
+<Card title="Get reconciliation" icon="scale" href="/sdks/typescript/methods/reconciliation/get-reconciliations">
+Fetch status and match counts by `reconciliation_id`.
+</Card>
+
+<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
+Define match criteria before running instant reconciliation.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

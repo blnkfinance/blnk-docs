@@ -1,0 +1,140 @@
+---
+title: "Edit balance monitor"
+sidebarTitle: "Edit balance monitor"
+icon: "bell-ring"
+description: "Use the Blnk TypeScript SDK to update an existing balance monitor."
+"og:title": "Edit balance monitor • Blnk TypeScript SDK"
+"og:description": "Use blnk.BalanceMonitor.update to change the condition or settings on a balance monitor."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Update an existing balance monitor with `blnk.BalanceMonitor.update`. Change the condition, target balance, callback URL, or description. The `monitor_id` does not change.
+
+For field definitions and webhook behavior, see the [Balance monitoring](/balances/balance-monitoring) guide and the [Edit balance monitor](/reference/edit-balance-monitor) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.BalanceMonitor.update(id, data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.BalanceMonitor` |
+| **SDK method** | `update` |
+| **HTTP** | `PUT /balance-monitors/{monitor_id}` |
+| **Returns** | `Promise<ApiResponse<MonitorDataResp \| null>>` |
+
+---
+
+## When to use
+
+Call `update` when a monitor threshold, target balance, or callback URL needs to change. Use this instead of creating a new monitor when you want to keep the same `monitor_id`.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.BalanceMonitor.update(
+  'mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0',
+  {
+    balance_id: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+    condition: {
+      field: 'credit_balance',
+      operator: '<',
+      value: 500,
+      precision: 100,
+    },
+    call_back_url: 'https://api.example.com/balance-monitor',
+  },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.monitor_id, response.data.condition);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Monitor ID to update. |
+| `balance_id` | `string` | Yes | Balance to monitor. |
+| `condition` | `object` | Yes | Threshold rule with `field`, `operator`, `value`, and `precision`. |
+| `call_back_url` | `string` | No | Webhook URL when the condition is met. |
+| `description` | `string` | No | Human-readable monitor description. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`call_back_url`, not `callBackUrl`).
+</Tip>
+
+For all fields, see [Edit balance monitor](/reference/edit-balance-monitor).
+
+---
+
+## Response
+
+Returns the updated monitor object in `response.data` when `status` is `200`. See [Edit balance monitor](/reference/edit-balance-monitor) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK validates the request body using the same rules as `create`. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or invalid `balance_id`
+- Missing or invalid `condition`
+- Invalid `description` or `call_back_url` when provided
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Edit balance monitor" icon="book-open" href="/reference/edit-balance-monitor">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Product guide for conditions and webhooks.
+</Card>
+
+<Card title="Get balance monitor" icon="bell" href="/sdks/typescript/methods/ledger-balances/get-balance-monitor">
+Fetch the current monitor before updating.
+</Card>
+
+<Card title="Create balance monitor" icon="bell-plus" href="/sdks/typescript/methods/ledger-balances/create-balance-monitor">
+Create a new monitor instead of updating.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

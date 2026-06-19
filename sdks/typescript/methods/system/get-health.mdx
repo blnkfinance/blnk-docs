@@ -1,0 +1,108 @@
+---
+title: "Health check"
+sidebarTitle: "Health check"
+icon: "heart-pulse"
+description: "Use the Blnk TypeScript SDK to verify that Blnk Core is running and reachable."
+"og:title": "Health check • Blnk TypeScript SDK"
+"og:description": "Use blnk.System.health to check Core availability for readiness and liveness probes."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Check Core availability with `blnk.System.health`. Use it in deployment health checks, load balancers, and startup scripts.
+
+For endpoint behavior, see the [Health check](/reference/get-health) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.System.health()
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.System` |
+| **SDK method** | `health` |
+| **HTTP** | `GET /health` |
+| **Returns** | `Promise<ApiResponse<HealthResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `health` before routing traffic to a Core instance, or on a schedule from Kubernetes liveness and readiness probes. No request body or resource ID is required.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.System.health();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.status);
+```
+
+<Info>
+Core 0.10.4 and later expose `/health` without authentication. You can call this method before configuring an API key in client setup checks.
+</Info>
+
+---
+
+## Parameters
+
+This method takes no arguments.
+
+---
+
+## Response
+
+Returns `{ status: 'UP' }` in `response.data` when `status` is `200` and Core is healthy. See [Health check](/reference/get-health) for details.
+
+---
+
+## HTTP errors
+
+When Core is unreachable or unhealthy, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Health check" icon="book-open" href="/reference/get-health">
+HTTP API reference for the response schema.
+</Card>
+
+<Card title="Install" icon="code" href="/sdks/typescript">
+Initialize the client and configure base URL.
+</Card>
+
+<Card title="Server security" icon="lock" href="/advanced/configuration/server-security">
+Core `server.secure` and secret key configuration.
+</Card>
+
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+API keys and authentication after health checks pass.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

@@ -1,0 +1,110 @@
+---
+title: "Get identity"
+sidebarTitle: "Get identity"
+icon: "contact"
+description: "Use the Blnk TypeScript SDK to fetch an identity by its identity_id."
+"og:title": "Get identity • Blnk TypeScript SDK"
+"og:description": "Use blnk.Identity.get to fetch an identity when you have its identity_id."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Fetch a single identity by `identity_id` with `blnk.Identity.get`. Returns profile fields and metadata for the identity record.
+
+For identity concepts and response fields, see the [Identities](/identities/introduction) guide and the [Get identity](/reference/get-identity) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Identity.get(id)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Identity` |
+| **SDK method** | `get` |
+| **HTTP** | `GET /identities/{identity_id}` |
+| **Returns** | `Promise<ApiResponse<IdentityDataResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `get` when you have an `identity_id` from a `create` response, balance link, or support tooling, and need the current profile data for display or verification.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Identity.get(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.identity_id, response.data.identity_type);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Identity ID (for example `idt_8cc22560-5ace-4989-8953-fcbad7947d48`). |
+
+---
+
+## Response
+
+Returns an identity object in `response.data` when `status` is `200`. See [Get identity](/reference/get-identity) for all response fields.
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Identity.get('idt_missing');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get identity" icon="book-open" href="/reference/get-identity">
+HTTP API reference for the response schema.
+</Card>
+
+<Card title="Identities" icon="user" href="/identities/introduction">
+Product guide for identity concepts and linking.
+</Card>
+
+<Card title="List identities" icon="users" href="/sdks/typescript/methods/identities/list-identities">
+List all identities on the instance.
+</Card>
+
+<Card title="Search identities" icon="search" href="/sdks/typescript/methods/search/search-typesense">
+Query identities with Typesense or DB filters.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

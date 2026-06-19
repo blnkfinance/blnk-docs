@@ -1,0 +1,129 @@
+---
+title: "Get balance lineage"
+sidebarTitle: "Get lineage"
+icon: "git-branch"
+description: "Use the Blnk TypeScript SDK to inspect provider-level fund breakdown for a balance."
+"og:title": "Get balance lineage • Blnk TypeScript SDK"
+"og:description": "Use blnk.LedgerBalances.getLineage to see received, spent, and available amounts per provider."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Inspect provider-level fund breakdown for a balance with `blnk.LedgerBalances.getLineage`. Returns received, spent, and available amounts per provider in minor units when [fund lineage](/transactions/lineage) is enabled on the balance.
+
+For setup and concepts, see the [Fund lineage](/transactions/lineage) guide and the [View balance lineage](/reference/get-balance-lineage) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.LedgerBalances.getLineage(balanceId)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.LedgerBalances` |
+| **SDK method** | `getLineage` |
+| **HTTP** | `GET /balances/{balance_id}/lineage` |
+| **Returns** | `Promise<ApiResponse<BalanceLineageResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `getLineage` on balances with `track_fund_lineage: true` when you need to see how tagged provider funds were received, spent, and remain available. Use it for wallet dashboards, compliance reporting, or debugging allocation behavior.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.LedgerBalances.getLineage(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.total_with_lineage, response.data.providers.length);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `balanceId` | `string` | Yes | Balance ID with fund lineage enabled. |
+
+---
+
+## Response
+
+Returns a lineage object in `response.data` when `status` is `200`. Key fields include `total_with_lineage` and a `providers` array with per-provider amounts. See [View balance lineage](/reference/get-balance-lineage) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `balanceId`
+
+```typescript wrap
+// Client-side validation failure (no request sent to Core)
+const response = await blnk.LedgerBalances.getLineage('');
+
+if (response.status === 400) {
+  console.error('Validation failed:', response.message);
+}
+```
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.LedgerBalances.getLineage('bln_missing');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance lineage" icon="book-open" href="/reference/get-balance-lineage">
+HTTP API reference for provider breakdown fields.
+</Card>
+
+<Card title="Fund lineage" icon="git-branch" href="/transactions/lineage">
+Product guide for tagged funds and allocation strategies.
+</Card>
+
+<Card title="Get transaction lineage" icon="share-2" href="/sdks/typescript/methods/transactions/get-transaction-lineage">
+Lineage for a single debit transaction.
+</Card>
+
+<Card title="Create balance" icon="wallet" href="/sdks/typescript/methods/ledger-balances/create-balance">
+Enable `track_fund_lineage` when creating a balance.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

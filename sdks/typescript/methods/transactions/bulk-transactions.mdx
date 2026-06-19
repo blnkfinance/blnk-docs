@@ -1,0 +1,236 @@
+---
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+icon: "layers"
+description: "Use the Blnk TypeScript SDK to submit multiple transactions in one batch request."
+"og:title": "Bulk transactions • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.createBulk to submit a batch of transactions with atomic, inflight, and async options."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Submit multiple transaction records in one request with `blnk.Transactions.createBulk`. Each item in `transactions` uses the same fields as [`create`](/sdks/typescript/methods/transactions/create-transaction).
+
+For concepts, webhooks, and batch retrieval, see the [Bulk transactions](/transactions/bulk-transactions) guide and the [Bulk transactions](/reference/bulk-transactions) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.createBulk(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `createBulk` |
+| **HTTP** | `POST /transactions/bulk` |
+| **Returns** | `Promise<ApiResponse<BulkTransactionResp \| null>>` |
+
+---
+
+## When to use
+
+Call `createBulk` for payroll runs, payout batches, or any workflow that posts many transfers at once. Choose atomic mode when all legs must succeed together, inflight mode when you need a later commit or void, and async mode when Core should process in the background and notify via webhook.
+
+---
+
+## Example
+
+<Tabs>
+<Tab title="Sync atomic">
+
+Set `atomic: true` when every transaction in the batch must succeed or fail together. Leave `run_async` unset for synchronous processing and an immediate response with `batch_id` and `transaction_count`.
+
+```typescript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_1',
+      destination: '@dest_1',
+      reference: 'bulk_001',
+      description: 'Payment 1',
+      allow_overdraft: true,
+    },
+    {
+      amount: 2000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_2',
+      destination: '@dest_2',
+      reference: 'bulk_002',
+      description: 'Payment 2',
+      allow_overdraft: true,
+    },
+  ],
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.batch_id, response.data.status);
+```
+
+</Tab>
+<Tab title="Async inflight">
+
+Set `inflight: true` and `run_async: true` to create an inflight batch in the background. The response returns `status: 'queued'` and `message` instead of `transaction_count`.
+
+```typescript wrap expandable
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: true,
+  run_async: true,
+  transactions: [
+    {
+      amount: 5000,
+      precision: 100,
+      currency: 'USD',
+      source: '@payroll_pool',
+      destination: '@employee_1',
+      reference: 'payroll_bulk_001',
+      description: 'Payroll run',
+      allow_overdraft: true,
+      inflight_expiry_date: new Date(Date.now() + 48 * 60 * 60 * 1000),
+    },
+    {
+      amount: 3200,
+      precision: 100,
+      currency: 'USD',
+      source: '@payroll_pool',
+      destination: '@employee_2',
+      reference: 'payroll_bulk_002',
+      description: 'Payroll run',
+      allow_overdraft: true,
+      inflight_expiry_date: new Date(Date.now() + 48 * 60 * 60 * 1000),
+    },
+  ],
+});
+
+if (response.status === 201 && response.data) {
+  console.log(response.data.batch_id, response.data.status, response.data.message);
+}
+```
+
+To commit or void the batch later, call [`updateStatus`](/sdks/typescript/methods/transactions/update-inflight) with the `batch_id`. See [Commit or void bulk inflight](/transactions/bulk-transactions#commit-or-void-bulk-inflight).
+
+</Tab>
+<Tab title="skip_queue">
+
+Set `skip_queue: true` to process the batch synchronously without queuing. Useful for [hot balances](/guides/hot-balances).
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.createBulk({
+  skip_queue: true,
+  transactions: [
+    {
+      amount: 750,
+      precision: 100,
+      currency: 'USD',
+      source: '@FundingPool',
+      destination: '@MyBalance',
+      reference: 'bulk_skip_001',
+      description: 'Hot balance payout',
+      allow_overdraft: true,
+    },
+  ],
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.batch_id, response.data.status);
+```
+
+</Tab>
+</Tabs>
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `atomic` | `boolean` | No | When `true`, every transaction in the batch succeeds or fails together. |
+| `inflight` | `boolean` | No | When `true`, transactions are created in `INFLIGHT` status and require a later commit or void. |
+| `run_async` | `boolean` | No | When `true`, Core processes the batch in the background and returns `status: 'queued'`. |
+| `skip_queue` | `boolean` | No | When `true`, transactions bypass the queue and process synchronously. |
+| `transactions` | `array` | Yes | Each entry must pass the same validation as a single `create` call. References must be unique within the batch. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`run_async`, `skip_queue`, `allow_overdraft`, etc.).
+</Tip>
+
+Each item in `transactions` accepts the same fields as [Create transaction](/sdks/typescript/methods/transactions/create-transaction).
+
+---
+
+## Response
+
+Returns a bulk result in `response.data` when `status` is `201`. Key fields include `batch_id`, `status`, and optionally `transaction_count` or `message` depending on sync vs async processing. See [Bulk transactions](/reference/bulk-transactions) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `transactions` array
+- Invalid transaction objects within the batch (same rules as `create`)
+- Duplicate `reference` values within the batch
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk transactions" icon="book-open" href="/reference/bulk-transactions">
+HTTP API reference for batch request and response.
+</Card>
+
+<Card title="Bulk transactions guide" icon="layers" href="/transactions/bulk-transactions">
+Batch inflight create and commit by batch_id.
+</Card>
+
+<Card title="Update inflight" icon="plane" href="/sdks/typescript/methods/transactions/update-inflight">
+Commit or void an inflight batch.
+</Card>
+
+<Card title="Bulk inflight updates" icon="alert-triangle" href="/transactions/inflight#bulk-inflight-updates">
+Per-item failure codes for bulk commit and void.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

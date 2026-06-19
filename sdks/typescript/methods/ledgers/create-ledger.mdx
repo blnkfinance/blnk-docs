@@ -1,0 +1,130 @@
+---
+title: "Create ledger"
+sidebarTitle: "Create ledger"
+icon: "table-2"
+description: "Use the Blnk TypeScript SDK to create a new ledger on your Core instance."
+"og:title": "Create ledger • Blnk TypeScript SDK"
+"og:description": "Use blnk.Ledgers.create to create a new ledger on your Core instance."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+A ledger groups balances and transactions for a product, tenant, or environment. Call `blnk.Ledgers.create` when provisioning a new ledger during setup or onboarding.
+
+For ledger concepts and field definitions, see the [General ledger](/ledgers/general-ledger) guide and the [Create ledger](/reference/create-ledger) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Ledgers.create(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Ledgers` |
+| **SDK method** | `create` |
+| **HTTP** | `POST /ledgers` |
+| **Returns** | `Promise<ApiResponse<CreateLedgerResp \| null>>` |
+
+---
+
+## When to use
+
+Create one ledger per use case, for example a production wallet product, an internal operations book, or a sandbox for integration tests. Balances and transactions belong to the ledger you create them on.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customer wallets',
+  meta_data: { environment: 'production' },
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log('Ledger ID:', response.data.ledger_id);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Human-readable ledger name. |
+| `meta_data` | `object` | No | Optional key-value metadata stored on the ledger. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`meta_data`, not `metaData`).
+</Tip>
+
+---
+
+## Response
+
+Returns a ledger object in `response.data` when `status` is `201`. Key fields include `ledger_id`, `name`, `created_at`, and `meta_data`. See [Create ledger](/reference/create-ledger) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `name`
+- Invalid `meta_data` shape
+
+```typescript wrap
+// Client-side validation failure (no request sent to Core)
+const response = await blnk.Ledgers.create({ name: '' });
+
+if (response.status === 400) {
+  console.error('Validation failed:', response.message);
+}
+```
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Create ledger" icon="book-open" href="/reference/create-ledger">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="General ledger" icon="table-2" href="/ledgers/general-ledger">
+Product guide for ledger concepts and setup.
+</Card>
+
+<Card title="Ledgers CLI" icon="terminal" href="/cli/ledgers">
+Create and list ledgers from the terminal.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

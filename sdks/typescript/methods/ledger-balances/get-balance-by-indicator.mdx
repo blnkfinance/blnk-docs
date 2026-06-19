@@ -1,0 +1,125 @@
+---
+title: "Get balance by indicator"
+sidebarTitle: "Get by indicator"
+icon: "scan-search"
+description: "Use the Blnk TypeScript SDK to look up a balance by indicator and currency."
+"og:title": "Get balance by indicator • Blnk TypeScript SDK"
+"og:description": "Use blnk.LedgerBalances.getByIndicator to fetch a balance using its indicator and currency."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Look up a balance using its indicator and currency with `blnk.LedgerBalances.getByIndicator`, for example `@World` and `USD`. The SDK URL-encodes the indicator in the request path.
+
+For indicator concepts and response fields, see the [Internal balances](/balances/internal-balances) guide and the [Get balance by indicator](/reference/get-balance-by-indicator) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.LedgerBalances.getByIndicator(indicator, currency)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.LedgerBalances` |
+| **SDK method** | `getByIndicator` |
+| **HTTP** | `GET /balances/indicator/{indicator}/currency/{currency}` |
+| **Returns** | `Promise<ApiResponse<CreateLedgerBalanceResp \| null>>` |
+
+---
+
+## When to use
+
+Call `getByIndicator` when your application stores balance indicators (for example `@FundingPool` or `@World`) instead of `balance_id`, and you need the current balance record for a given currency.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.LedgerBalances.getByIndicator('@World', 'USD');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.balance_id, response.data.indicator);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `indicator` | `string` | Yes | Balance indicator (for example `@World`). |
+| `currency` | `string` | Yes | Currency code (for example `USD`). |
+
+---
+
+## Response
+
+Returns a balance object in `response.data` when `status` is `200`. Key fields include `balance_id`, `indicator`, `currency`, and `balance`. See [Get balance by indicator](/reference/get-balance-by-indicator) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `indicator`
+- Missing or empty `currency`
+
+```typescript wrap
+// Client-side validation failure (no request sent to Core)
+const response = await blnk.LedgerBalances.getByIndicator('', 'USD');
+
+if (response.status === 400) {
+  console.error('Validation failed:', response.message);
+}
+```
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.LedgerBalances.getByIndicator('@Unknown', 'USD');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get by indicator" icon="book-open" href="/reference/get-balance-by-indicator">
+HTTP API reference for indicator lookups.
+</Card>
+
+<Card title="Internal balances" icon="wallet" href="/balances/internal-balances">
+How `@` indicators and internal balances work.
+</Card>
+
+<Card title="Get balance" icon="banknote" href="/sdks/typescript/methods/ledger-balances/get-balance">
+Fetch a balance when you have its `balance_id`.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

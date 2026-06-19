@@ -1,0 +1,126 @@
+---
+title: "Get transaction"
+sidebarTitle: "Get transaction"
+icon: "file-text"
+description: "Use the Blnk TypeScript SDK to fetch a transaction by its transaction_id."
+"og:title": "Get transaction • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.get to fetch a transaction when you have its transaction_id."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Fetch a single transaction by `transaction_id` with `blnk.Transactions.get`. Use it to inspect status after a create or refund call, or when debugging from application logs.
+
+For transaction behavior and response fields, see the [Transactions](/transactions/introduction) guide and the [View transaction details](/reference/get-transaction) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.get(transactionId)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `get` |
+| **HTTP** | `GET /transactions/{transaction_id}` |
+| **Returns** | `Promise<ApiResponse<Transaction \| null>>` |
+
+---
+
+## When to use
+
+Call `get` when you have a Blnk `transaction_id` from a `create` response, refund output, webhook payload, or support tooling, and need the current status, amounts, and metadata.
+
+---
+
+## Example
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.get(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.transaction_id, response.data.status);
+```
+
+<Tip>
+CLI equivalent: `blnk transactions list --id <transaction-id>`. See [CLI transactions](/cli/transactions).
+</Tip>
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transactionId` | `string` | Yes | Transaction ID (for example `txn_14706192-e53d-43cc-86a1-b8807a09b351`). |
+
+---
+
+## Response
+
+Returns a transaction object in `response.data` when `status` is `200`. Key fields include `transaction_id`, `status`, `source`, `destination`, `amount`, and `reference`. See [View transaction details](/reference/get-transaction) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `transactionId`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.get('invalid-id');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="View transaction" icon="book-open" href="/reference/get-transaction">
+HTTP API reference for the response schema.
+</Card>
+
+<Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
+Product guide for money movement and statuses.
+</Card>
+
+<Card title="Get by reference" icon="hash" href="/sdks/typescript/methods/transactions/get-transaction-by-reference">
+Look up a transaction using your reference.
+</Card>
+
+<Card title="CLI transactions" icon="terminal" href="/cli/transactions">
+Inspect a transaction with `blnk transactions list --id`.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

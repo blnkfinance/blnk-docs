@@ -1,0 +1,146 @@
+---
+title: "Update inflight"
+sidebarTitle: "Update inflight"
+icon: "plane"
+description: "Use the Blnk TypeScript SDK to commit or void an inflight transaction or batch."
+"og:title": "Update inflight • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.updateStatus to commit or void a single inflight transaction or an entire inflight batch."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Commit or void a single inflight transaction, or an entire inflight **batch** created with [`createBulk`](/sdks/typescript/methods/transactions/bulk-transactions), with `blnk.Transactions.updateStatus`. Pass `status: 'commit'` to apply funds, or `status: 'void'` to cancel.
+
+For commit and void behavior, see the [Inflight](/transactions/inflight) guide and the [Update inflight](/reference/update-inflight) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.updateStatus(transactionOrBatchId, data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `updateStatus` |
+| **HTTP** | `PUT /transactions/inflight/{transaction_id}` |
+| **Returns** | `Promise<ApiResponse<Transaction \| null>>` |
+
+---
+
+## When to use
+
+Call `updateStatus` after creating an inflight transaction or batch when conditions are met (`commit`) or should be cancelled (`void`). Pass a `transaction_id` for a single inflight transaction, or a `batch_id` from `createBulk` to commit or void the entire batch at once.
+
+For partial commits, include `amount` or `precise_amount` in the request body.
+
+---
+
+## Example
+
+```typescript wrap
+// Single inflight transaction
+const response = await blnk.Transactions.updateStatus(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { status: 'commit' },
+);
+
+// Entire inflight batch (use batch_id from createBulk)
+const batchResponse = await blnk.Transactions.updateStatus(
+  'bulk_c62f200b-905f-4983-a349-cadd279234aa',
+  { status: 'commit' },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.transaction_id, response.data.status);
+```
+
+<Note>
+For independently-created inflight transactions (not from a bulk batch), use [`bulkCommitInflight`](/sdks/typescript/methods/transactions/bulk-commit-inflight) or [`bulkVoidInflight`](/sdks/typescript/methods/transactions/bulk-void-inflight) to commit or void up to 100 at once.
+</Note>
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transactionOrBatchId` | `string` | Yes | Inflight `transaction_id` or bulk `batch_id` to update. |
+| `status` | `string` | Yes | `commit` to apply funds, or `void` to cancel and roll back. |
+| `amount` | `integer` | No | Partial commit amount. |
+| `precise_amount` | `integer` | No | Precision-applied partial commit amount. When both are set, `precise_amount` takes precedence. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`precise_amount`, not `preciseAmount`).
+</Tip>
+
+---
+
+## Response
+
+Returns a transaction object in `response.data` when `status` is `200`. See [Update inflight](/reference/update-inflight) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `transactionOrBatchId`
+- Missing or invalid `status` (must be `commit` or `void`)
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.updateStatus(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { status: 'void' },
+);
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Update inflight" icon="book-open" href="/reference/update-inflight">
+HTTP API reference for commit and void.
+</Card>
+
+<Card title="Commit & void inflight" icon="check-circle" href="/transactions/inflight">
+Single commit, void, and verify flows.
+</Card>
+
+<Card title="Bulk transactions" icon="layers" href="/transactions/bulk-transactions">
+Batch inflight create and commit by batch_id.
+</Card>
+
+<Card title="Bulk commit inflight" icon="check-check" href="/sdks/typescript/methods/transactions/bulk-commit-inflight">
+Commit up to 100 independent inflight txs.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

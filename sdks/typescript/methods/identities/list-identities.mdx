@@ -1,0 +1,104 @@
+---
+title: "List identities"
+sidebarTitle: "List identities"
+icon: "users"
+description: "Use the Blnk TypeScript SDK to list all identities on your Core instance."
+"og:title": "List identities • Blnk TypeScript SDK"
+"og:description": "Use blnk.Identity.list to fetch all identity records on your Core instance."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+List all identities on your Core instance with `blnk.Identity.list`. For large datasets, prefer [`Search.search`](/sdks/typescript/methods/search/search-typesense) or [`Search.filter`](/sdks/typescript/methods/search/search-db).
+
+For identity concepts, see the [Identities](/identities/introduction) guide.
+
+---
+
+## Method
+
+```typescript
+blnk.Identity.list()
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Identity` |
+| **SDK method** | `list` |
+| **HTTP** | `GET /identities` |
+| **Returns** | `Promise<ApiResponse<IdentityDataResponse[] \| null>>` |
+
+---
+
+## When to use
+
+Call `list` for small instances, admin tooling, or local development when you need every identity record. For production queries with filters or pagination, use Search instead.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Identity.list();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.length);
+```
+
+---
+
+## Parameters
+
+This method takes no arguments.
+
+---
+
+## Response
+
+Returns an array of identity objects in `response.data` when `status` is `200`. See [Get identity](/reference/get-identity) for the shape of each record.
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get identity" icon="book-open" href="/reference/get-identity">
+HTTP API reference for identity record shape.
+</Card>
+
+<Card title="Search via Typesense" icon="search" href="/sdks/typescript/methods/search/search-typesense">
+Full-text search for large identity datasets.
+</Card>
+
+<Card title="Search via DB" icon="database" href="/sdks/typescript/methods/search/search-db">
+Structured filters for identity queries.
+</Card>
+
+<Card title="Identities" icon="user" href="/identities/introduction">
+Product guide for identity concepts.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

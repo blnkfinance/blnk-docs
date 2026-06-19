@@ -1,0 +1,121 @@
+---
+title: "List hooks"
+sidebarTitle: "List hooks"
+icon: "list-tree"
+description: "Use the Blnk TypeScript SDK to list transaction webhooks, optionally filtered by type."
+"og:title": "List hooks • Blnk TypeScript SDK"
+"og:description": "Use blnk.Hooks.list to fetch registered PRE_TRANSACTION and POST_TRANSACTION hooks."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+List registered hooks with `blnk.Hooks.list`. Pass an optional `type` filter to return only pre- or post-transaction hooks.
+
+For hook concepts, see the [Create hooks](/hooks/create-hooks) guide and the [List hooks by type](/reference/list-hooks-by-type) API reference.
+
+<Warning>
+Hook management requires the **master key** in `X-Blnk-Key`. Regular API keys return `403 Forbidden`.
+</Warning>
+
+---
+
+## Method
+
+```typescript
+blnk.Hooks.list(options?)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Hooks` |
+| **SDK method** | `list` |
+| **HTTP** | `GET /hooks` or `GET /hooks?type={type}` |
+| **Returns** | `Promise<ApiResponse<HookResp[] \| null>>` |
+
+---
+
+## When to use
+
+Call `list` to audit registered webhooks, verify configuration in admin tooling, or find hook IDs before `get`, `update`, or `delete`.
+
+---
+
+## Example
+
+```typescript wrap
+const allHooks = await blnk.Hooks.list();
+const preTxnHooks = await blnk.Hooks.list({ type: 'PRE_TRANSACTION' });
+
+if (preTxnHooks.status !== 200 || !preTxnHooks.data) {
+  console.error(`Error ${preTxnHooks.status}: ${preTxnHooks.message}`);
+  if (preTxnHooks.data) console.error(preTxnHooks.data);
+  return;
+}
+
+console.log(preTxnHooks.data.length);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `options.type` | `string` | No | Filter by `PRE_TRANSACTION` or `POST_TRANSACTION`. Omit to list all hooks. |
+
+---
+
+## Response
+
+Returns an array of hook objects in `response.data` when `status` is `200`. See [View hooks](/reference/view-hooks) for the shape of each record.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK validates optional filter arguments. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Invalid `options.type` when provided
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="List hooks by type" icon="book-open" href="/reference/list-hooks-by-type">
+HTTP API reference for query parameters and response schema.
+</Card>
+
+<Card title="Create hooks guide" icon="webhook" href="/hooks/create-hooks">
+Hook types, payloads, and setup.
+</Card>
+
+<Card title="View hooks" icon="eye" href="/sdks/typescript/methods/hooks/view-hooks">
+Fetch one hook by ID.
+</Card>
+
+<Card title="Create hooks" icon="webhook" href="/sdks/typescript/methods/hooks/create-hooks">
+Create a new pre- or post-transaction hook.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

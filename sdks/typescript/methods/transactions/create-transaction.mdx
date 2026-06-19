@@ -1,0 +1,161 @@
+---
+title: "Create transaction"
+sidebarTitle: "Create transaction"
+icon: "arrow-left-right"
+description: "Use the Blnk TypeScript SDK to post a transfer between balances on your Core instance."
+"og:title": "Create transaction • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.create to post a transfer between a source and destination balance."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Post a transfer between a source and destination balance with `blnk.Transactions.create`. The method supports inflight holds, scheduling, split legs, and metadata.
+
+For transaction behavior and field definitions, see the [Transactions](/transactions/introduction) guide and the [Create transaction](/reference/create-transaction) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.create(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `create` |
+| **HTTP** | `POST /transactions` |
+| **Returns** | `Promise<ApiResponse<CreateTransactionResp \| null>>` |
+
+---
+
+## When to use
+
+Call `create` to record a single money movement: customer payments, internal transfers, payroll payouts, or any debit/credit between balances. Use inflight, scheduling, and split-leg options when your flow needs holds, delayed posting, or multi-party splits.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  reference: 'payment_001',
+  description: 'Customer payment',
+  allow_overdraft: true,
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.transaction_id, response.data.status);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `amount` | `float` | Yes* | Transaction amount. Use `precise_amount` for values with more than 15 digits. |
+| `precise_amount` | `integer` | Yes* | Amount with precision applied. |
+| `currency` | `string` | Yes | Currency code. |
+| `precision` | `integer` | Yes | Currency precision (for example `100` for cents). |
+| `reference` | `string` | Yes | Unique reference for idempotency and reconciliation. |
+| `source` | `string` | Yes | Source balance ID. Prefix with `@` for [internal balances](/balances/internal-balances). |
+| `destination` | `string` | Yes | Destination balance ID. |
+| `description` | `string` | Yes | Human-readable narration. |
+| `allow_overdraft` | `boolean` | No | Allow the source balance to go negative. |
+| `inflight` | `boolean` | No | Hold the transaction until you commit or void it. See [Inflight](/transactions/inflight). |
+| `meta_data` | `object` | No | Optional key-value metadata. |
+
+\* Provide `amount` or `precise_amount`.
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`allow_overdraft`, `meta_data`, not `allowOverdraft`).
+</Tip>
+
+For split legs, scheduling, and other optional fields, see [Create transaction](/reference/create-transaction), [Multiple sources](/reference/multiple-sources), and [Multiple destinations](/reference/multiple-destinations).
+
+---
+
+## Response
+
+Returns a transaction object in `response.data` when `status` is `201`. Key fields include `transaction_id`, `status`, `source`, `destination`, and `amount`. See [Create transaction](/reference/create-transaction) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing required fields (`amount` or `precise_amount`, `currency`, `precision`, `reference`, `source`, `destination`, `description`)
+- Invalid field types or shapes
+
+```typescript wrap
+// Client-side validation failure (no request sent to Core)
+const response = await blnk.Transactions.create({
+  amount: 1000,
+  precision: 100,
+  currency: 'USD',
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  reference: '',
+  description: 'Customer payment',
+});
+
+if (response.status === 400) {
+  console.error('Validation failed:', response.message);
+}
+```
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Create transaction" icon="book-open" href="/reference/create-transaction">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
+Product guide for money movement and statuses.
+</Card>
+
+<Card title="Inflight" icon="plane" href="/transactions/inflight">
+Hold, commit, and void inflight transactions.
+</Card>
+
+<Card title="CLI transactions" icon="terminal" href="/cli/transactions">
+Create and list transactions from the terminal.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

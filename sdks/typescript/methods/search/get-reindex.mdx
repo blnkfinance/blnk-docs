@@ -1,0 +1,104 @@
+---
+title: "Get reindex status"
+sidebarTitle: "Get reindex"
+icon: "activity"
+description: "Use the Blnk TypeScript SDK to poll Typesense reindex progress."
+"og:title": "Get reindex status • Blnk TypeScript SDK"
+"og:description": "Use blnk.Search.getReindexStatus to check reindex job progress on Core."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Poll Typesense reindex progress with `blnk.Search.getReindexStatus`. Call this after [`startReindex`](/sdks/typescript/methods/search/start-reindex) to track job status and phase.
+
+For reindex workflow, see the [Typesense reindex guide](/search/typesense/reindex) and the [Get reindex status](/reference/get-reindex) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Search.getReindexStatus()
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Search` |
+| **SDK method** | `getReindexStatus` |
+| **HTTP** | `GET /search/reindex` |
+| **Returns** | `Promise<ApiResponse<GetReindexStatusResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `getReindexStatus` on an interval after starting a reindex until the job completes or fails. Returns `404` when no reindex has been started on the instance.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Search.getReindexStatus();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.status, response.data.phase);
+```
+
+---
+
+## Parameters
+
+This method takes no arguments.
+
+---
+
+## Response
+
+Returns reindex progress in `response.data` when `status` is `200`. Key fields include `status` and `phase`. See [Get reindex status](/reference/get-reindex) for all response fields.
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Search.getReindexStatus();
+
+if (response.status === 404) {
+  console.error('No reindex job found');
+} else if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get reindex status" icon="book-open" href="/reference/get-reindex">
+HTTP API reference for progress fields.
+</Card>
+
+<Card title="Start reindex" icon="hard-drive-upload" href="/sdks/typescript/methods/search/start-reindex">
+Start a reindex job before polling status.
+</Card>
+
+<Card title="Typesense reindex" icon="refresh-cw" href="/search/typesense/reindex">
+Reindex workflow and operational guidance.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

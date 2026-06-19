@@ -1,0 +1,136 @@
+---
+title: "Upload data"
+sidebarTitle: "Upload data"
+icon: "upload"
+description: "Use the Blnk TypeScript SDK to upload external records for reconciliation."
+"og:title": "Upload data • Blnk TypeScript SDK"
+"og:description": "Use blnk.Reconciliation.upload to upload a CSV or JSON file and get an upload_id."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Upload external statement data with `blnk.Reconciliation.upload`. Store the returned `upload_id` for a batch reconciliation run.
+
+For file format and workflow, see the [External data](/reconciliations/external-data) guide and the [Upload external records](/reference/upload-data) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Reconciliation.upload(fileInput, source)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Reconciliation` |
+| **SDK method** | `upload` |
+| **HTTP** | `POST /reconciliation/upload` |
+| **Returns** | `Promise<ApiResponse<ReconciliationUploadResp \| null>>` |
+
+---
+
+## When to use
+
+Call `upload` as the first step in batch reconciliation. Pass a local file path or a Node.js `ReadStream`, plus a `source` label that describes where the data came from (for example `stripe` or `bank-export`).
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Reconciliation.upload(
+  'statement.csv',
+  'stripe',
+);
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.upload_id, response.data.record_count);
+```
+
+Pass a `ReadStream` instead of a path when the file is already open or streamed from storage:
+
+```typescript wrap
+import fs from 'fs';
+
+const response = await blnk.Reconciliation.upload(
+  fs.createReadStream('statement.csv'),
+  'stripe',
+);
+```
+
+<Tip>
+We support CSV and JSON uploads. See [External data](/reconciliations/external-data) for required columns and examples.
+</Tip>
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `fileInput` | `string` \| `ReadStream` | Yes | Local file path or a readable Node.js stream. |
+| `source` | `string` | Yes | Label for the data origin (for example `stripe`, `internal`). |
+
+---
+
+## Response
+
+Returns an upload summary in `response.data` when `status` is `201`. Key fields include `upload_id`, `record_count`, and `source`. See [Upload external records](/reference/upload-data) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks the file input locally. If validation fails, the SDK returns an error status with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- File path does not exist (`status: 404`)
+- Invalid or unreadable `ReadStream` (`status: 400`)
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Upload external records" icon="book-open" href="/reference/upload-data">
+HTTP API reference for multipart upload fields and response schema.
+</Card>
+
+<Card title="External data" icon="file-up" href="/reconciliations/external-data">
+File formats, columns, and upload workflow.
+</Card>
+
+<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
+Define how uploaded rows match ledger transactions.
+</Card>
+
+<Card title="Start reconciliation" icon="play" href="/sdks/typescript/methods/reconciliation/start-reconciliation">
+Run reconciliation against an `upload_id`.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

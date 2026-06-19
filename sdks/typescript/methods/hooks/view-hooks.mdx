@@ -1,0 +1,120 @@
+---
+title: "View hooks"
+sidebarTitle: "View hooks"
+icon: "eye"
+description: "Use the Blnk TypeScript SDK to fetch a transaction webhook by ID."
+"og:title": "View hooks • Blnk TypeScript SDK"
+"og:description": "Use blnk.Hooks.get to fetch hook configuration and last-run status."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Fetch a single hook with `blnk.Hooks.get`. Read URL, type, timeout, retry settings, and last run status before updating or debugging.
+
+For hook concepts, see the [Create hooks](/hooks/create-hooks) guide and the [View hooks](/reference/view-hooks) API reference.
+
+<Warning>
+Hook management requires the **master key** in `X-Blnk-Key`. Regular API keys return `403 Forbidden`.
+</Warning>
+
+---
+
+## Method
+
+```typescript
+blnk.Hooks.get(id)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Hooks` |
+| **SDK method** | `get` |
+| **HTTP** | `GET /hooks/{id}` |
+| **Returns** | `Promise<ApiResponse<HookResp \| null>>` |
+
+---
+
+## When to use
+
+Call `get` when you have a hook ID from `create` or `list` and need the current configuration or last run outcome.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Hooks.get('hk_test_123');
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.url, response.data.last_success);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Hook ID. |
+
+---
+
+## Response
+
+Returns a hook object in `response.data` when `status` is `200`. Key fields include `id`, `name`, `url`, `type`, `active`, `timeout`, `retry_count`, `last_run`, and `last_success`. See [View hooks](/reference/view-hooks) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that `id` is present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `id`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="View hooks" icon="book-open" href="/reference/view-hooks">
+HTTP API reference for the response schema.
+</Card>
+
+<Card title="Create hooks guide" icon="webhook" href="/hooks/create-hooks">
+Hook types, payloads, and setup.
+</Card>
+
+<Card title="Update hooks" icon="settings" href="/sdks/typescript/methods/hooks/update-hooks">
+Replace hook configuration on an existing ID.
+</Card>
+
+<Card title="List hooks" icon="list-tree" href="/sdks/typescript/methods/hooks/list-hooks-by-type">
+List all hooks or filter by type.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

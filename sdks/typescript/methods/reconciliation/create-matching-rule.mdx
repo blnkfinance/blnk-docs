@@ -1,0 +1,137 @@
+---
+title: "Create matching rule"
+sidebarTitle: "Create matching rule"
+icon: "git-merge"
+description: "Use the Blnk TypeScript SDK to define how external records match ledger transactions."
+"og:title": "Create matching rule • Blnk TypeScript SDK"
+"og:description": "Use blnk.Reconciliation.createMatchingRule to create a matching rule and get a rule_id."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Create a matching rule with `blnk.Reconciliation.createMatchingRule`. Store the returned `rule_id` for reconciliation runs.
+
+For criteria, operators, and drift, see the [Matching rules](/reconciliations/matching-rules) guide and the [Create matching rule](/reference/create-matching-rule) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Reconciliation.createMatchingRule(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Reconciliation` |
+| **SDK method** | `createMatchingRule` |
+| **HTTP** | `POST /reconciliation/matching-rules` |
+| **Returns** | `Promise<ApiResponse<RunReconResp \| null>>` |
+
+---
+
+## When to use
+
+Call `createMatchingRule` after you know which external fields should match ledger transactions. Create one or more rules before starting batch or instant reconciliation.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Reconciliation.createMatchingRule({
+  name: 'Amount match',
+  description: 'Match by amount with 1% drift',
+  criteria: [
+    { field: 'amount', operator: 'equals', allowable_drift: 0.01 },
+    { field: 'currency', operator: 'equals' },
+    { field: 'reference', operator: 'contains' },
+  ],
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.rule_id);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Rule name. |
+| `description` | `string` | Yes | Short description of what the rule does. |
+| `criteria` | `array` | Yes | One or more match criteria. |
+| `criteria[].field` | `string` | Yes | `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `string` | Yes | `equals`, `greater_than`, `less_than`, or `contains`. |
+| `criteria[].allowable_drift` | `number` | No | Tolerance for amount (percentage) or date (seconds). |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`allowable_drift`, `matching_rule_ids`).
+</Tip>
+
+For operator behavior and drift examples, see [Matching rules](/reconciliations/matching-rules).
+
+---
+
+## Response
+
+Returns a matching rule in `response.data` when `status` is `201`. Key fields include `rule_id`, `name`, `criteria`, `created_at`, and `updated_at`. See [Create matching rule](/reference/create-matching-rule) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or invalid `name` or `description`
+- Missing or empty `criteria` array
+- Invalid `field`, `operator`, or `allowable_drift` on a criterion
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Create matching rule" icon="book-open" href="/reference/create-matching-rule">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Matching rules" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, drift, and examples.
+</Card>
+
+<Card title="Start reconciliation" icon="play" href="/sdks/typescript/methods/reconciliation/start-reconciliation">
+Apply matching rules during a batch run.
+</Card>
+
+<Card title="Update matching rule" icon="sliders-horizontal" href="/sdks/typescript/methods/reconciliation/update-matching-rule">
+Change criteria on an existing rule.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

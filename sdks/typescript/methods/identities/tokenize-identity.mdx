@@ -1,0 +1,131 @@
+---
+title: "Tokenize identity"
+sidebarTitle: "Tokenize identity"
+icon: "fingerprint"
+description: "Use the Blnk TypeScript SDK to tokenize multiple PII fields on an identity."
+"og:title": "Tokenize identity • Blnk TypeScript SDK"
+"og:description": "Use blnk.Identity.tokenize to tokenize multiple PII fields on an identity."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Tokenize multiple PII fields on an identity with `blnk.Identity.tokenize`. This replaces sensitive values with tokens on the stored identity record.
+
+<Note>
+Tokenization endpoints use **PascalCase struct field names** (`FirstName`, `EmailAddress`), not the snake_case keys on identity create/update (`first_name`, `email_address`). That is a Core API requirement. Identity CRUD uses snake_case; tokenize and detokenize use PascalCase.
+</Note>
+
+For tokenization setup, see [PII tokenization](/identities/pii-tokenization) and the [Tokenize identity](/reference/tokenize-identity) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Identity.tokenize(id, data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Identity` |
+| **SDK method** | `tokenize` |
+| **HTTP** | `POST /identities/{identity_id}/tokenize` |
+| **Returns** | `Promise<ApiResponse<TokenizeIdentityResp \| null>>` |
+
+---
+
+## When to use
+
+Call `tokenize` when you need to protect several sensitive fields in one request instead of calling `tokenizeField` repeatedly.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Identity.tokenize(
+  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  { fields: ['FirstName', 'EmailAddress'] },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.message);
+```
+
+<Info>
+Tokenization requires `tokenization_secret` in Core config. See [PII tokenization](/identities/pii-tokenization).
+</Info>
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Identity ID. |
+| `fields` | `string[]` | Yes | PascalCase field names to tokenize. At least one required. |
+
+Tokenizable values: `FirstName`, `LastName`, `OtherNames`, `EmailAddress`, `PhoneNumber`, `Street`, `PostCode`.
+
+---
+
+## Response
+
+Returns a status message in `response.data` when `status` is `200`. See [Tokenize identity](/reference/tokenize-identity) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that the identity ID and `fields` array are valid. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `id`
+- Missing, empty, or invalid entries in `fields`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Tokenize identity" icon="book-open" href="/reference/tokenize-identity">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Tokenize field" icon="lock" href="/sdks/typescript/methods/identities/tokenize-field">
+Tokenize a single field.
+</Card>
+
+<Card title="Get tokenized fields" icon="shield" href="/sdks/typescript/methods/identities/get-tokenized-fields">
+List fields currently tokenized.
+</Card>
+
+<Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
+Core setup and tokenization concepts.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

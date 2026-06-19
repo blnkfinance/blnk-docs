@@ -1,0 +1,121 @@
+---
+title: "Delete API key"
+sidebarTitle: "Delete API key"
+icon: "key-off"
+description: "Use the Blnk TypeScript SDK to revoke an API key by ID."
+"og:title": "Delete API key • Blnk TypeScript SDK"
+"og:description": "Use blnk.ApiKeys.delete to revoke a scoped API key immediately."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Revoke an API key with `blnk.ApiKeys.delete`. Access stops immediately, so rotate applications to a new key before revoking the old one.
+
+For scopes and auth model, see [Secure Blnk](/advanced/secure-blnk) and the [Revoke API key](/reference/delete-api-key) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.ApiKeys.delete(id, options?)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.ApiKeys` |
+| **SDK method** | `delete` |
+| **HTTP** | `DELETE /api-keys/{id}` |
+| **Returns** | `Promise<ApiResponse<null>>` |
+
+---
+
+## When to use
+
+Call `delete` when a key is compromised, expired, or no longer needed. Use `list` first to confirm the correct `api_key_id`.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.ApiKeys.delete('api_key_abc123', {
+  owner: 'merchant_a',
+});
+
+if (response.status !== 204) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  console.error(response.data);
+}
+```
+
+<Tip>
+When using the master key, pass `{ owner }` in `options`. Core requires the owner query parameter for master-key requests.
+</Tip>
+
+---
+
+## Parameters
+
+| Argument / field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | API key ID to revoke. |
+| `options.owner` | `string` | No | Owner filter. Required when authenticating with the master key. |
+
+---
+
+## Response
+
+Returns **204 No Content** on success. `response.data` is `null`.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that `id` is present and validates optional `options`. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `id`
+- Empty `options.owner` when provided
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 204) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Revoke API key" icon="book-open" href="/reference/delete-api-key">
+HTTP API reference for path and query parameters.
+</Card>
+
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+Master key, scopes, and auth model.
+</Card>
+
+<Card title="List API keys" icon="key-square" href="/sdks/typescript/methods/api-keys/list-api-keys">
+Find `api_key_id` values for an owner.
+</Card>
+
+<Card title="Create API key" icon="key" href="/sdks/typescript/methods/api-keys/create-api-key">
+Issue a replacement key before revoking.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

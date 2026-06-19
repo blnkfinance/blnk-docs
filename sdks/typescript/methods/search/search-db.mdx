@@ -1,0 +1,144 @@
+---
+title: "Search via DB"
+sidebarTitle: "Search DB"
+icon: "database"
+description: "Use the Blnk TypeScript SDK to filter records with structured Postgres queries."
+"og:title": "Search via DB • Blnk TypeScript SDK"
+"og:description": "Use blnk.Search.filter to query ledgers, balances, transactions, or identities with JSON filters."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Query records with structured JSON filters against Postgres using `blnk.Search.filter`. Use this when you need exact field matching instead of Typesense full-text search.
+
+For operators and supported fields, see [DB filtering](/search/db/filtering) and the [Search via DB](/reference/search-db) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Search.filter(params, collection)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Search` |
+| **SDK method** | `filter` |
+| **HTTP** | `POST /{collection}/filter` |
+| **Returns** | `Promise<ApiResponse<FilterResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `filter` for structured queries with operators like `eq`, `gte`, and `in`, for example listing applied transactions or filtering identities by type. For full-text search, use [`search`](/sdks/typescript/methods/search/search-typesense) instead.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [{ field: 'status', operator: 'eq', value: 'APPLIED' }],
+    logical_operator: 'and',
+    sort_by: 'created_at',
+    sort_order: 'desc',
+    include_count: true,
+    limit: 20,
+    offset: 0,
+  },
+  'transactions',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.total_count, response.data.data[0]?.transaction_id);
+```
+
+Filter identities by type:
+
+```typescript wrap
+const identities = await blnk.Search.filter(
+  {
+    filters: [{ field: 'identity_type', operator: 'eq', value: 'individual' }],
+    limit: 10,
+  },
+  'identities',
+);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `params` | `object` | Yes | Filter body with a `filters` array and optional sort/pagination fields. |
+| `collection` | `string` | Yes | `ledgers`, `transactions`, `balances`, or `identities`. |
+
+Common filter operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `between`, `like`, `ilike`, `isnull`, `isnotnull`. Max `limit`: 100.
+
+---
+
+## Response
+
+Returns filtered records in `response.data` when `status` is `200`. Key fields include `data` and optional `total_count`. See [Search via DB](/reference/search-db) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK validates the collection and filter body. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Invalid `collection`
+- Missing or malformed `filters` array
+- Invalid operator, limit, offset, or sort fields
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Search via DB" icon="book-open" href="/reference/search-db">
+HTTP API reference for filter fields and response schema.
+</Card>
+
+<Card title="DB filtering" icon="database" href="/search/db/filtering">
+Supported operators and field reference.
+</Card>
+
+<Card title="Search via Typesense" icon="search" href="/sdks/typescript/methods/search/search-typesense">
+Full-text search when filters are not enough.
+</Card>
+
+<Card title="DB examples" icon="code" href="/search/db/examples">
+Example filter queries by collection.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

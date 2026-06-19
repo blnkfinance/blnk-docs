@@ -1,0 +1,142 @@
+---
+title: "Historical balances"
+sidebarTitle: "Historical balances"
+icon: "clock"
+description: "Use the Blnk TypeScript SDK to fetch a balance at a specific point in time."
+"og:title": "Historical balances • Blnk TypeScript SDK"
+"og:description": "Use blnk.LedgerBalances.getAt to retrieve a balance state at an ISO 8601 timestamp."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Retrieve a balance at a specific point in time with `blnk.LedgerBalances.getAt`. Pass an ISO 8601 timestamp (RFC3339). Set `from_source: true` to reconstruct from transactions instead of snapshots.
+
+For concepts and timestamp rules, see the [Historical balances](/balances/historical-balances) guide and the [Historical balances](/reference/historical-balances) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.LedgerBalances.getAt(balanceId, options)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.LedgerBalances` |
+| **SDK method** | `getAt` |
+| **HTTP** | `GET /balances/{balance_id}/at` |
+| **Returns** | `Promise<ApiResponse<GetBalanceAtResponse \| null>>` |
+
+---
+
+## When to use
+
+Call `getAt` for reconciliation, audit trails, or reporting when you need what a balance held at a past datetime. Snapshots must exist for the timestamp unless you pass `from_source: true`.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.LedgerBalances.getAt(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  { timestamp: '2025-02-24T08:55:26Z' },
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.balance.balance, response.data.timestamp);
+```
+
+Reconstruct from transactions instead of snapshots:
+
+```typescript wrap
+const fromSource = await blnk.LedgerBalances.getAt(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  { timestamp: '2025-02-24T08:55:26Z', from_source: true },
+);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `balanceId` | `string` | Yes | Balance ID to query. |
+| `timestamp` | `string` | Yes | ISO 8601 timestamp (for example `2025-02-24T08:55:26Z`). |
+| `from_source` | `boolean` | No | When `true`, reconstruct from transactions instead of snapshots. |
+
+---
+
+## Response
+
+Returns a historical balance result in `response.data` when `status` is `200`. Key fields include `timestamp` and a nested `balance` object. See [Historical balances](/reference/historical-balances) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `balanceId`
+- Missing or empty `timestamp`
+
+```typescript wrap
+// Client-side validation failure (no request sent to Core)
+const response = await blnk.LedgerBalances.getAt('bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f', {
+  timestamp: '',
+});
+
+if (response.status === 400) {
+  console.error('Validation failed:', response.message);
+}
+```
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Historical balances" icon="book-open" href="/reference/historical-balances">
+HTTP API reference for timestamp queries.
+</Card>
+
+<Card title="Historical balances guide" icon="clock" href="/balances/historical-balances">
+How point-in-time balance queries work.
+</Card>
+
+<Card title="Balance snapshots" icon="camera" href="/sdks/typescript/methods/ledger-balances/balances-snapshots">
+Trigger snapshot batches before querying historical data.
+</Card>
+
+<Card title="Get balance" icon="banknote" href="/sdks/typescript/methods/ledger-balances/get-balance">
+Fetch the current balance state.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

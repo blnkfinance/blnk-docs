@@ -1,0 +1,139 @@
+---
+title: "Refund transaction"
+sidebarTitle: "Refund transaction"
+icon: "undo-2"
+description: "Use the Blnk TypeScript SDK to reverse an applied transaction."
+"og:title": "Refund transaction • Blnk TypeScript SDK"
+"og:description": "Use blnk.Transactions.refund to reverse an applied transaction by creating a new transaction with swapped source and destination."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Reverse an applied transaction with `blnk.Transactions.refund`. Blnk creates a new transaction that swaps source and destination.
+
+For reversal behavior and edge cases, see the [Refunds](/transactions/refunds) guide and the [Refund transaction](/reference/refund-transaction) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Transactions.refund(transactionId, data?)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Transactions` |
+| **SDK method** | `refund` |
+| **HTTP** | `POST /refund-transaction/{transaction_id}` |
+| **Returns** | `Promise<ApiResponse<Transaction \| null>>` |
+
+---
+
+## When to use
+
+Call `refund` to reverse a previously applied transaction, for example customer chargebacks, order cancellations, or correcting an erroneous post. Pass an optional body with `skip_queue: true` to process synchronously instead of queuing.
+
+---
+
+## Example
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.refund(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+);
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.transaction_id, response.data.status);
+```
+
+Pass an optional body to process synchronously:
+
+```typescript wrap
+const syncResponse = await blnk.Transactions.refund(
+  'txn_14706192-e53d-43cc-86a1-b8807a09b351',
+  { skip_queue: true },
+);
+
+if (syncResponse.status !== 201 || !syncResponse.data) {
+  console.error(`Error ${syncResponse.status}: ${syncResponse.message}`);
+  return;
+}
+
+console.log(syncResponse.data.transaction_id, syncResponse.data.status);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `transactionId` | `string` | Yes | Transaction ID of the applied transaction to refund. |
+| `skip_queue` | `boolean` | No | When `true`, processes the refund synchronously instead of placing it on the transaction queue. |
+
+<Tip>
+Request field names use **snake_case** to match the HTTP API (`skip_queue`, not `skipQueue`).
+</Tip>
+
+---
+
+## Response
+
+Returns a transaction object in `response.data` when `status` is `201`. See [Refund transaction](/reference/refund-transaction) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `transactionId`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.Transactions.refund('invalid-id');
+
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Refund transaction" icon="book-open" href="/reference/refund-transaction">
+HTTP API reference for refund requests.
+</Card>
+
+<Card title="Refunds" icon="undo-2" href="/transactions/refunds">
+Product guide for reversal behavior.
+</Card>
+
+<Card title="Get transaction" icon="eye" href="/sdks/typescript/methods/transactions/get-transaction">
+Inspect the refund result by transaction_id.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

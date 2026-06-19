@@ -1,0 +1,134 @@
+---
+title: "Update hooks"
+sidebarTitle: "Update hooks"
+icon: "settings"
+description: "Use the Blnk TypeScript SDK to update an existing transaction webhook."
+"og:title": "Update hooks • Blnk TypeScript SDK"
+"og:description": "Use blnk.Hooks.update to replace hook URL, type, timeout, and retry settings."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Update an existing hook with `blnk.Hooks.update`. Pass the full payload Core expects on `PUT`. The hook `id` does not change.
+
+For hook types and payloads, see the [Create hooks](/hooks/create-hooks) guide and the [Update hooks](/reference/update-hooks) API reference.
+
+<Warning>
+Hook management requires the **master key** in `X-Blnk-Key`. Regular API keys return `403 Forbidden`.
+</Warning>
+
+---
+
+## Method
+
+```typescript
+blnk.Hooks.update(id, data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Hooks` |
+| **SDK method** | `update` |
+| **HTTP** | `PUT /hooks/{id}` |
+| **Returns** | `Promise<ApiResponse<HookResp \| null>>` |
+
+---
+
+## When to use
+
+Call `update` to change URL, enable or disable a hook, adjust timeout and retries, or switch between pre- and post-transaction types. Use this instead of creating a new hook when you want to keep the same `id`.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Hooks.update('hk_test_123', {
+  name: 'Pre-transaction validation (updated)',
+  url: 'https://api.example.com/validate-v2',
+  type: 'PRE_TRANSACTION',
+  active: false,
+  timeout: 45,
+  retry_count: 5,
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.id, response.data.active);
+```
+
+---
+
+## Parameters
+
+| Argument / field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Hook ID to update. |
+| `data.name` | `string` | Yes | Hook name. |
+| `data.url` | `string` | Yes | HTTPS endpoint Core calls. |
+| `data.type` | `string` | Yes | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `data.active` | `boolean` | Yes | Whether the hook is enabled. |
+| `data.timeout` | `number` | Yes | Max execution time in seconds. |
+| `data.retry_count` | `number` | Yes | Max retry attempts on failure. |
+
+---
+
+## Response
+
+Returns the updated hook in `response.data` when `status` is `200`. See [Update hooks](/reference/update-hooks) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `id`
+- Missing or invalid fields in `data` (same rules as `create`)
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Update hooks" icon="book-open" href="/reference/update-hooks">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Create hooks guide" icon="webhook" href="/hooks/create-hooks">
+Hook types, payloads, and setup.
+</Card>
+
+<Card title="View hooks" icon="eye" href="/sdks/typescript/methods/hooks/view-hooks">
+Fetch the current hook before updating.
+</Card>
+
+<Card title="Delete hooks" icon="trash" href="/sdks/typescript/methods/hooks/delete-hooks">
+Remove a webhook you no longer need.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

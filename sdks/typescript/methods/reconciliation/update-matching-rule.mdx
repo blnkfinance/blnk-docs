@@ -1,0 +1,131 @@
+---
+title: "Update matching rule"
+sidebarTitle: "Update matching rule"
+icon: "sliders-horizontal"
+description: "Use the Blnk TypeScript SDK to update an existing reconciliation matching rule."
+"og:title": "Update matching rule • Blnk TypeScript SDK"
+"og:description": "Use blnk.Reconciliation.updateMatchingRule to change name, description, or criteria on a rule."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Update an existing matching rule with `blnk.Reconciliation.updateMatchingRule`. Pass the full matching rule body Core expects on `PUT`: `name`, `description`, and `criteria`. The `rule_id` does not change.
+
+For criteria and drift behavior, see the [Matching rules](/reconciliations/matching-rules) guide and the [Update matching rule](/reference/update-matching-rule) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.Reconciliation.updateMatchingRule(ruleId, data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Reconciliation` |
+| **SDK method** | `updateMatchingRule` |
+| **HTTP** | `PUT /reconciliation/matching-rules/{rule_id}` |
+| **Returns** | `Promise<ApiResponse<RunReconResp \| null>>` |
+
+---
+
+## When to use
+
+Call `updateMatchingRule` when match criteria, drift tolerance, or rule metadata needs to change. Use this instead of creating a new rule when you want to keep the same `rule_id` referenced in existing jobs.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Reconciliation.updateMatchingRule('rule_abc123', {
+  name: 'Amount match (updated)',
+  description: 'Match by amount with 2% drift',
+  criteria: [
+    { field: 'amount', operator: 'equals', allowable_drift: 0.02 },
+    { field: 'currency', operator: 'equals' },
+  ],
+});
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.rule_id);
+```
+
+---
+
+## Parameters
+
+| Argument / field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `ruleId` | `string` | Yes | Matching rule ID to update. |
+| `data.name` | `string` | Yes | Updated rule name. |
+| `data.description` | `string` | Yes | Updated description. |
+| `data.criteria` | `array` | Yes | Full criteria array (same shape as create). |
+| `data.criteria[].field` | `string` | Yes | `amount`, `currency`, `reference`, `description`, or `date`. |
+| `data.criteria[].operator` | `string` | Yes | `equals`, `greater_than`, `less_than`, or `contains`. |
+| `data.criteria[].allowable_drift` | `number` | No | Tolerance for amount or date fields. |
+
+---
+
+## Response
+
+Returns the updated matching rule in `response.data` when `status` is `200`. Key fields include `rule_id`, `name`, `criteria`, and `updated_at`. See [Update matching rule](/reference/update-matching-rule) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `ruleId`
+- Missing or invalid `name`, `description`, or `criteria`
+- Invalid criterion `field`, `operator`, or `allowable_drift`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Update matching rule" icon="book-open" href="/reference/update-matching-rule">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Matching rules" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, drift, and examples.
+</Card>
+
+<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
+Create a new rule instead of updating.
+</Card>
+
+<Card title="Delete matching rule" icon="trash-2" href="/sdks/typescript/methods/reconciliation/delete-matching-rule">
+Remove a rule you no longer use.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

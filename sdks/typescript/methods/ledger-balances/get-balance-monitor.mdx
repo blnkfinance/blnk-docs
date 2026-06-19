@@ -1,0 +1,110 @@
+---
+title: "Get balance monitor"
+sidebarTitle: "Get balance monitor"
+icon: "bell"
+description: "Use the Blnk TypeScript SDK to fetch a balance monitor by its monitor_id."
+"og:title": "Get balance monitor • Blnk TypeScript SDK"
+"og:description": "Use blnk.BalanceMonitor.get to fetch a balance monitor when you have its monitor_id."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Fetch a single balance monitor by `monitor_id` with `blnk.BalanceMonitor.get`. Returns the condition, callback URL, and target balance.
+
+For monitor concepts and response fields, see the [Balance monitoring](/balances/balance-monitoring) guide and the [Get balance monitor](/reference/get-balance-monitor) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.BalanceMonitor.get(id)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.BalanceMonitor` |
+| **SDK method** | `get` |
+| **HTTP** | `GET /balance-monitors/{monitor_id}` |
+| **Returns** | `Promise<ApiResponse<MonitorDataResp \| null>>` |
+
+---
+
+## When to use
+
+Call `get` when you have a `monitor_id` from a `create` response or admin tooling, and need the current condition and callback settings.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.BalanceMonitor.get(
+  'mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0',
+);
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.monitor_id, response.data.condition);
+```
+
+---
+
+## Parameters
+
+| Argument | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Yes | Monitor ID (for example `mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0`). |
+
+---
+
+## Response
+
+Returns a monitor object in `response.data` when `status` is `200`. Key fields include `monitor_id`, `balance_id`, `condition`, and `call_back_url`. See [Get balance monitor](/reference/get-balance-monitor) for all response fields.
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+const response = await blnk.BalanceMonitor.get('mon_missing');
+
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get balance monitor" icon="book-open" href="/reference/get-balance-monitor">
+HTTP API reference for the response schema.
+</Card>
+
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Product guide for conditions and webhooks.
+</Card>
+
+<Card title="List balance monitors" icon="layout-list" href="/sdks/typescript/methods/ledger-balances/list-balance-monitors">
+List all monitors on the instance.
+</Card>
+
+<Card title="Edit balance monitor" icon="bell-ring" href="/sdks/typescript/methods/ledger-balances/edit-balance-monitor">
+Update condition or callback settings.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

@@ -1,0 +1,120 @@
+---
+title: "List API keys"
+sidebarTitle: "List API keys"
+icon: "key-square"
+description: "Use the Blnk TypeScript SDK to list API keys for an owner."
+"og:title": "List API keys • Blnk TypeScript SDK"
+"og:description": "Use blnk.ApiKeys.list to audit scoped keys for a service account or team."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+List API keys with `blnk.ApiKeys.list`. When authenticating with the master key, pass `{ owner }` so Core knows which keys to return.
+
+For scopes and auth model, see [Secure Blnk](/advanced/secure-blnk) and the [List API keys](/reference/get-api-key) API reference.
+
+---
+
+## Method
+
+```typescript
+blnk.ApiKeys.list(options?)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.ApiKeys` |
+| **SDK method** | `list` |
+| **HTTP** | `GET /api-keys` or `GET /api-keys?owner={owner}` |
+| **Returns** | `Promise<ApiResponse<ApiKeyResp[] \| null>>` |
+
+---
+
+## When to use
+
+Call `list` to audit active keys, review scopes and expiration dates, or find an `api_key_id` before revoking a key.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.ApiKeys.list({ owner: 'merchant_a' });
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data[0]?.api_key_id, response.data[0]?.scopes);
+```
+
+<Tip>
+When using the master key, Core requires the `owner` query parameter. Scoped keys can call `list()` without options to see their own key.
+</Tip>
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `options.owner` | `string` | No | Owner filter. Required when authenticating with the master key. |
+
+---
+
+## Response
+
+Returns an array of API key objects in `response.data` when `status` is `200`. The plaintext `key` is not included. Key fields include `api_key_id`, `name`, `owner_id`, `scopes`, `expires_at`, and `is_revoked`. See [List API keys](/reference/get-api-key) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK validates optional filter arguments. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Empty `options.owner` when provided
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="List API keys" icon="book-open" href="/reference/get-api-key">
+HTTP API reference for query parameters and response schema.
+</Card>
+
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+Master key, scopes, and auth model.
+</Card>
+
+<Card title="Create API key" icon="key" href="/sdks/typescript/methods/api-keys/create-api-key">
+Issue a new scoped key for an owner.
+</Card>
+
+<Card title="Delete API key" icon="key-off" href="/sdks/typescript/methods/api-keys/delete-api-key">
+Revoke a key by `api_key_id`.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

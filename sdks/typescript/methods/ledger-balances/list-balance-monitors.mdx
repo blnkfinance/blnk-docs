@@ -1,0 +1,104 @@
+---
+title: "List balance monitors"
+sidebarTitle: "List balance monitors"
+icon: "layout-list"
+description: "Use the Blnk TypeScript SDK to list all balance monitors on your Core instance."
+"og:title": "List balance monitors • Blnk TypeScript SDK"
+"og:description": "Use blnk.BalanceMonitor.list to fetch all balance monitors on your Core instance."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+List all balance monitors on your Core instance with `blnk.BalanceMonitor.list`.
+
+For monitor concepts, see the [Balance monitoring](/balances/balance-monitoring) guide.
+
+---
+
+## Method
+
+```typescript
+blnk.BalanceMonitor.list()
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.BalanceMonitor` |
+| **SDK method** | `list` |
+| **HTTP** | `GET /balance-monitors` |
+| **Returns** | `Promise<ApiResponse<MonitorDataResp[] \| null>>` |
+
+---
+
+## When to use
+
+Call `list` for admin dashboards, audits, or local development when you need every monitor on the instance.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.BalanceMonitor.list();
+
+if (response.status !== 200 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.length);
+```
+
+---
+
+## Parameters
+
+This method takes no arguments.
+
+---
+
+## Response
+
+Returns an array of monitor objects in `response.data` when `status` is `200`. See [Get balance monitor](/reference/get-balance-monitor) for the shape of each record.
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 200) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Get balance monitor" icon="book-open" href="/reference/get-balance-monitor">
+HTTP API reference for monitor record shape.
+</Card>
+
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Product guide for conditions and webhooks.
+</Card>
+
+<Card title="Create balance monitor" icon="bell-plus" href="/sdks/typescript/methods/ledger-balances/create-balance-monitor">
+Attach a new monitor to a balance.
+</Card>
+
+<Card title="Get balance" icon="banknote" href="/sdks/typescript/methods/ledger-balances/get-balance">
+Inspect the balance a monitor watches.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />

@@ -1,0 +1,134 @@
+---
+title: "Create hooks"
+sidebarTitle: "Create hooks"
+icon: "webhook"
+description: "Use the Blnk TypeScript SDK to create a pre- or post-transaction webhook."
+"og:title": "Create hooks • Blnk TypeScript SDK"
+"og:description": "Use blnk.Hooks.create to register a PRE_TRANSACTION or POST_TRANSACTION webhook."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Create a transaction webhook with `blnk.Hooks.create`. Core calls your URL before or after transactions based on the hook `type`.
+
+For hook types, payloads, and examples, see the [Create hooks](/hooks/create-hooks) guide and the [Register new hooks](/reference/create-hooks) API reference.
+
+<Warning>
+Hook management requires the **master key** in `X-Blnk-Key`. Regular API keys return `403 Forbidden`.
+</Warning>
+
+---
+
+## Method
+
+```typescript
+blnk.Hooks.create(data)
+```
+
+| | |
+| :--- | :--- |
+| **Service** | `blnk.Hooks` |
+| **SDK method** | `create` |
+| **HTTP** | `POST /hooks` |
+| **Returns** | `Promise<ApiResponse<HookResp \| null>>` |
+
+---
+
+## When to use
+
+Call `create` to add validation or side effects around money movement. Use `PRE_TRANSACTION` to approve or reject a transfer before it posts, or `POST_TRANSACTION` to run logic after it completes.
+
+---
+
+## Example
+
+```typescript wrap
+const response = await blnk.Hooks.create({
+  name: 'Pre-transaction validation',
+  url: 'https://api.example.com/validate',
+  type: 'PRE_TRANSACTION',
+  active: true,
+  timeout: 30,
+  retry_count: 3,
+});
+
+if (response.status !== 201 || !response.data) {
+  console.error(`Error ${response.status}: ${response.message}`);
+  if (response.data) console.error(response.data);
+  return;
+}
+
+console.log(response.data.id);
+```
+
+---
+
+## Parameters
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Descriptive hook name. |
+| `url` | `string` | Yes | HTTPS endpoint Core calls. |
+| `type` | `string` | Yes | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `active` | `boolean` | Yes | Whether the hook is enabled. |
+| `timeout` | `number` | Yes | Max execution time in seconds (must be positive). |
+| `retry_count` | `number` | Yes | Max retry attempts on failure (zero or greater). |
+
+---
+
+## Response
+
+Returns a hook object in `response.data` when `status` is `201`. Key fields include `id`, `name`, `url`, `type`, `active`, `timeout`, and `retry_count`. See [Register new hooks](/reference/create-hooks) for all response fields.
+
+---
+
+## Client-side validation
+
+Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
+
+Common failures for this method:
+
+- Missing or empty `name` or `url`
+- Invalid `type` (must be `PRE_TRANSACTION` or `POST_TRANSACTION`)
+- Missing or invalid `active`, `timeout`, or `retry_count`
+
+---
+
+## HTTP errors
+
+When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
+
+```typescript wrap
+// Log Core error details when the request fails
+if (response.status !== 201) {
+  console.error(response.status, response.message);
+  console.error(response.data);
+}
+```
+
+For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Register new hooks" icon="book-open" href="/reference/create-hooks">
+HTTP API reference for request fields and response schema.
+</Card>
+
+<Card title="Create hooks guide" icon="webhook" href="/hooks/create-hooks">
+Hook types, payloads, and setup.
+</Card>
+
+<Card title="Create transaction" icon="arrow-left-right" href="/sdks/typescript/methods/transactions/create-transaction">
+Post transfers that trigger your hooks.
+</Card>
+
+<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
+Master key and API key management.
+</Card>
+</CardGroup>
+
+
+<NeedHelp />
