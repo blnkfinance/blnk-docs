@@ -1,114 +1,105 @@
 ---
+mode: "wide"
 title: "Get ledger"
-sidebarTitle: "Get ledger"
-icon: "book-open"
-description: "Use the Blnk TypeScript SDK to fetch a ledger by its ledger_id."
+sidebarTitle: "Get ledger details"
+api: "GET /ledgers/{ledger_id}"
+description: "See the details of one or all ledgers with the TypeScript SDK."
 "og:title": "Get ledger • Blnk TypeScript SDK"
-"og:description": "Use blnk.Ledgers.get to fetch a ledger when you have its ledger_id."
+"og:description": "Use blnk.Ledgers.get to fetch a ledger by its ledger_id."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Fetch a single ledger by `ledger_id` with `blnk.Ledgers.get`. Use it to read the ledger name, metadata, and creation time after setup or when displaying ledger details in your app.
+Use `blnk.Ledgers.get` to retrieve a list of all ledgers, or a single ledger by its `ledger_id`.
 
-For ledger concepts and response fields, see the [General ledger](/ledgers/general-ledger) guide and the [View ledger details](/reference/get-ledger) API reference.
+<Tabs>
+<Tab title="Single ledger">
 
----
+Pass a `ledger_id` to fetch one ledger.
 
-## Method
-
-```typescript
-blnk.Ledgers.get(id)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Ledgers` |
-| **SDK method** | `get` |
-| **HTTP** | `GET /ledgers/{ledger_id}` |
-| **Returns** | `Promise<ApiResponse<CreateLedgerResp \| null>>` |
-
----
-
-## When to use
-
-Call `get` when you have a Blnk `ledger_id` from a `create` response, configuration store, or support tooling, and need the current name and metadata before creating balances or showing ledger details.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Ledgers.get wrap {1}
 const response = await blnk.Ledgers.get(
   'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.ledger_id, response.data.name);
 ```
 
-<Tip>
-CLI equivalent: `blnk ledgers list --id <ledger-id>`. See [CLI ledgers](/cli/ledgers).
-</Tip>
+</Tab>
+<Tab title="All ledgers">
+
+Call without an `id` to list every ledger on your instance.
+
+```typescript blnk.Ledgers.get wrap {1}
+const response = await blnk.Ledgers.get();
+```
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `string` | Optional. Ledger ID to retrieve one ledger. Omit to list all ledgers. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Ledger ID (for example `ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb`). |
+For a single ledger, `response.data` is one object. When you omit `id`, `response.data` is an array and each element uses the same fields.
 
----
-
-## Response
-
-Returns a ledger object in `response.data` when `status` is `200`. Key fields include `ledger_id`, `name`, `created_at`, and `meta_data`. See [View ledger details](/reference/get-ledger) for all response fields.
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-const response = await blnk.Ledgers.get('ldg_missing');
-
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+<CodeGroup>
+```json Single ledger wrap
+{
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "name": "Customer Checking Ledger",
+  "created_at": "2024-11-26T08:23:57.509804Z",
+  "meta_data": {
+    "project_owner": "Blnk Tech"
+  }
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+```json All ledgers wrap
+[
+  {
+    "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+    "name": "Customer Checking Ledger",
+    "created_at": "2024-11-26T08:23:57.509804Z",
+    "meta_data": {
+      "project_owner": "Blnk Tech"
+    }
+  },
+  {
+    "ledger_id": "ldg_845e6b1e-0463-4ce8-b858-2b3a398beff9",
+    "name": "Customer Savings Ledger",
+    "created_at": "2024-11-26T08:23:46.171319Z",
+    "meta_data": {
+      "project_owner": "Blnk Tech"
+    }
+  }
+]
+```
+</CodeGroup>
+
+| Field | Description |
+| :-- | :-- |
+| `ledger_id` | Unique ID for the ledger. |
+| `name` | Current display name. |
+| `created_at` | ISO 8601 timestamp from Core. |
+| `meta_data` | Metadata object, if one was set at creation. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="View ledger" icon="book-open" href="/reference/get-ledger">
-HTTP API reference for the response schema.
+<Card title="View ledger docs" icon="table-2" href="/ledgers/general-ledger">
+Ledger concepts and setup.
 </Card>
 
-<Card title="General ledger" icon="table-2" href="/ledgers/general-ledger">
-Product guide for ledger concepts and setup.
-</Card>
-
-<Card title="Create ledger" icon="table-2" href="/sdks/typescript/methods/ledgers/create-ledger">
-Register a new ledger and get its `ledger_id`.
-</Card>
-
-<Card title="CLI ledgers" icon="terminal" href="/cli/ledgers">
-Inspect a ledger with `blnk ledgers list --id`.
+<Card title="API reference" icon="book-open" href="/reference/get-ledger">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />
