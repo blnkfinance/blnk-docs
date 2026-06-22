@@ -1,31 +1,61 @@
 ---
 title: "TypeScript SDK Quick Start"
-description: "Run a minimal request with the TypeScript SDK."
+description: "Install the TypeScript SDK and post your first transaction."
 sidebarTitle: "Quick start"
 icon: "rocket"
 ---
 
-Run a minimal SDK request. You need a running [Blnk Core instance](/home/install) and the [SDK installed](/sdks/typescript) before continuing.
+Install the SDK, initialize the client, and post your first transaction.
 
 <Steps>
+<Step title="Install the SDK">
+
+Create a Node.js project and install the SDK.
+
+```bash bash wrap
+npm init -y
+npm install @blnkfinance/blnk-typescript
+```
+
+</Step>
+
 <Step title="Create a script">
 
-Create `index.ts`:
+Create `index.js`:
 
-```typescript index.ts wrap expandable
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
+```javascript index.js wrap expandable
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
 
 const blnk = BlnkInit('', { baseUrl: 'http://localhost:5001' });
 
-const response = await blnk.System.health();
+async function main() {
+  const response = await blnk.Transactions.create({
+    precise_amount: 100000,
+    reference: 'first_txn_001',
+    currency: 'USD',
+    precision: 100,
+    source: '@FundingPool',
+    destination: '@MyBalance',
+    description: 'My first Blnk transaction',
+    allow_overdraft: true,
+  });
 
-if (response.status !== 200 || response.data?.status !== 'UP') {
-  throw new Error(response.message);
+  if (response.status !== 201 || !response.data) {
+    throw new Error(response.message);
+  }
+
+  console.log(response.data.transaction_id);
 }
+
+main();
 ```
 </Step>
 
 <Step title="Run it">
-Run the script with `npx tsx index.ts`.
+Run the script with `node index.js`.
+</Step>
+
+<Step title="View the transaction">
+Open Blnk Cloud or use the CLI to confirm the transaction was created.
 </Step>
 </Steps>
