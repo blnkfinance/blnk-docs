@@ -93,24 +93,22 @@ First, we create 2 ledgers.
 <CodeGroup>
 ```bash cURL wrap expandable
 # Create main wallet ledger (Customer Accounts)
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-  "name": "Customer Accounts", 
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "Customer Accounts",
   "meta_data": {
     "description": "Contains all customer main balances"
   }
 }'
 
 # Create loan wallet ledger (Loan Accounts)
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-  "name": "Loan Accounts", 
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "Loan Accounts",
   "meta_data": {
     "description": "Contains all customer loan balances"
   }
@@ -190,11 +188,10 @@ First, we create the customer's balance:
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "ldg_CUSTOMER_LEDGER_ID",
     "currency": "USD",
     "meta_data": {
@@ -253,11 +250,10 @@ Next, we create the loan balance:
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "ldg_LOAN_LEDGER_ID",
     "currency": "USD",
     "meta_data": {
@@ -329,12 +325,11 @@ Initiate this transaction in your ledger:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 500,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 50000,
     "precision": 100,
     "reference": "LOAN-DISBURSE-1709741652384",
     "currency": "USD",
@@ -357,7 +352,7 @@ async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
   const reference = `LOAN-DISBURSE-${Date.now()}`;
   
   const disbursement = await Transactions.create({
-    amount: loanAmount,
+    precise_amount: loanAmount * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -397,7 +392,7 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
 
     disbursement, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      loanAmount,
+            PreciseAmount: loanAmount * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",
@@ -456,12 +451,11 @@ Record the daily interest charge on the loan balance:
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 5,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 500,
     "precision": 100,
     "reference": "INTEREST-1709741780214",
     "currency": "USD",
@@ -500,7 +494,7 @@ async function calculateAndChargeInterest(loanBalanceId, interestRate) {
   
   // Transfer interest from loan balance to interest revenue balance
   const interestTransaction = await Transactions.create({
-    amount: roundedInterest,
+    precise_amount: roundedInterest * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -538,7 +532,7 @@ func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (str
 
     interestTransaction, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      roundedInterest,
+            PreciseAmount: roundedInterest * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",
@@ -571,12 +565,11 @@ When a customer makes a loan repayment, the money moves from their main balance 
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 200,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 20000,
     "precision": 100,
     "reference": "LOAN-REPAY-1709741952867",
     "currency": "USD",
@@ -600,7 +593,7 @@ async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentA
   
   // Transfer from customer's balance to loan balance
   const repayment = await Transactions.create({
-    amount: repaymentAmount,
+    precise_amount: repaymentAmount * 100,
     precision: 100,
     reference: reference,
     currency: "USD",
@@ -650,7 +643,7 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
 
     repayment, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
-            Amount:      repaymentAmount,
+            PreciseAmount: repaymentAmount * 100,
             Precision:   100,
             Reference:   reference,
             Currency:    "USD",
@@ -700,10 +693,9 @@ We can check if a loan is fully repaid by verifying if the loan balance is zero 
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request GET \
-  --url http://localhost:5001/balances/bln_LOAN_BALANCE_ID \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json'
+curl -X GET "http://localhost:5001/balances/bln_LOAN_BALANCE_ID" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json"
 ```
 
 ```javascript TypeScript wrap expandable

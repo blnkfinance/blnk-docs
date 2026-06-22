@@ -1,0 +1,72 @@
+---
+title: "Enterprise launcher"
+sidebarTitle: "Enterprise launcher"
+icon: "rocket"
+description: "Configure the enterprise launcher and public app access for your production license deployment."
+og:title: "Enterprise launcher | Blnk Cloud Guide"
+og:description: "Configure the enterprise launcher and public app access for your Blnk production license deployment"
+---
+
+import { CtaCallout } from "/snippets/cta-callout.jsx";
+
+This is the configuration reference for your Production License. Use these environment variables to control launcher behavior, public access, branding, authentication, email delivery, and more.
+
+Set these values in your runtime `.env` or `enterprise.env` file before starting the deployment.
+
+<CtaCallout
+  title="Need more custom configurations?"
+  href="https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=cloud%2Flicense%2Fconfiguration"
+  buttonLabel="Get Pro Support"
+  trackingEvent="clicked_pro_support"
+>
+  Reach out to us to discuss your requirements and customize your setup for you.
+</CtaCallout>
+
+---
+
+## Enterprise launcher
+
+The enterprise launcher starts and coordinates the services in your production stack. Use these variables to connect the launcher to shared infrastructure and provide the license used at startup.
+
+```dotenv .env wrap
+ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
+ENTERPRISE_REDIS_URL=redis://host:6379/0
+ENTERPRISE_LICENSE_B64=your_base64_license_string
+
+# Core and Cloud use separate databases on the Postgres instance above
+# Defaults: blnk (Core ledger) and blnk-cloud (Cloud Dashboard)
+ENTERPRISE_CORE_DB_NAME=blnk
+ENTERPRISE_PLANE_DB_NAME=blnk-cloud
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | Postgres connection string used by the launcher to derive the Core and Plane database connections. Point this at the Postgres server that hosts both databases. |
+| `ENTERPRISE_REDIS_URL` | Redis connection string passed to Core for queueing, caching, and other Redis-backed runtime work. |
+| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from your onboarding email. To use a mounted license file instead, set `ENTERPRISE_LICENSE_FILE` to the path of your `.lic` file. |
+| `ENTERPRISE_CORE_DB_NAME` | Name of the Postgres database the launcher assigns to Blnk Core ledger data. |
+| `ENTERPRISE_PLANE_DB_NAME` | Name of the Postgres database the launcher assigns to Plane, which powers the Cloud Dashboard. |
+
+---
+
+## Public app configuration
+
+These variables control how users reach the deployment and how the launcher connects the internal services.
+
+Use the public values for browser access and the internal port values only when you need to change service bindings.
+
+```dotenv .env wrap
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+ENTERPRISE_CORE_PORT=5001
+ENTERPRISE_WORKERS_PORT=5004
+ENTERPRISE_UI_PORT=3001
+```
+
+| Environment variable | Description |
+| :-- | :-- |
+| `ENTERPRISE_PUBLIC_PORT` | Port the launcher exposes for the public Plane gateway. Map your host or load balancer to this port when running the deployment. |
+| `ENTERPRISE_PUBLIC_URL` | Public URL where users open the Cloud Dashboard, including the scheme such as `https://`. Use the same origin in `CORS_ORIGINS`. |
+| `ENTERPRISE_CORE_PORT` | Internal port used by the Blnk Core API process. |
+| `ENTERPRISE_WORKERS_PORT` | Internal port used by the Core workers monitoring endpoint. |
+| `ENTERPRISE_UI_PORT` | Internal port used by the Cloud Dashboard UI process. |

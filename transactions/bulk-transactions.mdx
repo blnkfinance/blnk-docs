@@ -15,18 +15,27 @@ The Bulk Transaction API enables you to process multiple transactions within a s
 
 Additionally, the API supports asynchronous processing to efficiently manage large batches of transactions.
 
-
 ---
 
 ## Creating bulk transactions
 
-To process multiple transactions in a single request, call the [Bulk Transactions](/reference/bulk-transactions) endpoint.
+<Steps>
+<Step title="Configure and submit the batch">
 
+Call the [Bulk Transactions API](/reference/bulk-transactions). 
+
+| Field | Description |
+| :-- | :-- |
+| `atomic` | When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. |
+| `inflight` | When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are processed immediately. |
+| `run_async` | When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response. |
+| `skip_queue` | Defaults to `false`. When `true`, transactions bypass the queue and are processed inline in the request. Affects duplicate-reference handling — see [Duplicate references](#duplicate-references). |
+| `transactions` | Array of transaction objects. Max of 10,000 transactions per request. |
 
 <CodeGroup>
 ```bash cURL wrap expandable
 curl -X POST "http://localhost:5001/transactions/bulk" \
-  -H "X-Blnk-Key: <api-key>" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "atomic": true,
@@ -35,7 +44,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
     "skip_queue": false,
     "transactions": [
       {
-        "amount": 358.90,
+        "precise_amount": 35890,
         "precision": 100,
         "reference": "unique_reference_1",
         "description": "Transaction description",
@@ -45,7 +54,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
         "destination": "@destination_account"
       },
       {
-        "amount": 358.90,
+        "precise_amount": 35890,
         "precision": 100,
         "reference": "unique_reference_2",
         "description": "Transaction description",
@@ -58,7 +67,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 const response = await blnk.Transactions.createBulk({
   atomic: true,
   inflight: false,
@@ -66,7 +75,7 @@ const response = await blnk.Transactions.createBulk({
   skip_queue: false,
   transactions: [
     {
-      amount: 358.90,
+      precise_amount: 35890,
       precision: 100,
       reference: 'unique_reference_1',
       description: 'Transaction description',
@@ -76,7 +85,7 @@ const response = await blnk.Transactions.createBulk({
       destination: '@destination_account',
     },
     {
-      amount: 358.90,
+      precise_amount: 35890,
       precision: 100,
       reference: 'unique_reference_2',
       description: 'Transaction description',
@@ -88,9 +97,53 @@ const response = await blnk.Transactions.createBulk({
   ],
 });
 ```
+
+```go Go wrap expandable
+batch, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+  Atomic:    true,
+  Inflight:  false,
+  RunAsync:  false,
+  SkipQueue: false,
+  Transactions: []blnkgo.CreateTransactionRequest{
+    {
+      PreciseAmount:  35890,
+      Precision:      100,
+      Reference:      "unique_reference_1",
+      Description:    "Transaction description",
+      Currency:       "NGN",
+      Source:         "@source_account",
+      Destination:    "@destination_account",
+      AllowOverdraft: true,
+    },
+    {
+      PreciseAmount:  35890,
+      Precision:      100,
+      Reference:      "unique_reference_2",
+      Description:    "Transaction description",
+      Currency:       "NGN",
+      Source:         "@source_account",
+      Destination:    "@destination_account",
+      AllowOverdraft: true,
+    },
+  },
+})
+```
 </CodeGroup>
 
-```json Response expandable
+</Step>
+
+<Step title="Confirm the response">
+
+Blnk returns a `batch_id` that identifies the batch. When `skip_queue: false`, Blnk stores `batch_id` as the queued parent transaction. 
+
+Save it. You can use the same ID to retrieve, commit, refund, or void every transaction in the batch without tracking individual child IDs first. See [Retrieving transactions in a batch](#retrieving-transactions-in-a-batch).
+
+<Tabs>
+<Tab title="Synchronous">
+
+When `run_async` is `false`:
+
+```json Response
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "applied",
@@ -98,64 +151,26 @@ const response = await blnk.Transactions.createBulk({
 }
 ```
 
-### Request body
+<Note>
+On the default queued path, `status: "applied"` means the bulk request was **successfully submitted**, not that every child is already `APPLIED` on balances. Blnk enqueues each item for asynchronous processing.
+</Note>
 
-```json expandable
-{
-  "atomic": true,
-  "inflight": false,
-  "run_async": false,
-  "skip_queue": false,
-  "transactions": [
-    {
-      "amount": 358.90,
-      "precision": 100,
-      "reference": "unique_reference_1",
-      "description": "Transaction description",
-      "currency": "NGN",
-      "source": "@source_account",
-      "allow_overdraft": true,
-      "destination": "@destination_account"
-    },
-    {
-      "amount": 358.90,
-      "precision": 100,
-      "reference": "unique_reference_2",
-      "description": "Transaction description",
-      "currency": "NGN",
-      "source": "@source_account",
-      "allow_overdraft": true,
-      "destination": "@destination_account"
-    }
-  ]
-}
-```
+</Tab>
+<Tab title="Asynchronous">
 
-| Field | Type | Required | Description |
-| :-- | :-- | :-- | :-- |
-| `atomic` | Boolean | Yes | When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. |
-| `inflight` | Boolean | Yes | When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are processed immediately. |
-| `run_async` | Boolean | No | When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response. |
-| `skip_queue` | Boolean | No | Defaults to `false`. When `true`, transactions bypass the queue system. Learn more: [Handling Hot Balances](/guides/hot-balances#using-the-queue). |
-| `transactions` | Array | Yes | Array of transaction objects. |
+When `run_async` is `true`, Blnk accepts the batch and returns immediately with `status: "processing"`. 
 
-### Synchronous response
+Processing continues in the background. The HTTP response does not wait for each transaction to finish. 
 
-When `run_async` is false:
+Once done, Blnk sends one of the following webhook events with the final outcome. 
 
-```json
-{
-  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-  "status": "applied | inflight",
-  "transaction_count": 4
-}
-```
+- `bulk_transaction.applied`
+- `bulk_transaction.inflight`
+- `bulk_transaction.failed`
 
-### Asynchronous response
+See [Webhook notifications](#webhook-notifications).
 
-When `run_async` is true:
-
-```json
+```json Response
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "processing",
@@ -163,10 +178,159 @@ When `run_async` is true:
 }
 ```
 
-### Commit or void bulk inflight
+</Tab>
+</Tabs>
 
-To commit or void all transactions in a batch:
+</Step>
+</Steps>
 
+---
+
+## Retrieving transactions in a batch
+
+When you submit a bulk transaction request, Blnk assigns each transaction in the batch its own unique transaction ID and links it to your `batch_id`:
+
+- **`skip_queue: false` (default):** child transactions record `batch_id` in `meta_data.QUEUED_PARENT_TRANSACTION`.
+- **`skip_queue: true`:** child transactions set `parent_transaction` to `batch_id`.
+
+<Tabs>
+<Tab title="skip_queue: false">
+
+Filter on `meta_data.QUEUED_PARENT_TRANSACTION` using [Search via database filtering](/search/db/filtering):
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "Content-Type: application/json" \
+  -H "X-blnk-key: <api-key>" \
+  -d '{
+    "filters": [
+      {
+        "field": "meta_data.QUEUED_PARENT_TRANSACTION",
+        "operator": "eq",
+        "value": "<batch-id>"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'meta_data.QUEUED_PARENT_TRANSACTION',
+        operator: 'eq',
+        value: '<batch-id>',
+      },
+    ],
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+  Filters: []blnkgo.Filter{
+    {
+      Field:    "meta_data.QUEUED_PARENT_TRANSACTION",
+      Operator: blnkgo.OpEqual,
+      Value:    "<batch-id>",
+    },
+  },
+})
+```
+</CodeGroup>
+
+```json Response wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "meta_data": {
+        "QUEUED_PARENT_TRANSACTION": "bulk_c62f200b-905f-4983-a349-cadd279234aa"
+      },
+      "status": "APPLIED"
+    }
+  ]
+}
+```
+
+</Tab>
+<Tab title="skip_queue: true">
+
+Filter on `parent_transaction`:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "Content-Type: application/json" \
+  -H "X-blnk-key: <api-key>" \
+  -d '{
+    "filters": [
+      {
+        "field": "parent_transaction",
+        "operator": "eq",
+        "value": "<batch-id>"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'parent_transaction',
+        operator: 'eq',
+        value: '<batch-id>',
+      },
+    ],
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+  Filters: []blnkgo.Filter{
+    {
+      Field:    "parent_transaction",
+      Operator: blnkgo.OpEqual,
+      Value:    "<batch-id>",
+    },
+  },
+})
+```
+</CodeGroup>
+
+```json Response wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "parent_transaction": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+      "status": "APPLIED"
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
+Replace `<batch-id>` with the `batch_id` from the create response. Use the filter field that matches how you submitted the batch.
+
+---
+
+## Handling inflight bulk transactions
+
+To create inflight bulk transactions, set `inflight: true` in the request body. Blnk ignores any `inflight` flag passed in the transaction objects and respects the root inflight flag. 
+
+When set, all transactions in the batch will be processed as `INFLIGHT`.
+
+To commit or void all inflight transactions in a batch, use the `batch_id`. For independently-created inflight holds, see [Bulk commit & void](/transactions/inflight/bulk-update-inflight).
 
 <CodeGroup>
 ```bash cURL wrap
@@ -178,7 +342,7 @@ curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{batch_id}" \
   }'
 ```
 
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 const response = await blnk.Transactions.updateStatus('{batch_id}', {
   status: 'commit',
 });
@@ -191,7 +355,7 @@ txn, resp, err := client.Transaction.Update("{batch_id}", blnkgo.UpdateStatus{
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "transaction_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "APPLIED",
@@ -201,66 +365,9 @@ txn, resp, err := client.Transaction.Update("{batch_id}", blnkgo.UpdateStatus{
 
 ---
 
-## Retrieving transactions in a batch
-
-When you submit a bulk transaction request, Blnk assigns each transaction in the batch its own unique transaction ID but tags them all with the same `parent_transaction` (which is your original `batch_id`). 
-
-To retrieve every transaction in that batch:
-
-
-<CodeGroup>
-```bash cURL wrap
-curl -X POST http://localhost:5001/search/transactions \
-  -H "Content-Type: application/json" \
-  -H "X-blnk-key: <api-key>" \
-  -d '{
-    "q": "<batch-id>",
-    "query_by": "parent_transaction"
-  }'
-```
-
-```javascript TypeScript wrap
-const response = await blnk.Search.search(
-  { q: '<batch-id>', query_by: 'parent_transaction' },
-  'transactions',
-);
-```
-
-```go Go wrap
-results, resp, err := client.Search.SearchDocument(
-  blnkgo.SearchParams{Q: "<batch-id>", QueryBy: "parent_transaction"},
-  blnkgo.Transactions,
-)
-```
-</CodeGroup>
-
-```json Response expandable
-{
-  "found": 2,
-  "hits": [
-    {
-      "document": {
-        "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
-        "parent_transaction": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-        "status": "APPLIED"
-      }
-    }
-  ]
-}
-```
-
-* `q`: The `batch_id` returned when you created the request.
-* `query_by`: Must be set to `parent_transaction`.
-
-The response will include an array of all child transactions linked to that `batch_id`.
-
----
-
 ## Webhook notifications
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
-
-### Webhook structure
 
 The webhooks follow this structure:
 
@@ -319,14 +426,14 @@ The webhooks follow this structure:
 
 ## Usage examples
 
-### Synchronous processing
+<Tabs>
+<Tab title="Synchronous">
 
-Process multiple transactions atomically (all or nothing):
-
+Process multiple transactions atomically (`atomic: true`, `run_async: false`):
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
+curl -X POST "http://localhost:5001/transactions/bulk" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -334,7 +441,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
     "inflight": false,
     "transactions": [
       {
-        "amount": 100.00,
+        "precise_amount": 10000,
         "precision": 100,
         "reference": "tx_001",
         "description": "First transaction",
@@ -343,7 +450,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
         "destination": "@account2"
       },
       {
-        "amount": 50.00,
+        "precise_amount": 5000,
         "precision": 100,
         "reference": "tx_002",
         "description": "Second transaction",
@@ -355,13 +462,13 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
   }'
 ```
 
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 const response = await blnk.Transactions.createBulk({
   atomic: true,
   inflight: false,
   transactions: [
     {
-      amount: 100.0,
+      precise_amount: 10000,
       precision: 100,
       reference: 'tx_001',
       description: 'First transaction',
@@ -370,7 +477,7 @@ const response = await blnk.Transactions.createBulk({
       destination: '@account2',
     },
     {
-      amount: 50.0,
+      precise_amount: 5000,
       precision: 100,
       reference: 'tx_002',
       description: 'Second transaction',
@@ -381,9 +488,36 @@ const response = await blnk.Transactions.createBulk({
   ],
 });
 ```
+
+```go Go wrap
+batch, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+  Atomic:   true,
+  Inflight: false,
+  Transactions: []blnkgo.CreateTransactionRequest{
+    {
+      PreciseAmount: 10000,
+      Precision:   100,
+      Reference:   "tx_001",
+      Description: "First transaction",
+      Currency:    "NGN",
+      Source:      "@account1",
+      Destination: "@account2",
+    },
+    {
+      PreciseAmount: 5000,
+      Precision:   100,
+      Reference:   "tx_002",
+      Description: "Second transaction",
+      Currency:    "NGN",
+      Source:      "@account2",
+      Destination: "@account3",
+    },
+  },
+})
+```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
   "status": "applied",
@@ -391,49 +525,127 @@ const response = await blnk.Transactions.createBulk({
 }
 ```
 
-### Asynchronous processing
+</Tab>
+<Tab title="Asynchronous">
 
-Process a large batch of transactions in the background:
+Process a large batch in the background (`run_async: true`). Blnk returns immediately; the final outcome arrives via [webhook](#webhook-notifications).
 
-```json expandable
-{
-  "atomic": true,
-  "inflight": false,
-  "run_async": true,
-  "transactions": [
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "atomic": true,
+    "inflight": false,
+    "run_async": true,
+    "transactions": [
+      {
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "tx_001",
+        "description": "First transaction",
+        "currency": "NGN",
+        "source": "@account1",
+        "destination": "@account2"
+      },
+      {
+        "precise_amount": 7500,
+        "precision": 100,
+        "reference": "tx_999",
+        "description": "Last transaction",
+        "currency": "NGN",
+        "source": "@account5",
+        "destination": "@account6"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: false,
+  run_async: true,
+  transactions: [
     {
-      "amount": 100.00,
-      "precision": 100,
-      "reference": "tx_001",
-      "description": "First transaction",
-      "currency": "NGN",
-      "source": "@account1",
-      "destination": "@account2"
+      precise_amount: 10000,
+      precision: 100,
+      reference: 'tx_001',
+      description: 'First transaction',
+      currency: 'NGN',
+      source: '@account1',
+      destination: '@account2',
     },
     {
-      "amount": 75.00,
-      "precision": 100,
-      "reference": "tx_999",
-      "description": "Last transaction",
-      "currency": "NGN",
-      "source": "@account5",
-      "destination": "@account6"
-    }
-  ]
+      precise_amount: 7500,
+      precision: 100,
+      reference: 'tx_999',
+      description: 'Last transaction',
+      currency: 'NGN',
+      source: '@account5',
+      destination: '@account6',
+    },
+  ],
+});
+```
+
+```go Go wrap
+batch, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+  Atomic:   true,
+  Inflight: false,
+  RunAsync: true,
+  Transactions: []blnkgo.CreateTransactionRequest{
+    {
+      PreciseAmount: 10000,
+      Precision:   100,
+      Reference:   "tx_001",
+      Description: "First transaction",
+      Currency:    "NGN",
+      Source:      "@account1",
+      Destination: "@account2",
+    },
+    {
+      PreciseAmount: 7500,
+      Precision:   100,
+      Reference:   "tx_999",
+      Description: "Last transaction",
+      Currency:    "NGN",
+      Source:      "@account5",
+      Destination: "@account6",
+    },
+  },
+})
+```
+</CodeGroup>
+
+```json Response
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "processing",
+  "message": "Bulk transaction processing started"
 }
 ```
 
-### Inflight transactions
+</Tab>
+<Tab title="Inflight">
 
 <Steps>
-  <Step title="Create inflight transactions" titleSize="h4">
-  ```json
-  {
+<Step title="Create inflight batch">
+
+Set `inflight: true` on the bulk request. See [Handling inflight bulk transactions](#handling-inflight-bulk-transactions).
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "atomic": true,
     "inflight": true,
     "transactions": [
       {
-        "amount": 100.00,
+        "precise_amount": 10000,
         "precision": 100,
         "reference": "tx_003",
         "description": "First transaction",
@@ -442,7 +654,7 @@ Process a large batch of transactions in the background:
         "destination": "@account2"
       },
       {
-        "amount": 50.00,
+        "precise_amount": 5000,
         "precision": 100,
         "reference": "tx_004",
         "description": "Second transaction",
@@ -451,82 +663,197 @@ Process a large batch of transactions in the background:
         "destination": "@account3"
       }
     ]
-  }
-  ```
-  </Step>
-  <Step title="Later, commit the batch" titleSize="h4">
-  ```
-  PUT http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk_c62f200b-905f-4983-a349-cadd279234aa
-  ```
-  ```json
-  {
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: true,
+  transactions: [
+    {
+      precise_amount: 10000,
+      precision: 100,
+      reference: 'tx_003',
+      description: 'First transaction',
+      currency: 'NGN',
+      source: '@account1',
+      destination: '@account2',
+    },
+    {
+      precise_amount: 5000,
+      precision: 100,
+      reference: 'tx_004',
+      description: 'Second transaction',
+      currency: 'NGN',
+      source: '@account2',
+      destination: '@account3',
+    },
+  ],
+});
+```
+
+```go Go wrap
+batch, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+  Atomic:   true,
+  Inflight: true,
+  Transactions: []blnkgo.CreateTransactionRequest{
+    {
+      PreciseAmount: 10000,
+      Precision:   100,
+      Reference:   "tx_003",
+      Description: "First transaction",
+      Currency:    "NGN",
+      Source:      "@account1",
+      Destination: "@account2",
+    },
+    {
+      PreciseAmount: 5000,
+      Precision:   100,
+      Reference:   "tx_004",
+      Description: "Second transaction",
+      Currency:    "NGN",
+      Source:      "@account2",
+      Destination: "@account3",
+    },
+  },
+})
+```
+</CodeGroup>
+
+```json Response
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "inflight",
+  "transaction_count": 2
+}
+```
+
+</Step>
+<Step title="Commit the batch">
+
+Use the returned `batch_id` to commit every inflight transaction in the batch:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X PUT "http://localhost:5001/transactions/inflight/bulk_c62f200b-905f-4983-a349-cadd279234aa" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "commit"
-  }
-  ```
-  </Step>
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.updateStatus(
+  'bulk_c62f200b-905f-4983-a349-cadd279234aa',
+  { status: 'commit' },
+);
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update(
+  "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  blnkgo.UpdateStatus{
+    Status: blnkgo.InflightStatusCommit,
+  },
+)
+```
+</CodeGroup>
+
+</Step>
 </Steps>
+
+</Tab>
+</Tabs>
 
 ---
 
 ## Error handling
 
-### Failed atomic transactions (synchronous)
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
 
-When using `atomic: true` with `inflight: false` and `run_async: false`, if any transaction in the batch fails, all previously processed transactions will be automatically refunded, and you'll receive an error response like this:
+Bulk endpoints return structured `error_detail` objects for validation failures. For duplicate references and batch rollbacks, behaviour depends on `skip_queue`. See [API error codes](/advanced/error-codes) for the full catalogue.
 
-```json
+### Request validation errors
+
+Blnk returns `400` when the request body fails validation before processing starts.
+
+| Code | When it happens |
+| :-- | :-- |
+| `TXN_BULK_EMPTY` | `transactions` array is empty |
+| `TXN_BULK_LIMIT_EXCEEDED` | More than 10,000 items in `transactions` |
+| `TXN_VALIDATION_ERROR` | A transaction object is null or invalid |
+
+For `TXN_VALIDATION_ERROR`, `error_detail.details.index` identifies the zero-based position in `transactions[]`:
+
+```json 400 Bad Request wrap
 {
-  "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
-  "error": "failed to queue transaction 1 (Reference: ref001, Source: @account1, Destination: @account2, Amount: 50.00): transaction validation failed: reference ref001 has already been used. All transactions in this batch have been refunded."
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "transactions[1]: currency: cannot be blank; destination: either destination or destinations is required, not both.",
+    "details": {
+      "index": 1
+    }
+  },
+  "errors": "transactions[1]: currency: cannot be blank; destination: either destination or destinations is required, not both."
 }
 ```
 
-### Failed atomic transactions (asynchronous)
+### Duplicate references
 
-When using `atomic: true` with `run_async: true`, if any transaction fails, all transactions will be rolled back, and you'll receive a webhook notification with an error message containing the rollback status:
+Duplicate-reference handling depends on whether items go through the queue.
 
-```json
+<Tabs>
+<Tab title="skip_queue: false">
+
+On the default queued path, duplicate references are deduplicated in the queue and never recorded. The batch still returns `201` with `status: "applied"` representing the request was successfully submitted:
+
+```json 201 Created wrap
 {
-  "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
-  "status": "failed",
-  "error": "failed to queue transaction 2 (Reference: ref002, Source: @account1, Destination: @account2, Amount: 75.50): transaction validation failed: insufficient balance. All transactions in this batch have been refunded.",
-  "timestamp": "2025-03-02T15:30:45Z"
+  "batch_id": "bulk_847544fb-2616-43be-a188-f6b8c8f20cf2",
+  "status": "applied",
+  "transaction_count": 2
 }
 ```
 
-### Failed atomic inflight transaction
+<Warning>
+`transaction_count` reflects items in the request, not necessarily rows created. A deduplicated item produces no `REJECTED` row and no error. 
+</Warning>
 
-When using `atomic: true` with `inflight: true`, if any transaction in the batch fails during the inflight creation phase, all previously created inflight transactions will be automatically voided, and you'll receive an error response (or webhook for async) like this:
+</Tab>
+<Tab title="skip_queue: true">
 
-```json
+When `skip_queue: true`, Blnk validates references inline. A duplicate fails the batch and returns `409` with `TXN_DUPLICATE_REFERENCE`. 
+
+For atomic batches, previously applied items in the same request are refunded via `_refund` child transactions.
+
+```json 409 Conflict wrap
 {
-  "batch_id": "bulk_0813d39e-7ead-406b-83de-51eb1975357c",
-  "error": "failed to queue transaction 1 (Reference: ref003, Source: @account1, Destination: @account2, Amount: 25.00): transaction validation failed: reference ref003 has already been used. All transactions in this batch have been voided."
+  "batch_id": "bulk_305873c0-518a-470c-bf3a-bc3f3e0b562c",
+  "error": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded.",
+  "error_detail": {
+    "code": "TXN_DUPLICATE_REFERENCE",
+    "message": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded."
+  }
 }
 ```
 
-### Failed non-atomic transactions
-
-When using `atomic: false`, if a transaction in the batch fails, only that transaction and the subsequent transactions in the sequence will fail; all previous transactions that succeeded before the failed one will remain applied in your ledger. 
-
-You'll receive an error response (or webhook for async) like this:
-
-```json
-{
-  "batch_id": "bulk_2adde6a2-87b9-4ef1-ab10-8c5f1a82083c",
-  "error": "failed to queue transaction 1 (Reference: ref004, Source: @account1, Destination: @account2, Amount: 125.00): transaction validation failed: reference ref004 has already been used. Previous transactions were not rolled back."
-}
-```
+</Tab>
+</Tabs>
 
 ---
 
 ## Important notes
 
 1. When `atomic` is `true`, transactions are processed in the order provided in the request.
-2. Each transaction's `reference` must be unique.
+2. Each transaction's `reference` should be unique. On the default queued path, duplicates are silently deduplicated rather than rejected — see [Duplicate references](#duplicate-references).
 3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
 4. For large transaction batches, using `run_async: true` is recommended to avoid timeout issues.
 5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
+6. On the default queued path, `status: "applied"` means the bulk request was accepted — search by `parent_transaction` or `meta_data.QUEUED_PARENT_TRANSACTION` to verify final child statuses.
 
 ---
 

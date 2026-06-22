@@ -25,11 +25,15 @@ import Key from "/snippets/key.mdx";
   - `commit` means the conditions were met and transaction should be processed.
   - `void` means the conditions were not met and amount should be rolled back.
 </ParamField>
-<ParamField body="amount" type="integer">
-  Specifies the amount to be committed in the case of a partial commit. Learn more: [Partial commits for inflight transactions](/transactions/inflight#partial-commits).
-</ParamField>
 <ParamField body="precise_amount" type="integer">
-  Optional precision-applied amount to commit in the case of a partial commit. When set, `precise_amount` takes precedence over `amount`.
+  The commit amount in its smallest unit for a partial commit (recommended). Learn more: [Partial commits for inflight transactions](/transactions/inflight/updating-inflight#partial-commits).
+</ParamField>
+<ParamField body="amount" type="integer">
+  Optional float amount to commit for a partial commit. Blnk converts it using the inflight transaction's `precision`. When both are set, `precise_amount` takes precedence over `amount`.
+</ParamField>
+
+<ParamField body="skip_queue" type="boolean" default="false">
+  When `false` (default), the commit or void is enqueued for asynchronous processing and the response includes `queued: true`. When `true`, Blnk processes the action synchronously and returns an immediate `APPLIED` or `VOID` child. See [Commit & void inflight](/transactions/inflight/updating-inflight).
 </ParamField>
 
 <Tip>
@@ -42,21 +46,27 @@ Same JSON structure as [Record a transaction](/reference/create-transaction#resp
 
 <RequestExample>
 ```json
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/{transaction_id} \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "commit"
   }'
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 201
+```json 200 Queued (default)
+{
+  "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+```json 200 Synchronous (skip_queue: true)
 {
     "amount": 1250.34,
-    "rate": 0,
     "precision": 100,
     "precise_amount": 125034,
     "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
@@ -66,7 +76,7 @@ curl --request PUT \
     "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
     "currency": "USD",
     "description": "Card payment on Stripe",
-    "status": "COMMIT",
+    "status": "APPLIED",
     "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
     "allow_overdraft": false,
     "inflight": false,
@@ -74,6 +84,57 @@ curl --request PUT \
     "scheduled_for": "0001-01-01T00:00:00Z",
     "inflight_expiry_date": "0001-01-01T00:00:00Z",
     "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 400
+{
+  "error": "transaction is not in inflight status",
+  "error_detail": {
+    "code": "TXN_NOT_INFLIGHT",
+    "message": "transaction is not in inflight status"
+  }
+}
+```
+
+```json 400
+{
+  "error": "status not supported. use either commit or void",
+  "error_detail": {
+    "code": "TXN_INVALID_STATUS_ACTION",
+    "message": "status not supported. use either commit or void"
+  }
+}
+```
+
+```json 404
+{
+  "error": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found",
+    "details": {}
+  }
+}
+```
+
+```json 409
+{
+  "error": "error occurred during processing: [cannot void. Transaction already committed]",
+  "error_detail": {
+    "code": "TXN_ALREADY_COMMITTED",
+    "message": "error occurred during processing: [cannot void. Transaction already committed]"
+  }
+}
+```
+
+```json 409
+{
+  "error": "a commit or void is already queued for this transaction",
+  "error_detail": {
+    "code": "GEN_CONFLICT",
+    "message": "a commit or void is already queued for this transaction"
+  }
 }
 ```
 </ResponseExample>

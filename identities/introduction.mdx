@@ -121,7 +121,7 @@ identity, resp, err := client.Identity.Create(blnkgo.Identity{
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "identity_id": "idt_11111111-1111-4111-8111-111111111111",
   "identity_type": "individual",
@@ -151,6 +151,37 @@ identity, resp, err := client.Identity.Create(blnkgo.Identity{
 | `post_code` | Postal code related to the identity. | `string` |
 | `city` | City of residence of the identity. | `string` |
 | `meta_data` | Custom metadata linked to the identity. | `object` | 
+
+### Caller-supplied identity IDs
+
+By default, Blnk generates an `identity_id` when you create an identity. You can instead pass `identity_id` in the request body to create a deterministic ID from your own holder reference.
+
+The value must start with `idt_` followed by a valid UUID, for example `idt_8cc22560-5ace-4989-8953-fcbad7947d48`. See [Create identity](/reference/create-identity) for validation errors and the full request shape.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/identities" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
+    "identity_type": "individual",
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "email_address": "alice.smith@example.com"
+  }'
+```
+
+```javascript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_id: 'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  identity_type: 'individual',
+  first_name: 'Alice',
+  last_name: 'Smith',
+  email_address: 'alice.smith@example.com',
+});
+```
+</CodeGroup>
 
 {/* 
 ---
@@ -253,7 +284,7 @@ const response = await blnk.Identity.update('{identity_id}', {
 });
 ```
 
-```go Go wrap expandable
+```go Go wrap
 identity, resp, err := client.Identity.Update("idt_8cc22560-5ace-4989-8953-fcbad7947d48", &blnkgo.Identity{
   FirstName: "Alice",
   LastName:  "Smith",
@@ -261,7 +292,7 @@ identity, resp, err := client.Identity.Update("idt_8cc22560-5ace-4989-8953-fcbad
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
   "identity_type": "individual",
@@ -275,7 +306,7 @@ identity, resp, err := client.Identity.Update("idt_8cc22560-5ace-4989-8953-fcbad
 
 ## Delete an identity
 
-To delete an identity, call the **Delete Identity** endpoint:
+To delete an identity, call the [Delete identity](/reference/delete-identity) endpoint:
 
 
 <CodeGroup>
@@ -285,7 +316,7 @@ curl -X DELETE "http://YOUR_BLNK_INSTANCE_URL/identities/{identity_id}" \
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "message": "Identity deleted successfully"
 }

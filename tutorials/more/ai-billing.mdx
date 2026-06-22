@@ -52,11 +52,10 @@ Each customer needs a wallet to track their usage and balance. Each wallet will 
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "Customers Ledger"
   }'
 ```
@@ -91,11 +90,10 @@ blnk ledgers create
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/identities \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/identities" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "first_name": "Xavier",
     "last_name": "Woods"
   }'
@@ -131,11 +129,10 @@ blnk identities create
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "<ledger-id>",
     "identity_id": "<identity-id>",
     "currency": "USD",
@@ -200,12 +197,11 @@ When a customer funds their wallet, money moves from the external world to the c
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 120,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 12000,
     "precision": 100,
     "currency": "USD",
     "reference": "ai-billing_ref-001",
@@ -218,7 +214,7 @@ curl --request POST \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 120,
+  precise_amount: 12000,
   precision: 100,
   currency: 'USD',
   reference: 'ai-billing_ref-001',
@@ -232,7 +228,7 @@ const response = await blnk.Transactions.create({
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      120,
+    PreciseAmount: 12000,
     Precision:   100,
     Currency:    "USD",
     Reference:   "ai-billing_ref-001",
@@ -346,16 +342,15 @@ Record both token usage and dollar cost together using the [bulk transactions](/
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/transactions/bulk \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "atomic": true,
     "run_async": false,
     "transactions": [
       {
-        "amount": 2290,
+        "precise_amount": 2290,
         "precision": 1,
         "currency": "TOKENS",
         "reference": "ref_ai-billing_001_tokens",
@@ -365,7 +360,7 @@ curl --request POST \
         "allow_overdraft": true
       },
       {
-        "amount": 6025,
+        "precise_amount": 602500,
         "precision": 100,
         "currency": "USD",
         "reference": "ref_ai-billing_001_usd",
@@ -384,7 +379,7 @@ const response = await blnk.Transactions.createBulk({
   run_async: false,
   transactions: [
     {
-      amount: 2290,
+      precise_amount: 2290,
       precision: 1,
       currency: 'TOKENS',
       reference: 'ref_ai-billing_001_tokens',
@@ -394,7 +389,7 @@ const response = await blnk.Transactions.createBulk({
       allow_overdraft: true,
     },
     {
-      amount: 6025,
+      precise_amount: 602500,
       precision: 100,
       currency: 'USD',
       reference: 'ref_ai-billing_001_usd',

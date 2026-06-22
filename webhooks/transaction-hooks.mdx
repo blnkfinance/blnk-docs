@@ -1,0 +1,246 @@
+---
+title: "Transaction hooks"
+sidebarTitle: "Transaction hooks"
+icon: "plug-zap"
+description: "Register PRE_TRANSACTION and POST_TRANSACTION hooks with the Hooks API, handle deliveries, and configure retries."
+"og:title": "Transaction hooks • Blnk Developer Documentation"
+"og:description": "Register and manage PRE_TRANSACTION and POST_TRANSACTION hooks with the Blnk Hooks API."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available in version 0.8.4 and later.</Info>
+
+Transaction hooks let you plug custom logic into your transaction lifecycle, before or after a transaction is processed, without changing how Blnk records the ledger entry. 
+
+Register an endpoint for each stage you care about, and Blnk calls it with the transaction context so you can validate, enrich, or trigger side effects at the right moment.
+
+<Note>
+**Note:** Blnk only sends `transaction.*` events to transaction hooks. Other events are not supported. See [Supported events](/webhooks/events) for the full list of transaction event names.
+</Note>
+
+---
+
+## Hook types
+
+Blnk supports two hook types:
+
+- `PRE_TRANSACTION`: before a transaction is applied
+- `POST_TRANSACTION`: after a transaction is applied
+
+<Tabs>
+<Tab title="Pre-transaction">
+  `PRE_TRANSACTION` runs before a transaction is applied. 
+  
+  Use it for validation, fraud checks, or enriching transaction data while the transaction is still in an early state, for example `QUEUED`.
+
+  ```json PRE_TRANSACTION payload wrap expandable {3}
+  {
+    "event": "transaction.applied",
+    "hook_type": "PRE_TRANSACTION",
+    "data": {
+      "precise_amount": 20000,
+      "amount": 200,
+      "precision": 100,
+      "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
+      "parent_transaction": "",
+      "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+      "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+      "reference": "INV-2025-0008912",
+      "currency": "GBP",
+      "description": "Wallet top-up",
+      "status": "QUEUED",
+      "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+      "allow_overdraft": true,
+      "inflight": false,
+      "skip_queue": false,
+      "created_at": "2025-02-23T09:43:49.623494+01:00",
+      "scheduled_for": "0001-01-01T00:00:00Z",
+      "inflight_expiry_date": "0001-01-01T00:00:00Z"
+    }
+  }
+  ```
+</Tab>
+<Tab title="Post-transaction">
+  `POST_TRANSACTION` runs after a transaction is applied. 
+  
+  Use it for notifications, workflow updates, or forwarding data to external systems once the transaction has been processed.
+
+  ```json POST_TRANSACTION payload wrap expandable {3}
+  {
+    "event": "transaction.applied",
+    "hook_type": "POST_TRANSACTION",
+    "data": {
+      "precise_amount": 20000,
+      "amount": 200,
+      "precision": 100,
+      "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
+      "parent_transaction": "",
+      "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+      "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+      "reference": "INV-2025-0008912",
+      "currency": "GBP",
+      "description": "Wallet top-up",
+      "status": "APPLIED",
+      "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+      "allow_overdraft": true,
+      "inflight": false,
+      "skip_queue": false,
+      "created_at": "2025-02-23T09:43:49.623494+01:00",
+      "scheduled_for": "0001-01-01T00:00:00Z",
+      "inflight_expiry_date": "0001-01-01T00:00:00Z"
+    }
+  }
+  ```
+</Tab>
+</Tabs>
+
+<Note>
+Treat `data` as the contract for your integration; fields depend on the transaction type and Blnk version. Always handle unknown keys safely when parsing JSON.
+</Note>
+
+---
+
+## Getting started
+
+<Steps>
+<Step title="Register a hook">
+
+  Register your webhook URL with the [Hooks API](/reference/create-hooks):
+
+
+  <Warning>
+  Only the [master key](/advanced/secure-blnk#master-key) can create, update, view, list, or delete hooks. Regular API keys cannot, even if they include `hooks` scopes. 
+  </Warning>
+
+  <CodeGroup>
+  ```bash cURL wrap
+  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
+    -H "X-Blnk-Key: YOUR_MASTER_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "name": "Pre-transaction validation",
+      "url": "https://api.example.com/blnk/hooks/pre",
+      "type": "PRE_TRANSACTION",
+      "active": true,
+      "timeout": 30,
+      "retry_count": 3
+    }'
+  ```
+  </CodeGroup>
+
+  | Field | Description |
+  | :-- | :-- |
+  | `name` | Human-readable label for operators and logs. |
+  | `url` | Absolute `HTTPS` or `HTTP` URL that accepts requests from Blnk. |
+  | `type` | Either `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+  | `active` | When `false`, Blnk skips this hook until you enable it again. |
+  | `timeout` | Maximum time in seconds Blnk waits for your endpoint to respond per attempt. |
+  | `retry_count` | Maximum additional attempts after a failed delivery. |
+
+  ```json 201 Created wrap
+  {
+    "hook_id": "hoo_2vN9KxQpA1wM4rL6yB8cD0eF",
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/blnk/hooks/pre",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3
+  }
+  ```
+</Step>
+<Step title="Test the hook">
+  Create a transaction with. Blnk calls your hook URL when the transaction reaches the stage you registered, `PRE` or `POST`.
+
+  Confirm your endpoint receives an event with the expected payload and returns `2xx`.
+
+  <CodeGroup>
+  ```bash cURL wrap
+  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+    -H "X-blnk-key: <api-key>" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "amount": 200,
+      "precision": 100,
+      "reference": "INV-2025-0008912",
+      "currency": "GBP",
+      "source": "@Funding",
+      "destination": "@UserWallet",
+      "description": "Wallet top-up"
+    }'
+  ```
+
+  ```typescript TypeScript wrap
+  const response = await blnk.Transactions.create({
+    amount: 200,
+    precision: 100,
+    reference: 'INV-2025-0008912',
+    currency: 'GBP',
+    source: '@Funding',
+    destination: '@UserWallet',
+    description: 'Wallet top-up',
+  });
+  ```
+
+  ```go Go wrap
+  transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+      Amount:      200,
+      Precision:   100,
+      Reference:   "INV-2025-0008912",
+      Currency:    "GBP",
+      Source:      "@Funding",
+      Destination: "@UserWallet",
+      Description: "Wallet top-up",
+    },
+  })
+  ```
+  </CodeGroup>
+
+  <Check>
+  Your hook endpoint should log or persist the delivery. If nothing arrives, confirm the hook is `active` and the URL is reachable from Blnk Core,
+  </Check>
+</Step>
+</Steps>
+
+---
+
+## Retries and timeouts
+
+When your hook endpoint is unreachable, times out, or returns a non-`2xx` response, Blnk retries the delivery with backoff—up to the `retry_count` you set when registering the hook.
+
+`timeout` sets how long Blnk waits for your endpoint on each attempt.
+
+`retry_count` sets the maximum **additional** attempts after a failed delivery.
+
+A delivery that failed while your receiver was down can arrive minutes later once the endpoint recovers.
+
+<Warning>
+Return a `2xx` response only after you have safely recorded or processed the event. Slow handlers can delay retries and increase duplicate deliveries under load.
+</Warning>
+
+---
+
+## Related docs
+
+Update, get, list, and delete hooks via the API reference.
+
+<CardGroup cols={2}>
+<Card title="Update hooks" icon="pen" href="/reference/update-hooks">
+  Change URL, timeout, or active state.
+</Card>
+<Card title="View hooks" icon="eye" href="/reference/view-hooks">
+  Fetch a hook by id.
+</Card>
+<Card title="List hooks by type" icon="list" href="/reference/list-hooks-by-type">
+  List PRE or POST hooks.
+</Card>
+<Card title="Delete hooks" icon="trash" href="/reference/delete-hooks">
+  Remove a registered hook.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

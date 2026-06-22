@@ -54,11 +54,10 @@ Each card account will be represented with [a ledger](/ledgers/introduction.mdx)
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/ledgers \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "Customers Card Ledger"
   }'
 ```
@@ -93,11 +92,10 @@ blnk ledgers create
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/identities \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/identities" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "first_name": "Xavier",
     "last_name": "Woods"
   }'
@@ -135,11 +133,10 @@ blnk identities create
 
 <CodeGroup>
 ```bash cURL wrap expandable
-curl --request POST \
-  --url http://localhost:5001/balances \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "ledger_id": "<customer-ledger-id>",
     "identity_id": "<xavier-identity-id>",
     "currency": "USD",
@@ -152,7 +149,7 @@ curl --request POST \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```javascript TypeScript wrap
 const response = await blnk.LedgerBalances.create({
   ledger_id: '<customer-ledger-id>',
   identity_id: '<xavier-identity-id>',
@@ -166,7 +163,7 @@ const response = await blnk.LedgerBalances.create({
 });
 ```
 
-```go Go wrap expandable
+```go Go wrap
 balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
   LedgerID:   "<customer-ledger-id>",
   IdentityID: "<xavier-identity-id>",
@@ -199,7 +196,7 @@ blnk balances create
 
 Authorizing a card transaction means telling the processor that the customer has enough funds to cover the transaction, and they can proceed with the transaction. 
 
-You can model this in Blnk with [inflight transactions](/transactions/inflight-transactions).
+You can model this in Blnk with [inflight transactions](/transactions/inflight/creating-inflight).
 
 <Steps titleSize="h3">
 <Step title="Money movement map">
@@ -219,12 +216,11 @@ Create an inflight transaction to authorize the payment. Setting `inflight = tru
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request POST \
-  --url http://localhost:5001/transactions \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "amount": 2000,
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 200000,
     "precision": 100,
     "currency": "USD",
     "reference": "<unique-reference>",
@@ -237,7 +233,7 @@ curl --request POST \
 
 ```javascript TypeScript wrap
 const response = await blnk.Transactions.create({
-  amount: 2000,
+  precise_amount: 200000,
   precision: 100,
   currency: 'USD',
   reference: '<unique-reference>',
@@ -251,7 +247,7 @@ const response = await blnk.Transactions.create({
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
   ParentTransaction: blnkgo.ParentTransaction{
-    Amount:      2000,
+    PreciseAmount: 200000,
     Precision:   100,
     Currency:    "USD",
     Reference:   "<unique-reference>",
@@ -321,11 +317,10 @@ Commit the inflight transaction from the authorization step once clearing is rec
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/<transaction_id> \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/<transaction_id>" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "commit"
   }'
 ```
@@ -354,11 +349,10 @@ If a transaction is rejected or cancelled, you can void it instead of committing
 
 <CodeGroup>
 ```bash cURL wrap
-curl --request PUT \
-  --url http://localhost:5001/transactions/inflight/<transaction_id> \
-  --header 'X-Blnk-Key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X PUT "http://localhost:5001/transactions/inflight/<transaction_id>" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "status": "void"
   }'
 ```

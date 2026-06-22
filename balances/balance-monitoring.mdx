@@ -13,18 +13,9 @@ Balance monitors let you keep track of balances in your Blnk Ledger. This is use
 
 You can monitor all 3 sub-balances of a ledger balance — credit balance (`credit_balance`), debit balance (`debit_balance`) and total balance (`balance`). 
 
-**Let's get started ✨**
-
-What we'll cover …
-
-1. [Why monitor balances?](#1-why-monitor-balances)
-2. [Set up balance monitors](#2-set-up-balance-monitors)
-3. [Supported operators](#3-supported-operators)
-4. [Manage existing balance monitors](#4-manage-existing-balance-monitors)
-
 ---
 
-## 1: Why monitor balances?
+## Why monitor balances?
 
 1. **Fraud detection:** Unusual balance changes can be an early indication of fraudulent activities. Monitoring can trigger alerts for suspicious transactions and ensure timely intervention.
 
@@ -36,37 +27,42 @@ What we'll cover …
 
 ---
 
-## 2: Set up balance monitors
+## Set up balance monitors
 
-To set up balance monitoring, you need to determine your conditions, e.g., notify me when the `debit_balance` is above 100000.
+<Steps>
+<Step title="Define your condition">
+  Choose the balance to watch, the sub-balance field, the comparison operator, and the threshold value. Use the same `precision` as the balance you are monitoring.
 
-Next, call the **create-balance-monitor** endpoint and provide the following request body:
+  In this example, you want to get notified when `debit_balance` is greater than 1,000.00 (`value: 100000`, `precision: 100`).
+</Step>
 
+<Step title="Create the monitor">
+  Call `POST /balance-monitors` with your condition:
 
 <CodeGroup>
 ```bash cURL wrap
 curl -X POST "http://localhost:5001/balance-monitors" \
-  -H "X-Blnk-Key: <api-key>" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
     "condition": {
-        "field": "debit_balance",
-        "operator": ">",
-        "value": 1000,
-        "precision": 100
+      "field": "debit_balance",
+      "operator": ">",
+      "value": 100000,
+      "precision": 100
     },
     "description": "Tier 1 Account"
   }'
 ```
 
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 const response = await blnk.BalanceMonitor.create({
   balance_id: 'bln_0be360ca-86fe-457d-be43-daa3f966d8f0',
   condition: {
     field: 'debit_balance',
     operator: '>',
-    value: 1000,
+    value: 100000,
     precision: 100,
   },
   description: 'Tier 1 Account',
@@ -79,55 +75,61 @@ monitor, resp, err := client.BalanceMonitor.Create(blnkgo.MonitorData{
   Condition: blnkgo.MonitorCondition{
     Field:     "debit_balance",
     Operator:  blnkgo.OperatorGreaterThan,
-    Value:     1000,
+    Value:     100000,
     Precision: 100,
   },
   Description: "Tier 1 Account",
 })
 ```
-
 </CodeGroup>
 
-| Field | Description | Required? | Type
-| :--- |:--- | :--- | :---
-| `balance_id` | Unique identifier of the balance to be monitored. | Yes | `string`
-| `condition` | Object representing the condition to be satisfied. | Yes
-| `field` | Specific sub-balance to monitor. It can be `debit_balance`, `credit_balance`, or `balance`. | Yes | `string`
-| `operator` |  Indicates the comparison operation to be performed between the field and operator. **See below → [Supported operators](#supported-operators).** | Yes | `string`
-| `value` | The value against which the `field` is compared. | Yes | `int64`
-| `precision` | Converts the value to lowest possible unit. Ensure that the precision specified is the same as the precision applied to the balance | Yes | `int64`
-| `description` | Description of your balance monitor. It is left empty if it's not passed in the request. | No | `string`
-
-In this example, Blnk is asked to monitor the balance and send a notification when its `debit_balance` is greater than 100000.
+| Field | Description |
+| :-- | :-- |
+| `balance_id` | Unique identifier of the balance to be monitored. |
+| `condition` | Object representing the condition to be satisfied. |
+| `field` | Sub-balance to monitor: `debit_balance`, `credit_balance`, or `balance`. |
+| `operator` | Comparison operator. See [Supported operators](#supported-operators). |
+| `value` | Threshold the `field` is compared against. |
+| `precision` | Precision applied to `value`. Must match the monitored balance. |
+| `description` | Label for the monitor. Empty when omitted. |
 
 <Note>
-    You can also include a `meta_data` in your request if you need to add custom data to your balance monitor.
+  You can include `meta_data` in the request to attach custom data to the monitor.
 </Note>
+</Step>
 
-Once the request is received, Blnk stores your balance monitor with a unique `monitor_id`. When the condition is met, you will get instantly notified via the `balance.monitor` webhook event.
+<Step title="Confirm creation">
+  Blnk stores the monitor and returns a unique `monitor_id`. When the condition is met, you receive a `balance.monitor` webhook event.
 
 ```json Response
 {
-    "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
-    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
-    "condition": {
-        "field": "debit_balance",
-        "operator": ">",
-        "value": 1000000
-    },
-    "description": "Tier 1 Account",
-    "created_at": "2024-02-20T05:56:58.257315054Z"
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+  "condition": {
+    "field": "debit_balance",
+    "operator": ">",
+    "value": 100000,
+    "precision": 100
+  },
+  "description": "Tier 1 Account",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```
 
-| Field | Description | Type
-| :--- | :--- | :---
-| `monitor_id` | Unique identifier for your balance monitor. | `string`
-| `created_at` | Date and time of creation. | `string` 
+| Field | Description | Type |
+| :-- | :-- | :-- |
+| `monitor_id` | Unique identifier for your balance monitor. | `string` |
+| `created_at` | Date and time of creation. | `string` |
+
+<Check>
+  Save the returned `monitor_id` — you need it to view, update, or delete the monitor later.
+</Check>
+</Step>
+</Steps>
 
 ---
 
-## 3: Supported operators
+## Supported operators
 
 This is a list of all supported operators by the Balance monitor:
 
@@ -142,21 +144,18 @@ This is a list of all supported operators by the Balance monitor:
 
 ---
 
-## 4: Manage existing balance monitors
+## View a balance monitor
 
-You can request to view or update the details of a particular monitor.
-
-To view balance monitors, call the **get-balance-monitor** endpoint:
-
+Call `GET /balance-monitors/{monitor_id}` to retrieve one monitor by ID.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor-id}" \
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor_id}" \
   -H "X-blnk-key: <api-key>"
 ```
 
 ```javascript TypeScript wrap
-const response = await blnk.BalanceMonitor.get('{monitor-id}');
+const response = await blnk.BalanceMonitor.get('{monitor_id}');
 ```
 
 ```go Go wrap
@@ -164,7 +163,7 @@ monitor, resp, err := client.BalanceMonitor.Get("mon_e0e77b0c-4985-472a-9bf5-76a
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
   "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
@@ -178,9 +177,11 @@ monitor, resp, err := client.BalanceMonitor.Get("mon_e0e77b0c-4985-472a-9bf5-76a
 }
 ```
 
-<Tip>
-    List all balance monitors:
-</Tip>
+---
+
+## List all balance monitors
+
+Call `GET /balance-monitors` to retrieve every monitor in your ledger.
 
 <CodeGroup>
 ```bash cURL wrap
@@ -197,7 +198,7 @@ monitors, resp, err := client.BalanceMonitor.List()
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 [
   {
     "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
@@ -213,11 +214,46 @@ monitors, resp, err := client.BalanceMonitor.List()
 ]
 ```
 
-To update a balance monitor, call the **update-balance-monitor** endpoint and provide the updated conditions in the request body:
+---
+
+## List monitors for a balance
+
+Call `GET /balance-monitors/balances/{balance_id}` to retrieve every monitor attached to a specific balance. The path parameter is the **balance ID**, not a monitor ID.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor-id}" \
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/balances/{balance_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+</CodeGroup>
+
+```json Response
+[
+  {
+    "monitor_id": "mon_c33db397-7475-4930-a719-4be110e437f5",
+    "balance_id": "bln_71e707a0-f811-43ef-b5ec-2c7445d57d18",
+    "condition": {
+      "field": "debit_balance",
+      "operator": ">",
+      "value": 200,
+      "precision": 100,
+      "precise_value": 10000
+    },
+    "description": "High debit alert",
+    "created_at": "2026-06-13T00:33:25.473364Z"
+  }
+]
+```
+
+---
+
+## Update a balance monitor
+
+Call `PUT /balance-monitors/{monitor_id}` and provide the updated conditions in the request body.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor_id}" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -259,7 +295,7 @@ monitor, resp, err := client.BalanceMonitor.Update("mon_e0e77b0c-4985-472a-9bf5-
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response
 {
   "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
   "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
@@ -272,6 +308,27 @@ monitor, resp, err := client.BalanceMonitor.Update("mon_e0e77b0c-4985-472a-9bf5-
   "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```
+
+---
+
+## Delete a balance monitor
+
+Call `DELETE /balance-monitors/{monitor_id}` to remove a monitor.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X DELETE "http://YOUR_BLNK_INSTANCE_URL/balance-monitors/{monitor_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+</CodeGroup>
+
+```json 200 OK
+{
+  "message": "BalanceMonitor deleted successfully"
+}
+```
+
+A subsequent `GET /balance-monitors/{monitor_id}` returns `404` with `BAL_MONITOR_NOT_FOUND`. See [Delete balance monitor](/reference/delete-balance-monitor) for the full reference.
 
 ---
 

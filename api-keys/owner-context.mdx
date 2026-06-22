@@ -1,0 +1,120 @@
+---
+title: "API Key Owner Context"
+sidebarTitle: "Owner context"
+icon: "users"
+description: "Understand how owner labels isolate API key management across teams and services."
+"og:title": "API Key Owner Context • Blnk Developer Documentation"
+"og:description": "Understand how owner labels isolate API key management across teams and services."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>Available on Blnk Core 0.14.3 and later.</Info>
+
+Every API key belongs to an owner.
+
+The owner is a label you choose when creating the key, such as a team name, service name, or tenant ID. Blnk stores this value as `owner_id` on the key record.
+
+Owner context controls which keys a scoped key can manage. A scoped key can only create, list, and revoke keys that belong to its own `owner_id`. It cannot manage keys for another owner.
+
+---
+
+## Example scenario
+
+Say you create two keys under different owners:
+
+- Key `k1` has `owner_id = merchant_a`
+- Key `k2` has `owner_id = merchant_b`
+
+If `k1` is used to manage API keys, Blnk resolves the owner as `merchant_a`. 
+
+That means `k1` can manage keys for `merchant_a`, but it cannot manage keys for `merchant_b`, even if the request includes `"owner": "merchant_b"`.
+
+<Note>
+The [master key](/advanced/secure-blnk#master-key) is different. It isn't bound to an owner, so it can manage keys for any owner. Pass `owner` in the request to target a specific one.
+</Note>
+
+---
+
+## Delegated key management
+
+Scoped keys can manage API keys, but only within their own owner context.
+
+This lets a team admin create narrower service keys for a team, service, or tenant without handing out the master key. For example, a key with `api-keys:read`, `api-keys:write`, and `api-keys:delete` can create, list, and revoke keys for its own `owner_id`.
+
+| Caller | What it can manage |
+| :-- | :-- |
+| **Master key** | Can create, list, and revoke keys for any owner. Use the `owner` field to choose which owner the request applies to. |
+| **Scoped API key** | Can create, list, and revoke keys only for its own `owner_id`. If the request includes a different `owner`, Blnk ignores it and uses the key's stored `owner_id`. |
+
+Two rules apply to scoped keys:
+
+1. **Scope inheritance.** A key can only grant scopes it already has. For example, a key with only `transactions:read` cannot create another key with `transactions:write`.
+
+2. **No cross-owner access.** The effective owner always comes from the caller’s stored `owner_id`. A key for `merchant_a` cannot create, list, or revoke keys for `merchant_b`.
+
+---
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+When a key management request breaks owner or delegation rules, Blnk returns a `400`, `403`, or `404` response.
+
+| Code                      | Status | When it happens                                                         |
+| :------------------------ | :----- | :---------------------------------------------------------------------- |
+| `AUTH_CROSS_OWNER_ACCESS` | `403`  | A scoped key tries to manage keys for another owner.                    |
+| `AUTH_SCOPE_ESCALATION`   | `403`  | A scoped key tries to grant scopes it does not have.                    |
+| `APIKEY_NOT_FOUND`        | `404`  | The key ID does not exist in the caller’s owner context.                |
+| `APIKEY_OWNER_REQUIRED`   | `400`  | The master key is used to create or list keys without an `owner` value. |
+
+Blnk does not always return `403` for cross-owner requests.
+
+For example, trying to revoke another owner’s key returns `404 APIKEY_NOT_FOUND` instead of `403`. This prevents the response from revealing whether that key exists under another owner.
+
+Listing keys with `?owner=another-team` returns `403 AUTH_CROSS_OWNER_ACCESS`, because the request is explicitly trying to access another owner’s key list.
+
+Example response:
+
+```json 403 Forbidden wrap
+{
+  "error": "cannot grant scopes broader than caller",
+  "error_detail": {
+    "code": "AUTH_SCOPE_ESCALATION",
+    "message": "cannot grant scopes broader than caller"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `AUTH_CROSS_OWNER_ACCESS` | Verify the caller's `owner_id` matches the owner you're targeting. Use the [master key](/advanced/secure-blnk#master-key) for cross-owner admin. |
+| `AUTH_SCOPE_ESCALATION` | Remove scopes from the create request that the caller doesn't hold, or create the key with the master key instead. |
+| `APIKEY_NOT_FOUND` | Confirm the key ID exists in the caller's owner context. A `404` may mean the key belongs to another owner. |
+| `APIKEY_OWNER_REQUIRED` | Include `owner` in the create body or list query when using the master key. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Overview" icon="lock-keyhole" href="/api-keys/overview">
+  Create and use scoped keys.
+</Card>
+
+<Card title="Scopes" icon="list-check" href="/api-keys/scopes">
+  Pick the right permissions.
+</Card>
+
+<Card title="Manage keys" icon="list" href="/api-keys/manage-keys">
+  List, revoke, and delegate keys.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

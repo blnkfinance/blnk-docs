@@ -17,13 +17,17 @@ import Key from "/snippets/key.mdx";
 ### Body
 
 <ParamField body="transaction_ids" type="string[]" required>
-  Unique ids of the independently-created inflight transactions to void. The request accepts up to 100 ids.
+  Unique ids of the independently-created inflight transactions to void. Max number of transaction IDs allowed is 100.
+</ParamField>
+
+<ParamField body="skip_queue" type="boolean" default="false">
+  When `false` (default), each item is enqueued for asynchronous processing. Per-item results return `status: "queued"` with code `QUEUED` or `ALREADY_QUEUED`, and both codes count toward `succeeded`. When `true`, Blnk processes each item synchronously and returns `status: "succeeded"` or `"failed"`. See [Commit & void inflight](/transactions/inflight/updating-inflight).
 </ParamField>
 
 ### Response
 
 <ResponseField name="succeeded" type="integer" required>
-  Number of transactions voided successfully.
+  Number of transactions voided or queued successfully. Items with `QUEUED` or `ALREADY_QUEUED` count here.
 </ResponseField>
 
 <ResponseField name="failed" type="integer" required>
@@ -32,61 +36,101 @@ import Key from "/snippets/key.mdx";
 
 <ResponseField name="results" type="object[]" required>
   Per-transaction result in the same order as the request.
+  <Expandable>
+    <ResponseField name="transaction_id" type="string" required>
+      Transaction id from the request item.
+    </ResponseField>
 
-  <ResponseField name="transaction_id" type="string" required>
-    Transaction id from the request.
-  </ResponseField>
+    <ResponseField name="status" type="string" required>
+      `succeeded`, `failed`, or `queued` (when `skip_queue` is `false`).
+    </ResponseField>
 
-  <ResponseField name="status" type="string" required>
-    `succeeded` or `failed`.
-  </ResponseField>
+    <ResponseField name="code" type="string">
+      When queued: `QUEUED` or `ALREADY_QUEUED`. When synchronous: failure codes such as `NOT_FOUND`, `ALREADY_VOIDED`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`, `LOCKED`, or `INTERNAL_ERROR`.
+    </ResponseField>
 
-  <ResponseField name="code" type="string">
-    Stable failure code, such as `NOT_FOUND`, `ALREADY_VOIDED`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`, `LOCKED`, or `INTERNAL_ERROR`.
-  </ResponseField>
-
-  <ResponseField name="message" type="string">
-    Human-readable failure message.
-  </ResponseField>
+    <ResponseField name="message" type="string">
+      Human-readable failure message.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl --request POST \
-  --url http://localhost:5001/transactions/inflight/bulk/void \
-  --header 'X-blnk-key: <api-key>' \
-  --header 'Content-Type: application/json' \
-  --data '{
+curl -X POST "http://localhost:5001/transactions/inflight/bulk/void" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "transaction_ids": [
-      "txn_11111111-1111-4111-8111-111111111111",
-      "txn_22222222-2222-4222-8222-222222222222",
-      "txn_33333333-3333-4333-8333-333333333333"
+      "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "txn_7c91e4b2-3d8a-4f6e-b1c2-9a8d7e6f5b4a"
     ]
   }'
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200
+```json 200 Queued (default)
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "queued",
+      "code": "QUEUED"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "queued",
+      "code": "ALREADY_QUEUED",
+      "message": "a commit or void is already queued for this transaction"
+    }
+  ]
+}
+```
+
+```json 200 Synchronous (skip_queue: true)
 {
   "succeeded": 2,
   "failed": 1,
   "results": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "transaction_id": "txn_7c91e4b2-3d8a-4f6e-b1c2-9a8d7e6f5b4a",
       "status": "failed",
       "code": "ALREADY_COMMITTED",
       "message": "cannot void. Transaction already committed"
     }
   ]
+}
+```
+
+```json 400
+{
+  "error": "transactions cannot be empty",
+  "error_detail": {
+    "code": "TXN_BULK_EMPTY",
+    "message": "transactions cannot be empty"
+  }
+}
+```
+
+```json 400
+{
+  "error": "too many transactions; max is 100",
+  "error_detail": {
+    "code": "TXN_BULK_LIMIT_EXCEEDED",
+    "message": "too many transactions; max is 100"
+  }
 }
 ```
 </ResponseExample>
