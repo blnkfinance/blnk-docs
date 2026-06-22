@@ -2,118 +2,56 @@
 mode: "wide"
 title: "List API keys"
 sidebarTitle: "List API keys"
-icon: "key-square"
-description: "List all API keys for the authenticated owner with the TypeScript SDK."
+api: "GET /api-keys"
+description: "List API keys for an owner with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-List API keys with `blnk.ApiKeys.list`. When authenticating with the master key, pass `{ owner }` so Core knows which keys to return.
+Use `blnk.ApiKeys.list` to list [API keys](/advanced/secure-blnk) for an owner.
 
-For scopes and auth model, see [Secure Blnk](/advanced/secure-blnk) and the [List API keys](/reference/get-api-key) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.ApiKeys.list(options?)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.ApiKeys` |
-| **SDK method** | `list` |
-| **HTTP** | `GET /api-keys` or `GET /api-keys?owner={owner}` |
-| **Returns** | `Promise<ApiResponse<ApiKeyResp[] \| null>>` |
-
----
-
-## When to use
-
-Call `list` to audit active keys, review scopes and expiration dates, or find an `api_key_id` before revoking a key.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.ApiKeys.list wrap {1}
 const response = await blnk.ApiKeys.list({ owner: 'merchant_a' });
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data[0]?.api_key_id, response.data[0]?.scopes);
 ```
 
-<Tip>
-When using the master key, Core requires the `owner` query parameter. Scoped keys can call `list()` without options to see their own key.
-</Tip>
+| Field | Description |
+| :-- | :-- |
+| `options.owner` | Owner whose keys to return. Required when authenticating with the master key. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `options.owner` | `string` | No | Owner filter. Required when authenticating with the master key. |
-
----
-
-## Response
-
-Returns an array of API key objects in `response.data` when `status` is `200`. The plaintext `key` is not included. Key fields include `api_key_id`, `name`, `owner_id`, `scopes`, `expires_at`, and `is_revoked`. See [List API keys](/reference/get-api-key) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK validates optional filter arguments. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Empty `options.owner` when provided
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
-}
+```json 200 OK wrap
+[
+  {
+    "api_key_id": "key_abc123def456",
+    "name": "Service Account",
+    "owner_id": "owner_id",
+    "scopes": ["ledgers:read", "balances:write"],
+    "expires_at": "2026-03-11T00:00:00Z",
+    "created_at": "2024-01-15T10:30:00Z",
+    "last_used_at": "2024-01-20T14:30:00Z"
+  }
+]
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+`response.data` is an array of API key records without the plaintext key value.
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How API keys work" icon="key" href="/advanced/secure-blnk">
+Scopes, the master key, and the auth model.
+</Card>
+
 <Card title="List API keys" icon="book-open" href="/reference/get-api-key">
-HTTP API reference for query parameters and response schema.
-</Card>
-
-<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
-Master key, scopes, and auth model.
-</Card>
-
-<Card title="Create API key" icon="key" href="/sdks/typescript/methods/api-keys/create-api-key">
-Issue a new scoped key for an owner.
-</Card>
-
-<Card title="Delete API key" icon="key-off" href="/sdks/typescript/methods/api-keys/delete-api-key">
-Revoke a key by `api_key_id`.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

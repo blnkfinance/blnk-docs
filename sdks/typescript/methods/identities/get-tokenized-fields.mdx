@@ -2,116 +2,52 @@
 mode: "wide"
 title: "Get tokenized fields"
 sidebarTitle: "Get tokenized fields"
-icon: "shield"
-description: "How to view all tokenized fields with the TypeScript SDK."
+api: "GET /identities/{identity_id}/tokenized-fields"
+description: "See which identity fields are tokenized with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Returns which PII fields are currently tokenized on an identity with `blnk.Identity.getTokenizedFields`. This is a read-only lookup. It does not tokenize or detokenize anything.
+Use `blnk.Identity.getTokenizedFields` to list tokenized identity fields.
 
-For tokenization setup and concepts, see [PII tokenization](/identities/pii-tokenization) and the [Get tokenized fields](/reference/get-tokenized-fields) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Identity.getTokenizedFields(id)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Identity` |
-| **SDK method** | `getTokenizedFields` |
-| **HTTP** | `GET /identities/{identity_id}/tokenized-fields` |
-| **Returns** | `Promise<ApiResponse<GetTokenizedFieldsResp \| null>>` |
-
----
-
-## When to use
-
-Call `getTokenizedFields` to see which fields are already tokenized before detokenizing, or to audit protection status on an identity.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Identity.getTokenizedFields wrap {1}
 const response = await blnk.Identity.getTokenizedFields(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.tokenized_fields);
 ```
 
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Identity ID. |
+| Field | Description |
+| :-- | :-- |
+| `id` | Identity ID. |
 
 ---
 
-## Response
+## Response shape
 
-Returns tokenized field names in `response.data` when `status` is `200`. See [Get tokenized fields](/reference/get-tokenized-fields) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that the identity ID is present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `id`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "tokenized_fields": ["FirstName", "LastName", "EmailAddress", "PhoneNumber"]
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `tokenized_fields` | Field names currently tokenized on the identity. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Get tokenized fields" icon="book-open" href="/reference/get-tokenized-fields">
-HTTP API reference for the response schema.
-</Card>
-
 <Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
-Enable and use tokenization on Core.
+Setup and how tokenization works.
 </Card>
 
-<Card title="Tokenize field" icon="lock" href="/sdks/typescript/methods/identities/tokenize-field">
-Tokenize a single field.
-</Card>
-
-<Card title="Detokenize identity" icon="key-round" href="/sdks/typescript/methods/identities/detokenize-identity">
-Read original values for tokenized fields.
+<Card title="View tokenized fields" icon="book-open" href="/reference/get-tokenized-fields">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

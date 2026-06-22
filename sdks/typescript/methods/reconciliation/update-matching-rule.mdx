@@ -2,42 +2,15 @@
 mode: "wide"
 title: "Update matching rule"
 sidebarTitle: "Update matching rule"
-icon: "sliders-horizontal"
-description: "Update an existing matching rule for reconciliation with the TypeScript SDK."
+api: "PUT /reconciliation/matching-rules/{id}"
+description: "Update a reconciliation matching rule with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Update an existing matching rule with `blnk.Reconciliation.updateMatchingRule`. Pass the full matching rule body Core expects on `PUT`: `name`, `description`, and `criteria`. The `rule_id` does not change.
+Use `blnk.Reconciliation.updateMatchingRule` to update a matching rule.
 
-For criteria and drift behavior, see the [Matching rules](/reconciliations/matching-rules) guide and the [Update matching rule](/reference/update-matching-rule) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Reconciliation.updateMatchingRule(ruleId, data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Reconciliation` |
-| **SDK method** | `updateMatchingRule` |
-| **HTTP** | `PUT /reconciliation/matching-rules/{rule_id}` |
-| **Returns** | `Promise<ApiResponse<RunReconResp \| null>>` |
-
----
-
-## When to use
-
-Call `updateMatchingRule` when match criteria, drift tolerance, or rule metadata needs to change. Use this instead of creating a new rule when you want to keep the same `rule_id` referenced in existing jobs.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Reconciliation.updateMatchingRule wrap {1}
 const response = await blnk.Reconciliation.updateMatchingRule('rule_abc123', {
   name: 'Amount match (updated)',
   description: 'Match by amount with 2% drift',
@@ -46,85 +19,60 @@ const response = await blnk.Reconciliation.updateMatchingRule('rule_abc123', {
     { field: 'currency', operator: 'equals' },
   ],
 });
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.rule_id);
 ```
 
----
-
-## Parameters
-
-| Argument / field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `ruleId` | `string` | Yes | Matching rule ID to update. |
-| `data.name` | `string` | Yes | Updated rule name. |
-| `data.description` | `string` | Yes | Updated description. |
-| `data.criteria` | `array` | Yes | Full criteria array (same shape as create). |
-| `data.criteria[].field` | `string` | Yes | `amount`, `currency`, `reference`, `description`, or `date`. |
-| `data.criteria[].operator` | `string` | Yes | `equals`, `greater_than`, `less_than`, or `contains`. |
-| `data.criteria[].allowable_drift` | `number` | No | Tolerance for amount or date fields. |
+| Field | Description |
+| :-- | :-- |
+| `ruleId` | ID of the matching rule to update. |
+| `name` | Updated name for the rule. |
+| `description` | Updated description of what the rule does. |
+| `criteria` | Full replacement array of match criteria. |
+| `criteria[].field` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
 
 ---
 
-## Response
+## Response shape
 
-Returns the updated matching rule in `response.data` when `status` is `200`. Key fields include `rule_id`, `name`, `criteria`, and `updated_at`. See [Update matching rule](/reference/update-matching-rule) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `ruleId`
-- Missing or invalid `name`, `description`, or `criteria`
-- Invalid criterion `field`, `operator`, or `allowable_drift`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "rule_id": "rule_abc123",
+  "name": "Amount match (updated)",
+  "description": "Match by amount with 2% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.02
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-12-01T10:15:00.000000000Z"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `rule_id` | Unchanged ID of the rule. |
+| `name` | Updated rule name. |
+| `criteria` | The updated match criteria stored for the rule. |
+| `updated_at` | When the rule was last updated. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and drift behavior.
+</Card>
+
 <Card title="Update matching rule" icon="book-open" href="/reference/update-matching-rule">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Matching rules" icon="scale" href="/reconciliations/matching-rules">
-Criteria, operators, drift, and examples.
-</Card>
-
-<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
-Create a new rule instead of updating.
-</Card>
-
-<Card title="Delete matching rule" icon="trash-2" href="/sdks/typescript/methods/reconciliation/delete-matching-rule">
-Remove a rule you no longer use.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

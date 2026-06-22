@@ -2,159 +2,98 @@
 mode: "wide"
 title: "Create transaction"
 sidebarTitle: "Create transaction"
-icon: "arrow-left-right"
+api: "POST /transactions"
 description: "Post a transaction with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Post a transfer between a source and destination balance with `blnk.Transactions.create`. The method supports inflight holds, scheduling, split legs, and metadata.
+Use `blnk.Transactions.create` to post a [transaction](/transactions/introduction) between a source and destination balance.
 
-For transaction behavior and field definitions, see the [Transactions](/transactions/introduction) guide and the [Create transaction](/reference/create-transaction) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Transactions.create(data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Transactions` |
-| **SDK method** | `create` |
-| **HTTP** | `POST /transactions` |
-| **Returns** | `Promise<ApiResponse<CreateTransactionResp \| null>>` |
-
----
-
-## When to use
-
-Call `create` to record a single money movement: customer payments, internal transfers, payroll payouts, or any debit/credit between balances. Use inflight, scheduling, and split-leg options when your flow needs holds, delayed posting, or multi-party splits.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Transactions.create wrap {1}
 const response = await blnk.Transactions.create({
-  amount: 1000,
+  amount: 1250.34,
   precision: 100,
   currency: 'USD',
-  source: '@FundingPool',
+  source: '@WorldUSD',
   destination: '@MyBalance',
-  reference: 'payment_001',
-  description: 'Customer payment',
-  allow_overdraft: true,
-});
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.transaction_id, response.data.status);
-```
-
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `amount` | `float` | Yes* | Transaction amount. Use `precise_amount` for values with more than 15 digits. |
-| `precise_amount` | `integer` | Yes* | Amount with precision applied. |
-| `currency` | `string` | Yes | Currency code. |
-| `precision` | `integer` | Yes | Currency precision (for example `100` for cents). |
-| `reference` | `string` | Yes | Unique reference for idempotency and reconciliation. |
-| `source` | `string` | Yes | Source balance ID. Prefix with `@` for [internal balances](/balances/internal-balances). |
-| `destination` | `string` | Yes | Destination balance ID. |
-| `description` | `string` | Yes | Human-readable narration. |
-| `allow_overdraft` | `boolean` | No | Allow the source balance to go negative. |
-| `inflight` | `boolean` | No | Hold the transaction until you commit or void it. See [Inflight](/transactions/inflight). |
-| `meta_data` | `object` | No | Optional key-value metadata. |
-
-\* Provide `amount` or `precise_amount`.
-
-<Tip>
-Request field names use **snake_case** to match the HTTP API (`allow_overdraft`, `meta_data`, not `allowOverdraft`).
-</Tip>
-
-For split legs, scheduling, and other optional fields, see [Create transaction](/reference/create-transaction), [Multiple sources](/reference/multiple-sources), and [Multiple destinations](/reference/multiple-destinations).
-
----
-
-## Response
-
-Returns a transaction object in `response.data` when `status` is `201`. Key fields include `transaction_id`, `status`, `source`, `destination`, and `amount`. See [Create transaction](/reference/create-transaction) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing required fields (`amount` or `precise_amount`, `currency`, `precision`, `reference`, `source`, `destination`, `description`)
-- Invalid field types or shapes
-
-```typescript wrap
-// Client-side validation failure (no request sent to Core)
-const response = await blnk.Transactions.create({
-  amount: 1000,
-  precision: 100,
-  currency: 'USD',
-  source: '@FundingPool',
-  destination: '@MyBalance',
-  reference: '',
+  reference: 'ref_2ye281ewiu',
   description: 'Customer payment',
 });
-
-if (response.status === 400) {
-  console.error('Validation failed:', response.message);
-}
 ```
+
+| Field | Description |
+| :-- | :-- |
+| `amount` | Transaction amount. Use `precise_amount` for values with more than 15 digits. |
+| `precise_amount` | Amount with [precision](/transactions/precision) already applied. |
+| `currency` | Currency of the transaction. |
+| `precision` | Precision for the currency (for example `100` for cents). |
+| `reference` | Unique reference for the transaction. |
+| `source` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `destination` | Balance receiving the amount. |
+| `description` | Narration of the transaction. |
+| `allow_overdraft` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `inflight` | Hold the transaction until you commit or void it. See [Inflight](/transactions/inflight). |
+| `inflight_expiry_date` | When an inflight transaction expires and rolls back. |
+| `inflight_commit_date` | When Core auto-commits the inflight transaction. |
+| `scheduled_for` | Date and time to post a [scheduled](/transactions/scheduling) transaction. |
+| `effective_date` | Actual date the transaction occurred. See [Backdated transactions](/transactions/backdated-transactions). |
+| `skip_queue` | Bypass the transaction queue and process directly. |
+| `atomic` | For split legs, apply all legs together or none. |
+| `meta_data` | Optional metadata. Tag funds with `BLNK_LINEAGE_PROVIDER` for [fund lineage](/transactions/lineage). |
 
 ---
 
-## HTTP errors
+## Response shape
 
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 201) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "amount": 1250.34,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "parent_transaction": "",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "bln_d5cbde84-d20a-485b-8ce8-6677d782c3a1",
+  "reference": "ref_2ye281ewiu",
+  "currency": "USD",
+  "description": "Customer payment",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `transaction_id` | Unique ID for the transaction. |
+| `status` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`). |
+| `precise_amount` | `amount` × `precision`. |
+| `source` | Resolved source balance. |
+| `destination` | Resolved destination balance. |
+| `hash` | [Hash](/transactions/hash) of the transaction details. |
+| `created_at` | Date and time the transaction was created. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Create transaction" icon="book-open" href="/reference/create-transaction">
-HTTP API reference for request fields and response schema.
+<Card title="How transactions work" icon="arrow-left-right" href="/transactions/introduction">
+Money movement, statuses, and the transaction lifecycle.
 </Card>
 
-<Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
-Product guide for money movement and statuses.
-</Card>
-
-<Card title="Inflight" icon="plane" href="/transactions/inflight">
-Hold, commit, and void inflight transactions.
-</Card>
-
-<Card title="CLI transactions" icon="terminal" href="/cli/transactions">
-Create and list transactions from the terminal.
+<Card title="Create new transaction" icon="book-open" href="/reference/create-transaction">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

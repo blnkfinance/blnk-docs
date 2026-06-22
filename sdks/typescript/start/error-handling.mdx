@@ -1,0 +1,48 @@
+---
+title: "TypeScript SDK Error Handling"
+description: "How to handle responses and errors with the TypeScript SDK."
+sidebarTitle: "Error handling"
+icon: "triangle-alert"
+---
+
+Every SDK method returns an `ApiResponse<T>` envelope. Check `status` and `data` after each call.
+
+```typescript wrap
+interface ApiResponse<T> {
+  status: number;
+  message: string;
+  data: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  } | null;
+}
+```
+
+---
+
+## Basic pattern
+
+```typescript Error handling {5} wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customer accounts',
+});
+
+if (response.status !== 201 || !response.data) {
+  throw new Error(response.message);
+}
+```
+
+---
+
+## Common failures
+
+| Mode | `status` | What happened |
+| :--- | :--- | :--- |
+| **Core error** | Core status | Core returned a non-2xx response. |
+| **Client validation** | `400` | The SDK rejected invalid input before sending the request. |
+| **Timeout** | `408` | The request exceeded the configured timeout. |
+| **Network error** | `500` | The SDK could not reach Core. |
+
+Use [Client options](/sdks/typescript/start/client-options) to adjust timeout and retry behavior.

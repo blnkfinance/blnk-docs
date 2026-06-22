@@ -2,130 +2,70 @@
 mode: "wide"
 title: "Create API key"
 sidebarTitle: "Create API key"
-icon: "key"
-description: "How to create a new API key with fine-grained permissions with the TypeScript SDK."
+api: "POST /api-keys"
+description: "Create a new scoped API key with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Create a scoped API key with `blnk.ApiKeys.create`. Store the plaintext `key` from the response immediately; Core does not return it again on list.
+Use `blnk.ApiKeys.create` to create a scoped API key.
 
-For scopes and auth model, see [Secure Blnk](/advanced/secure-blnk) and the [Create API key](/reference/create-api-key) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.ApiKeys.create(data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.ApiKeys` |
-| **SDK method** | `create` |
-| **HTTP** | `POST /api-keys` |
-| **Returns** | `Promise<ApiResponse<ApiKeyResp \| null>>` |
-
----
-
-## When to use
-
-Call `create` when provisioning a service account or integration that should not use the master key. Grant the minimum scopes required for the workload.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.ApiKeys.create wrap {1}
 const response = await blnk.ApiKeys.create({
   name: 'Service Account',
   owner: 'merchant_a',
   scopes: ['ledgers:read', 'balances:write'],
   expires_at: '2026-12-31T23:59:59Z',
 });
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.api_key_id, response.data.key);
 ```
 
-<Warning>
-`response.data.key` is shown only at creation. List responses return a hashed value, not the plaintext secret.
-</Warning>
+| Field | Description |
+| :-- | :-- |
+| `name` | Descriptive name for the key or service account. |
+| `owner` | Owner identifier you assign, such as a team, service, or user ID. |
+| `scopes` | List of permissions in `resource:action` format (for example `ledgers:read`). |
+| `expires_at` | Expiration timestamp (ISO 8601, for example `2026-12-31T23:59:59Z`). |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | `string` | Yes | Descriptive key or service account name. |
-| `owner` | `string` | Yes | Owner identifier you assign (team, service, or user ID). |
-| `scopes` | `string[]` | Yes | Non-empty list of permissions (for example `ledgers:read`). |
-| `expires_at` | `string` | Yes | ISO 8601 expiration timestamp (for example `2026-12-31T23:59:59Z`). |
-
-For available scopes, see [Understanding scopes](/advanced/secure-blnk#understanding-scopes).
-
----
-
-## Response
-
-Returns an API key object in `response.data` when `status` is `201`. Key fields include `api_key_id`, `key`, `name`, `owner_id`, `scopes`, and `expires_at`. See [Create API key](/reference/create-api-key) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `name` or `owner`
-- Missing or empty `scopes` array
-- Invalid `expires_at` (must be ISO 8601)
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 201) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "api_key_id": "api_key_879f0ecb-e29f-4137-801b-1048366381db",
+  "key": "YVLIhuIplUzLRCcT9r7DQ_jsGKCXAn39JQ3n_o-Ll2Q=",
+  "name": "Service Account",
+  "owner_id": "owner_id",
+  "scopes": ["ledgers:read", "balances:write"],
+  "expires_at": "2026-03-11T00:00:00Z",
+  "created_at": "2025-11-18T13:39:50.390457762Z",
+  "last_used_at": "0001-01-01T00:00:00Z",
+  "is_revoked": false
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `api_key_id` | Unique ID for the key. Use it to [revoke the key](/sdks/typescript/methods/api-keys/delete-api-key). |
+| `key` | Plaintext secret. Store it now — it is only returned at creation. |
+| `scopes` | Permissions granted to the key. |
+| `expires_at` | Date and time the key expires. |
+| `is_revoked` | Whether the key has been revoked. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How API keys work" icon="key" href="/advanced/secure-blnk">
+Scopes, the master key, and the auth model.
+</Card>
+
 <Card title="Create API key" icon="book-open" href="/reference/create-api-key">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Secure Blnk" icon="shield" href="/advanced/secure-blnk">
-Master key, scopes, and auth model.
-</Card>
-
-<Card title="List API keys" icon="key-square" href="/sdks/typescript/methods/api-keys/list-api-keys">
-Audit keys for an owner after creation.
-</Card>
-
-<Card title="Install" icon="code" href="/sdks/typescript">
-Initialize the client with your API key.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

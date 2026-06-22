@@ -2,42 +2,15 @@
 mode: "wide"
 title: "Start reconciliation"
 sidebarTitle: "Start reconciliation"
-icon: "play"
-description: "Run your reconciliation process with the TypeScript SDK."
+api: "POST /reconciliation/start"
+description: "Start a batch reconciliation run with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Start a batch reconciliation run with `blnk.Reconciliation.run`. Pass the `upload_id` from `upload`, a strategy, grouping field, and matching rule IDs.
+Use `blnk.Reconciliation.run` to start batch reconciliation.
 
-For workflow and strategies, see the [Reconciliation overview](/reconciliations/overview) guide and the [Start reconciliation](/reference/start-reconciliation) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Reconciliation.run(data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Reconciliation` |
-| **SDK method** | `run` |
-| **HTTP** | `POST /reconciliation/start` |
-| **Returns** | `Promise<ApiResponse<RunReconResp \| null>>` |
-
----
-
-## When to use
-
-Call `run` after you have uploaded external data and created matching rules. Use `dry_run: true` to test matching without writing results to the ledger.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Reconciliation.run wrap {1}
 const response = await blnk.Reconciliation.run({
   upload_id: 'upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3',
   strategy: 'one_to_one',
@@ -45,77 +18,44 @@ const response = await blnk.Reconciliation.run({
   grouping_criteria: 'reference',
   matching_rule_ids: ['rule_abc123'],
 });
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data);
 ```
 
-<Tip>
-CLI equivalent: `blnk reconciliations`. See [CLI reconciliations](/cli/reconciliations).
-</Tip>
+| Field | Description |
+| :-- | :-- |
+| `upload_id` | Upload ID returned by `blnk.Reconciliation.upload`. |
+| `strategy` | Match strategy: `one_to_one`, `one_to_many`, or `many_to_one`. |
+| `dry_run` | Set `true` to test without writing results to the ledger. |
+| `grouping_criteria` | Field used to group records, for example `reference`. |
+| `matching_rule_ids` | IDs of the matching rules to apply. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `upload_id` | `string` | Yes | Upload ID from `blnk.Reconciliation.upload`. |
-| `strategy` | `string` | Yes | `one_to_one`, `one_to_many`, or `many_to_one`. |
-| `dry_run` | `boolean` | Yes | `true` to test without persisting matches; `false` to apply results. |
-| `grouping_criteria` | `string` | Yes | Field used to group records (for example `amount`, `reference`). |
-| `matching_rule_ids` | `string[]` | Yes | One or more rule IDs from `createMatchingRule`. |
-
-For strategy behavior, see [Reconciliation strategies](/reconciliations/strategies).
-
----
-
-## Response
-
-Returns reconciliation run details in `response.data` when `status` is `201`. See [Start reconciliation](/reference/start-reconciliation) and [Get reconciliation](/sdks/typescript/methods/reconciliation/get-reconciliations) for status and count fields.
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 201) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "reconciliation_id": "rec_a8f2c91d-1234-4abc-9def-0123456789ab"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `reconciliation_id` | ID of the reconciliation run. Use it with `blnk.Reconciliation.get` to check status. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/overview">
+Batch and instant reconciliation workflows.
+</Card>
+
 <Card title="Start reconciliation" icon="book-open" href="/reference/start-reconciliation">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Reconciliation overview" icon="scale" href="/reconciliations/overview">
-Batch vs instant reconciliation workflows.
-</Card>
-
-<Card title="Upload data" icon="upload" href="/sdks/typescript/methods/reconciliation/upload-data">
-Upload external records and get an `upload_id`.
-</Card>
-
-<Card title="Instant reconciliation" icon="zap" href="/sdks/typescript/methods/reconciliation/instant-reconciliation">
-Reconcile inline rows without a file upload.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

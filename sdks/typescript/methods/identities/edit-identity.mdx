@@ -2,126 +2,67 @@
 mode: "wide"
 title: "Edit identity"
 sidebarTitle: "Edit identity"
-icon: "user-cog"
-description: "How to update an individual or organization with the TypeScript SDK."
+api: "PUT /identities/{identity_id}"
+description: "Update an identity with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Update profile fields on an existing identity with `blnk.Identity.update`. Pass the fields you want to change in the request body.
+Use `blnk.Identity.update` to change the profile details on an [identity](/identities/introduction).
 
-For field definitions and validation rules, see the [Identities](/identities/introduction) guide and the [Edit identity](/reference/edit-identity) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Identity.update(id, data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Identity` |
-| **SDK method** | `update` |
-| **HTTP** | `PUT /identities/{identity_id}` |
-| **Returns** | `Promise<ApiResponse<IdentityDataResponse \| null>>` |
-
----
-
-## When to use
-
-Call `update` when a customer or organization profile changes, for example a name correction, address update, or contact detail change. The `identity_id` does not change.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Identity.update wrap {1}
 const response = await blnk.Identity.update(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
-  { first_name: 'Jane', last_name: 'Smith' },
+  'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
+  {
+    identity_type: 'individual',
+    first_name: 'Jane',
+    last_name: 'Smith',
+  },
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.identity_id, response.data.first_name);
 ```
 
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Identity ID to update. |
-| `identity_type` | `string` | Yes | `individual` or `organization`. |
-| Profile fields | various | No | Fields to update (same shape as create). |
-
-<Tip>
-Request field names use **snake_case** to match the HTTP API (`first_name`, `email_address`, not `firstName`).
-</Tip>
-
-For all updatable fields, see [Edit identity](/reference/edit-identity).
+| Field | Description |
+| :-- | :-- |
+| `id` | Identity ID to update. |
+| `identity_type` | `individual` or `organization`. |
+| Profile fields | Any field from [create](/sdks/typescript/methods/identities/create-identity) you want to change. |
 
 ---
 
-## Response
+## Response shape
 
-Returns the updated identity object in `response.data` when `status` is `200`. See [Edit identity](/reference/edit-identity) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK validates the request body using the same rules as `create`. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or invalid `identity_type`
-- Invalid `identity_id`, `dob`, `gender`, or `meta_data` in the body
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6",
+  "identity_type": "individual",
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email_address": "alice.smith@example.com",
+  "created_at": "2024-11-26T08:36:36.238244338Z"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `identity_id` | Unique ID for the identity. |
+| `created_at` | Date and time the identity was created. |
+
+The response returns the full identity with your changes applied.
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How identities work" icon="user" href="/identities/introduction">
+Linking balances and handling profile data.
+</Card>
+
 <Card title="Edit identity" icon="book-open" href="/reference/edit-identity">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Identities" icon="user" href="/identities/introduction">
-Product guide for linking balances and PII handling.
-</Card>
-
-<Card title="Get identity" icon="contact" href="/sdks/typescript/methods/identities/get-identity">
-Fetch the current profile before updating.
-</Card>
-
-<Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
-Tokenize sensitive fields after create or update.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

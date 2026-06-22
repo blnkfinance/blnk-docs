@@ -1,117 +1,51 @@
 ---
 mode: "wide"
 title: "Balance snapshots"
-sidebarTitle: "Balance snapshots"
-icon: "camera"
-description: "How to capture a balance snapshot with the TypeScript SDK."
+sidebarTitle: "Trigger balance snapshots"
+api: "POST /balances-snapshots"
+description: "Capture a balance snapshot with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Trigger daily balance snapshot processing with `blnk.LedgerBalances.createSnapshot`. Core processes balances in batches and returns a status message when the job starts.
+Use `blnk.LedgerBalances.createSnapshot` to trigger [balance snapshot](/balances/balance-snapshots) processing on demand.
 
-For setup and scheduling concepts, see the [Balance snapshots](/balances/balance-snapshots) guide and the [Balance snapshots](/reference/balances-snapshots) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.LedgerBalances.createSnapshot(options?)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.LedgerBalances` |
-| **SDK method** | `createSnapshot` |
-| **HTTP** | `POST /balances-snapshots` |
-| **Returns** | `Promise<ApiResponse<CreateBalanceSnapshotResponse \| null>>` |
-
----
-
-## When to use
-
-Call `createSnapshot` to run snapshot processing on demand, for example during operational maintenance or when you need snapshots before querying historical balances. Omit `batch_size` or pass `0` to use the server default (1000).
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.LedgerBalances.createSnapshot wrap {1}
 const response = await blnk.LedgerBalances.createSnapshot({ batch_size: 500 });
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message);
 ```
 
-Use the server default batch size:
-
-```typescript wrap
-const defaultBatch = await blnk.LedgerBalances.createSnapshot();
-```
+| Field | Description |
+| :-- | :-- |
+| `batch_size` | Optional. Server default is 1000. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `batch_size` | `number` | No | Balances processed per batch. Omit or pass `0` for the server default. Must be positive when set. |
-
----
-
-## Response
-
-Returns a status message in `response.data` when `status` is `200`. See [Balance snapshots](/reference/balances-snapshots) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK validates optional request options when you pass them. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Negative `batch_size`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "message": "Snapshotting in progress. should be completed shortly"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Status message when the snapshot job starts. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How balance snapshots work" icon="camera" href="/balances/balance-snapshots">
+When Core runs snapshots and why they matter.
+</Card>
+
 <Card title="Balance snapshots" icon="book-open" href="/reference/balances-snapshots">
-HTTP API reference for snapshot requests.
-</Card>
-
-<Card title="Balance snapshots guide" icon="camera" href="/balances/balance-snapshots">
-How snapshots work and when Core runs them.
-</Card>
-
-<Card title="Historical balances" icon="clock" href="/sdks/typescript/methods/ledger-balances/historical-balances">
-Query a balance at a point in time after snapshots exist.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

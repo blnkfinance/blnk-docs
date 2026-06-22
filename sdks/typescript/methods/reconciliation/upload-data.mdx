@@ -2,134 +2,55 @@
 mode: "wide"
 title: "Upload data"
 sidebarTitle: "Upload data"
-icon: "upload"
-description: "How to upload external data for reconciliation with the TypeScript SDK."
+api: "POST /reconciliation/upload"
+description: "Upload external data for reconciliation with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Upload external statement data with `blnk.Reconciliation.upload`. Store the returned `upload_id` for a batch reconciliation run.
+Use `blnk.Reconciliation.upload` to upload external statement data.
 
-For file format and workflow, see the [External data](/reconciliations/external-data) guide and the [Upload external records](/reference/upload-data) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Reconciliation.upload(fileInput, source)
+```typescript blnk.Reconciliation.upload wrap {1}
+const response = await blnk.Reconciliation.upload('statement.csv', 'stripe');
 ```
 
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Reconciliation` |
-| **SDK method** | `upload` |
-| **HTTP** | `POST /reconciliation/upload` |
-| **Returns** | `Promise<ApiResponse<ReconciliationUploadResp \| null>>` |
+| Field | Description |
+| :-- | :-- |
+| `fileInput` | Path to a CSV or JSON file, or a readable stream containing the external records. |
+| `source` | Label describing where the data came from, for example `stripe`. |
 
 ---
 
-## When to use
+## Response shape
 
-Call `upload` as the first step in batch reconciliation. Pass a local file path or a Node.js `ReadStream`, plus a `source` label that describes where the data came from (for example `stripe` or `bank-export`).
-
----
-
-## Example
-
-```typescript wrap
-const response = await blnk.Reconciliation.upload(
-  'statement.csv',
-  'stripe',
-);
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.upload_id, response.data.record_count);
-```
-
-Pass a `ReadStream` instead of a path when the file is already open or streamed from storage:
-
-```typescript wrap
-import fs from 'fs';
-
-const response = await blnk.Reconciliation.upload(
-  fs.createReadStream('statement.csv'),
-  'stripe',
-);
-```
-
-<Tip>
-We support CSV and JSON uploads. See [External data](/reconciliations/external-data) for required columns and examples.
-</Tip>
-
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `fileInput` | `string` \| `ReadStream` | Yes | Local file path or a readable Node.js stream. |
-| `source` | `string` | Yes | Label for the data origin (for example `stripe`, `internal`). |
-
----
-
-## Response
-
-Returns an upload summary in `response.data` when `status` is `201`. Key fields include `upload_id`, `record_count`, and `source`. See [Upload external records](/reference/upload-data) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks the file input locally. If validation fails, the SDK returns an error status with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- File path does not exist (`status: 404`)
-- Invalid or unreadable `ReadStream` (`status: 400`)
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 201) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "record_count": 1000,
+  "source": "Stripe"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `upload_id` | Unique ID for the upload. Store it to start a batch reconciliation run. |
+| `record_count` | Number of records found in the file. |
+| `source` | Label you passed for the data origin. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/overview">
+Batch and instant reconciliation workflows.
+</Card>
+
 <Card title="Upload external records" icon="book-open" href="/reference/upload-data">
-HTTP API reference for multipart upload fields and response schema.
-</Card>
-
-<Card title="External data" icon="file-up" href="/reconciliations/external-data">
-File formats, columns, and upload workflow.
-</Card>
-
-<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
-Define how uploaded rows match ledger transactions.
-</Card>
-
-<Card title="Start reconciliation" icon="play" href="/sdks/typescript/methods/reconciliation/start-reconciliation">
-Run reconciliation against an `upload_id`.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

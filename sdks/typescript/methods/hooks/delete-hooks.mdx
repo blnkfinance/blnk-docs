@@ -1,119 +1,51 @@
 ---
 mode: "wide"
-title: "Delete hooks"
-sidebarTitle: "Delete hooks"
-icon: "trash"
-description: "How to delete hooks with the TypeScript SDK."
+title: "Delete hook"
+sidebarTitle: "Delete hook"
+api: "DELETE /hooks/{id}"
+description: "Delete a hook with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Delete a hook with `blnk.Hooks.delete`. Remove webhooks you no longer use in your transaction flow.
+Use `blnk.Hooks.delete` to permanently remove a [webhook](/hooks/overview) by its ID.
 
-For hook lifecycle, see the [Create hooks](/hooks/create-hooks) guide and the [Delete hooks](/reference/delete-hooks) API reference.
-
-<Warning>
-Hook management requires the **master key** in `X-Blnk-Key`. Regular API keys return `403 Forbidden`.
-</Warning>
-
----
-
-## Method
-
-```typescript
-blnk.Hooks.delete(id)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Hooks` |
-| **SDK method** | `delete` |
-| **HTTP** | `DELETE /hooks/{id}` |
-| **Returns** | `Promise<ApiResponse<DeleteHookResp \| null>>` |
-
----
-
-## When to use
-
-Call `delete` when a webhook endpoint is retired or was created in error. Disable a hook with `update` first if you may need the configuration later.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Hooks.delete wrap {1}
 const response = await blnk.Hooks.delete('hk_test_123');
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message);
 ```
 
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Hook ID to delete. |
+| Field | Description |
+| :-- | :-- |
+| `id` | ID of the hook to delete. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a confirmation message in `response.data` when `status` is `200`. See [Delete hooks](/reference/delete-hooks) for the response shape.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that `id` is present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `id`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "message": "hook deleted successfully"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Confirmation that the hook was deleted. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How webhooks work" icon="webhook" href="/hooks/overview">
+Hook types, payloads, and execution.
+</Card>
+
 <Card title="Delete hooks" icon="book-open" href="/reference/delete-hooks">
-HTTP API reference for the response schema.
-</Card>
-
-<Card title="Create hooks guide" icon="webhook" href="/hooks/create-hooks">
-Hook types, payloads, and setup.
-</Card>
-
-<Card title="Update hooks" icon="settings" href="/sdks/typescript/methods/hooks/update-hooks">
-Disable a hook without deleting it.
-</Card>
-
-<Card title="List hooks" icon="list-tree" href="/sdks/typescript/methods/hooks/list-hooks-by-type">
-Find hook IDs before deleting.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

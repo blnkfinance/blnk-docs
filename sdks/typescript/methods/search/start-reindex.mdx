@@ -2,120 +2,58 @@
 mode: "wide"
 title: "Start reindex"
 sidebarTitle: "Start reindex"
-icon: "hard-drive-upload"
-description: "Trigger a Typesense reindex to populate it with data from your existing database with the TypeScript SDK."
+api: "POST /search/reindex"
+description: "Trigger a Typesense reindex from your existing database with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Start a Typesense reindex job with `blnk.Search.startReindex`. Core rebuilds the search index from your database asynchronously. Poll progress with [`getReindexStatus`](/sdks/typescript/methods/search/get-reindex).
+Use `blnk.Search.startReindex` to rebuild the search index.
 
-For when to reindex, see the [Typesense reindex guide](/search/typesense/reindex) and the [Start reindex](/reference/start-reindex) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Search.startReindex(options?)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Search` |
-| **SDK method** | `startReindex` |
-| **HTTP** | `POST /search/reindex` |
-| **Returns** | `Promise<ApiResponse<StartReindexResponse \| null>>` |
-
----
-
-## When to use
-
-Call `startReindex` after spinning up a new Typesense instance or when indexed documents are out of sync with Postgres. Use after bulk data imports or infrastructure changes.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Search.startReindex wrap {1}
 const response = await blnk.Search.startReindex({ batch_size: 1000 });
-
-if (response.status !== 202 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message, response.data.progress.status);
 ```
 
-Use the Core default batch size:
-
-```typescript wrap
-const defaultBatch = await blnk.Search.startReindex();
-```
+| Field | Description |
+| :-- | :-- |
+| `batch_size` | Records processed per batch. Omit the argument to use the Core default. Must be a positive integer when set. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `batch_size` | `number` | No | Records processed per batch. Omit to send `{}` and use the Core default. Must be a positive integer when set. |
-
----
-
-## Response
-
-Returns a reindex job response in `response.data` when `status` is `202`. Key fields include `message` and `progress`. See [Start reindex](/reference/start-reindex) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK validates optional request options when you pass them. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Non-positive `batch_size`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 202) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 202 Accepted wrap
+{
+  "message": "Reindex operation started",
+  "progress": {
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 2145709,
+    "processed_records": 0,
+    "started_at": "2026-02-12T12:13:10.448612096Z"
+  }
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Confirmation that the reindex job started. |
+| `progress` | Initial progress snapshot with `status`, `phase`, `total_records`, `processed_records`, and `started_at`. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Start reindex" icon="book-open" href="/reference/start-reindex">
-HTTP API reference for reindex requests.
+<Card title="How reindexing works" icon="rotate" href="/search/typesense/reindex">
+When and why to rebuild the index.
 </Card>
 
-<Card title="Get reindex status" icon="activity" href="/sdks/typescript/methods/search/get-reindex">
-Poll reindex progress after starting a job.
-</Card>
-
-<Card title="Typesense reindex" icon="refresh-cw" href="/search/typesense/reindex">
-When and how to rebuild the index.
-</Card>
-
-<Card title="Search via Typesense" icon="search" href="/sdks/typescript/methods/search/search-typesense">
-Query the index after reindex completes.
+<Card title="Start Typesense reindex" icon="book-open" href="/reference/start-reindex">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

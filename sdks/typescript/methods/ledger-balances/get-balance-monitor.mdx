@@ -1,109 +1,68 @@
 ---
 mode: "wide"
-title: "Get balance monitor"
-sidebarTitle: "Get balance monitor"
-icon: "bell"
-description: "See the details of one or all balance monitors with the TypeScript SDK."
+title: "View balance monitor details"
+sidebarTitle: "View balance monitor details"
+api: "GET /balance-monitors/{monitor_id}"
+description: "Get one balance monitor with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Fetch a single balance monitor by `monitor_id` with `blnk.BalanceMonitor.get`. Returns the condition, callback URL, and target balance.
+Use `blnk.BalanceMonitor.get` to retrieve a balance monitor by ID.
 
-For monitor concepts and response fields, see the [Balance monitoring](/balances/balance-monitoring) guide and the [Get balance monitor](/reference/get-balance-monitor) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.BalanceMonitor.get(id)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.BalanceMonitor` |
-| **SDK method** | `get` |
-| **HTTP** | `GET /balance-monitors/{monitor_id}` |
-| **Returns** | `Promise<ApiResponse<MonitorDataResp \| null>>` |
-
----
-
-## When to use
-
-Call `get` when you have a `monitor_id` from a `create` response or admin tooling, and need the current condition and callback settings.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.BalanceMonitor.get wrap {1}
 const response = await blnk.BalanceMonitor.get(
   'mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.monitor_id, response.data.condition);
 ```
 
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Monitor ID (for example `mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0`). |
+| Field | Description |
+| :-- | :-- |
+| `id` | Monitor ID to retrieve. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a monitor object in `response.data` when `status` is `200`. Key fields include `monitor_id`, `balance_id`, `condition`, and `call_back_url`. See [Get balance monitor](/reference/get-balance-monitor) for all response fields.
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-const response = await blnk.BalanceMonitor.get('mon_missing');
-
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "condition": {
+    "field": "credit_balance",
+    "operator": ">",
+    "value": 1000,
+    "precision": 100
+  },
+  "call_back_url": "https://api.example.com/balance-monitor",
+  "description": "Low balance alert",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `monitor_id` | Unique ID for the monitor. |
+| `balance_id` | Balance being monitored. |
+| `condition` | Threshold rule for the monitor. |
+| `call_back_url` | Webhook URL for notifications. |
+| `description` | Description for the monitor. |
+| `created_at` | Date and time when the monitor was created. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Get balance monitor" icon="book-open" href="/reference/get-balance-monitor">
-HTTP API reference for the response schema.
-</Card>
-
 <Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
-Product guide for conditions and webhooks.
+Conditions and webhook behavior.
 </Card>
 
-<Card title="List balance monitors" icon="layout-list" href="/sdks/typescript/methods/ledger-balances/list-balance-monitors">
-List all monitors on the instance.
-</Card>
-
-<Card title="Edit balance monitor" icon="bell-ring" href="/sdks/typescript/methods/ledger-balances/edit-balance-monitor">
-Update condition or callback settings.
+<Card title="View balance monitor details" icon="book-open" href="/reference/get-balance-monitor">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

@@ -2,119 +2,54 @@
 mode: "wide"
 title: "Tokenize field"
 sidebarTitle: "Tokenize field"
-icon: "lock"
-description: "How to tokenize a single field with the TypeScript SDK."
+api: "POST /identities/{identity_id}/tokenize/{field}"
+description: "Tokenize a single identity field with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Tokenize a single PII field on an identity with `blnk.Identity.tokenizeField`. Pass the field name in **PascalCase** in the path (for example `EmailAddress`). See [Tokenize identity](/sdks/typescript/methods/identities/tokenize-identity) for why tokenization uses PascalCase, not snake_case.
+Use `blnk.Identity.tokenizeField` to tokenize one identity field.
 
-For tokenization setup, see [PII tokenization](/identities/pii-tokenization) and the [Tokenize field](/reference/tokenize-field) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Identity.tokenizeField(id, field)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Identity` |
-| **SDK method** | `tokenizeField` |
-| **HTTP** | `POST /identities/{identity_id}/tokenize/{field}` |
-| **Returns** | `Promise<ApiResponse<TokenizeIdentityFieldResp \| null>>` |
-
----
-
-## When to use
-
-Call `tokenizeField` when you need to protect one sensitive field without tokenizing the full identity record.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Identity.tokenizeField wrap {1}
 const response = await blnk.Identity.tokenizeField(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
   'EmailAddress',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message);
 ```
 
-<Info>
-Tokenization requires `tokenization_secret` in Core config. See [PII tokenization](/identities/pii-tokenization).
-</Info>
+| Field | Description |
+| :-- | :-- |
+| `id` | Identity ID. |
+| `field` | PascalCase field name to tokenize. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Identity ID. |
-| `field` | `string` | Yes | PascalCase field name: `FirstName`, `LastName`, `OtherNames`, `EmailAddress`, `PhoneNumber`, `Street`, `PostCode`. |
-
----
-
-## Response
-
-Returns a status message in `response.data` when `status` is `200`. See [Tokenize field](/reference/tokenize-field) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that the identity ID and field name are present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `id`
-- Missing or empty `field`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "message": "Field tokenized successfully"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Confirmation that the field was tokenized. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Tokenize field" icon="book-open" href="/reference/tokenize-field">
-HTTP API reference for tokenizable field names.
-</Card>
-
-<Card title="Tokenize identity" icon="fingerprint" href="/sdks/typescript/methods/identities/tokenize-identity">
-Tokenize multiple fields in one request.
-</Card>
-
 <Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
-Core setup and tokenization concepts.
+Setup, secrets, and how tokenization works.
+</Card>
+
+<Card title="Tokenize one field" icon="book-open" href="/reference/tokenize-field">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

@@ -2,102 +2,53 @@
 mode: "wide"
 title: "List identities"
 sidebarTitle: "List identities"
-icon: "users"
-description: "See the details of one or all identities with the TypeScript SDK."
+api: "GET /identities"
+description: "List all identities with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-List all identities on your Core instance with `blnk.Identity.list`. For large datasets, prefer [`Search.search`](/sdks/typescript/methods/search/search-typesense) or [`Search.filter`](/sdks/typescript/methods/search/search-db).
+Use `blnk.Identity.list` to fetch every [identity](/identities/introduction) on your instance.
 
-For identity concepts, see the [Identities](/identities/introduction) guide.
-
----
-
-## Method
-
-```typescript
-blnk.Identity.list()
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Identity` |
-| **SDK method** | `list` |
-| **HTTP** | `GET /identities` |
-| **Returns** | `Promise<ApiResponse<IdentityDataResponse[] \| null>>` |
-
----
-
-## When to use
-
-Call `list` for small instances, admin tooling, or local development when you need every identity record. For production queries with filters or pagination, use Search instead.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Identity.list wrap {1}
 const response = await blnk.Identity.list();
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.length);
 ```
-
----
-
-## Parameters
 
 This method takes no arguments.
 
 ---
 
-## Response
+## Response shape
 
-Returns an array of identity objects in `response.data` when `status` is `200`. See [Get identity](/reference/get-identity) for the shape of each record.
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
-}
+```json 200 OK wrap
+[
+  {
+    "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6",
+    "identity_type": "individual",
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "email_address": "alice.smith@example.com",
+    "created_at": "2024-11-26T08:36:36.238244338Z"
+  }
+]
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+`response.data` is an array of identity objects returned by Core.
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Get identity" icon="book-open" href="/reference/get-identity">
-HTTP API reference for identity record shape.
+<Card title="How identities work" icon="user" href="/identities/introduction">
+Linking balances and handling profile data.
 </Card>
 
-<Card title="Search via Typesense" icon="search" href="/sdks/typescript/methods/search/search-typesense">
-Full-text search for large identity datasets.
-</Card>
-
-<Card title="Search via DB" icon="database" href="/sdks/typescript/methods/search/search-db">
-Structured filters for identity queries.
-</Card>
-
-<Card title="Identities" icon="user" href="/identities/introduction">
-Product guide for identity concepts.
+<Card title="View identity details" icon="book-open" href="/reference/get-identity">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

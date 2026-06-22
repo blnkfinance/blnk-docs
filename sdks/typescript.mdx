@@ -1,33 +1,17 @@
 ---
 title: "Getting Started with the TypeScript SDK"
-description: "Install the Blnk TypeScript SDK and run your first transaction."
+description: "Install the Blnk TypeScript SDK."
 sidebarTitle: "Install"
 icon: "code"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-The [Blnk TypeScript SDK](https://github.com/blnkfinance/blnk-ts) is the official Node.js client for Blnk Core, published as [`@blnkfinance/blnk-typescript`](https://www.npmjs.com/package/@blnkfinance/blnk-typescript).
-
-This documentation covers SDK `1.1.x`, aligned with Blnk Core `0.14.5`. Use the SDK pages for TypeScript method names, request shapes, response handling, and examples. Use the linked Core guides and API reference pages when you need deeper product behavior, validation rules, or endpoint-level details.
+Install the official TypeScript client for Blnk Core.
 
 ---
 
-## Quick start
-
-Install the SDK, initialize a client, and run the sample below to post a transaction against your Core instance.
-
-<Steps>
-<Step title="Launch Blnk">
-
-You need a running Blnk Core instance before using the SDK.
-
-<Card title="Install Blnk" icon="sparkles" href="/home/install">
-Local install or Blnk Cloud
-</Card>
-</Step>
-
-<Step title="Install the TypeScript SDK">
+## Install
 
 Create a Node.js project and install the SDK. You need [Node.js 18 or later](https://nodejs.org/en/download).
 
@@ -49,331 +33,30 @@ Check the installed version:
 npm ls @blnkfinance/blnk-typescript
 ```
 
-</Step>
-
-<Step title="Client initialization">
-
-Call `BlnkInit` to create a client. Pass your API key as the first argument when your instance requires authentication. See [Authentication](#authentication) for how the SDK sends credentials.
-
-`BlnkInit` is synchronous: do not `await` it.
-
-```typescript client.ts wrap
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
-
-const apiKey = process.env.BLNK_API_KEY ?? '';
-const blnk = BlnkInit(apiKey, {
-  baseUrl: 'http://localhost:5001',
-  timeout: 10000,
-  retryCount: 3,
-  retryDelayMs: 2000,
-});
-```
-
-</Step>
-
-<Step title="Verify connectivity">
-
-Confirm Core is reachable before you post a transaction. The health endpoint does not require authentication on local instances.
-
-```typescript wrap
-const health = await blnk.System.health();
-
-if (health.status !== 200 || health.data?.status !== 'UP') {
-  console.error('Core is not reachable:', health.message);
-  process.exit(1);
-}
-
-console.log('Core status:', health.data.status);
-```
-
-For the full SDK method reference, see [Health check](/sdks/typescript/methods/system/get-health). For deployment and probe notes, see the [Health check API reference](/reference/get-health).
-
-</Step>
-
-<Step title="Create your first transaction">
-
-Create `index.ts`, paste the script below, and run it:
-
-```typescript index.ts wrap expandable
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
-
-const blnk = BlnkInit('', { baseUrl: 'http://localhost:5001' });
-
-const response = await blnk.Transactions.create({
-  amount: 1000,
-  reference: 'first_txn_001',
-  currency: 'USD',
-  precision: 100,
-  source: '@FundingPool',
-  destination: '@MyBalance',
-  description: 'My first Blnk transaction',
-  allow_overdraft: true,
-});
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  process.exit(1);
-}
-
-console.log('Transaction ID:', response.data.transaction_id);
-console.log('Status:', response.data.status);
-```
-
-Run the script:
-
-```bash bash wrap
-npx tsx index.ts
-```
-
-Your script prints the transaction ID when it succeeds. Verify the record with the CLI or in Blnk Cloud.
-
-```bash bash wrap
-blnk transactions list
-```
-
-Internal balances like `@FundingPool` are created automatically. See [Internal balances](/balances/internal-balances) to learn how they work.
-</Step>
-</Steps>
-
 ---
 
-## Authentication
+## Start here
 
-Blnk Core authenticates API requests with the `X-Blnk-Key` header. The TypeScript SDK sets this header from the first argument to `BlnkInit`.
-
-| API key argument | `X-Blnk-Key` header | When to use |
-| :--- | :--- | :--- |
-| Non-empty string | Sent with the key value | Production, Blnk Cloud, or any secured Core instance |
-| `''` (empty string) | Omitted | Local development when Core runs without auth |
-
-```typescript wrap
-// Local Core without authentication
-const local = BlnkInit('', { baseUrl: 'http://localhost:5001' });
-
-// Secured instance
-const prod = BlnkInit(process.env.BLNK_API_KEY!, {
-  baseUrl: 'https://core.example.com',
-});
-```
-
-Some admin endpoints require the **master key** (`server.secret_key`), not a regular API key. For example, `blnk.Hooks` and `blnk.ApiKeys` return `403` when called with a scoped API key. See [Create hooks](/sdks/typescript/methods/hooks/create-hooks) and [Create API key](/sdks/typescript/methods/api-keys/create-api-key).
-
-Do not set `X-Blnk-Key` manually in your application code. Pass the key to `BlnkInit` and the SDK adds the header on every request.
-
----
-
-## Error handling
-
-Every SDK method returns an `ApiResponse<T>` envelope. The SDK does not throw on HTTP or network failures. Check `status` and `data` after every call.
-
-```typescript wrap
-interface ApiResponse<T> {
-  status: number;
-  message: string;
-  data: T;
-}
-```
-
-### Basic pattern
-
-```typescript Error handling {5} wrap
-const response = await blnk.Ledgers.create({
-  name: 'Customer accounts',
-});
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  return;
-}
-
-console.log('Ledger ID:', response.data.ledger_id);
-```
-
-### HTTP error bodies
-
-When Core returns a non-2xx response, the SDK keeps the JSON body in `response.data` and uses the Core `error` string as `response.message` when one is present.
-
-```typescript wrap
-const response = await blnk.Ledgers.get('ldg_missing');
-
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
-  return;
-}
-```
-
-For Core `0.14.5`, most API failures return a legacy body such as `{ error: "ledger not found" }`. Later Core versions may include additional structured fields in the raw response body; check `response.data` if you need to inspect them.
-
-### Failure modes
-
-| Mode | `status` | What happened |
-| :--- | :--- | :--- |
-| **HTTP error** | Core status (4xx/5xx) | Non-2xx response. `message` summarizes the failure; `data` holds the raw Core body. |
-| **Client validation** | `400` | SDK validators rejected the input before any network call (for example, a missing `reference` or an invalid bulk payload). |
-| **Timeout** | `408` | The request exceeded `timeout` (default `10000` ms). Timeouts are not retried. |
-| **Network error** | `500` | DNS, connection, or other fetch failure. Logged internally with sensitive values redacted. |
-
-```typescript wrap
-const response = await blnk.Transactions.create({
-  amount: 1000,
-  precision: 100,
-  currency: 'USD',
-  source: '@FundingPool',
-  destination: '@MyBalance',
-  reference: 'payment_001',
-  allow_overdraft: true,
-});
-
-if (response.status === 408) {
-  console.error('Request timed out. Increase timeout or check Core health.');
-} else if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-}
-```
-
----
-
-## Using the SDK
-
-Reference the Core documentation to understand how each API works. This section shows how those APIs are organized in the TypeScript SDK.
-
-### Client structure
-
-`BlnkInit` returns a client with one service per resource:
-
-- `blnk.Ledgers`
-- `blnk.LedgerBalances`
-- `blnk.Transactions`
-- `blnk.BalanceMonitor`
-- `blnk.Reconciliation`
-- `blnk.Search`
-- `blnk.Identity`
-- `blnk.Metadata`
-- `blnk.Hooks`
-- `blnk.ApiKeys`
-- `blnk.System`
-
-Call methods on the service that matches the resource you need. Each method has its own page in the sidebar under **Ledgers**, **Transactions**, **Identities**, and the other resource groups, mirroring the [Core API reference](/reference/overview) layout.
-
-<Tip>
-Every method returns an `ApiResponse<T>`. Check `response.status` and `response.data` after each call. See [Error handling](#error-handling) on this page.
-</Tip>
-
-### Request field names
-
-Use **snake_case** field names that match the HTTP API directly: `meta_data`, `ledger_id`, `allow_overdraft`, and so on.
-
-```typescript wrap
-await blnk.Transactions.create({
-  amount: 1000,
-  precision: 100,
-  currency: 'USD',
-  source: 'bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e',
-  destination: 'bln_86ba7976-499d-4282-955e-a7c2abf5db12',
-  reference: 'payment_001',
-  allow_overdraft: true,
-  meta_data: { tier: 'gold' },
-});
-```
-
-### Client options
-
-Pass options as the second argument to `BlnkInit`:
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `baseUrl` | `string` | — | **Required.** Core base URL. A trailing `/` is appended if missing. |
-| `timeout` | `number` | `10000` | HTTP timeout in milliseconds. |
-| `retryCount` | `number` | `1` | Total request attempts including the first. Retries apply only to idempotent `GET` requests, not `POST`, `PUT`, or `DELETE`. |
-| `retryDelayMs` | `number` | `2000` | Base delay between retry attempts in milliseconds. Uses linear backoff. |
-| `logger` | `BlnkLogger` | `console` | Custom logger for SDK info and error output. |
-
-```typescript wrap
-const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
-  baseUrl: 'http://localhost:5001',
-  timeout: 30000,
-  retryCount: 3,
-  retryDelayMs: 2000,
-});
-```
-
-Invalid `retryCount` and `retryDelayMs` values (`NaN`, `Infinity`, negatives) fall back to the defaults. `retryCount` is floored to a minimum of `1`.
-
-<Note>
-Retries are intentionally limited to `GET` requests so mutating calls are never sent twice. Timeouts (`408`) are also not retried.
-</Note>
-
-### HTTP transport
-
-The SDK uses the platform [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) API. On Node.js 18 and later, that is `globalThis.fetch`. The client no longer depends on `node-fetch`.
-
-Each request uses an `AbortSignal` for timeouts. When uploading multipart data (for example, reconciliation file uploads), the SDK sets `duplex: 'half'` on the request so streaming bodies work with native fetch.
-
-Successful responses with no body (for example, `204 No Content` from `ApiKeys.delete`) return `{ status, message: "Success", data: null }` without attempting JSON parsing.
-
-### Custom logger
-
-Attach a logger to control SDK output in production:
-
-```typescript wrap
-const blnk = BlnkInit(apiKey, {
-  baseUrl: 'http://localhost:5001',
-  logger: {
-    info: (message, ...meta) => myLogger.info(message, meta),
-    error: (message, ...meta) => myLogger.error(message, meta),
-  },
-});
-```
-
-The SDK redacts API keys and auth headers from error logs. Do not log the raw `ApiResponse` object if it may contain sensitive metadata from your application.
-
-### Module formats
-
-Use ESM `import` syntax in TypeScript projects:
-
-```typescript wrap
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
-```
-
-CommonJS also works and matches the [GitHub examples](https://github.com/blnkfinance/blnk-ts/tree/main/examples):
-
-```javascript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-```
-
----
-
-## Where to find examples
+Use these pages to set up the client and learn the SDK conventions before opening the method reference.
 
 <CardGroup cols={2}>
-<Card title="TypeScript SDK examples" icon="github" href="https://github.com/blnkfinance/blnk-ts/tree/main/examples">
-Escrow, savings, cards, and reconciliation.
+<Card title="Quick start" icon="rocket" href="/sdks/typescript/start/quick-start">
+Run a minimal SDK request.
 </Card>
 
-<Card title="Core tutorials" icon="book-open" href="/tutorials/quick-start/escrow-payments">
-Step-by-step use case guides
+<Card title="Authenticate" icon="key" href="/sdks/typescript/start/authentication">
+Pass credentials to Blnk Core.
 </Card>
 
-<Card title="Ledgers" icon="folder" href="/ledgers/introduction">
-Group and organize balances
+<Card title="Error handling" icon="triangle-alert" href="/sdks/typescript/start/error-handling">
+Read SDK responses and failures.
 </Card>
 
-<Card title="Balances" icon="wallet" href="/balances/introduction">
-Wallets, accounts, and stores of value
+<Card title="Client options" icon="sliders-horizontal" href="/sdks/typescript/start/client-options">
+Configure timeouts, retries, and production logging.
 </Card>
 </CardGroup>
 
 ---
 
 <NeedHelp />
-
----
-
-## Issue reporting and contributions
-
-The TypeScript SDK is [open-source on GitHub](https://github.com/blnkfinance/blnk-ts), and we welcome community issues and pull requests.
-
-If you run into problems installing or using the SDK, [report them on GitHub](https://github.com/blnkfinance/blnk-ts/issues).
-
-If an endpoint is documented in the [API reference](/reference/create-ledger) but missing from the TypeScript SDK, we encourage opening an issue or submitting a pull request to help improve SDK coverage.

@@ -2,42 +2,15 @@
 mode: "wide"
 title: "Create balance monitor"
 sidebarTitle: "Create balance monitor"
-icon: "bell-plus"
-description: "How to create a balance monitor with the TypeScript SDK."
+api: "POST /balance-monitors"
+description: "Create a balance monitor with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Create a balance monitor with `blnk.BalanceMonitor.create`. When the condition is met, Core sends a webhook to your callback URL.
+Use `blnk.BalanceMonitor.create` to set up [balance monitoring](/balances/balance-monitoring) on an existing balance.
 
-For setup and webhook behavior, see the [Balance monitoring](/balances/balance-monitoring) guide and the [Create balance monitor](/reference/create-balance-monitor) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.BalanceMonitor.create(data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.BalanceMonitor` |
-| **SDK method** | `create` |
-| **HTTP** | `POST /balance-monitors` |
-| **Returns** | `Promise<ApiResponse<MonitorDataResp \| null>>` |
-
----
-
-## When to use
-
-Call `create` to alert on balance changes, for example low-balance warnings, spending limits, or operational thresholds. Attach the monitor to an existing `balance_id`.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.BalanceMonitor.create wrap {1}
 const response = await blnk.BalanceMonitor.create({
   balance_id: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
   condition: {
@@ -49,92 +22,62 @@ const response = await blnk.BalanceMonitor.create({
   call_back_url: 'https://api.example.com/balance-monitor',
   description: 'Low balance alert',
 });
-
-if (response.status !== 201 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.monitor_id);
 ```
 
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `balance_id` | `string` | Yes | Balance to monitor. |
-| `condition` | `object` | Yes | Threshold rule with `field`, `operator`, `value`, and `precision`. |
-| `condition.field` | `string` | Yes | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
-| `condition.operator` | `string` | Yes | Comparison operator: `>`, `<`, or `=`. |
-| `condition.value` | `number` | Yes | Threshold amount. |
-| `condition.precision` | `number` | Yes | Currency precision (for example `100` for cents). |
-| `call_back_url` | `string` | No | Webhook URL when the condition is met. |
-| `description` | `string` | No | Human-readable monitor description. |
-
-<Tip>
-Request field names use **snake_case** to match the HTTP API (`balance_id`, `call_back_url`, not `balanceId`).
-</Tip>
-
-For all condition fields and response shape, see [Create balance monitor](/reference/create-balance-monitor).
+| Field | Description |
+| :-- | :-- |
+| `balance_id` | Balance to monitor. |
+| `condition` | Threshold rule with `field`, `operator`, `value`, and `precision`. |
+| `condition.field` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `condition.operator` | Comparison operator: `>`, `<`, or `=`. |
+| `condition.value` | Threshold amount. |
+| `condition.precision` | Currency precision (for example `100` for cents). |
+| `call_back_url` | Webhook URL when the condition is met. |
+| `description` | Optional description for the monitor. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a monitor object in `response.data` when `status` is `201`. Key fields include `monitor_id`, `balance_id`, and `condition`. See [Create balance monitor](/reference/create-balance-monitor) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or invalid `balance_id`
-- Missing or invalid `condition` (field, operator, value, precision)
-- Invalid `description` or `call_back_url` when provided
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 201) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "condition": {
+    "field": "credit_balance",
+    "operator": ">",
+    "value": 1000,
+    "precision": 100
+  },
+  "call_back_url": "https://api.example.com/balance-monitor",
+  "description": "Low balance alert",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `monitor_id` | Unique ID for the monitor. |
+| `balance_id` | Balance being monitored. |
+| `condition` | Threshold rule you passed in the request. |
+| `call_back_url` | Webhook URL for notifications. |
+| `description` | Description for the monitor. |
+| `created_at` | Date and time when the monitor was created. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Create balance monitor" icon="book-open" href="/reference/create-balance-monitor">
-HTTP API reference for request fields and response schema.
-</Card>
-
 <Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
-Product guide for conditions and webhooks.
+Conditions and webhook behavior.
 </Card>
 
-<Card title="Create balance" icon="wallet" href="/sdks/typescript/methods/ledger-balances/create-balance">
-Create the balance you attach a monitor to.
-</Card>
-
-<Card title="Webhooks" icon="webhook" href="/watch/webhooks">
-Receive monitor events in your app.
+<Card title="Create balance monitor" icon="book-open" href="/reference/create-balance-monitor">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

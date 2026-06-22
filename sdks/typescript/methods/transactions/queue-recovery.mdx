@@ -1,105 +1,53 @@
 ---
 mode: "wide"
 title: "Queue recovery"
-sidebarTitle: "Queue recovery"
-icon: "rotate-ccw"
-description: "Manually trigger recovery of stuck queued transactions with the TypeScript SDK."
+sidebarTitle: "Recover queued transactions"
+api: "POST /transactions/recover"
+description: "Recover stuck queued transactions with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Manually trigger recovery of stuck queued transactions with `blnk.Transactions.recoverQueue`. Optionally pass a `threshold` duration (for example `5m`, `1h`) to control which transactions are re-enqueued.
+Use `blnk.Transactions.recoverQueue` to retry queued transactions.
 
-For queue behavior and concurrency, see the [Transactions](/transactions/introduction) guide and the [Queue recovery](/reference/queue-recovery) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Transactions.recoverQueue(options?)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Transactions` |
-| **SDK method** | `recoverQueue` |
-| **HTTP** | `POST /transactions/recover` |
-| **Returns** | `Promise<ApiResponse<QueueRecoveryResp \| null>>` |
-
----
-
-## When to use
-
-Call `recoverQueue` when transactions appear stuck in the queue and you need to manually re-enqueue them for processing. Useful for operational recovery after outages or when monitoring detects delayed processing.
-
----
-
-## Example
-
-```typescript wrap
-// Log Core error details when the request fails
+```typescript blnk.Transactions.recoverQueue wrap {1}
 const response = await blnk.Transactions.recoverQueue({ threshold: '5m' });
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.recovered, response.data.threshold);
 ```
 
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `threshold` | `string` | No | Age threshold for stuck transactions (for example `5m`, `1h`). Default: `2m`. Minimum: 2 minutes. |
+| Field | Description |
+| :-- | :-- |
+| `threshold` | Minimum age of transactions to recover (for example `5m`, `1h`). Default `2m`. Minimum 2 minutes. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a recovery result in `response.data` when `status` is `200`. Key fields include `recovered` (number of transactions re-enqueued) and `threshold`. See [Queue recovery](/reference/queue-recovery) for all response fields.
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-const response = await blnk.Transactions.recoverQueue();
-
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "recovered": 3,
+  "threshold": "5m0s"
 }
 ```
 
-
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `recovered` | Number of transactions re-enqueued for processing. |
+| `threshold` | Threshold duration that was used. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Queue recovery" icon="book-open" href="/reference/queue-recovery">
-HTTP API reference for recovery options.
+<Card title="Concurrency & queuing" icon="zap" href="/guides/concurrency">
+Why Blnk queues transactions for hot balances.
 </Card>
 
-<Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
-How Blnk queues and processes transactions.
-</Card>
-
-<Card title="Concurrency" icon="zap" href="/guides/concurrency">
-Why Blnk uses queuing for hot balances.
+<Card title="Recover queued transactions" icon="book-open" href="/reference/queue-recovery">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

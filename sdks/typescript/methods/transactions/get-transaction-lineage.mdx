@@ -1,119 +1,67 @@
 ---
 mode: "wide"
 title: "Get transaction lineage"
-sidebarTitle: "Get lineage"
-icon: "share-2"
-description: "See how a transaction's spend was allocated across providers and the internal shadow transactions created for lineage with the TypeScript SDK."
+sidebarTitle: "Get transaction lineage"
+api: "GET /transactions/{transaction_id}/lineage"
+description: "See how a transaction's spend was allocated across providers with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Inspect how a transaction's spend was allocated across fund providers and which internal shadow transactions Core created for lineage tracking with `blnk.Transactions.getLineage`.
+Use `blnk.Transactions.getLineage` to inspect a transaction's fund breakdown.
 
-For setup and concepts, see the [Fund lineage](/transactions/lineage) guide and the [View transaction lineage](/reference/get-transaction-lineage) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Transactions.getLineage(transactionId)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Transactions` |
-| **SDK method** | `getLineage` |
-| **HTTP** | `GET /transactions/{transaction_id}/lineage` |
-| **Returns** | `Promise<ApiResponse<TransactionLineage \| null>>` |
-
----
-
-## When to use
-
-Call `getLineage` for debits from [lineage-enabled balances](/transactions/lineage). Returns how spend was split across providers (`fund_allocation`) and any internal shadow transactions. `fund_allocation` appears on debits from balances with `track_fund_lineage: true` when Core allocated tagged funds; it may be omitted otherwise. `shadow_transactions` may be `null` or an empty array.
-
----
-
-## Example
-
-```typescript wrap
-// Log Core error details when the request fails
+```typescript blnk.Transactions.getLineage wrap {1}
 const response = await blnk.Transactions.getLineage(
   'txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.transaction_id);
-console.log(response.data.fund_allocation);
-console.log(response.data.shadow_transactions);
 ```
 
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `transactionId` | `string` | Yes | Transaction ID (for example `txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad`). |
+| Field | Description |
+| :-- | :-- |
+| `transactionId` | Transaction ID with fund lineage enabled. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a lineage object in `response.data` when `status` is `200`. Key fields include `transaction_id`, `fund_allocation`, and `shadow_transactions`. See [View transaction lineage](/reference/get-transaction-lineage) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `transactionId`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-const response = await blnk.Transactions.getLineage('invalid-id');
-
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "fund_allocation": [
+    { "provider": "stripe", "amount": "2500" }
+  ],
+  "shadow_transactions": [
+    {
+      "transaction_id": "txn_shadow_123",
+      "reference": "ref_002_release_stripe_0",
+      "precise_amount": "2500",
+      "currency": "USD",
+      "status": "APPLIED"
+    }
+  ]
 }
 ```
 
-
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `transaction_id` | Transaction you queried. |
+| `fund_allocation` | How much of the spend came from each provider. Amounts are strings in minor units. May be empty when no tagged funds were used. |
+| `shadow_transactions` | The internal records Blnk creates to track each provider's share of the spend. May be empty. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Transaction lineage" icon="book-open" href="/reference/get-transaction-lineage">
-HTTP API reference for fund allocation fields.
-</Card>
-
 <Card title="Fund lineage" icon="git-branch" href="/transactions/lineage">
-Product guide for tagged funds and shadow txs.
+Tagged funds, allocation strategies, and shadow transactions.
 </Card>
 
-<Card title="Balance lineage" icon="git-branch" href="/sdks/typescript/methods/ledger-balances/get-balance-lineage">
-Lineage at the balance level.
+<Card title="View transaction lineage" icon="book-open" href="/reference/get-transaction-lineage">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

@@ -2,42 +2,15 @@
 mode: "wide"
 title: "Update metadata"
 sidebarTitle: "Update metadata"
-icon: "tags"
-description: "Learn how to modify or add new metadata to ledgers, transactions, identities, and balances with the TypeScript SDK."
+api: "POST /{id}/metadata"
+description: "Update metadata on a resource with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Add or update metadata on an existing resource with `blnk.Metadata.update`. Pass the resource ID and a `meta_data` object. Existing keys are updated; new keys are added.
+Use `blnk.Metadata.update` to add or change [metadata](/metadata/overview) on an existing ledger, transaction, balance, or identity.
 
-For concepts and use cases, see the [Metadata overview](/metadata/overview) guide and the [Update metadata](/reference/update-metadata) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Metadata.update(id, data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Metadata` |
-| **SDK method** | `update` |
-| **HTTP** | `POST /{id}/metadata` |
-| **Returns** | `Promise<ApiResponse<UpdateMetadataResp \| null>>` |
-
----
-
-## When to use
-
-Call `update` after a resource is created when you need to attach or change custom fields without recreating the ledger, balance, transaction, or identity.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Metadata.update wrap {1}
 const response = await blnk.Metadata.update(
   'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
   {
@@ -47,83 +20,44 @@ const response = await blnk.Metadata.update(
     },
   },
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.meta_data);
 ```
 
----
-
-## Parameters
-
-| Argument / field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Resource ID (`ldg_…`, `bln_…`, `txn_…`, or `idt_…`). |
-| `data.meta_data` | `object` | Yes | Key-value metadata to add or update on the resource. |
-
-<Tip>
-Request field names use **snake_case** to match the HTTP API (`meta_data`, not `metaData`).
-</Tip>
+| Field | Description |
+| :-- | :-- |
+| `id` | ID of the entity to update (`ldg_…`, `txn_…`, `bln_…`, or `idt_…`). |
+| `data.meta_data` | Key-value pairs to add or update on the entity. |
 
 ---
 
-## Response
+## Response shape
 
-Returns the updated metadata in `response.data` when `status` is `200`. Key field: `meta_data`. See [Update metadata](/reference/update-metadata) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `id`
-- Missing or invalid `meta_data` object
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 201 Created wrap
+{
+  "meta_data": {
+    "project_owner": "Acme LLC",
+    "update_status": "Approved"
+  }
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `meta_data` | The full metadata object after the update. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How metadata works" icon="tags" href="/metadata/overview">
+Attaching custom attributes to Blnk objects.
+</Card>
+
 <Card title="Update metadata" icon="book-open" href="/reference/update-metadata">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Metadata overview" icon="tags" href="/metadata/overview">
-Metadata concepts and supported resources.
-</Card>
-
-<Card title="Create metadata" icon="file-plus" href="/metadata/create-metadata">
-Set metadata at resource creation time.
-</Card>
-
-<Card title="Create ledger" icon="table-2" href="/sdks/typescript/methods/ledgers/create-ledger">
-Attach `meta_data` when creating a ledger.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

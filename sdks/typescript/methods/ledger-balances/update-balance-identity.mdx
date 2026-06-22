@@ -1,135 +1,55 @@
 ---
 mode: "wide"
 title: "Update balance identity"
-sidebarTitle: "Update identity"
-icon: "user-pen"
+sidebarTitle: "Update balance identity"
+api: "PUT /balances/{balance_id}/identity"
 description: "Update the identity associated with a balance with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Link a balance to an identity with `blnk.LedgerBalances.updateIdentity`. Use this when a balance was created without an `identity_id` and you need to attach one before enabling fund lineage.
+Use `blnk.LedgerBalances.updateIdentity` to link a balance to an [identity](/identities/link-balances).
 
-For linking concepts and field definitions, see the [Link balances to identities](/identities/link-balances) guide and the [Update balance identity](/reference/update-balance-identity) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.LedgerBalances.updateIdentity(balanceId, data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.LedgerBalances` |
-| **SDK method** | `updateIdentity` |
-| **HTTP** | `PUT /balances/{balance_id}/identity` |
-| **Returns** | `Promise<ApiResponse<UpdateBalanceIdentityResponse \| null>>` |
-
----
-
-## When to use
-
-Call `updateIdentity` to associate an existing balance with a customer or entity identity. Required before enabling [fund lineage](/transactions/lineage) on balances that were created without an `identity_id`.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.LedgerBalances.updateIdentity wrap {1}
 const response = await blnk.LedgerBalances.updateIdentity(
   'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
   { identity_id: 'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6' },
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message);
 ```
 
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `balanceId` | `string` | Yes | Balance ID to update. |
-| `identity_id` | `string` | Yes | Identity ID to link to the balance. |
-
-<Tip>
-Request field names use **snake_case** to match the HTTP API (`identity_id`, not `identityId`).
-</Tip>
+| Field | Description |
+| :-- | :-- |
+| `balanceId` | Balance ID to update. |
+| `identity_id` | Identity ID to link to the balance. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a confirmation in `response.data` when `status` is `200`. See [Update balance identity](/reference/update-balance-identity) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that required arguments are present and correctly typed. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `balanceId`
-- Missing or empty `identity_id`
-
-```typescript wrap
-// Client-side validation failure (no request sent to Core)
-const response = await blnk.LedgerBalances.updateIdentity('', {
-  identity_id: 'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
-});
-
-if (response.status === 400) {
-  console.error('Validation failed:', response.message);
+```json 200 OK wrap
+{
+  "message": "Balance identity updated successfully"
 }
 ```
 
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
-}
-```
-
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Confirmation from Core. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Update balance identity" icon="book-open" href="/reference/update-balance-identity">
-HTTP API reference for request fields and response schema.
-</Card>
-
 <Card title="Link balances" icon="user" href="/identities/link-balances">
-Product guide for linking identities to balances.
+Linking identities to balances.
 </Card>
 
-<Card title="Create balance" icon="wallet" href="/sdks/typescript/methods/ledger-balances/create-balance">
-Create a balance with an `identity_id` at create time.
-</Card>
-
-<Card title="Fund lineage" icon="git-branch" href="/transactions/lineage">
-Enable lineage tracking after linking an identity.
+<Card title="Update balance identity" icon="book-open" href="/reference/update-balance-identity">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

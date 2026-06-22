@@ -2,114 +2,50 @@
 mode: "wide"
 title: "Delete matching rule"
 sidebarTitle: "Delete matching rule"
-icon: "trash-2"
-description: "Remove a matching rule from your reconciliation workflows with the TypeScript SDK."
+api: "DELETE /reconciliation/matching-rules/{id}"
+description: "Delete a reconciliation matching rule with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Delete a matching rule with `blnk.Reconciliation.deleteMatchingRule`. Remove rules you no longer use in reconciliation runs.
+Use `blnk.Reconciliation.deleteMatchingRule` to delete a matching rule.
 
-For when to create or update rules instead, see the [Matching rules](/reconciliations/matching-rules) guide and the [Delete matching rule](/reference/delete-matching-rule) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Reconciliation.deleteMatchingRule(ruleId)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Reconciliation` |
-| **SDK method** | `deleteMatchingRule` |
-| **HTTP** | `DELETE /reconciliation/matching-rules/{rule_id}` |
-| **Returns** | `Promise<ApiResponse<DeleteMatchingRuleResp \| null>>` |
-
----
-
-## When to use
-
-Call `deleteMatchingRule` when a rule is obsolete or was created in error. Confirm no scheduled jobs still reference the `rule_id` before deleting.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Reconciliation.deleteMatchingRule wrap {1}
 const response = await blnk.Reconciliation.deleteMatchingRule('rule_abc123');
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.message);
 ```
 
----
-
-## Parameters
-
-| Argument | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `ruleId` | `string` | Yes | Matching rule ID to delete. |
+| Field | Description |
+| :-- | :-- |
+| `ruleId` | ID of the matching rule to delete. |
 
 ---
 
-## Response
+## Response shape
 
-Returns a confirmation message in `response.data` when `status` is `200`. See [Delete matching rule](/reference/delete-matching-rule) for the response shape.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that `ruleId` is present. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `ruleId`
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "message": "Matching rule deleted successfully"
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `message` | Confirmation that the rule was deleted. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and the rule lifecycle.
+</Card>
+
 <Card title="Delete matching rule" icon="book-open" href="/reference/delete-matching-rule">
-HTTP API reference for the response schema.
-</Card>
-
-<Card title="Matching rules" icon="scale" href="/reconciliations/matching-rules">
-Criteria, operators, and rule lifecycle.
-</Card>
-
-<Card title="Create matching rule" icon="git-merge" href="/sdks/typescript/methods/reconciliation/create-matching-rule">
-Create a replacement rule.
-</Card>
-
-<Card title="Update matching rule" icon="sliders-horizontal" href="/sdks/typescript/methods/reconciliation/update-matching-rule">
-Adjust criteria instead of deleting.
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

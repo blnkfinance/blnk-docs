@@ -1,43 +1,16 @@
 ---
 mode: "wide"
 title: "Search via DB"
-sidebarTitle: "Search DB"
-icon: "database"
-description: "Filter ledgers, balances, transactions, and identities using Blnk's Filter API with direct database queries with the TypeScript SDK."
+sidebarTitle: "Filter records"
+api: "POST /{collection}/filter"
+description: "Filter ledgers, balances, transactions, and identities with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Query records with structured JSON filters against Postgres using `blnk.Search.filter`. Use this when you need exact field matching instead of Typesense full-text search.
+Use `blnk.Search.filter` to filter records in a collection.
 
-For operators and supported fields, see [DB filtering](/search/db/filtering) and the [Search via DB](/reference/search-db) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Search.filter(params, collection)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Search` |
-| **SDK method** | `filter` |
-| **HTTP** | `POST /{collection}/filter` |
-| **Returns** | `Promise<ApiResponse<FilterResponse \| null>>` |
-
----
-
-## When to use
-
-Call `filter` for structured queries with operators like `eq`, `gte`, and `in`, for example listing applied transactions or filtering identities by type. For full-text search, use [`search`](/sdks/typescript/methods/search/search-typesense) instead.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Search.filter wrap {1}
 const response = await blnk.Search.filter(
   {
     filters: [{ field: 'status', operator: 'eq', value: 'APPLIED' }],
@@ -50,94 +23,59 @@ const response = await blnk.Search.filter(
   },
   'transactions',
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.total_count, response.data.data[0]?.transaction_id);
 ```
 
-Filter identities by type:
-
-```typescript wrap
-const identities = await blnk.Search.filter(
-  {
-    filters: [{ field: 'identity_type', operator: 'eq', value: 'individual' }],
-    limit: 10,
-  },
-  'identities',
-);
-```
-
----
-
-## Parameters
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `params` | `object` | Yes | Filter body with a `filters` array and optional sort/pagination fields. |
-| `collection` | `string` | Yes | `ledgers`, `transactions`, `balances`, or `identities`. |
-
-Common filter operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `between`, `like`, `ilike`, `isnull`, `isnotnull`. Max `limit`: 100.
+| Field | Description |
+| :-- | :-- |
+| `filters` | Array of filter conditions, each with a `field`, `operator`, and a `value` or `values`. |
+| `logical_operator` | Combine filters with `and` or `or`. Defaults to `and`. |
+| `sort_by` | Field to sort by. Defaults to `created_at`. |
+| `sort_order` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `include_count` | Return `total_count` in the response. Defaults to `false`. |
+| `limit` | Maximum records to return. Defaults to 20, max 100. |
+| `offset` | Records to skip for pagination. Defaults to 0. |
+| `collection` | Collection to filter: `ledgers`, `transactions`, `balances`, or `identities`. |
 
 ---
 
-## Response
+## Response shape
 
-Returns filtered records in `response.data` when `status` is `200`. Key fields include `data` and optional `total_count`. See [Search via DB](/reference/search-db) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK validates the collection and filter body. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Invalid `collection`
-- Missing or malformed `filters` array
-- Invalid operator, limit, offset, or sort fields
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `data` | Array of matching records. Shape varies by collection. |
+| `total_count` | Total matching records. Only present when `include_count` is `true`. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Search via DB" icon="book-open" href="/reference/search-db">
-HTTP API reference for filter fields and response schema.
-</Card>
-
-<Card title="DB filtering" icon="database" href="/search/db/filtering">
+<Card title="How DB filtering works" icon="database" href="/search/db/filtering">
 Supported operators and field reference.
 </Card>
 
-<Card title="Search via Typesense" icon="search" href="/sdks/typescript/methods/search/search-typesense">
-Full-text search when filters are not enough.
-</Card>
-
-<Card title="DB examples" icon="code" href="/search/db/examples">
-Example filter queries by collection.
+<Card title="Search via DB" icon="book-open" href="/reference/search-db">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />

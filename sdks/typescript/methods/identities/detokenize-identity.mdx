@@ -2,128 +2,57 @@
 mode: "wide"
 title: "Detokenize identity"
 sidebarTitle: "Detokenize identity"
-icon: "key-round"
-description: "How to detokenize multiple fields with the TypeScript SDK."
+api: "POST /identities/{identity_id}/detokenize"
+description: "Detokenize multiple identity fields with the TypeScript SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Read original values for tokenized PII fields with `blnk.Identity.detokenize`. Pass field names in **PascalCase** in `fields`. Pass an empty array to detokenize all currently tokenized fields. See [Tokenize identity](/sdks/typescript/methods/identities/tokenize-identity) for why tokenization uses PascalCase, not snake_case.
+Use `blnk.Identity.detokenize` to detokenize several identity fields.
 
-For tokenization concepts, see [PII tokenization](/identities/pii-tokenization) and the [Detokenize identity](/reference/detokenize-identity) API reference.
-
----
-
-## Method
-
-```typescript
-blnk.Identity.detokenize(id, data)
-```
-
-| | |
-| :--- | :--- |
-| **Service** | `blnk.Identity` |
-| **SDK method** | `detokenize` |
-| **HTTP** | `POST /identities/{identity_id}/detokenize` |
-| **Returns** | `Promise<ApiResponse<DetokenizeIdentityResp \| null>>` |
-
----
-
-## When to use
-
-Call `detokenize` when authorized workflows need plaintext values for multiple protected fields in one request. Use an empty `fields` array to detokenize every field currently tokenized on the identity.
-
----
-
-## Example
-
-```typescript wrap
+```typescript blnk.Identity.detokenize wrap {1}
 const response = await blnk.Identity.detokenize(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
+  'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
   { fields: ['FirstName', 'EmailAddress'] },
 );
-
-if (response.status !== 200 || !response.data) {
-  console.error(`Error ${response.status}: ${response.message}`);
-  if (response.data) console.error(response.data);
-  return;
-}
-
-console.log(response.data.fields);
 ```
 
-Detokenize all tokenized fields:
-
-```typescript wrap
-const allFields = await blnk.Identity.detokenize(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
-  { fields: [] },
-);
-```
+| Field | Description |
+| :-- | :-- |
+| `id` | Identity ID. |
+| `fields` | PascalCase field names to detokenize. Pass `[]` for all tokenized fields. |
 
 ---
 
-## Parameters
+## Response shape
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `string` | Yes | Identity ID. |
-| `fields` | `string[]` | Yes | PascalCase field names to detokenize. Pass `[]` for all tokenized fields. |
-
----
-
-## Response
-
-Returns detokenized field values in `response.data` when `status` is `200`. See [Detokenize identity](/reference/detokenize-identity) for all response fields.
-
----
-
-## Client-side validation
-
-Before sending a request to Core, the SDK checks that the identity ID and `fields` array are valid. If validation fails, the SDK returns `status: 400` with a message in `response.message`. No HTTP request is made.
-
-Common failures for this method:
-
-- Missing or empty `id`
-- `fields` is not an array, or contains empty strings
-
----
-
-## HTTP errors
-
-When Core rejects the request, inspect `response.status`, `response.message`, and `response.data`:
-
-```typescript wrap
-// Log Core error details when the request fails
-if (response.status !== 200) {
-  console.error(response.status, response.message);
-  console.error(response.data);
+```json 200 OK wrap
+{
+  "fields": {
+    "firstName": "Alice",
+    "emailAddress": "alice.smith@example.com"
+  }
 }
 ```
 
-For timeout, network, and error body formats, see [Error handling](/sdks/typescript#error-handling).
+| Field | Description |
+| :-- | :-- |
+| `fields` | Original values for the fields you requested. |
 
 ---
 
 ## Related docs
 
 <CardGroup cols={2}>
-<Card title="Detokenize identity" icon="book-open" href="/reference/detokenize-identity">
-HTTP API reference for request fields and response schema.
-</Card>
-
-<Card title="Detokenize field" icon="unlock" href="/sdks/typescript/methods/identities/detokenize-field">
-Read one tokenized field.
-</Card>
-
-<Card title="Get tokenized fields" icon="shield" href="/sdks/typescript/methods/identities/get-tokenized-fields">
-List fields currently tokenized.
-</Card>
-
 <Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
-Core setup and access controls.
+Setup, access controls, and how detokenization works.
+</Card>
+
+<Card title="Detokenize multiple fields" icon="book-open" href="/reference/detokenize-identity">
+HTTP request and response schema.
 </Card>
 </CardGroup>
 
+---
 
 <NeedHelp />
