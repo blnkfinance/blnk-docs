@@ -1,0 +1,92 @@
+---
+mode: "wide"
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+api: "POST /transactions/bulk"
+description: "Submit multiple transactions in one request with the TypeScript SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.Transactions.createBulk` to create many [transactions](/transactions/bulk-transactions) in one request.
+
+```typescript blnk.Transactions.createBulk wrap {1}
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_1',
+      destination: '@dest_1',
+      reference: 'bulk_001',
+      description: 'Payment 1',
+    },
+    {
+      amount: 2000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_2',
+      destination: '@dest_2',
+      reference: 'bulk_002',
+      description: 'Payment 2',
+    },
+  ],
+});
+```
+
+| Field | Description |
+| :-- | :-- |
+| `transactions` | Transaction objects to create; references must be unique within the batch. |
+| `atomic` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | When `true`, Core processes the batch in the background and returns `status: 'queued'`. |
+| `skip_queue` | When `true`, transactions bypass the queue and process synchronously. |
+
+---
+
+## Response shape
+
+<CodeGroup>
+```json Sync wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 4
+}
+```
+
+```json Async (run_async: true) wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+</CodeGroup>
+
+| Field | Description |
+| :-- | :-- |
+| `batch_id` | Identifier for the batch. Use as `parent_transaction` to find child transactions, or with `updateStatus` to commit or void an inflight batch. |
+| `status` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | Number of transactions when processed synchronously. |
+| `message` | Status message when `run_async` is `true`. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk transactions guide" icon="layers" href="/transactions/bulk-transactions">
+Batch processing, webhooks, and retrieving a batch.
+</Card>
+
+<Card title="Bulk transactions" icon="book-open" href="/reference/bulk-transactions">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

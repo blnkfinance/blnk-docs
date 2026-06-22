@@ -1,0 +1,61 @@
+---
+title: "TypeScript SDK Quick Start"
+description: "Install the TypeScript SDK and post your first transaction."
+sidebarTitle: "Quick start"
+icon: "rocket"
+---
+
+Install the SDK, initialize the client, and post your first transaction.
+
+<Steps>
+<Step title="Install the SDK">
+
+Create a Node.js project and install the SDK.
+
+```bash bash wrap
+npm init -y
+npm install @blnkfinance/blnk-typescript
+```
+
+</Step>
+
+<Step title="Create a script">
+
+Create `index.js`:
+
+```javascript index.js wrap expandable
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
+
+const blnk = BlnkInit('', { baseUrl: 'http://localhost:5001' });
+
+async function main() {
+  const response = await blnk.Transactions.create({
+    precise_amount: 100000,
+    reference: 'first_txn_001',
+    currency: 'USD',
+    precision: 100,
+    source: '@FundingPool',
+    destination: '@MyBalance',
+    description: 'My first Blnk transaction',
+    allow_overdraft: true,
+  });
+
+  if (response.status !== 201 || !response.data) {
+    throw new Error(response.message);
+  }
+
+  console.log(response.data.transaction_id);
+}
+
+main();
+```
+</Step>
+
+<Step title="Run it">
+Run the script with `node index.js`.
+</Step>
+
+<Step title="View the transaction">
+Open Blnk Cloud or use the CLI to confirm the transaction was created.
+</Step>
+</Steps>

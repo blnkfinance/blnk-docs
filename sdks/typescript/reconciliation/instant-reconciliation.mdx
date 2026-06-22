@@ -1,0 +1,77 @@
+---
+mode: "wide"
+title: "Instant reconciliation"
+sidebarTitle: "Instant reconciliation"
+api: "POST /reconciliation/start-instant"
+description: "Run instant reconciliation with the TypeScript SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.Reconciliation.runInstant` to reconcile external records inline.
+
+```typescript blnk.Reconciliation.runInstant wrap {1}
+const response = await blnk.Reconciliation.runInstant({
+  external_transactions: [
+    {
+      id: 'txn_1',
+      amount: 5.49,
+      reference: 'INV-2023-002',
+      currency: 'GBP',
+      description: 'Card payment',
+      date: '2024-11-15T14:25:30Z',
+      source: 'bank-api',
+    },
+  ],
+  strategy: 'one_to_one',
+  dry_run: true,
+  matching_rule_ids: ['rule_abc123'],
+});
+```
+
+| Field | Description |
+| :-- | :-- |
+| `external_transactions` | Array of external transaction rows to reconcile. |
+| `external_transactions[].id` | Unique external transaction ID. |
+| `external_transactions[].amount` | Transaction amount. |
+| `external_transactions[].reference` | Unique transaction reference. |
+| `external_transactions[].currency` | ISO 4217 currency code. |
+| `external_transactions[].description` | Description of the transaction. |
+| `external_transactions[].date` | Transaction date and time. |
+| `external_transactions[].source` | Origin of the transaction data. |
+| `strategy` | Match strategy: `one_to_one`, `one_to_many`, or `many_to_one`. |
+| `matching_rule_ids` | IDs of the matching rules to apply. |
+| `dry_run` | Optional. Set `true` to test without writing results to the ledger. |
+| `grouping_criteria` | Optional field used to group records during matching. |
+
+---
+
+## Response shape
+
+```json 200 OK wrap
+{
+  "reconciliation_id": "rec_a8f2c91d-1234-4abc-9def-0123456789ab"
+}
+```
+
+| Field | Description |
+| :-- | :-- |
+| `reconciliation_id` | ID of the reconciliation run. Use it with `blnk.Reconciliation.get` to check status. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/overview">
+Batch and instant reconciliation workflows.
+</Card>
+
+<Card title="Instant reconciliation" icon="book-open" href="/reference/instant-reconciliation">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

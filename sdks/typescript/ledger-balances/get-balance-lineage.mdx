@@ -1,0 +1,67 @@
+---
+mode: "wide"
+title: "View balance lineage"
+sidebarTitle: "View balance lineage"
+api: "GET /balances/{balance_id}/lineage"
+description: "See a balance's provider breakdown when fund lineage is enabled with the TypeScript SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.LedgerBalances.getLineage` to inspect a balance's fund breakdown.
+
+```typescript blnk.LedgerBalances.getLineage wrap {1}
+const response = await blnk.LedgerBalances.getLineage(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+);
+```
+
+| Field | Description |
+| :-- | :-- |
+| `balanceId` | Balance ID with fund lineage enabled. |
+
+---
+
+## Response shape
+
+```json 200 OK wrap
+{
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "total_with_lineage": "7500",
+  "providers": [
+    {
+      "provider": "stripe",
+      "amount": "10000",
+      "available": "7500",
+      "spent": "2500",
+      "shadow_balance_id": "bln_shadow_balance_id"
+    }
+  ]
+}
+```
+
+| Field | Description |
+| :-- | :-- |
+| `balance_id` | Balance you queried. |
+| `aggregate_balance_id` | Internal aggregate balance ID for combined provider funds. |
+| `total_with_lineage` | Total available funds tracked by lineage (minor units, string). |
+| `providers` | Provider-by-provider breakdown of received and spent funds. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Fund lineage" icon="git-branch" href="/transactions/lineage">
+Tagged funds and allocation strategies.
+</Card>
+
+<Card title="View balance lineage" icon="book-open" href="/reference/get-balance-lineage">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

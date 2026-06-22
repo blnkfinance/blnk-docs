@@ -1,0 +1,72 @@
+---
+mode: "wide"
+title: "Bulk void inflight"
+sidebarTitle: "Bulk void inflight"
+api: "POST /transactions/inflight/bulk/void"
+description: "Void multiple independently-created inflight transactions with the TypeScript SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.Transactions.bulkVoidInflight` to void multiple inflight transactions.
+
+```typescript blnk.Transactions.bulkVoidInflight wrap {1}
+const response = await blnk.Transactions.bulkVoidInflight({
+  transaction_ids: [
+    'txn_11111111-1111-4111-8111-111111111111',
+    'txn_22222222-2222-4222-8222-222222222222',
+  ],
+});
+```
+
+| Field | Description |
+| :-- | :-- |
+| `transaction_ids` | Up to 100 inflight transaction IDs to void. |
+
+---
+
+## Response shape
+
+```json 200 OK wrap
+{
+  "succeeded": 2,
+  "failed": 1,
+  "results": [
+    { "transaction_id": "txn_11111111-1111-4111-8111-111111111111", "status": "succeeded" },
+    { "transaction_id": "txn_22222222-2222-4222-8222-222222222222", "status": "succeeded" },
+    {
+      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "status": "failed",
+      "code": "ALREADY_COMMITTED",
+      "message": "cannot void. Transaction already committed"
+    }
+  ]
+}
+```
+
+| Field | Description |
+| :-- | :-- |
+| `succeeded` | Number voided successfully. |
+| `failed` | Number that failed. |
+| `results` | Per-transaction outcome in request order. |
+| `results[].status` | `succeeded` or `failed`. |
+| `results[].code` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
+| `results[].message` | Human-readable failure message. |
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk inflight updates" icon="plane" href="/transactions/inflight#bulk-inflight-updates">
+Per-item failure codes and rollback behavior.
+</Card>
+
+<Card title="Bulk void inflight" icon="book-open" href="/reference/bulk-void-inflight">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
