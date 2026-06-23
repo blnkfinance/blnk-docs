@@ -10,25 +10,38 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Transactions.getLineage` to inspect a transaction's fund breakdown.
 
-```typescript blnk.Transactions.getLineage wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Transactions.getLineage wrap
 const response = await blnk.Transactions.getLineage(
   'txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad',
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transactionId` | Transaction ID with fund lineage enabled. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionId` | `string` | Transaction ID with fund lineage enabled. |
 
----
+</Step>
 
-## Response shape
+<Step title="Use the provider breakdown">
 
-```json 200 OK wrap
+Read `fund_allocation` for how much came from each provider. Read `shadow_transactions` for the internal records Blnk created to track each provider's share.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
   "fund_allocation": [
-    { "provider": "stripe", "amount": "2500" }
+    {
+      "provider": "stripe",
+      "amount": "2500"
+    }
   ],
   "shadow_transactions": [
     {
@@ -40,13 +53,17 @@ const response = await blnk.Transactions.getLineage(
     }
   ]
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transaction_id` | Transaction you queried. |
-| `fund_allocation` | How much of the spend came from each provider. Amounts are strings in minor units. May be empty when no tagged funds were used. |
-| `shadow_transactions` | The internal records Blnk creates to track each provider's share of the spend. May be empty. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `string` | Transaction you queried. |
+| `fund_allocation` | `object[]` | How much of the spend came from each provider. Amounts are strings in minor units. May be empty when no tagged funds were used. |
+| `shadow_transactions` | `object[]` | Internal records Blnk creates to track each provider's share of the spend. May be empty. |
+
+</Step>
+</Steps>
 
 ---
 

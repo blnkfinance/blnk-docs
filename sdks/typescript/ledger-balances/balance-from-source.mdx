@@ -8,25 +8,37 @@ description: "Compute balance directly from transactions with the TypeScript SDK
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Use `blnk.LedgerBalances.get` to reconstruct a balance from its transactions.
+Use `blnk.LedgerBalances.get` with from_source set to true to reconstruct a balance from its transactions.
 
-```typescript blnk.LedgerBalances.get wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.LedgerBalances.get wrap
 const response = await blnk.LedgerBalances.get(
   'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
-  { from_source: true },
+  {
+    from_source: true,
+  },
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `id` | Balance ID to compute from source. |
-| `from_source` | Must be `true` to reconstruct from transactions. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `string` | Balance ID to compute from source. |
+| `from_source` | `boolean` | Must be `true` to reconstruct from transactions. |
 
----
+</Step>
 
-## Response shape
+<Step title="Compare with stored balance">
 
-```json 200 OK wrap
+Use the computed amounts to audit or reconcile against the stored balance. Differences may indicate pending transactions or snapshot lag.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "balance": {
     "balance": 9620000,
@@ -40,19 +52,23 @@ const response = await blnk.LedgerBalances.get(
     "meta_data": null
   }
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `balance.balance` | Net amount computed from all transactions. |
-| `balance.balance_id` | Unique ID for the balance. |
-| `balance.credit_balance` | Total computed from credit transactions. |
-| `balance.debit_balance` | Total computed from debit transactions. |
-| `balance.currency` | Currency of the balance. |
-| `balance.ledger_id` | Ledger this balance belongs to. |
-| `balance.identity_id` | Linked identity, if any. |
-| `balance.created_at` | Date and time the balance was created. |
-| `balance.meta_data` | Optional metadata on the balance. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance.balance` | `number` | Net amount computed from all transactions. |
+| `balance.balance_id` | `string` | Unique ID for the balance. |
+| `balance.credit_balance` | `number` | Total computed from credit transactions. |
+| `balance.debit_balance` | `number` | Total computed from debit transactions. |
+| `balance.currency` | `string` | Currency of the balance. |
+| `balance.ledger_id` | `string` | Ledger this balance belongs to. |
+| `balance.identity_id` | `string` | Linked identity, if any. |
+| `balance.created_at` | `string` | Date and time the balance was created. |
+| `balance.meta_data` | `Record<string, unknown>` | Optional metadata on the balance. |
+
+</Step>
+</Steps>
 
 ---
 

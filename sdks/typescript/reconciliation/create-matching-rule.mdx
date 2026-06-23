@@ -10,32 +10,52 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Reconciliation.createMatchingRule` to create a matching rule.
 
-```typescript blnk.Reconciliation.createMatchingRule wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Reconciliation.createMatchingRule wrap
 const response = await blnk.Reconciliation.createMatchingRule({
   name: 'Amount match',
   description: 'Match by amount with 1% drift',
   criteria: [
-    { field: 'amount', operator: 'equals', allowable_drift: 0.01 },
-    { field: 'currency', operator: 'equals' },
-    { field: 'reference', operator: 'contains' },
+    {
+      field: 'amount',
+      operator: 'equals',
+      allowable_drift: 0.01
+    },
+    {
+      field: 'currency',
+      operator: 'equals'
+    },
+    {
+      field: 'reference',
+      operator: 'contains'
+    },
   ],
 });
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `name` | Name of the matching rule. |
-| `description` | Short description of what the rule does. |
-| `criteria` | Array of match criteria. Each entry sets how one field is compared. |
-| `criteria[].field` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
-| `criteria[].operator` | How to compare the field: `equals` or `contains`. |
-| `criteria[].allowable_drift` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `name` | `string` | Name of the matching rule. |
+| `description` | `string` | Short description of what the rule does. |
+| `criteria` | `object[]` | Array of match criteria. Each entry sets how one field is compared. |
+| `criteria[].field` | `string` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `string` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | `number` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
 
----
+</Step>
 
-## Response shape
+<Step title="Save the rule ID">
 
-```json 201 Created wrap
+Use `response.data.rule_id` in `matching_rule_ids` when you [start reconciliation](/sdks/typescript/reconciliation/start-reconciliation).
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
 {
   "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
   "name": "Amount match",
@@ -50,15 +70,19 @@ const response = await blnk.Reconciliation.createMatchingRule({
   "created_at": "2024-11-26T08:36:36.238244338Z",
   "updated_at": "2024-11-26T08:36:36.238244338Z"
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `rule_id` | Unique ID for the rule. Store it to apply during reconciliation runs. |
-| `name` | Rule name you passed. |
-| `criteria` | The match criteria stored for the rule. |
-| `created_at` | When the rule was created. |
-| `updated_at` | When the rule was last updated. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `string` | Unique ID for the rule. Store it to apply during reconciliation runs. |
+| `name` | `string` | Rule name you passed. |
+| `criteria` | `object[]` | The match criteria stored for the rule. |
+| `created_at` | `string` | When the rule was created. |
+| `updated_at` | `string` | When the rule was last updated. |
+
+</Step>
+</Steps>
 
 ---
 

@@ -10,7 +10,10 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Search.search` to search records in a collection.
 
-```typescript blnk.Search.search wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Search.search wrap
 const response = await blnk.Search.search(
   {
     q: 'payment',
@@ -19,23 +22,30 @@ const response = await blnk.Search.search(
   },
   'transactions',
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `q` | Search query text. Use `*` to return all records. |
-| `query_by` | Comma-separated list of fields to search in. |
-| `filter_by` | Filter conditions to refine results. |
-| `sort_by` | Sort order, for example `created_at:desc`. |
-| `page` | Page number, starting at 1. |
-| `per_page` | Results per page. Max 250, defaults to 10. |
-| `collection` | Collection to search: `ledgers`, `transactions`, `balances`, or `identities`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `q` | `string` | Search query text. Use `*` to return all records. |
+| `query_by` | `string` | Comma-separated list of fields to search in. |
+| `filter_by` | `string` | Filter conditions to refine results. |
+| `sort_by` | `string` | Sort order, for example `created_at:desc`. |
+| `page` | `number` | Page number, starting at 1. |
+| `per_page` | `number` | Results per page. Max 250, defaults to 10. |
+| `collection` | `string` | Collection to search: `ledgers`, `transactions`, `balances`, or `identities`. |
 
----
+</Step>
 
-## Response shape
+<Step title="Use the search results">
 
-```json 201 Created wrap
+Read `response.data.hits` for matching documents. Each hit includes a `document` and optional `highlights` and `text_match` score.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
 {
   "found": 2,
   "out_of": 232,
@@ -66,15 +76,19 @@ const response = await blnk.Search.search(
     }
   ]
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `found` | Number of records matching the query. |
-| `out_of` | Total records in the collection. |
-| `page` | Current page number. |
-| `search_time_ms` | Time taken to run the search, in milliseconds. |
-| `hits` | Array of results, each with a `document` and optional `highlights` and `text_match`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `found` | `number` | Number of records matching the query. |
+| `out_of` | `number` | Total records in the collection. |
+| `page` | `number` | Current page number. |
+| `search_time_ms` | `number` | Time taken to run the search, in milliseconds. |
+| `hits` | `object[]` | Array of results, each with a `document` and optional `highlights` and `text_match`. |
+
+</Step>
+</Steps>
 
 ---
 

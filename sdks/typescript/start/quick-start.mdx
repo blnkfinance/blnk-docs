@@ -1,32 +1,50 @@
 ---
-title: "TypeScript SDK Quick Start"
-description: "Install the TypeScript SDK and post your first transaction."
+title: "Quick Start"
+description: "Install the TypeScript SDK and create your first transaction."
 sidebarTitle: "Quick start"
 icon: "rocket"
 ---
 
-Install the SDK, initialize the client, and post your first transaction.
+This is your guide to getting started with the Blnk TypeScript SDK.
 
 <Steps>
 <Step title="Install the SDK">
 
-Create a Node.js project and install the SDK.
+Add the SDK to your project.
 
-```bash bash wrap
-npm init -y
+```bash wrap
 npm install @blnkfinance/blnk-typescript
 ```
 
 </Step>
 
-<Step title="Create a script">
+<Step title="Initialize Blnk">
 
-Create `index.js`:
+Create an `index.js` file and initialize the client.
 
 ```javascript index.js wrap expandable
 const { BlnkInit } = require('@blnkfinance/blnk-typescript');
 
-const blnk = BlnkInit('', { baseUrl: 'http://localhost:5001' });
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
+
+```
+
+Use an empty key for local Core when auth is disabled. For Blnk Cloud or secured Core, set `BLNK_API_KEY`.
+
+</Step>
+
+<Step title="Write a sample script">
+
+Create a transaction in the same file.
+
+```javascript index.js wrap expandable
+const { BlnkInit } = require('@blnkfinance/blnk-typescript');
+
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
 
 async function main() {
   const response = await blnk.Transactions.create({
@@ -44,18 +62,51 @@ async function main() {
     throw new Error(response.message);
   }
 
-  console.log(response.data.transaction_id);
+  return response.data;
 }
 
-main();
+main().then((transaction) => {
+  console.log(JSON.stringify(transaction, null, 2));
+});
+
 ```
+
+Use balance IDs or internal balance names that exist in your environment.
+
 </Step>
 
-<Step title="Run it">
-Run the script with `node index.js`.
+<Step title="Run the script">
+
+Run the file.
+
+```bash wrap
+node index.js
+```
+
+Output:
+
+```json 201 Created wrap
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "reference": "first_txn_001",
+  "status": "APPLIED"
+}
+
+```
+
 </Step>
 
 <Step title="View the transaction">
-Open Blnk Cloud or use the CLI to confirm the transaction was created.
+
+Search for the reference in Blnk Cloud, or fetch the transaction with the CLI:
+
+```bash wrap
+blnk transactions get txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad
+```
+
+Replace the transaction ID with the value returned by your script.
+
 </Step>
 </Steps>
+
+For authentication, timeouts, and logging options, see [Using the SDK](/sdks/typescript/start/using-the-sdk).

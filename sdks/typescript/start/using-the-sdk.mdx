@@ -1,0 +1,122 @@
+---
+title: "Using the SDK"
+description: "Configure authentication, timeouts, retries, logging, and versions for the TypeScript SDK."
+sidebarTitle: "Using the SDK"
+icon: "code"
+---
+
+Call `BlnkInit` once when your app starts. Use the returned client for all Blnk resources.
+
+```typescript wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
+
+```
+
+---
+
+## Authentication
+
+The first argument to `BlnkInit` is your API key.
+
+| Source | Key to use | When |
+| :--- | :--- | :--- |
+| **Blnk Cloud** | Secret key from your Cloud project settings | Hosted environments |
+| **Self-hosted Core** | Master key (`server.secret_key` in your Core config) | Local or private Core with auth enabled |
+
+Pass an empty string (`''`) for local Core when auth is disabled.
+
+Set `baseUrl` to your Core or Cloud URL:
+
+| Environment | Example `baseUrl` |
+| :--- | :--- |
+| Local Core | `http://localhost:5001` |
+| Blnk Cloud | Your Cloud instance URL |
+
+<Note>
+`blnk.Hooks` and `blnk.ApiKeys` require the master key. Scoped API keys return `403`.
+</Note>
+
+---
+
+## Client options
+
+Pass client options as the second argument to `BlnkInit`. These options control timeouts and retries.
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `timeout` | `number` | `10000` | Maximum request time in milliseconds. |
+| `retryCount` | `number` | `1` | Total attempts, including the first. Retries apply only to idempotent `GET` requests, not `POST`, `PUT`, or `DELETE`. |
+| `retryDelayMs` | `number` | `2000` | Base delay between retry attempts in milliseconds. Uses linear backoff. |
+
+Use a longer `timeout` for slow requests. Use a higher `retryCount` for temporary failures on read-only calls.
+
+```typescript wrap
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+  timeout: 30000,
+  retryCount: 3,
+  retryDelayMs: 2000,
+});
+
+```
+
+---
+
+## Custom logger
+
+By default, the SDK writes logs through `console`.
+
+It logs retries, HTTP failures, and timeouts. It does not log full request or response bodies by default.
+
+Pass a custom logger when you want those logs in your own logging system.
+
+```typescript wrap
+const blnk = BlnkInit(apiKey, {
+  baseUrl: 'http://localhost:5001',
+  logger: {
+    info: (message, ...meta) => appLogger.info({ meta }, message),
+    error: (message, ...meta) => appLogger.error({ meta }, message),
+    debug: (message, ...meta) => appLogger.debug({ meta }, message),
+  },
+});
+
+```
+
+Retry log:
+
+```text wrap
+INFO: Retrying request to transactions/txn_123 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
+```
+
+Timeout log:
+
+```text wrap
+ERROR: Request timed out { endpoint: "transactions/txn_123", timeoutMs: 30000 }
+```
+
+Avoid logging full responses if metadata may contain sensitive values.
+
+---
+
+## Versioning
+
+Pin the SDK version in `package.json` for production apps. Patch and minor releases stay backward compatible.
+
+```json package.json wrap
+{
+  "dependencies": {
+    "@blnkfinance/blnk-typescript": "^1.3.0"
+  }
+}
+
+```
+
+<Note>
+Configurable timeout, retries, base URL, and logger options require `@blnkfinance/blnk-typescript` v1.3.0 or later. Check the [Changelog](/changelog/blnk-ts) before upgrading.
+</Note>
+
+For response handling, see [Error handling](/sdks/typescript/start/error-handling).

@@ -100,7 +100,7 @@ results, resp, err := client.Search.SearchDocument(
 
 ## Queued parent transactions
 
-A queued parent transaction refers to the very first transaction in a chain — the one that initiates the entire transaction lifecycle.
+A queued parent transaction refers to the very first transaction in a chain - the one that initiates the entire transaction lifecycle.
 
 In most cases, this initial transaction starts in the `QUEUED` state, serving as the root from which all subsequent transactions (like `INFLIGHT` or `APPLIED`) are derived.
 
@@ -155,7 +155,7 @@ results, resp, err := client.Search.SearchDocument(
 }
 ```
 
-Blnk automatically creates this field whenever you use the queue system to process any transaction — single, inflight, split, or bulk transactions.
+Blnk automatically creates this field whenever you use the queue system to process any transaction - single, inflight, split, or bulk transactions.
 
 In the case of split or bulk transactions, it becomes particularly useful, as it lets you trace the entire chain and identify the final outcome of each branch.
 
@@ -166,14 +166,14 @@ Consider a split transaction of \$100. Half to person A and half to person B. Th
 <img src="/images/parent/parent-txn-3.png" alt="Parent transaction lifecycle diagram showing how a $100 split transaction evolves through different states" className="rounded-lg" />
 
 1. The split transaction is first created in the `QUEUED` state.
-2. Blnk then generates two individual transactions — one for Person A and one for Person B — both in the `QUEUED` state.
+2. Blnk then generates two individual transactions - one for Person A and one for Person B - both in the `QUEUED` state.
 3. The original `QUEUED` split transaction becomes the parent of these two new `QUEUED` transactions.
 4. As Blnk processes the two individual transactions, it creates two new transactions in the `APPLIED` state.
 5. Each individual child `QUEUED` transaction becomes the parent of its corresponding `APPLIED` transaction.
 
 Unlike the [inflight transaction](#inflight-transaction) example above, you can’t query by `parent_transaction` to get the final outcome of a split transaction. 
 
-This is because the final `APPLIED` transactions aren’t directly linked to the original split transaction. Instead, they’re linked to the two individual `QUEUED` transactions created from it — each representing a separate outcome for Person A and Person B. 
+This is because the final `APPLIED` transactions aren’t directly linked to the original split transaction. Instead, they’re linked to the two individual `QUEUED` transactions created from it - each representing a separate outcome for Person A and Person B. 
 
 Instead you'll need to query by the `meta_data.QUEUED_PARENT_TRANSACTION` field, which is present in all related transactions, regardless of their parent.
 

@@ -10,24 +10,36 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.LedgerBalances.getAt` to retrieve a [balance](/balances/historical-balances) at a specific point in time.
 
-```typescript blnk.LedgerBalances.getAt wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.LedgerBalances.getAt wrap
 const response = await blnk.LedgerBalances.getAt(
   'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
-  { timestamp: '2025-02-24T08:55:26Z' },
+  {
+    timestamp: '2025-02-24T08:55:26Z',
+  },
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `balanceId` | Balance ID to query. |
-| `timestamp` | Specifies the exact date and time for which a historical balance is requested. Use ISO 8601 format (for example `2025-02-24T08:55:26Z`). |
-| `from_source` | When `true`, reconstruct from transactions instead of snapshots. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceId` | `string` | Balance ID to query. |
+| `timestamp` | `string` | Specifies the exact date and time for which a historical balance is requested. Use ISO 8601 format (for example `2025-02-24T08:55:26Z`). |
+| `from_source` | `boolean` | When `true`, reconstruct from transactions instead of snapshots. |
 
----
+</Step>
 
-## Response shape
+<Step title="Use the historical amounts">
 
-```json 200 OK wrap
+Read `response.data.balance` for net, credit, and debit totals at the requested timestamp. Compare with current balance if you are auditing or reconciling.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "timestamp": "2025-02-24T08:55:26Z",
   "from_source": false,
@@ -39,17 +51,21 @@ const response = await blnk.LedgerBalances.getAt(
     "currency": "USD"
   }
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `timestamp` | Point in time you queried (ISO 8601). |
-| `from_source` | Whether the balance was reconstructed from transactions. |
-| `balance.balance_id` | Balance you queried. |
-| `balance.balance` | Net amount at that timestamp. |
-| `balance.credit_balance` | Total credits at that timestamp. |
-| `balance.debit_balance` | Total debits at that timestamp. |
-| `balance.currency` | Currency of the balance. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `timestamp` | `string` | Point in time you queried (ISO 8601). |
+| `from_source` | `boolean` | Whether the balance was reconstructed from transactions. |
+| `balance.balance_id` | `string` | Balance you queried. |
+| `balance.balance` | `number` | Net amount at that timestamp. |
+| `balance.credit_balance` | `number` | Total credits at that timestamp. |
+| `balance.debit_balance` | `number` | Total debits at that timestamp. |
+| `balance.currency` | `string` | Currency of the balance. |
+
+</Step>
+</Steps>
 
 ---
 

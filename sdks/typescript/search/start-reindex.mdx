@@ -10,19 +10,31 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Search.startReindex` to rebuild the search index.
 
-```typescript blnk.Search.startReindex wrap {1}
-const response = await blnk.Search.startReindex({ batch_size: 1000 });
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Search.startReindex wrap
+const response = await blnk.Search.startReindex({
+  batch_size: 1000,
+});
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `batch_size` | Records processed per batch. Omit the argument to use the Core default. Must be a positive integer when set. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_size` | `number` | Records processed per batch. Omit the argument to use the Core default. Must be a positive integer when set. |
 
----
+</Step>
 
-## Response shape
+<Step title="Poll reindex progress">
 
-```json 202 Accepted wrap
+Use [get reindex status](/sdks/typescript/search/get-reindex) to track progress until `status` is `completed`.
+
+</Step>
+
+<Step title="Response">
+
+```json 202 Accepted wrap expandable
 {
   "message": "Reindex operation started",
   "progress": {
@@ -33,12 +45,16 @@ const response = await blnk.Search.startReindex({ batch_size: 1000 });
     "started_at": "2026-02-12T12:13:10.448612096Z"
   }
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `message` | Confirmation that the reindex job started. |
-| `progress` | Initial progress snapshot with `status`, `phase`, `total_records`, `processed_records`, and `started_at`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `message` | `string` | Confirmation that the reindex job started. |
+| `progress` | `object` | Initial progress snapshot with `status`, `phase`, `total_records`, `processed_records`, and `started_at`. |
+
+</Step>
+</Steps>
 
 ---
 

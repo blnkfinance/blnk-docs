@@ -10,27 +10,37 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.ApiKeys.create` to create a scoped API key.
 
-```typescript blnk.ApiKeys.create wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.ApiKeys.create wrap
 const response = await blnk.ApiKeys.create({
   name: 'Service Account',
   owner: 'merchant_a',
   scopes: ['ledgers:read', 'balances:write'],
   expires_at: '2026-12-31T23:59:59Z',
 });
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `name` | Descriptive name for the key or service account. |
-| `owner` | Owner identifier you assign, such as a team, service, or user ID. |
-| `scopes` | List of permissions in `resource:action` format (for example `ledgers:read`). |
-| `expires_at` | Expiration timestamp (ISO 8601, for example `2026-12-31T23:59:59Z`). |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `name` | `string` | Descriptive name for the key or service account. |
+| `owner` | `string` | Owner identifier you assign, such as a team, service, or user ID. |
+| `scopes` | `string[]` | List of permissions in `resource:action` format (for example `ledgers:read`). |
+| `expires_at` | `string` | Expiration timestamp (ISO 8601, for example `2026-12-31T23:59:59Z`). |
 
----
+</Step>
 
-## Response shape
+<Step title="Store the plaintext key">
 
-```json 201 Created wrap
+Save `response.data.key` immediately. It is only returned at creation and cannot be retrieved later.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
 {
   "api_key_id": "api_key_879f0ecb-e29f-4137-801b-1048366381db",
   "key": "YVLIhuIplUzLRCcT9r7DQ_jsGKCXAn39JQ3n_o-Ll2Q=",
@@ -42,15 +52,19 @@ const response = await blnk.ApiKeys.create({
   "last_used_at": "0001-01-01T00:00:00Z",
   "is_revoked": false
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `api_key_id` | Unique ID for the key. Use it to [revoke the key](/sdks/typescript/api-keys/delete-api-key). |
-| `key` | Plaintext secret. Store it now — it is only returned at creation. |
-| `scopes` | Permissions granted to the key. |
-| `expires_at` | Date and time the key expires. |
-| `is_revoked` | Whether the key has been revoked. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `api_key_id` | `string` | Unique ID for the key. Use it to [revoke the key](/sdks/typescript/api-keys/delete-api-key). |
+| `key` | `string` | Plaintext secret. Store it now. It is only returned at creation. |
+| `scopes` | `string[]` | Permissions granted to the key. |
+| `expires_at` | `string` | Date and time the key expires. |
+| `is_revoked` | `boolean` | Whether the key has been revoked. |
+
+</Step>
+</Steps>
 
 ---
 

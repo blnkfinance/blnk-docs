@@ -8,23 +8,37 @@ description: "Retrieve a transaction by its ID with the TypeScript SDK."
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Use `blnk.Transactions.get` to fetch a single [transaction](/transactions/introduction) by its transaction id.
+Use `blnk.Transactions.get` to fetch a single [transaction](/transactions/introduction) by its transaction ID.
 
-```typescript blnk.Transactions.get wrap {1}
+<Note>
+The TypeScript SDK does not expose a list method for transactions. Use [Search](/sdks/typescript/search/search-db) or get by reference instead.
+</Note>
+
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Transactions.get wrap
 const response = await blnk.Transactions.get(
   'txn_93c3f6dc-9c2c-46b0-89c5-1814cef4d0e4',
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transactionId` | Transaction ID to retrieve. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionId` | `string` | Transaction ID to retrieve. |
 
----
+</Step>
 
-## Response shape
+<Step title="Use the transaction details">
 
-```json 200 OK wrap
+Read `response.data` for status, amounts, source, destination, and metadata. Use the transaction ID for refunds, inflight updates, or lineage queries.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "precise_amount": 300,
   "amount": 3,
@@ -48,16 +62,20 @@ const response = await blnk.Transactions.get(
     "payment_method": "card"
   }
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transaction_id` | Unique ID for the transaction. |
-| `status` | Current [status](/transactions/transaction-lifecycle#statuses) of the transaction. |
-| `source` | Source balance. |
-| `destination` | Destination balance. |
-| `reference` | Reference you supplied at create time. |
-| `meta_data` | Metadata stored with the transaction. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `string` | Unique ID for the transaction. |
+| `status` | `string` | Current [status](/transactions/transaction-lifecycle#statuses) of the transaction. |
+| `source` | `string` | Source balance. |
+| `destination` | `string` | Destination balance. |
+| `reference` | `string` | Reference you supplied at create time. |
+| `meta_data` | `Record<string, unknown>` | Metadata stored with the transaction. |
+
+</Step>
+</Steps>
 
 ---
 
