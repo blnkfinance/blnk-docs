@@ -1,13 +1,25 @@
 ---
 title: "Error Handling"
-description: "Handle TypeScript SDK validation errors and Core errors."
+description: "Check ApiResponse envelopes, read Core error bodies, and handle validation and transport failures with the TypeScript SDK."
 sidebarTitle: "Error handling"
 icon: "triangle-alert"
 ---
 
-Every SDK method returns an `ApiResponse<T>`. Check the response before using `data`.
+import NeedHelp from "/snippets/need-help.mdx";
 
-Errors can come from the SDK, from Core, or from the network. Check `status` first, then read `message` for what happened.
+Every SDK method returns an `ApiResponse<T>`. The SDK does not throw on API failures. Check `status` before you use `data`.
+
+On success, `data` holds the resource. On failure, `status` and `message` describe what went wrong. `data` may hold Core's error JSON or be `null`.
+
+<Tip>
+Do not wrap SDK calls in `try/catch` for API failures. Only `BlnkInit` throws when `baseUrl` is missing.
+</Tip>
+
+---
+
+## Parse the response
+
+Read the envelope first. Use `status` to classify the failure, then read the field that carries detail for that type.
 
 ```typescript wrap
 interface ApiResponse<T> {
@@ -15,106 +27,139 @@ interface ApiResponse<T> {
   message: string;
   data: T;
 }
-
 ```
+
+| Property | Contains |
+| :-- | :-- |
+| `status` | HTTP-style codes: 2xx success, 4xx client error, etc. |
+| `data` | Success body, or Core error JSON on rejection. May be `null`. |
+| `message` | Human-readable description. For logs and UI only. Do not use for logic. |
 
 ---
 
-## Handle responses
+## How to handle errors
 
-Use this pattern with any SDK method. Check `status`, then read `message`.
+<Steps>
+<Step title="Check status">
+
+Confirm success before you use `data`. On every call, check that `status` is in the 2xx range for the method you called.
 
 ```typescript Error handling wrap
-const response = await blnk.Ledgers.create({
-  name: 'Customer accounts',
-});
+const response = await blnk.Transactions.get('txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94');
 
-if (response.status !== 201 || !response.data) {
-  throw new Error(response.message);
+if (response.status !== 200) {
+  const coreError = response.data?.error ?? response.message;
+
+  switch (response.status) {
+    case 404:
+      // Resource not found: stop or prompt for a valid ID
+      break;
+    case 401:
+    case 403:
+      // Auth or scope failure: check the API key
+      break;
+    default:
+      // Log status and coreError
+      break;
+  }
+  return;
 }
 
+// Use response.data
 ```
+
+</Step>
+
+<Step title="Read the error detail">
+
+Use the field that matches the failure type:
+
+- **Core rejection** (`status` is a Core HTTP error and `data` is set): read `response.data.error` for the message Core returned.
+- **SDK validation** (`status === 400` and `data` is `null`): read `response.message` and fix the payload before retrying.
+
+Route on `response.status` when you do not need message-level logic (401, 404, 409, 5xx).
+
+</Step>
+
+<Step title="Configure transport handling">
+
+When the SDK cannot reach Core or the request times out, you get `status: 500` and `data: null`. 
+
+Configure timeout and logging in [your SDK client](/sdks/typescript/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
+
+</Step>
+</Steps>
+
+---
+
+## Core errors
+
+When Core rejects a request, the SDK sets `status` to Core's HTTP status, `message` to the HTTP status text, and `data` to Core's JSON error body.
+
+On Core 0.14.x, the body is typically a single `error` string:
+
+```json 404 Not Found wrap
+{
+  "error": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found"
+}
+```
+
+Read the failure from `response.data.error`. Use `response.status` to choose a broad response. Treat the string as display text: Core may change wording between releases.
+
+| Status | When it happens | What to do |
+| :-- | :-- | :-- |
+| `404` | Resource ID or path does not exist | Stop, or ask for a valid ID |
+| `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
+| `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
+| `400` | Core rejected the payload | Fix the request body before retrying |
+| `5xx` | Core or upstream failure | Retry later and check Core logs |
+
+<Warning>
+Do not match exact `error` strings in application logic. Message text can change. Prefer `status` for routing, and use `data.error` for user-facing messages only.
+</Warning>
 
 ---
 
 ## Client-side validation
 
-Some methods validate input before sending a request. When validation fails, the SDK returns:
+Some methods validate input before sending a request. When validation fails, Core never receives the call.
 
 | Field | Value |
-| :--- | :--- |
+| :-- | :-- |
 | `status` | `400` |
-| `message` | Validation error string (for example `name field must be a valid string`) |
+| `message` | Validation error string, e.g. `reference field must be a valid string` |
 | `data` | `null` |
 
-Fix the payload using `response.message`, then retry. Core does not receive the request.
-
-Common validation cases by resource:
-
-| Resource | What the SDK checks |
-| :--- | :--- |
-| **Ledgers** | `name` is a string; optional `meta_data` is an object. Update requires a non-empty `name`. |
-| **Ledger balances** | `ledger_id` and `currency` are valid strings; optional `identity_id`, `meta_data`, `track_fund_lineage`, and `allocation_strategy` (`FIFO`, `LIFO`, or `PROPORTIONAL`). |
-| **Balance lookup** | `indicator` and `currency` are required for `getByIndicator`. |
-| **Historical balance** | `timestamp` is required for `getAt`. |
-| **Balance monitors** | `balance_id` and a valid `condition` object (`field`, `operator`, `value`, `precision`). |
-| **Transactions** | Required fields such as `currency`, `reference`, `source`, and `destination`; amount or `precise_amount`; date fields in valid formats. |
-| **Identities, hooks, API keys, metadata, search, reconciliation** | Resource-specific required fields and types before the request is sent. |
-
-Example:
-
-```typescript wrap
-const response = await blnk.Transactions.create({
-  amount: 1000,
-  currency: 'USD',
-});
-
-if (response.status === 400) {
-  throw new Error(response.message);
-}
-
-```
+<Tip>
+Each [Core API](/sdks/typescript/ledgers/create-ledger) lists required fields for that call.
+</Tip>
 
 ---
 
-## Server-side (Core) errors
+## Transport failures
 
-When Core rejects a request, the SDK returns Core's HTTP status in `response.status`. The message explains the failure, and `data` contains the Core response body when Core returns one.
+When the SDK cannot reach Core or the request times out, you get `status: 500`, `data: null`, and a `message` describing the failure. Configure timeout and logging in [Using the SDK](/sdks/typescript/start/using-the-sdk#timeouts-and-retries).
 
-```typescript wrap
-const response = await blnk.Transactions.get('txn_missing');
+When debugging transport failures, log `status`, `message`, and the endpoint you called.
 
-if (response.status !== 200) {
-  throw new Error(response.message);
-}
+---
 
-```
-
-Use the status and message to choose the next step:
-
-| Error type | Next step |
-| :--- | :--- |
-| Missing resource | Ask for a different ID, create the missing resource, or stop the workflow. |
-| Validation or format error | Fix the payload before retrying. |
-| Permission error | Check the API key, scopes, and whether the method requires the master key. |
-| Conflict or lock error | Retry only if your operation is safe to repeat. |
-| Internal or unavailable error | Retry later and check Core logs. |
+## Related docs
 
 <CardGroup cols={2}>
-<Card title="API error codes" icon="circle-alert" href="/advanced/error-codes">
-Structured Core error codes for Core 0.15.0 and later.
+<Card title="Using the SDK" icon="code" href="/sdks/typescript/start/using-the-sdk">
+Timeouts, retries, and logging.
+</Card>
+
+<Card title="Quick start" icon="rocket" href="/sdks/typescript/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-ts">
+TypeScript SDK releases and version history.
 </Card>
 </CardGroup>
 
 ---
 
-## Failure modes
-
-| Mode | `status` | What happened |
-| :--- | :--- | :--- |
-| **Client validation** | `400` | The SDK rejected invalid input before sending the request. |
-| **Core error** | Core status | Core returned a non-2xx response. |
-| **Timeout** | `408` | The request exceeded the configured timeout. |
-| **Network error** | `500` | The SDK could not reach Core. |
-
-Use [Using the SDK](/sdks/typescript/start/using-the-sdk) to adjust timeout and retry behavior.
+<NeedHelp />
