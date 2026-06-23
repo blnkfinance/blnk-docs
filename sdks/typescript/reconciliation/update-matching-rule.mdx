@@ -10,32 +10,49 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Reconciliation.updateMatchingRule` to update a matching rule.
 
-```typescript blnk.Reconciliation.updateMatchingRule wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Reconciliation.updateMatchingRule wrap
 const response = await blnk.Reconciliation.updateMatchingRule('rule_abc123', {
   name: 'Amount match (updated)',
   description: 'Match by amount with 2% drift',
   criteria: [
-    { field: 'amount', operator: 'equals', allowable_drift: 0.02 },
-    { field: 'currency', operator: 'equals' },
+    {
+      field: 'amount',
+      operator: 'equals',
+      allowable_drift: 0.02
+    },
+    {
+      field: 'currency',
+      operator: 'equals'
+    },
   ],
 });
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `ruleId` | ID of the matching rule to update. |
-| `name` | Updated name for the rule. |
-| `description` | Updated description of what the rule does. |
-| `criteria` | Full replacement array of match criteria. |
-| `criteria[].field` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
-| `criteria[].operator` | How to compare the field: `equals` or `contains`. |
-| `criteria[].allowable_drift` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ruleId` | `string` | ID of the matching rule to update. |
+| `name` | `string` | Updated name for the rule. |
+| `description` | `string` | Updated description of what the rule does. |
+| `criteria` | `object[]` | Full replacement array of match criteria. |
+| `criteria[].field` | `string` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `string` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | `number` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
 
----
+</Step>
 
-## Response shape
+<Step title="Verify the changes">
 
-```json 200 OK wrap
+Read `response.data` to confirm the updated criteria and description. The rule ID stays the same.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "rule_id": "rule_abc123",
   "name": "Amount match (updated)",
@@ -50,14 +67,18 @@ const response = await blnk.Reconciliation.updateMatchingRule('rule_abc123', {
   "created_at": "2024-11-26T08:36:36.238244338Z",
   "updated_at": "2024-12-01T10:15:00.000000000Z"
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `rule_id` | Unchanged ID of the rule. |
-| `name` | Updated rule name. |
-| `criteria` | The updated match criteria stored for the rule. |
-| `updated_at` | When the rule was last updated. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `string` | Unchanged ID of the rule. |
+| `name` | `string` | Updated rule name. |
+| `criteria` | `object[]` | The updated match criteria stored for the rule. |
+| `updated_at` | `string` | When the rule was last updated. |
+
+</Step>
+</Steps>
 
 ---
 

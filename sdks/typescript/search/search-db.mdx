@@ -10,10 +10,19 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Search.filter` to filter records in a collection.
 
-```typescript blnk.Search.filter wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Search.filter wrap
 const response = await blnk.Search.filter(
   {
-    filters: [{ field: 'status', operator: 'eq', value: 'APPLIED' }],
+    filters: [
+      {
+        field: 'status',
+        operator: 'eq',
+        value: 'APPLIED',
+      },
+    ],
     logical_operator: 'and',
     sort_by: 'created_at',
     sort_order: 'desc',
@@ -23,24 +32,31 @@ const response = await blnk.Search.filter(
   },
   'transactions',
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `filters` | Array of filter conditions, each with a `field`, `operator`, and a `value` or `values`. |
-| `logical_operator` | Combine filters with `and` or `or`. Defaults to `and`. |
-| `sort_by` | Field to sort by. Defaults to `created_at`. |
-| `sort_order` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
-| `include_count` | Return `total_count` in the response. Defaults to `false`. |
-| `limit` | Maximum records to return. Defaults to 20, max 100. |
-| `offset` | Records to skip for pagination. Defaults to 0. |
-| `collection` | Collection to filter: `ledgers`, `transactions`, `balances`, or `identities`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `filters` | `object[]` | Array of filter conditions, each with a `field`, `operator`, and a `value` or `values`. |
+| `logical_operator` | `string` | Combine filters with `and` or `or`. Defaults to `and`. |
+| `sort_by` | `string` | Field to sort by. Defaults to `created_at`. |
+| `sort_order` | `string` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `include_count` | `boolean` | Return `total_count` in the response. Defaults to `false`. |
+| `limit` | `number` | Maximum records to return. Defaults to 20, max 100. |
+| `offset` | `number` | Records to skip for pagination. Defaults to 0. |
+| `collection` | `string` | Collection to filter: `ledgers`, `transactions`, `balances`, or `identities`. |
 
----
+</Step>
 
-## Response shape
+<Step title="Use the filtered results">
 
-```json 200 OK wrap
+Read `response.data.data` for matching records. Use `total_count` with `limit` and `offset` to paginate when `include_count` is `true`.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "data": [
     {
@@ -55,12 +71,16 @@ const response = await blnk.Search.filter(
   ],
   "total_count": 150
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `data` | Array of matching records. Shape varies by collection. |
-| `total_count` | Total matching records. Only present when `include_count` is `true`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data` | `object[]` | Array of matching records. Shape varies by collection. |
+| `total_count` | `number` | Total matching records. Only present when `include_count` is `true`. |
+
+</Step>
+</Steps>
 
 ---
 

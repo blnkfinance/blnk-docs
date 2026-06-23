@@ -10,7 +10,13 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Transactions.create` to post a [transaction](/transactions/introduction) between a source and destination balance.
 
-```typescript blnk.Transactions.create wrap {1}
+<Steps>
+<Step title="Call the method">
+
+<Tabs>
+<Tab title="Standard">
+
+```typescript blnk.Transactions.create wrap
 const response = await blnk.Transactions.create({
   amount: 1250.34,
   precision: 100,
@@ -19,34 +25,143 @@ const response = await blnk.Transactions.create({
   destination: '@MyBalance',
   reference: 'ref_2ye281ewiu',
   description: 'Customer payment',
+  allow_overdraft: false,
+  skip_queue: false,
 });
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `amount` | Transaction amount. Use `precise_amount` for values with more than 15 digits. |
-| `precise_amount` | Amount with [precision](/transactions/precision) already applied. |
-| `currency` | Currency of the transaction. |
-| `precision` | Precision for the currency (for example `100` for cents). |
-| `reference` | Unique reference for the transaction. |
-| `source` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
-| `destination` | Balance receiving the amount. |
-| `description` | Narration of the transaction. |
-| `allow_overdraft` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
-| `inflight` | Hold the transaction until you commit or void it. See [Inflight](/transactions/inflight). |
-| `inflight_expiry_date` | When an inflight transaction expires and rolls back. |
-| `inflight_commit_date` | When Core auto-commits the inflight transaction. |
-| `scheduled_for` | Date and time to post a [scheduled](/transactions/scheduling) transaction. |
-| `effective_date` | Actual date the transaction occurred. See [Backdated transactions](/transactions/backdated-transactions). |
-| `skip_queue` | Bypass the transaction queue and process directly. |
-| `atomic` | For split legs, apply all legs together or none. |
-| `meta_data` | Optional metadata. Tag funds with `BLNK_LINEAGE_PROVIDER` for [fund lineage](/transactions/lineage). |
+</Tab>
 
----
+<Tab title="Inflight">
 
-## Response shape
+To hold funds until you commit or void, include:
 
-```json 201 Created wrap
+```typescript wrap
+inflight: true,
+inflight_expiry_date: '2025-03-01T00:00:00Z',
+inflight_commit_date: '2025-02-28T12:00:00Z',
+```
+
+See [Update inflight](/sdks/typescript/transactions/update-inflight).
+
+</Tab>
+
+<Tab title="Multiple sources">
+
+To debit more than one source, include:
+
+```typescript wrap
+sources: [
+  {
+    identifier: '@CardWallet',
+    distribution: '40%',
+  },
+  {
+    identifier: '@MainWallet',
+    distribution: 'left',
+  },
+],
+destination: '@MerchantBalance',
+atomic: true,
+```
+
+See [Multiple sources](/transactions/multiple-sources).
+
+</Tab>
+
+<Tab title="Multiple destinations">
+
+To credit more than one destination, include:
+
+```typescript wrap
+source: '@MainWallet',
+destinations: [
+  {
+    identifier: '@SavingsWallet',
+    distribution: '60%',
+  },
+  {
+    identifier: '@SpendingWallet',
+    distribution: 'left',
+  },
+],
+atomic: true,
+```
+
+See [Multiple destinations](/transactions/multiple-destinations).
+
+</Tab>
+
+<Tab title="Scheduled">
+
+To schedule, include:
+
+```typescript wrap
+scheduled_for: '2025-03-01T09:00:00Z',
+```
+
+See [Scheduling](/transactions/scheduling).
+
+</Tab>
+
+<Tab title="Backdated">
+
+To record a past transaction date, include:
+
+```typescript wrap
+effective_date: '2025-01-15T12:00:00Z',
+```
+
+See [Backdated transactions](/transactions/backdated-transactions).
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `amount` | `number` | Transaction amount. Use `precise_amount` for values with more than 15 digits. |
+| `precise_amount` | `number` | Amount with [precision](/transactions/precision) already applied. |
+| `currency` | `string` | Currency of the transaction. |
+| `precision` | `number` | Precision for the currency (for example `100` for cents). |
+| `reference` | `string` | Unique reference for the transaction. |
+| `source` | `string` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `destination` | `string` | Balance receiving the amount. |
+| `description` | `string` | Narration of the transaction. |
+
+<Expandable title="Optional parameters">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `allow_overdraft` | `boolean` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `inflight` | `boolean` | Hold the transaction until you commit or void it. See [Inflight](/transactions/inflight). |
+| `inflight_expiry_date` | `string` | When an inflight transaction expires and rolls back. |
+| `inflight_commit_date` | `string` | When Core auto-commits the inflight transaction. |
+| `scheduled_for` | `string` | Date and time to post a [scheduled](/transactions/scheduling) transaction. |
+| `effective_date` | `string` | Actual date the transaction occurred. See [Backdated transactions](/transactions/backdated-transactions). |
+| `sources` | `object[]` | Source legs for a multiple sources transaction. |
+| `destinations` | `object[]` | Destination legs for a multiple destinations transaction. |
+| `sources[].identifier` | `string` | Balance ID or internal balance name for a source leg. |
+| `destinations[].identifier` | `string` | Balance ID or internal balance name for a destination leg. |
+| `distribution` | `string` | Percentage, fixed amount, or `left` for a split leg. |
+| `precise_distribution` | `string` | Fixed split-leg amount in minor units. |
+| `skip_queue` | `boolean` | Bypass the transaction queue and process directly. |
+| `atomic` | `boolean` | For split legs, apply all legs together or none. |
+| `meta_data` | `Record<string, unknown>` | Optional metadata. Tag funds with `BLNK_LINEAGE_PROVIDER` for [fund lineage](/transactions/lineage). |
+
+</Expandable>
+
+</Step>
+
+<Step title="Save the transaction ID">
+
+Save the transaction ID from the response for later retrieval, refunds, or inflight updates.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "rate": 0,
@@ -68,17 +183,21 @@ const response = await blnk.Transactions.create({
   "inflight_expiry_date": "0001-01-01T00:00:00Z",
   "inflight_commit_date": "0001-01-01T00:00:00Z"
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transaction_id` | Unique ID for the transaction. |
-| `status` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`). |
-| `precise_amount` | `amount` × `precision`. |
-| `source` | Resolved source balance. |
-| `destination` | Resolved destination balance. |
-| `hash` | [Hash](/transactions/hash) of the transaction details. |
-| `created_at` | Date and time the transaction was created. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `string` | Unique ID for the transaction. |
+| `status` | `string` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`). |
+| `precise_amount` | `number` | `amount` × `precision`. |
+| `source` | `string` | Resolved source balance. |
+| `destination` | `string` | Resolved destination balance. |
+| `hash` | `string` | [Hash](/transactions/hash) of the transaction details. |
+| `created_at` | `string` | Date and time the transaction was created. |
+
+</Step>
+</Steps>
 
 ---
 

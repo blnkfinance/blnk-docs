@@ -10,25 +10,72 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Transactions.updateStatus` to commit or void an [inflight](/transactions/inflight) transaction or batch.
 
-```typescript blnk.Transactions.updateStatus wrap {1}
+<Steps>
+<Step title="Call the method">
+
+<Tabs>
+<Tab title="Commit">
+
+```typescript blnk.Transactions.updateStatus wrap
 const response = await blnk.Transactions.updateStatus(
   'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
-  { status: 'commit' },
+  {
+    status: 'commit',
+  },
 );
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transactionOrBatchId` | Inflight `transaction_id`, or `batch_id` from `createBulk`. |
-| `status` | `commit` to apply funds, or `void` to cancel and roll back. |
-| `amount` | Partial commit amount. See [Partial commits](/transactions/inflight#partial-commits). |
-| `precise_amount` | Precision-applied partial commit amount. Takes precedence over `amount`. |
+</Tab>
 
----
+<Tab title="Partial commit">
 
-## Response shape
+```typescript blnk.Transactions.updateStatus wrap
+const response = await blnk.Transactions.updateStatus(
+  'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
+  {
+    status: 'commit',
+    amount: 500
+  },
+);
 
-```json 200 OK wrap
+```
+
+</Tab>
+
+<Tab title="Void">
+
+```typescript blnk.Transactions.updateStatus wrap
+const response = await blnk.Transactions.updateStatus(
+  'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
+  {
+    status: 'void',
+  },
+);
+
+```
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionOrBatchId` | `string` | Inflight transaction ID, or batch ID from createBulk. |
+| `status` | `string` | `commit` to apply funds, or `void` to cancel and roll back. |
+| `amount` | `number` | Partial commit amount. See [Partial commits](/transactions/inflight#partial-commits). |
+| `precise_amount` | `number` | Precision-applied partial commit amount. Takes precedence over amount. |
+
+</Step>
+
+<Step title="Confirm the outcome">
+
+Check `response.data.status` for `COMMIT` or `VOID`. Use `parent_transaction` to link the result back to the original inflight transaction.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
 {
   "amount": 1250.34,
   "rate": 0,
@@ -45,14 +92,18 @@ const response = await blnk.Transactions.updateStatus(
   "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
   "created_at": "2024-11-26T09:33:35.265582042Z"
 }
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transaction_id` | ID of the new transaction created by the commit or void. |
-| `parent_transaction` | Original inflight transaction this resolves. |
-| `status` | `COMMIT` or `VOID`. |
-| `precise_amount` | Amount applied (`amount` × `precision`). |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `string` | ID of the new transaction created by the commit or void. |
+| `parent_transaction` | `string` | Original inflight transaction this resolves. |
+| `status` | `string` | `COMMIT` or `VOID`. |
+| `precise_amount` | `number` | Amount applied (amount × precision). |
+
+</Step>
+</Steps>
 
 ---
 

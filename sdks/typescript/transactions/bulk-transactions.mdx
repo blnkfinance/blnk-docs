@@ -10,7 +10,10 @@ import NeedHelp from "/snippets/need-help.mdx";
 
 Use `blnk.Transactions.createBulk` to create many [transactions](/transactions/bulk-transactions) in one request.
 
-```typescript blnk.Transactions.createBulk wrap {1}
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Transactions.createBulk wrap
 const response = await blnk.Transactions.createBulk({
   atomic: true,
   transactions: [
@@ -34,19 +37,26 @@ const response = await blnk.Transactions.createBulk({
     },
   ],
 });
+
 ```
 
-| Field | Description |
-| :-- | :-- |
-| `transactions` | Transaction objects to create; references must be unique within the batch. |
-| `atomic` | When `true`, every transaction succeeds or fails together. |
-| `inflight` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
-| `run_async` | When `true`, Core processes the batch in the background and returns `status: 'queued'`. |
-| `skip_queue` | When `true`, transactions bypass the queue and process synchronously. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `object[]` | Transaction objects to create; references must be unique within the batch. |
+| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: 'queued'`. |
+| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
 
----
+</Step>
 
-## Response shape
+<Step title="Save the batch ID">
+
+Use `response.data.batch_id` as `parent_transaction` to find child transactions, or with updateStatus to commit or void an inflight batch.
+
+</Step>
+
+<Step title="Response">
 
 <CodeGroup>
 ```json Sync wrap
@@ -55,6 +65,7 @@ const response = await blnk.Transactions.createBulk({
   "status": "applied",
   "transaction_count": 4
 }
+
 ```
 
 ```json Async (run_async: true) wrap
@@ -63,15 +74,19 @@ const response = await blnk.Transactions.createBulk({
   "status": "queued",
   "message": "Bulk transaction processing started"
 }
+
 ```
 </CodeGroup>
 
-| Field | Description |
-| :-- | :-- |
-| `batch_id` | Identifier for the batch. Use as `parent_transaction` to find child transactions, or with `updateStatus` to commit or void an inflight batch. |
-| `status` | `applied`, `inflight`, or `queued` depending on the batch. |
-| `transaction_count` | Number of transactions when processed synchronously. |
-| `message` | Status message when `run_async` is `true`. |
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_id` | `string` | Identifier for the batch. Use as parent_transaction to find child transactions, or with updateStatus to commit or void an inflight batch. |
+| `status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | `number` | Number of transactions when processed synchronously. |
+| `message` | `string` | Status message when run_async is true. |
+
+</Step>
+</Steps>
 
 ---
 

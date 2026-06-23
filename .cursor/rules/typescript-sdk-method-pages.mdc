@@ -1,0 +1,120 @@
+---
+description: TypeScript SDK method page template and code formatting standards
+globs: sdks/typescript/**/*.mdx
+alwaysApply: false
+---
+
+# TypeScript SDK method pages
+
+Canonical example: `sdks/typescript/ledgers/create-ledger.mdx`. Verify method names and routes against `blnk-ts` on `main` before documenting.
+
+## Philosophy
+
+Less is more. Document how to use the SDK method, not what the resource is or general HTTP concepts. Link to product guides and API reference instead of duplicating.
+
+## Page structure (in order)
+
+1. **Intro** — one plain sentence. Only the SDK method call in backticks (for example `blnk.Ledgers.create`). Field names in plain text, not backticks.
+2. **Steps** — use `<Steps>` with three steps:
+   - **Call the method** — usage code + params table
+   - **Middle step** — context-specific (Save the ledger ID, Review per-item results, etc.)
+   - **Response** — JSON + field table inline (not a separate `## Response shape` section)
+3. **Related docs** — `CardGroup` with product guide + API reference cards
+4. **NeedHelp** — always last
+
+Do not duplicate API schema links in the page body when the Related docs API card already links to the reference.
+
+## Frontmatter
+
+```yaml
+mode: "wide"
+title: "..."
+sidebarTitle: "..."   # verb-first where possible
+api: "POST /path"     # required
+description: "..."    # end with "with the TypeScript SDK"
+```
+
+Do not add `og:title`, `og:description`, or `icon:` on method pages.
+
+## Parameters
+
+- Table columns: `Field | Type | Description`
+- Put required/common fields in the main table
+- Put optional fields in `<Expandable title="Optional parameters">` when the list is long
+- Do not use `<Accordion>` for params; use `<Expandable>` (matches API reference style)
+
+## Tabs (only when variants differ)
+
+Use tabs only when one method has meaningfully different request shapes (for example create-transaction, update-inflight).
+
+- **Primary tab:** full working example
+- **Variant tabs:** one line starting with **To** (for example `To schedule, include:`), then only the extra fields, then an optional See link
+- Do not repeat full examples across tabs
+
+## Code block formatting
+
+Apply to all TypeScript SDK snippets (method pages and start pages).
+
+### Fence metadata
+
+- Usage: ` ```typescript blnk.Service.method wrap ` — no `{1}` line highlights
+- Response JSON: ` ```json 201 Created wrap expandable ` when the block is long (roughly 8+ lines) or contains fields like `hash`
+- Variant tab snippets: ` ```typescript wrap ` with field lines only (no full `const response = await ...` wrapper)
+
+### Object layout
+
+- One property per line inside objects
+- Never use single-line inline objects in arrays
+- Each array element gets its own multi-line block:
+
+```typescript
+transactions: [
+  {
+    transaction_id: 'txn_11111111-1111-4111-8111-111111111111',
+  },
+  {
+    transaction_id: 'txn_22222222-2222-4222-8222-222222222222',
+    amount: 40,
+  },
+],
+```
+
+- Single-argument option objects expand to multi-line:
+
+```typescript
+const response = await blnk.ApiKeys.list({
+  owner: 'merchant_a',
+});
+```
+
+- Second-argument option objects expand the same way:
+
+```typescript
+const response = await blnk.LedgerBalances.get(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    from_source: true,
+  },
+);
+```
+
+### JSON responses
+
+- Expand inline array objects to multi-line blocks (same rule as TypeScript)
+- Use `expandable` on long response JSON blocks
+
+## Spacing
+
+Add `---` before every `##` H2 heading and before `<NeedHelp />`.
+
+## Do not include
+
+- Separate "Method", "When to use", "Example", or "HTTP errors" sections
+- Generic timeout/network guidance (lives on error-handling page)
+- Em dashes
+- Duplicate API ref links in Expandable sections when Related docs already has the API card
+
+## Method-specific notes
+
+- If Core exposes an endpoint with no matching `blnk-ts` method, do not add an SDK method page. Flag the gap instead.
+- No list method pages for resources that do not expose `list()` in the SDK.
