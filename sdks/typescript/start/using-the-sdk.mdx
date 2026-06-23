@@ -5,54 +5,94 @@ sidebarTitle: "Using the SDK"
 icon: "code"
 ---
 
-Call `BlnkInit` once when your app starts. Use the returned client for all Blnk resources.
+import NeedHelp from "/snippets/need-help.mdx";
 
-```typescript wrap
+<Info>
+Configurable client options v1.1.0 or later. See the [Changelog](/changelog/blnk-ts) before upgrading.
+</Info>
+
+## Initialize the client
+
+Your Blnk client is the single entry point to everything: ledgers, balances, transactions, webhooks, and more. Configure it once when your app starts, then use it everywhere.
+
+```typescript blnk.ts wrap
 import { BlnkInit } from '@blnkfinance/blnk-typescript';
 
-const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+export const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
   baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
 });
 
+```
+
+That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
+
+```typescript create-ledger.ts wrap
+import { blnk } from './blnk';
+
+const response = await blnk.Ledgers.create({
+  name: 'Customer Savings Account',
+  meta_data: {
+    project_owner: 'YOUR_APP_NAME',
+  },
+});
+
+console.log('Ledger Created:', response.data);
 ```
 
 ---
 
 ## Authentication
 
-The first argument to `BlnkInit` is your API key.
+`BlnkInit` takes two arguments: an API key and a client `options` object. 
 
-| Source | Key to use | When |
-| :--- | :--- | :--- |
-| **Blnk Cloud** | Secret key from your Cloud project settings | Hosted environments |
-| **Self-hosted Core** | Master key (`server.secret_key` in your Core config) | Local or private Core with auth enabled |
+The `options` object must include `baseUrl`, the root URL of your Blnk Core instance. The SDK sends the API key on every request in the `X-Blnk-Key` header.
 
-Pass an empty string (`''`) for local Core when auth is disabled.
+How you set the API key depends on whether Core runs in secure mode:
 
-Set `baseUrl` to your Core or Cloud URL:
+<Tabs>
+<Tab title="Secure mode">
 
-| Environment | Example `baseUrl` |
-| :--- | :--- |
-| Local Core | `http://localhost:5001` |
-| Blnk Cloud | Your Cloud instance URL |
+When `server.secure` is enabled, pass your API key as the first argument. Set `baseUrl` to the URL where Core is reachable.
 
-<Note>
-`blnk.Hooks` and `blnk.ApiKeys` require the master key. Scoped API keys return `403`.
-</Note>
+```typescript wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+export const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
+```
+
+</Tab>
+<Tab title="Auth disabled">
+
+When secure mode is off, pass an empty string as the first argument.
+
+```typescript wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+export const blnk = BlnkInit('', {
+  baseUrl: 'http://localhost:5001',
+});
+```
+
+</Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+<Card title="Secure Blnk" icon="shield-check" href="/advanced/secure-blnk">
+Secure mode, master key, and server hardening.
+</Card>
+
+<Card title="Scoped API keys" icon="lock-keyhole" href="/api-keys/overview">
+Owner-scoped keys and permission limits.
+</Card>
+</CardGroup>
 
 ---
 
-## Client options
+## Timeouts and retries
 
-Pass client options as the second argument to `BlnkInit`. These options control timeouts and retries.
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `timeout` | `number` | `10000` | Maximum request time in milliseconds. |
-| `retryCount` | `number` | `1` | Total attempts, including the first. Retries apply only to idempotent `GET` requests, not `POST`, `PUT`, or `DELETE`. |
-| `retryDelayMs` | `number` | `2000` | Base delay between retry attempts in milliseconds. Uses linear backoff. |
-
-Use a longer `timeout` for slow requests. Use a higher `retryCount` for temporary failures on read-only calls.
+When connections fail, Core restarts, or requests hang, the SDK safely handles it without blocking your app. To configure, pass the following parameters in the second `options` object:
 
 ```typescript wrap
 const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
@@ -61,18 +101,27 @@ const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
   retryCount: 3,
   retryDelayMs: 2000,
 });
-
 ```
+
+| Option | Type | Default | What it does for you |
+| :-- | :-- | :-- | :-- |
+| `timeout` | `number` | `10000` | How long to wait before giving up on a request. Bump this for slow operations like bulk reconciliations. |
+| `retryCount` | `number` | `1` | How many times to try. `1` means one attempt, no retries. `3` means try up to 3 times. |
+| `retryDelayMs` | `number` | `2000` | How long to wait between retries. Uses linear backoff, so the delay is predictable. |
+
+When to tune these:
+
+- Keep defaults if you're making fast, local calls and want to fail fast.
+- Increase `timeout` if you're running large batch requests that may take a while to complete synchronously.
+- Increase `retryCount` if you're reading data across an unreliable network
 
 ---
 
 ## Custom logger
 
-By default, the SDK writes logs through `console`.
+By default, the SDK logs its internal events through a built-in logger that writes to console with `INFO:`, `ERROR:`, and `DEBUG:` prefixes.
 
-It logs retries, HTTP failures, and timeouts. It does not log full request or response bodies by default.
-
-Pass a custom logger when you want those logs in your own logging system.
+Pass a custom logger to route these messages to your own logging system instead of console.
 
 ```typescript wrap
 const blnk = BlnkInit(apiKey, {
@@ -80,43 +129,46 @@ const blnk = BlnkInit(apiKey, {
   logger: {
     info: (message, ...meta) => appLogger.info({ meta }, message),
     error: (message, ...meta) => appLogger.error({ meta }, message),
-    debug: (message, ...meta) => appLogger.debug({ meta }, message),
   },
 });
-
-```
-
-Retry log:
-
-```text wrap
-INFO: Retrying request to transactions/txn_123 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
-```
-
-Timeout log:
-
-```text wrap
-ERROR: Request timed out { endpoint: "transactions/txn_123", timeoutMs: 30000 }
-```
-
-Avoid logging full responses if metadata may contain sensitive values.
-
----
-
-## Versioning
-
-Pin the SDK version in `package.json` for production apps. Patch and minor releases stay backward compatible.
-
-```json package.json wrap
-{
-  "dependencies": {
-    "@blnkfinance/blnk-typescript": "^1.3.0"
-  }
-}
-
 ```
 
 <Note>
-Configurable timeout, retries, base URL, and logger options require `@blnkfinance/blnk-typescript` v1.3.0 or later. Check the [Changelog](/changelog/blnk-ts) before upgrading.
+Metadata passed to the logger is redacted. The SDK strips values for keys such as `api_key`, `authorization`, `token`, and `secret` before logging.
 </Note>
 
-For response handling, see [Error handling](/sdks/typescript/start/error-handling).
+| Level | When the SDK calls it |
+| :-- | :-- |
+| `info` | Before a retry, or when a retryable `GET` failure will be retried |
+| `error` | When a request times out, returns a non-retryable HTTP error, or fails with a network error |
+
+```bash Example logs wrap
+INFO: Retrying request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
+
+ERROR: Request timed out { endpoint: 'transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94', timeoutMs: 30000 }
+
+ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed with status 404.
+```
+
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Quick start" icon="rocket" href="/sdks/typescript/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Error handling" icon="triangle-alert" href="/sdks/typescript/start/error-handling">
+ApiResponse checks and Core error codes.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-ts">
+TypeScript SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
