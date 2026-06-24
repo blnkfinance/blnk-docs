@@ -53,15 +53,16 @@ Confirm success before you use `data`. On every call, check that `status` is in 
 ```typescript Error handling wrap
 const response = await blnk.Transactions.get('txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94');
 
-if (response.status !== 200) {
+if (response.status < 200 || response.status >= 300) {
   const errorCode = response.error?.code;
 
-  switch (errorCode) {
-    case 'TXN_NOT_FOUND':
-      // Resource not found: stop or prompt for a valid ID
+  switch (response.status) {
+    case 404:
+      // Resource not found: check errorCode (e.g. TXN_NOT_FOUND)
       break;
-    case undefined:
-      // SDK validation or transport failure: read response.message
+    case 401:
+    case 403:
+      // Auth or scope failure: check the API key
       break;
     default:
       // Log status, errorCode, and response.message
@@ -79,10 +80,10 @@ if (response.status !== 200) {
 
 Use the field that matches the failure type:
 
-- **Core rejection** (`status` is a Core HTTP error): branch on `response.error?.code`. Use `response.error?.message` or `response.data?.error` for display only.
+- **Core rejection** (`status` is a Core HTTP error and `data` is set): read `response.error?.code` for the code Core returned.
 - **SDK validation** (`status === 400` and `data` is `null`): read `response.message` and fix the payload before retrying.
 
-Route on `response.error?.code` when you need stable logic. Use `response.status` for broad handling (401, 404, 409, 5xx) when a specific code is not required.
+Route on `response.status` when you do not need code-level logic (401, 404, 409, 5xx).
 
 </Step>
 
@@ -114,18 +115,18 @@ On Core 0.15.0 and later, error bodies include `error_detail`:
 }
 ```
 
-Branch on `response.error?.code`. The `error` string is still returned for display, but message text may change between releases.
+Read the failure from `response.error?.code`. Use `response.status` to choose a broad response. Treat `response.error?.message` as display text; Core may change wording between releases. On older Core versions, `response.error?.code` may be `UNKNOWN`.
 
 | Status | When it happens | What to do |
 | :-- | :-- | :-- |
-| `404` | Resource ID or path does not exist | Check `error.code` (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
+| `404` | Resource ID or path does not exist | Check `response.error?.code` (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
 | `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
 | `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
 | `400` | Core rejected the payload | Fix the request body before retrying |
 | `5xx` | Core or upstream failure | Retry later and check Core logs |
 
 <Warning>
-Do not match exact `error` strings or the `NOT_FOUND:` prefix in application logic. Branch on `response.error?.code` instead. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
+Do not match exact `error` strings in application logic. Message text can change. Prefer `response.error?.code` for routing and `response.error?.message` for user-facing messages only. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
 </Warning>
 
 ---
