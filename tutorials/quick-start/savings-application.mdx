@@ -55,40 +55,6 @@ Before starting, ensure you have:
 
 ---
 
-## Initialise your client
-
-Initialize the Blnk client once at the start of your application:
-
-<CodeGroup>
-```javascript TypeScript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-
-let blnkInstance = null;
-
-async function getBlnkInstance() {
-  if (!blnkInstance) {
-    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
-  }
-  return blnkInstance;
-}
-```
-
-```go Go wrap
-var client *blnkgo.Client
-
-func getClient() *blnkgo.Client {
-    if client == nil {
-        baseURL, _ := url.Parse("http://localhost:5001/")
-        apiKey := "YOUR_API_KEY"
-        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
-    }
-    return client
-}
-```
-</CodeGroup>
-
----
-
 ## Create customer savings balance
 
 Create a balance with the `ledger_id` of your `Customer Savings Ledger` to represent your customer savings wallet:
@@ -112,12 +78,11 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createSavingsWallet(savingsLedgerId, identityId, currency) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const savingsWallet = await LedgerBalances.create({
+  
+  const savingsWallet = await blnk.LedgerBalances.create({
     ledger_id: savingsLedgerId,
     identity_id: identityId,
     currency: currency,
@@ -191,12 +156,11 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createScheduledSavingsTransaction(savingsBalanceId, savingsAmount, uniqueReference, description, scheduledDate) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
   
-  const scheduledSavings = await Transactions.create({
+  
+  const scheduledSavings = await blnk.Transactions.create({
     precise_amount: savingsAmount * 100,
     precision: 100,
     reference: uniqueReference,
@@ -290,7 +254,7 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 import express from 'express';
 const app = express();
 app.use(express.json());
@@ -305,11 +269,10 @@ app.post('/webhooks/transactions', async (req, res) => {
     ) {
       console.log('Scheduled savings completed:', transaction.transaction_id);
       
-      const blnk = await getBlnkInstance();
-      const { LedgerBalances, Transactions } = blnk;
+      
       
       const savingsBalanceId = transaction.destination;
-      const savingsBalance = await LedgerBalances.get(savingsBalanceId);
+      const savingsBalance = await blnk.LedgerBalances.get(savingsBalanceId);
       
       if (
         savingsBalance.meta_data?.schedule_savings === true
@@ -338,7 +301,7 @@ app.post('/webhooks/transactions', async (req, res) => {
         
         // 2. Create a new scheduled transaction
         const uniqueReference = `sch-savings-${Date.now()}`;
-        const scheduledSavings = await Transactions.create({
+        const scheduledSavings = await blnk.Transactions.create({
           precise_amount: amount * 100,
           precision: 100,
           reference: uniqueReference,
@@ -492,10 +455,9 @@ curl -X POST "http://localhost:5001/balances/<balance-id>/metadata" \
 }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function updateSavingsFrequency(balanceId, newFrequency) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
+  
   
   try {
     const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';

@@ -85,11 +85,11 @@ Before implementing the exchange logic, we need to establish the foundational st
 Create two ledgers to segregate different cryptocurrencies:
 
 ```javascript
-const ethLedger = await Ledgers.create({
+const ethLedger = await blnk.Ledgers.create({
   name: "Customer ETH Ledger"
 });
 
-const maticLedger = await Ledgers.create({
+const maticLedger = await blnk.Ledgers.create({
   name: "Customer MATIC Ledger"
 });
 ```
@@ -98,25 +98,25 @@ const maticLedger = await Ledgers.create({
 
 Create balances for both users in each ledger:
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 // Create ETH balances
-const johnEthBalance = await Balances.create({
+const johnEthBalance = await blnk.LedgerBalances.create({
   ledger_id: ethLedger.id,
   currency: "ETH"
 });
 
-const emilyEthBalance = await Balances.create({
+const emilyEthBalance = await blnk.LedgerBalances.create({
   ledger_id: ethLedger.id,
   currency: "ETH"
 });
 
 // Create MATIC balances
-const johnMaticBalance = await Balances.create({
+const johnMaticBalance = await blnk.LedgerBalances.create({
   ledger_id: maticLedger.id,
   currency: "MATIC"
 });
 
-const emilyMaticBalance = await Balances.create({
+const emilyMaticBalance = await blnk.LedgerBalances.create({
   ledger_id: maticLedger.id,
   currency: "MATIC"
 });
@@ -128,9 +128,9 @@ const emilyMaticBalance = await Balances.create({
   In this example, we use a precision of 100 for simplicity (e.g., 1 ETH = 100 units). In production, cryptocurrencies like ETH use a precision of 10^18 (1 ETH = 10^18 wei). Adjust the `precision` parameter in all transaction calls accordingly and ensure amount calculations reflect this precision.
 </Note>
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 // Fund John's ETH balance
-await Transactions.create({
+await blnk.Transactions.create({
   precise_amount: 100, 
   currency: "ETH",
   reference: `ref_${uuidv4()}`,
@@ -142,7 +142,7 @@ await Transactions.create({
 });
 
 // Fund Emily's MATIC balance
-await Transactions.create({
+await blnk.Transactions.create({
   precise_amount: 1000,
   currency: "MATIC",
   reference: `ref_${uuidv4()}`,
@@ -164,8 +164,8 @@ When John or Emily creates an order, we need to:
 1. Confirm that they have sufficient funds to successfully place the order.
     ```javascript
     async function checkBalance(balanceId: string, amount: number) {
-      const { LedgerBalances } = blnk;
-      const response = await LedgerBalances.get(balanceId);
+      
+      const response = await blnk.LedgerBalances.get(balanceId);
       if (response.status !== 200 || !response.data) {
         throw new Error(response.message ?? 'Failed to get balance');
       }
@@ -182,9 +182,9 @@ When John or Emily creates an order, we need to:
     ```javascript
     async function createInflightTransaction(balanceId: string, amount: number, currency: string, receiveCurrency: string) {
       const orderReference = `order_${uuidv4()}`;
-      const { Transactions } = blnk;
       
-      const inflightResponse = await Transactions.create({
+      
+      const inflightResponse = await blnk.Transactions.create({
         precise_amount: amount * 100,
         currency: currency,
         precision: 100,
@@ -280,7 +280,7 @@ When John or Emily creates an order, we need to:
 
 When two orders are matched (e.g., John and Emily), we want to link them together with a common matching ID. This helps us track which orders in our Ledger were matched with each other.
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function linkMatchedOrders(transaction1Id: string, transaction2Id: string) {
     const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
     const apiKey = process.env.BLNK_API_KEY ?? '';
@@ -325,7 +325,7 @@ Finally, we need to execute the exchange of assets between the matched orders - 
 1. We need to commit these transactions to move the funds to escrow.
 2. Then we create new transactions to move funds from escrow to the respective recipient balances (John's MATIC balance and Emily's ETH balance).
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function settleMatchedOrders(
     johnTxId: string,    // John's ETH inflight transaction ID
     emilyTxId: string    // Emily's MATIC inflight transaction ID
@@ -335,7 +335,9 @@ async function settleMatchedOrders(
         const apiKey = process.env.BLNK_API_KEY ?? '';
 
         for (const txId of [johnTxId, emilyTxId]) {
-          const commit = await Transactions.updateStatus(txId, { status: 'commit' });
+          const commit = await blnk.Transactions.updateStatus(txId, {
+            status: 'commit',
+          });
           if (commit.status !== 200 || !commit.data) {
             throw new Error(commit.message ?? `Failed to commit ${txId}`);
           }
@@ -351,7 +353,7 @@ async function settleMatchedOrders(
         const settlementReference = `settlement_${uuidv4()}`;
 
         // Step 3: Move ETH from escrow to Emily
-        const ethTransfer = await Transactions.create({
+        const ethTransfer = await blnk.Transactions.create({
             precise_amount: johnTx.precise_amount, 
             currency: 'ETH',
             precision: 100,
@@ -365,7 +367,7 @@ async function settleMatchedOrders(
         });
 
         // Step 4: Move MATIC from escrow to John
-        const maticTransfer = await Transactions.create({
+        const maticTransfer = await blnk.Transactions.create({
             precise_amount: emilyTx.precise_amount, // 10 MATIC 
             currency: 'MATIC',
             precision: 100,

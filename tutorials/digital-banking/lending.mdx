@@ -49,40 +49,6 @@ To prepare for the rest of this tutorial, read our [Building a Wallet with Blnk]
 
 ---
 
-## Initialise your client
-
-Initialize the Blnk client once at the start of your application:
-
-<CodeGroup>
-```javascript TypeScript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-
-let blnkInstance = null;
-
-async function getBlnkInstance() {
-  if (!blnkInstance) {
-    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
-  }
-  return blnkInstance;
-}
-```
-
-```go Go wrap
-var client *blnkgo.Client
-
-func getClient() *blnkgo.Client {
-    if client == nil {
-        baseURL, _ := url.Parse("http://localhost:5001/")
-        apiKey := "YOUR_API_KEY"
-        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
-    }
-    return client
-}
-```
-</CodeGroup>
-
----
-
 ## Create your ledgers
 
 First, we create 2 ledgers. 
@@ -115,12 +81,11 @@ curl -X POST "http://localhost:5001/ledgers" \
 }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createCustomerLedger() {
-  const blnk = await getBlnkInstance();
-  const { Ledgers } = blnk;
   
-  const customerLedger = await Ledgers.create({
+  
+  const customerLedger = await blnk.Ledgers.create({
     name: "Customer Accounts",
     meta_data: {
       description: "Contains all customer main balances"
@@ -132,10 +97,9 @@ async function createCustomerLedger() {
 }
 
 async function createLoanLedger() {
-  const blnk = await getBlnkInstance();
-  const { Ledgers } = blnk;
   
-  const loanLedger = await Ledgers.create({
+  
+  const loanLedger = await blnk.Ledgers.create({
     name: "Loan Accounts",
     meta_data: {
       description: "Contains all customer loan balances"
@@ -203,12 +167,11 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createCustomerMainBalance(customerLedgerId, customerDetails) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const mainBalance = await LedgerBalances.create({
+  
+  const mainBalance = await blnk.LedgerBalances.create({
     ledger_id: customerLedgerId,
     currency: "USD",
     meta_data: {
@@ -263,12 +226,11 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createLoanBalance(loanLedgerId, customerDetails, loanDetails) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const loanBalance = await LedgerBalances.create({
+  
+  const loanBalance = await blnk.LedgerBalances.create({
     ledger_id: loanLedgerId,
     currency: "USD",
     meta_data: {
@@ -343,15 +305,14 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function disburseLoan(loanBalanceId, customerBalanceId, loanAmount) {
-  const blnk = await getBlnkInstance();
-  const { Transactions, LedgerBalances } = blnk;
+  
   
   // Generate a unique reference for this transaction
   const reference = `LOAN-DISBURSE-${Date.now()}`;
   
-  const disbursement = await Transactions.create({
+  const disbursement = await blnk.Transactions.create({
     precise_amount: loanAmount * 100,
     precision: 100,
     reference: reference,
@@ -471,13 +432,12 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function calculateAndChargeInterest(loanBalanceId, interestRate) {
-  const blnk = await getBlnkInstance();
-  const { Transactions, LedgerBalances } = blnk;
+  
   
   // Get current loan balance
-  const loanBalance = await LedgerBalances.get(loanBalanceId);
+  const loanBalance = await blnk.LedgerBalances.get(loanBalanceId);
   
   // Get the principal amount (convert negative balance to positive)
   const principal = Math.abs(loanBalance.data.balance);
@@ -493,7 +453,7 @@ async function calculateAndChargeInterest(loanBalanceId, interestRate) {
   const reference = `INTEREST-${Date.now()}`;
   
   // Transfer interest from loan balance to interest revenue balance
-  const interestTransaction = await Transactions.create({
+  const interestTransaction = await blnk.Transactions.create({
     precise_amount: roundedInterest * 100,
     precision: 100,
     reference: reference,
@@ -583,16 +543,15 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentAmount) {
-  const blnk = await getBlnkInstance();
-  const { Transactions, LedgerBalances } = blnk;
+  
   
   // Generate a unique reference
   const reference = `LOAN-REPAY-${Date.now()}`;
   
   // Transfer from customer's balance to loan balance
-  const repayment = await Transactions.create({
+  const repayment = await blnk.Transactions.create({
     precise_amount: repaymentAmount * 100,
     precision: 100,
     reference: reference,
@@ -609,7 +568,7 @@ async function processLoanRepayment(customerBalanceId, loanBalanceId, repaymentA
   console.log("Loan repayment processed:", repayment.data);
   
   // Check if loan is fully repaid
-  const updatedLoanBalance = await LedgerBalances.get(loanBalanceId);
+  const updatedLoanBalance = await blnk.LedgerBalances.get(loanBalanceId);
   
   if (updatedLoanBalance.data.balance >= 0) {
     // Loan is fully repaid, update status
@@ -698,12 +657,11 @@ curl -X GET "http://localhost:5001/balances/bln_LOAN_BALANCE_ID" \
   -H "Content-Type: application/json"
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function checkLoanStatus(loanBalanceId) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const loanBalance = await LedgerBalances.get(loanBalanceId);
+  
+  const loanBalance = await blnk.LedgerBalances.get(loanBalanceId);
   
   const status = {
     balance_id: loanBalanceId,

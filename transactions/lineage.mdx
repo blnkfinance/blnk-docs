@@ -93,15 +93,30 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
   <Step title="Create a balance with lineage enabled">
     Blnk requires that the balance has an `identity_id` set to enable lineage tracking for a balance.
 
-    ```json Create balance (lineage enabled) wrap
-    {
-      "ledger_id": "ldg_049495...",
-      "identity_id": "idt_4dd128...",
-      "currency": "USD",
-      "track_fund_lineage": true,
-      "allocation_strategy": "FIFO"
-    }
+    <CodeGroup>
+    ```bash cURL wrap {8,9}
+    curl -X POST "http://localhost:5001/balances" \
+      -H "X-blnk-key: <api-key>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+        "identity_id": "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+        "currency": "USD",
+        "track_fund_lineage": true,
+        "allocation_strategy": "FIFO"
+      }'
     ```
+
+    ```typescript TypeScript wrap {5,6}
+    const response = await blnk.LedgerBalances.create({
+      ledger_id: 'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
+      identity_id: 'idt_4dd12897-f085-41f2-955f-790ed3c0a7fb',
+      currency: 'USD',
+      track_fund_lineage: true,
+      allocation_strategy: 'FIFO',
+    });
+    ```
+    </CodeGroup>
 
     Allocation strategy defines how Blnk will allocate the funds when you spend from the balance. Supported allocation strategies are:
 
@@ -112,20 +127,40 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
   <Step title="Tag incoming funds">
     To initialize lineage for incoming funds, you must include a lineage provider. To do this, set the `meta_data.BLNK_LINEAGE_PROVIDER` field to the provider you want to tag the funds with.
 
-    ```json Tag incoming funds
-    {
-      "precise_amount": 10000,
-      "precision": 100,
-      "currency": "USD",
-      "reference": "ref_001",
-      "source": "@World",
-      "destination": "bln_5ce860...",
-      "description": "Top up via card",
-      "meta_data": {
-        "BLNK_LINEAGE_PROVIDER": "stripe"
-      }
-    }
+    <CodeGroup>
+    ```bash cURL wrap {13}
+    curl -X POST "http://localhost:5001/transactions" \
+      -H "X-blnk-key: <api-key>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "precise_amount": 10000,
+        "precision": 100,
+        "currency": "USD",
+        "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        "source": "@World",
+        "destination": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        "description": "Top up via card",
+        "meta_data": {
+          "BLNK_LINEAGE_PROVIDER": "stripe"
+        }
+      }'
     ```
+
+    ```typescript TypeScript wrap {10}
+    const response = await blnk.Transactions.create({
+      precise_amount: 10000,
+      precision: 100,
+      currency: 'USD',
+      reference: 'ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+      source: '@World',
+      destination: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+      description: 'Top up via card',
+      meta_data: {
+        BLNK_LINEAGE_PROVIDER: 'stripe',
+      },
+    });
+    ```
+    </CodeGroup>
 
     This tells Blnk how to classify the incoming funds. No other configuration is needed.
 
@@ -143,22 +178,39 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
     - Record the provider-level breakdown automatically
     - Attach the breakdown to the transaction metadata under `BLNK_FUND_ALLOCATION`
 
-    ```json Spend from a lineage-enabled balance
-    {
-      "precise_amount": 2500,
-      "precision": 100,
-      "currency": "USD",
-      "reference": "ref_002",
-      "source": "bln_5ce860...",
-      "destination": "@MerchantSettlement",
-      "description": "Purchase"
-    }
+    <CodeGroup>
+    ```bash cURL wrap
+    curl -X POST "http://localhost:5001/transactions" \
+      -H "X-blnk-key: <api-key>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "precise_amount": 2500,
+        "precision": 100,
+        "currency": "USD",
+        "reference": "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+        "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        "destination": "@MerchantSettlement",
+        "description": "Purchase"
+      }'
     ```
+
+    ```typescript TypeScript wrap
+    const response = await blnk.Transactions.create({
+      precise_amount: 2500,
+      precision: 100,
+      currency: 'USD',
+      reference: 'ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+      source: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+      destination: '@MerchantSettlement',
+      description: 'Purchase',
+    });
+    ```
+    </CodeGroup>
 
     You can then inspect the results using:
 
-    - `GET /transactions/:id/lineage` (allocation + shadow transactions)
-    - `GET /balances/:id/lineage` (provider breakdown on a balance)
+    - [Get transaction lineage](#get-transaction-lineage) (allocation + shadow transactions)
+    - [Get balance lineage](#get-balance-lineage) (provider breakdown on a balance)
   </Step>
   <Step title="Optional: Propagate lineage across balances">
     If the destination balance of a transaction also has `track_fund_lineage: true` enabled:
@@ -179,7 +231,7 @@ When lineage is enabled, Blnk creates internal “shadow” and “aggregate” 
 - **Provider shadow balance**: `@PROVIDER_IDENTITY_IDENTIFIER_lineage`
 - **Aggregate balance (all providers)**: `@IDENTITY_IDENTIFIER_lineage`
 
-For example: provider `stripe` + identity `John Doe` (`identity_id: "idt_4dd12897-..."`) becomes:
+For example: provider `stripe` + identity `John Doe` (`identity_id: "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb"`) becomes:
 - Shadow balance: `@stripe_john_doe_idt_4dd1_lineage`
 - Aggregate balance: `@john_doe_idt_4dd1_lineage`
 
@@ -199,8 +251,14 @@ Use this to see the current provider breakdown for a balance.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/lineage" \
+curl -X GET "http://localhost:5001/balances/bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f/lineage" \
   -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.getLineage(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+);
 ```
 </CodeGroup>
 
@@ -208,10 +266,10 @@ This returns, per provider:
 - how much is still available
 - how much has already been spent
 
-```json Response
+```json Response wrap
 {
   "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
-  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "aggregate_balance_id": "bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94",
   "total_with_lineage": "7500",
   "providers": [
     {
@@ -219,7 +277,7 @@ This returns, per provider:
       "amount": "10000",
       "available": "7500",
       "spent": "2500",
-      "shadow_balance_id": "bln_shadow_balance_id"
+      "shadow_balance_id": "bln_e92a1ba7-92c7-427c-8c8f-bfdca55c875d"
     }
   ]
 }
@@ -236,8 +294,14 @@ Use this to see how a specific transaction was funded.
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/transactions/{transaction_id}/lineage" \
+curl -X GET "http://localhost:5001/transactions/txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad/lineage" \
   -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.getLineage(
+  'txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad',
+);
 ```
 </CodeGroup>
 
@@ -246,16 +310,19 @@ This is most useful for debits from lineage-enabled balances. It returns:
 - the fund allocation (how much was taken from each provider)
 - any internal shadow transactions created for lineage tracking
 
-```json Response
+```json Response wrap
 {
   "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
   "fund_allocation": [
-    { "provider": "card_issuer", "amount": "2500" }
+    {
+      "provider": "stripe",
+      "amount": "2500"
+    }
   ],
   "shadow_transactions": [
     {
-      "transaction_id": "txn_shadow_123",
-      "reference": "ref_lineage_debit_001_release_card_issuer_0",
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "reference": "ref_lineage_debit_001_release_stripe_0",
       "precise_amount": "2500",
       "currency": "USD"
     }

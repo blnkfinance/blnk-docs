@@ -70,40 +70,6 @@ Before starting, ensure you have:
 
 ---
 
-## Initialise your client
-
-Initialize the Blnk client once at the start of your application:
-
-<CodeGroup>
-```javascript TypeScript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-
-let blnkInstance = null;
-
-async function getBlnkInstance() {
-  if (!blnkInstance) {
-    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
-  }
-  return blnkInstance;
-}
-```
-
-```go Go wrap
-var client *blnkgo.Client
-
-func getClient() *blnkgo.Client {
-    if client == nil {
-        baseURL, _ := url.Parse("http://localhost:5001/")
-        apiKey := "YOUR_API_KEY"
-        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
-    }
-    return client
-}
-```
-</CodeGroup>
-
----
-
 ## Create customer ledger
 
 <Tip>
@@ -126,12 +92,11 @@ curl -X POST "http://localhost:5001/ledgers" \
   }'
 ```
 
-```javascript TypeScript wrap
+```typescript TypeScript wrap
 async function createCustomerLedger() {
-  const blnk = await getBlnkInstance();
-  const { Ledgers } = blnk;
   
-  const customerLedger = await Ledgers.create({
+  
+  const customerLedger = await blnk.Ledgers.create({
     name: "Customer Wallets Ledger",
     meta_data: {
       description: "Ledger for managing customer wallets",
@@ -191,12 +156,11 @@ curl -X POST "http://localhost:5001/identities" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createCustomerIdentity(customerData) {
-  const blnk = await getBlnkInstance();
-  const { Identities } = blnk;
   
-  const identity = await Identities.create({
+  
+  const identity = await blnk.Identity.create({
     identity_type: "individual",
     first_name: customerData.firstName,
     last_name: customerData.lastName,
@@ -263,12 +227,11 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createMainWallet(ledgerId, identityId, currency) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const mainWallet = await LedgerBalances.create({
+  
+  const mainWallet = await blnk.LedgerBalances.create({
     ledger_id: ledgerId,
     identity_id: identityId,
     currency: currency,
@@ -339,12 +302,11 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function depositToWallet(customerBalanceID, amount, uniqueReference, description) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
   
-  const deposit = await Transactions.create({
+  
+  const deposit = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
@@ -427,12 +389,11 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, description) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
   
-  const withdrawal = await Transactions.create({
+  
+  const withdrawal = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
@@ -509,12 +470,11 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createCardWallet(ledgerId, identityId, currency) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
   
-  const cardWallet = await LedgerBalances.create({
+  
+  const cardWallet = await blnk.LedgerBalances.create({
     ledger_id: ledgerId,
     identity_id: identityId,
     currency: currency,
@@ -588,12 +548,11 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, uniqueReference, description) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
   
-  const transfer = await Transactions.create({
+  
+  const transfer = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,

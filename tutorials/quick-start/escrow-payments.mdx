@@ -64,40 +64,6 @@ Before starting, ensure you have:
 
 ---
 
-## Initialise your client
-
-Initialize the Blnk client once at the start of your application:
-
-<CodeGroup>
-```javascript TypeScript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-
-let blnkInstance = null;
-
-async function getBlnkInstance() {
-  if (!blnkInstance) {
-    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
-  }
-  return blnkInstance;
-}
-```
-
-```go Go wrap
-var client *blnkgo.Client
-
-func getClient() *blnkgo.Client {
-    if client == nil {
-        baseURL, _ := url.Parse("http://localhost:5001/")
-        apiKey := "YOUR_API_KEY"
-        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
-    }
-    return client
-}
-```
-</CodeGroup>
-
----
-
 ## Initiate escrow transaction
 
 [Create a transaction](/transactions/introduction#recording-a-transaction) with `inflight` enabled.
@@ -125,12 +91,11 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable {13}
+```typescript TypeScript wrap expandable {13}
 async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, uniqueReference, description) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
   
-  const escrow = await Transactions.create({
+  
+  const escrow = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
     reference: uniqueReference,
@@ -205,13 +170,12 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function commitInflightTransaction(transactionId) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
+  
   
   try {
-    const response = await Transactions.updateStatus(transactionId, {
+    const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'commit',
     });
     if (response.status !== 200 || !response.data) {
@@ -257,13 +221,12 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function voidInflightTransaction(transactionId) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
+  
   
   try {
-    const response = await Transactions.updateStatus(transactionId, {
+    const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'void',
     });
     if (response.status !== 200 || !response.data) {
@@ -312,13 +275,12 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function commitPartialInflightTransaction(transactionId, partialAmount) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
+  
   
   try {
-    const response = await Transactions.updateStatus(transactionId, {
+    const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'commit',
       precise_amount: partialAmount * 100,
     });

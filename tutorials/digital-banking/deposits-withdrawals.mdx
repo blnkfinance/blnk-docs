@@ -56,9 +56,8 @@ When recording a deposit with fee processing, we’ll use the [Multiple Destinat
 
 We’ll also apply `inflight` to validate the deposits against predefined business rules before finalizing the transaction.
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function recordDeposit(sourceId, customerBalanceId, amount, reference, stripePaymentId) {
-  const blnk = await getBlnkInstance();
   
   // Calculate fee (1% capped at $5)
   const feePercentage = 0.01;
@@ -112,9 +111,8 @@ Next, we’ll develop functions to process deposits according to the following b
 
 #### Rule 1: Check if balance is blocked or frozen
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function processDepositBasedOnRules(transactionId) {
-  const blnk = await getBlnkInstance();
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
   const apiKey = process.env.BLNK_API_KEY ?? '';
 
@@ -159,9 +157,8 @@ async function processDepositBasedOnRules(transactionId) {
 
 #### Rule 2: Check amount rule
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function processDepositByAmount(transactionId) {
-  const blnk = await getBlnkInstance();
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
   const apiKey = process.env.BLNK_API_KEY ?? '';
 
@@ -210,9 +207,8 @@ Read more: [Webhooks overview →](/webhooks/overview)
 
 ### Putting it all together
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
-  const blnk = await getBlnkInstance();
   
   // Step 1: Record the deposit with fee processing
   const reference = `stripe_${stripePaymentId}`;
@@ -237,9 +233,8 @@ async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
 
 To process refunds in your ledger and reverse a deposit:
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function refundDeposit(transactionId, reason = 'Customer requested refund') {
-  const blnk = await getBlnkInstance();
   
   // Process the refund
   const refund = await blnk.Transactions.refund(transactionId);
@@ -283,10 +278,9 @@ From our map, we can verify:
 
 Here, the payout was successfully completed by your payout provider:
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 // Initiate a payout with inflight
 async function initiatePayout(customerBalanceId, billsAmount, reference) {
-  const blnk = await getBlnkInstance();
 
   // Calculate fee (0.5% with $1 minimum)
   const feePercentage = 0.005;
@@ -336,7 +330,7 @@ function getExpiryDate(hours) {
 
 #### Commit based on feedback from payout provider
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 // Webhook handler for payment processor notifications
 async function handlePaymentWebhook(webhookBody) {
   const { 
@@ -409,7 +403,7 @@ This unified approach simplifies managing complex transactions involving multipl
 
 The payout is pending, but a failure message was received from the provider, resulting in the transaction being voided:
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function handlePaymentWebhook(webhookBody) {
   const { 
     event_type, 
@@ -468,9 +462,8 @@ async function handlePaymentWebhook(webhookBody) {
 
 The payout was initially successful, with confirmation received from the provider, but the funds were reversed by the provider due to an inability to settle the transaction:
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function refundPayout(transactionId, reason = "Can't complete payout") {
-  const blnk = await getBlnkInstance();
   
   // Process the refund
   const refund = await blnk.Transactions.refund(transactionId);

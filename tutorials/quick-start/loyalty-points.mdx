@@ -74,40 +74,6 @@ Before starting, ensure you have:
 
 ---
 
-## Initialise your client
-
-Initialize the Blnk client once at the start of your application:
-
-<CodeGroup>
-```javascript TypeScript wrap
-const { BlnkInit } = require('@blnkfinance/blnk-typescript');
-
-let blnkInstance = null;
-
-async function getBlnkInstance() {
-  if (!blnkInstance) {
-    blnkInstance = await BlnkInit('', { baseUrl: 'http://localhost:5001' });
-  }
-  return blnkInstance;
-}
-```
-
-```go Go wrap
-var client *blnkgo.Client
-
-func getClient() *blnkgo.Client {
-    if client == nil {
-        baseURL, _ := url.Parse("http://localhost:5001/")
-        apiKey := "YOUR_API_KEY"
-        client = blnkgo.NewClient(baseURL, &apiKey, blnkgo.WithTimeout(10*time.Second))
-    }
-    return client
-}
-```
-</CodeGroup>
-
----
-
 ## Create your ledgers
 
 First, we need to create ledgers to organize our wallets:
@@ -137,13 +103,12 @@ curl -X POST "http://localhost:5001/ledgers" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createLedgers() {
-  const blnk = await getBlnkInstance();
-  const { Ledgers } = blnk;
+  
   
   // Create a ledger for customer main wallets (USD)
-  const mainLedger = await Ledgers.create({
+  const mainLedger = await blnk.Ledgers.create({
     name: "Customer Main Wallets",
     meta_data: {
       description: "Ledger for customer USD wallets"
@@ -151,7 +116,7 @@ async function createLedgers() {
   });
   
   // Create a ledger for customer points wallets
-  const pointsLedger = await Ledgers.create({
+  const pointsLedger = await blnk.Ledgers.create({
     name: "Customer Points Wallets",
     meta_data: {
       description: "Ledger for customer loyalty points"
@@ -238,13 +203,12 @@ curl -X POST "http://localhost:5001/balances" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
-  const blnk = await getBlnkInstance();
-  const { LedgerBalances } = blnk;
+  
   
   // Create main wallet (USD)
-  const mainWallet = await LedgerBalances.create({
+  const mainWallet = await blnk.LedgerBalances.create({
     ledger_id: mainLedgerId,
     identity_id: identityId,
     currency: "USD",
@@ -255,7 +219,7 @@ async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
   });
   
   // Create points wallet
-  const pointsWallet = await LedgerBalances.create({
+  const pointsWallet = await blnk.LedgerBalances.create({
     ledger_id: pointsLedgerId,
     identity_id: identityId,
     currency: "POINTS",
@@ -366,16 +330,15 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purchaseAmount, pointsToAward) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
+  
   
   // Generate a unique reference for this purchase
   const purchaseReference = `purchase-${Date.now()}`;
   
   // Step 1: Process the purchase payment
-  const purchase = await Transactions.create({
+  const purchase = await blnk.Transactions.create({
     precise_amount: purchaseAmount * 100,
     precision: 100,
     reference: purchaseReference,
@@ -389,7 +352,7 @@ async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purch
   });
   
   // Step 2: Award loyalty points
-  const pointsAward = await Transactions.create({
+  const pointsAward = await blnk.Transactions.create({
     precise_amount: pointsToAward,
     precision: 1,  // Points typically don't have decimal places
     reference: `points-${purchaseReference}`,
@@ -530,10 +493,9 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```javascript TypeScript wrap expandable
+```typescript TypeScript wrap expandable
 async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem) {
-  const blnk = await getBlnkInstance();
-  const { Transactions } = blnk;
+  
 
   // Calculate points conversion to dollar: 10 points = 1 dollar
   const convertedAmount = pointsToRedeem / 10;
@@ -542,7 +504,7 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   const redemptionReference = `redemption-${Date.now()}`;
   
   // Step 1: Redeem points
-  const pointsRedemption = await Transactions.create({
+  const pointsRedemption = await blnk.Transactions.create({
     precise_amount: pointsToRedeem,
     precision: 1,
     reference: redemptionReference,
@@ -559,7 +521,7 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
   // Step 2: Process the discounted purchase
   const discountedAmount = purchaseAmount - convertedAmount;
   
-  const discountedPurchase = await Transactions.create({
+  const discountedPurchase = await blnk.Transactions.create({
     precise_amount: discountedAmount * 100,
     precision: 100,
     reference: `purchase-${redemptionReference}`,
