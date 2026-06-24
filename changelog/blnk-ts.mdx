@@ -14,35 +14,36 @@ description: "Latest releases, fixes, and improvements to the Blnk TypeScript SD
 
   ### Identities
 
-  Delete identities by ID with `Identity.delete`.
+  Delete identities when you need to remove a customer or organization record from your ledger.
 
   ### Balance monitors
 
-  Delete balance monitors by ID with `BalanceMonitor.delete`.
+  Remove balance monitors you no longer need. Blnk stops evaluating thresholds and sending webhooks for deleted monitors.
 
   ### Reconciliation
 
-  `Reconciliation.run` now returns only `reconciliation_id`. Listen for `reconciliation.completed` or `reconciliation.failed` webhooks for final status.
+  Start a reconciliation run and receive a reconciliation ID. Final status arrives through `reconciliation.completed` or `reconciliation.failed` webhooks instead of the start response.
 
   ### Inflight
 
-  Commit and void are queued by Core 0.15.0 by default. Responses include `queued` where applicable. Pass `skip_queue: true` on `updateStatus`, `bulkCommitInflight`, and `bulkVoidInflight` when you need synchronous `APPLIED` or `VOID` responses.
+  Commit or void inflight transactions from the SDK. On Core 0.15.0 these operations are queued by default, so the response may include a queued flag while the worker applies the change.
 
-  Bulk create enforces a maximum of **10,000** transactions per request. The `MAX_BULK_CREATE_ITEMS` constant is exported from the package.
+  Pass `skip_queue` when you need the previous synchronous behavior and an immediate applied or void result.
+
+  Bulk create supports up to **10,000** transactions per request.
 
   ### Error handling
 
-  Core error responses include structured `error_detail`. The SDK surfaces this on `response.error.code`. Empty `DELETE` bodies no longer throw during JSON parsing.
+  Core returns structured error codes in `error_detail`. The SDK exposes them on the response so you can branch on stable codes instead of message text. Empty delete responses no longer fail during JSON parsing.
 
   ### Before you upgrade
 
   Note the following breaking changes:
 
-  - `RunReconResp` is now `{ reconciliation_id: string }` instead of extending `Matcher`.
-  - `CreateTransactionResponse.rate` and `LedgerBalanceResp.currency_multiplier` are optional. Core 0.15.0 no longer returns these fields.
-  - Search balance and transaction document types no longer include `rate` or `currency_multiplier`.
-  - `UpdateTransactionStatus`, `BulkCommitInflightRequest`, and `BulkVoidInflightRequest` accept optional `skip_queue`.
-  - Branch on `response.error?.code` for Core failures. Do not parse `error` message text.
+  - Reconciliation start returns only `reconciliation_id`. Poll with `Reconciliation.get` or listen for webhooks for results.
+  - Transaction and balance responses no longer include `rate` or `currency_multiplier` from Core 0.15.0.
+  - Inflight commit and void are queued by default unless you pass `skip_queue`.
+  - Branch on `response.error?.code` for Core failures. Do not parse error message text.
 </Update>
 
 <Update label="1.2.0" description="Jun 23, 2026">
