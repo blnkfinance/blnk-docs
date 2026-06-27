@@ -1,0 +1,84 @@
+---
+mode: "wide"
+title: "View balance monitor details"
+sidebarTitle: "View balance monitor details"
+api: "GET /balance-monitors/{monitor_id}"
+description: "Get one balance monitor with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.BalanceMonitor.Get` to retrieve a balance monitor by ID.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.BalanceMonitor.Get wrap
+monitor, resp, err := client.BalanceMonitor.Get(
+	"mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `monitorID` | `string` | Monitor ID to retrieve. |
+
+</Step>
+
+<Step title="Use the monitor details">
+
+Read the returned `monitor` for the threshold condition, webhook URL, and linked `BalanceID`.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "condition": {
+    "field": "credit_balance",
+    "operator": ">",
+    "value": 1000,
+    "precision": 100
+  },
+  "call_back_url": "https://api.example.com/balance-monitor",
+  "description": "Low balance alert",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `monitor_id` | `string` | Unique ID for the monitor. |
+| `balance_id` | `string` | Balance being monitored. |
+| `condition` | `object` | Threshold rule for the monitor. |
+| `condition.field` | `string` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `condition.operator` | `string` | Comparison operator: `>`, `<`, `=`, `!=`, `>=`, `<=`. |
+| `condition.value` | `number` | Threshold amount. |
+| `condition.precision` | `number` | Currency precision (for example `100` for cents). |
+| `call_back_url` | `string` | Webhook URL for notifications. |
+| `description` | `string` | Description for the monitor. |
+| `created_at` | `string` | Date and time when the monitor was created. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Conditions and webhook behavior.
+</Card>
+
+<Card title="View balance monitor details" icon="book-open" href="/reference/get-balance-monitor">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

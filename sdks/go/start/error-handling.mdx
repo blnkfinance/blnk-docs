@@ -85,7 +85,7 @@ Route on `apiErr.Status` when you do not need code-level logic (401, 404, 409, 5
 
 <Step title="Configure transport handling">
 
-When the SDK cannot reach Core or the request times out, you get a network or timeout error from the HTTP client. Configure timeout and logging in [Using the SDK](/sdks/go/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
+When the SDK cannot reach Core or the request times out, you get a network or timeout error from the HTTP client. Configure timeout and logging in [your SDK client](/sdks/go/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
 
 </Step>
 </Steps>
@@ -96,13 +96,28 @@ When the SDK cannot reach Core or the request times out, you get a network or ti
 
 When Core rejects a request, the SDK wraps the failure in `*ApiErrorResponse`. It sets `Status` to Core's HTTP status and `Body` to Core's raw JSON error payload.
 
+On Core 0.15.0 and later, error bodies include `error_detail`:
+
+```json 404 Not Found wrap
+{
+  "error": "transaction not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "transaction not found",
+    "details": {}
+  }
+}
+```
+
+Use `errors.As` to read the failure from `apiErr.Body`:
+
 ```go 404 Not Found wrap
 txn, resp, err := client.Transaction.Get("txn_missing")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse
 	if errors.As(err, &apiErr) {
 		// apiErr.Status == 404
-		// string(apiErr.Body) may include error_detail.code on Core 0.15.0+
+		// Parse error_detail.code from string(apiErr.Body)
 	}
 }
 ```
@@ -111,14 +126,14 @@ Parse `error_detail.code` from `apiErr.Body` when you need code-level routing. T
 
 | Status | When it happens | What to do |
 | :-- | :-- | :-- |
-| `404` | Resource ID or path does not exist | Parse `error_detail.code` from the body when available (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
+| `404` | Resource ID or path does not exist | Parse `error_detail.code` from `apiErr.Body` when available (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
 | `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
 | `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
 | `400` | Core rejected the payload | Fix the request body before retrying |
 | `5xx` | Core or upstream failure | Retry later and check Core logs |
 
 <Warning>
-Do not match exact error message strings in application logic. Message text can change. Prefer `error_detail.code` from the response body for routing. See the [0.15.0 migration guide](/changelog/v15-migration) if you parse error text today.
+Do not match exact error message strings in application logic. Message text can change. Prefer `error_detail.code` from `apiErr.Body` for routing and message strings for user-facing text only. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
 </Warning>
 
 ---
@@ -141,7 +156,7 @@ Each [Core API](/reference/create-ledger) lists required fields for that call.
 
 ## Transport failures
 
-When the SDK cannot reach Core or the request times out, you get a network or timeout error from `http.Client`. Configure timeout and logging in [Using the SDK](/sdks/go/start/using-the-sdk#timeouts-and-retries).
+When the SDK cannot reach Core or the request times out, you get a network or timeout error from `http.Client`. Configure timeout and logging in [your SDK client](/sdks/go/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
 
 When debugging transport failures, log the error, the endpoint you called, and any HTTP status returned before the failure.
 

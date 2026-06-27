@@ -1,0 +1,83 @@
+---
+mode: "wide"
+title: "Balance from source"
+sidebarTitle: "Get balance from source"
+api: "GET /balances/{balance_id}"
+description: "Compute balance directly from transactions with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.LedgerBalance.Get` with `FromSource` set to `true` to reconstruct a balance from its transactions.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.LedgerBalance.Get wrap
+balance, resp, err := client.LedgerBalance.Get(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	&blnkgo.GetBalanceRequest{FromSource: true},
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID to compute from source. |
+| `FromSource` | `bool` | Must be `true` to reconstruct from transactions. |
+
+</Step>
+
+<Step title="Compare with stored balance">
+
+Use the computed amounts to audit or reconcile against the stored balance. Differences may indicate pending transactions or snapshot lag.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "balance": 9620000,
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "credit_balance": 9620000,
+  "currency": "USD",
+  "debit_balance": 0,
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "identity_id": "",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance` | `number` | Net amount computed from all transactions. |
+| `balance_id` | `string` | Unique ID for the balance. |
+| `credit_balance` | `number` | Total computed from credit transactions. |
+| `debit_balance` | `number` | Total computed from debit transactions. |
+| `currency` | `string` | Currency of the balance. |
+| `ledger_id` | `string` | Ledger this balance belongs to. |
+| `identity_id` | `string` | Linked identity, if any. |
+| `created_at` | `string` | Date and time the balance was created. |
+| `meta_data` | `object` | Optional metadata on the balance. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance from source guide" icon="database" href="/balances/balance-from-source">
+Transaction-based balance computation.
+</Card>
+
+<Card title="Balance from source" icon="book-open" href="/reference/balance-from-source">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

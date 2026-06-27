@@ -1,0 +1,85 @@
+---
+mode: "wide"
+title: "Historical balances"
+sidebarTitle: "Get historical balances"
+api: "GET /balances/{balance_id}/at"
+description: "Retrieve accurate historical balance information with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.LedgerBalance.GetHistorical` to retrieve a [balance](/balances/historical-balances) at a specific point in time.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.LedgerBalance.GetHistorical wrap
+timestamp, _ := time.Parse(time.RFC3339, "2025-02-24T08:55:26Z")
+
+historical, resp, err := client.LedgerBalance.GetHistorical(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	timestamp,
+	false,
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID to query. |
+| `timestamp` | `time.Time` | Point in time for the historical balance. Parse ISO 8601 strings with `time.Parse(time.RFC3339, "...")`. |
+| `fromSource` | `bool` | When `true`, reconstruct from transactions instead of snapshots. |
+
+</Step>
+
+<Step title="Use the historical amounts">
+
+Read `historical.Balance` for net, credit, and debit totals at the requested timestamp. Compare with the current balance if you are auditing or reconciling.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "timestamp": "2025-02-24T08:55:26Z",
+  "from_source": false,
+  "balance": {
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "balance": 5000,
+    "credit_balance": 5000,
+    "debit_balance": 0,
+    "currency": "USD"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `timestamp` | `string` | Point in time you queried (ISO 8601). |
+| `from_source` | `boolean` | Whether the balance was reconstructed from transactions. |
+| `balance.balance_id` | `string` | Balance you queried. |
+| `balance.balance` | `number` | Net amount at that timestamp. |
+| `balance.credit_balance` | `number` | Total credits at that timestamp. |
+| `balance.debit_balance` | `number` | Total debits at that timestamp. |
+| `balance.currency` | `string` | Currency of the balance. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Retrieving historical balances" icon="clock" href="/balances/historical-balances">
+How point-in-time balance queries work.
+</Card>
+
+<Card title="Historical balances" icon="book-open" href="/reference/historical-balances">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
