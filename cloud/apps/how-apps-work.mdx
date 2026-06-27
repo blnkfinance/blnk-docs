@@ -91,11 +91,12 @@ A Custom App moves through three stages: registration, installation, and launch.
     Launching is how the app's UI gets into the dashboard, with a fresh, short-lived session every time.
 
     1. The user clicks `Launch app` in Cloud.
-    2. Cloud sends a portal request to your portal generator URL.
-    3. Your app validates the install and creates a short-lived portal session.
-    4. Your app returns a `portal_url` containing the session token.
-    5. Cloud embeds that URL inside the dashboard.
-    6. The user works in the app, while your backend talks to Cloud using the install API key.
+    2. If the app requires it, the user confirms with their password and 2FA (same rules as install).
+    3. Cloud sends a portal request to your portal generator URL.
+    4. Your app validates the install and creates a short-lived portal session.
+    5. Your app returns a `portal_url` containing the session token.
+    6. Cloud embeds that URL inside the dashboard.
+    7. The user works in the app, while your backend talks to Cloud using the install API key.
 
     <Frame caption="Cloud embeds your app inside the dashboard, then your app talks to your backend, which then talks to Blnk.">
     <img src="/cloud/img/apps/how-app-portal-works.png" alt="How a Custom App is launched and embedded inside Blnk Cloud" className="rounded-lg" />
@@ -114,7 +115,7 @@ A Custom App moves through three stages: registration, installation, and launch.
 Custom Apps have two layers of permissions that work together:
 
 - **What your app can access.** Your manifest declares the scopes the app needs. Cloud enforces these at the API gateway, regardless of what the signed-in user can do.
-- **What the user approved.** Workspace members can grant a subset of the requested scopes during installation, and they can update the granted set later.
+- **What the user approved.** Workspace members choose a subset of the requested scopes during installation. Those granted scopes cannot be changed after install.
 
 The supported scopes are:
 
@@ -144,8 +145,8 @@ Because Cloud is the gateway for every app action, you get a clear audit trail w
 - **Every Core action is mediated.** Calls flow through `/proxy` and `/data`, so Cloud captures who acted, on what instance, with which key.
 - **Actions are attributable to a specific install.** Each install has its own `installed_app_id` and `api_key_prefix`, so activity can be traced back to a specific app installation, not a generic key.
 - **Permission grants are recorded at install time.** What the user approved is captured in `granted_permissions` and visible to the workspace.
-- **Install and uninstall events are idempotent.** Each event carries an `idempotency_key`, which makes the lifecycle safely retryable and traceable.
-- **Uninstall is a clean break.** When a user uninstalls, Cloud revokes the API key and notifies your app, so the moment access ends is recorded on both sides.
+- **Install and uninstall events are idempotent.** Each event carries an `idempotency_key`. Your handler should treat duplicate keys as already processed.
+- **Uninstall is a clean break.** When a user uninstalls, Cloud sends an uninstall event to your callback URL. If your app returns `2xx`, Cloud marks the install uninstalled and revokes the API key.
 
 You can review app activity alongside other workspace activity in the [audit logs](/cloud/organization/audit-logs).
 
@@ -155,7 +156,7 @@ You can review app activity alongside other workspace activity in the [audit log
 
 A few things to keep in mind as you plan your app:
 
-- **Apps are private by default.** Apps registered in Cloud are only visible to the organization and instance they are registered in.
+- **Apps are private by default.** Apps you register appear in your organization's Apps library. Installing an app is separate: each Cloud instance has its own install state.
 - **One install per organization + instance.** Installing an app in one instance does not make it available in another. Each install has its own scoped key.
 - **Self-hosted Core needs to be reachable.** If your instance is connected and self-hosted, set the Core URL and key, and [whitelist Cloud IPs](/cloud/instances/overview#core-url) so Cloud can reach it.
 - **Apps cannot exceed requested permissions.** Even if the signed-in user has broader access, the app is bounded by the scopes in its manifest and what the user granted.

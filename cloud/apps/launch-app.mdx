@@ -18,11 +18,12 @@ Now, that your app is installed and working well, you can launch it from the Clo
 
 Just like the install process, the launch process starts in Blnk Cloud. When a user clicks `Launch app` in Blnk Cloud:
 
-1. Blnk sends a `POST` request to your [portal generator URL](/cloud/apps/codebase-setup#set-up-app-routes).
-2. Your app checks that the install exists and is active.
-3. Your app creates a short-lived portal session.
-4. Your app returns a `portal_url`.
-5. Blnk opens that URL inside the dashboard.
+1. If the app requires it, the user confirms with their account password and 2FA code (same rules as install).
+2. Blnk sends a `POST` request to your [portal generator URL](/cloud/apps/codebase-setup#set-up-app-routes).
+3. Your app checks that the install exists and is active.
+4. Your app creates a short-lived portal session.
+5. Your app returns a `portal_url`.
+6. Blnk opens that URL inside the dashboard.
 
 <Frame>
 <img src="/cloud/img/apps/how-app-portal-works.png" alt= "How app portals work" className="rounded-lg" />
@@ -42,9 +43,7 @@ Cloud sends a payload like this to your `portal_generator_url`:
 {
   "installed_app_id": "instapp_...",
   "app_id": "app_...",
-  "organization_id": "org_...",
-  "instance_id": "inst_...",
-  "user_id": "user_..."
+  "instance_id": "inst_..."
 }
 ```
 
@@ -52,26 +51,24 @@ Cloud sends a payload like this to your `portal_generator_url`:
 | --- | --- |
 | `installed_app_id` | The ID for this specific app installation. Use it to find the install record. |
 | `app_id` | The ID of the app being launched. |
-| `organization_id` | The organization where the app is installed. |
 | `instance_id` | The Cloud instance the app should work with. |
-| `user_id` | The user launching the app from Cloud. |
 
 Before returning a portal URL, your app should confirm that:
 
 - the install exists and is active
-- the `organization_id` and `instance_id` match the install record
+- the `instance_id` in the request matches the install record
 
 ```typescript validateInstallForPortal.ts wrap
 async function validateInstallForPortal(
   installed_app_id: string,
-  organization_id: string,
-  instance_id: string
+  app_id: string,
+  instance_id: string,
 ): Promise<boolean> {
   const install = await db.getInstall(installed_app_id);
   const ok =
     install != null &&
     install.status === "active" &&
-    install.organization_id === organization_id &&
+    install.app_id === app_id &&
     install.instance_id === instance_id;
 
   if (!ok) {
@@ -89,8 +86,7 @@ async function validateInstallForPortal(
 Next, your app should create a portal session once the portal request is validated. The session helps your app know:
 
 - which installation opened the portal
-- which organization and instance the portal is launched from
-- which user launched the app
+- which Cloud instance the portal is launched from
 - when the session should expire
 
 <CodeGroup>
@@ -102,8 +98,7 @@ const TTL_SECONDS = 900; // 900 seconds = 15 minutes
 
 async function createPortalSession(
   installed_app_id: string,
-  organization_id: string,
-  instance_id: string
+  instance_id: string,
 ): Promise<string> {
   const ttlSeconds = TTL_SECONDS;
   const expiry_time_ms = Date.now() + (ttlSeconds * 1000);
@@ -111,7 +106,6 @@ async function createPortalSession(
   await db.savePortalSession({
     token,
     installed_app_id,
-    organization_id,
     instance_id,
     expiry_time_ms,
   });
@@ -187,13 +181,24 @@ To test app launch:
 
 1. Install the app in Cloud.
 2. Click `Launch app` from the app details page.
-3. Confirm your `portal_generator_url` receives the launch request.
-4. Confirm your app creates a portal session.
-5. Confirm your app returns a valid `portal_url`.
-6. Confirm the app opens inside the Cloud dashboard.
-7. Confirm expired sessions can no longer open the portal.
+3. If the app requires re-authentication, confirm with your password and 2FA code.
+4. Confirm your `portal_generator_url` receives the launch request.
+5. Confirm your app creates a portal session.
+6. Confirm your app returns a valid `portal_url`.
+7. Confirm the app opens inside the Cloud dashboard.
+8. Confirm expired sessions can no longer open the portal.
 
 Once this works, users can open your app from Blnk Cloud and work through the Stripe Sync workflow inside the dashboard.
+
+---
+
+## Troubleshooting
+
+| Issue | What to do |
+| --- | --- |
+| Password or 2FA is incorrect at launch | Check your password or 2FA code and try again. You may see `Authentication failed`. |
+| Portal does not open | Confirm your `portal_generator_url` is reachable and returns a valid `portal_url` within about 10 seconds. |
+| App opens but session expires quickly | Launch the app again from Cloud to get a fresh portal session. |
 
 ---
 

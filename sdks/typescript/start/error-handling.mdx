@@ -100,17 +100,29 @@ Configure timeout and logging in [your SDK client](/sdks/typescript/start/using-
 
 ## Core errors
 
-When Core rejects a request, the SDK sets `status` to Core's HTTP status, `message` to the error message, `data` to Core's JSON error body, and `error` to structured details parsed from `error_detail`.
+When Core rejects a request, the SDK wraps the failure in an `ApiResponse`. It sets `status` to Core's HTTP status, `message` to the error message, `data` to Core's JSON error body, and `error` to structured details parsed from `error_detail`.
 
-On Core 0.15.0 and later, error bodies include `error_detail`:
+On Core 0.15.0 and later, a rejected request looks like this:
 
-```json 404 Not Found wrap
+```typescript 404 Not Found wrap
+const response = await blnk.Transactions.get('txn_missing');
+
+// response:
 {
-  "error": "transaction not found",
-  "error_detail": {
-    "code": "TXN_NOT_FOUND",
-    "message": "transaction not found",
-    "details": {}
+  status: 404,
+  message: 'transaction not found',
+  data: {
+    error: 'transaction not found',
+    error_detail: {
+      code: 'TXN_NOT_FOUND',
+      message: 'transaction not found',
+      details: {}
+    }
+  },
+  error: {
+    code: 'TXN_NOT_FOUND',
+    message: 'transaction not found',
+    details: {}
   }
 }
 ```
