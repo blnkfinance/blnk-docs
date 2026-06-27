@@ -1,0 +1,105 @@
+---
+mode: "wide"
+title: "Search via DB"
+sidebarTitle: "Filter records"
+api: "POST /{collection}/filter"
+description: "Filter ledgers, balances, transactions, and identities with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `Filter` on the relevant service to query records in a collection. The Go SDK does not expose a unified `Search.filter` helper like the TypeScript SDK.
+
+<Note>
+Call `Filter` on the service that owns the collection: `client.Transaction.Filter`, `client.Ledger.Filter`, `client.LedgerBalance.Filter`, or `client.Identity.Filter`.
+</Note>
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Transaction.Filter wrap
+result, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+	Filters: []blnkgo.Filter{
+		{Field: "status", Operator: blnkgo.OpEqual, Value: "APPLIED"},
+	},
+	SortBy:       "created_at",
+	SortOrder:    "desc",
+	IncludeCount: true,
+	Limit:        20,
+	Offset:       0,
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Filters` | `[]blnkgo.Filter` | Array of filter conditions, each with a `Field`, `Operator`, and a `Value` or `Values`. |
+| `SortBy` | `string` | Field to sort by. Defaults to `created_at`. |
+| `SortOrder` | `string` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `IncludeCount` | `bool` | Return `TotalCount` in the response. Defaults to `false`. |
+| `Limit` | `int` | Maximum records to return. Defaults to 20, max 100. |
+| `Offset` | `int` | Records to skip for pagination. Defaults to 0. |
+
+<Expandable title="Other collections">
+
+| Service | Method |
+| :-- | :-- |
+| Ledgers | `client.Ledger.Filter` |
+| Balances | `client.LedgerBalance.Filter` |
+| Identities | `client.Identity.Filter` |
+
+Each method accepts the same `blnkgo.FilterParams` body and returns a `*blnkgo.FilterResponse`.
+
+</Expandable>
+
+</Step>
+
+<Step title="Use the filtered results">
+
+Read `result.Data` for matching records. Use `result.TotalCount` with `Limit` and `Offset` to paginate when `IncludeCount` is `true`.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data` | `object[]` | Array of matching records. Shape varies by collection. |
+| `total_count` | `number` | Total matching records. Only present when `IncludeCount` is `true`. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How DB filtering works" icon="database" href="/search/db/filtering">
+Supported operators and field reference.
+</Card>
+
+<Card title="Search via DB" icon="book-open" href="/reference/search-db">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

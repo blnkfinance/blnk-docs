@@ -94,35 +94,26 @@ When the SDK cannot reach Core or the request times out, you get a network or ti
 
 ## Core errors
 
-When Core rejects a request, the SDK wraps the failure in `*ApiErrorResponse`. It sets `Status` to Core's HTTP status and `Body` to Core's raw JSON error payload.
+When Core rejects a request, the SDK wraps the failure in `*ApiErrorResponse`. It sets `Status` to Core's HTTP status, `Message` to the HTTP status text, and `Body` to Core's raw JSON error payload.
 
-On Core 0.15.0 and later, error bodies include `error_detail`:
+On Core 0.15.0 and later, a rejected request looks like this:
 
-```json 404 Not Found wrap
-{
-  "error": "transaction not found",
-  "error_detail": {
-    "code": "TXN_NOT_FOUND",
-    "message": "transaction not found",
-    "details": {}
-  }
-}
-```
-
-Use `errors.As` to read the failure from `apiErr.Body`:
-
-```go 404 Not Found wrap
+```go 404 Not Found wrap expandable
 txn, resp, err := client.Transaction.Get("txn_missing")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse
 	if errors.As(err, &apiErr) {
-		// apiErr.Status == 404
-		// Parse error_detail.code from string(apiErr.Body)
+		// apiErr:
+		//   Status:  404
+		//   Message: "404 Not Found"
+		//   Body:    []byte(`{"error":"transaction not found","error_detail":{"code":"TXN_NOT_FOUND","message":"transaction not found","details":{}}}`)
+		//
+		// Parse error_detail.code from string(apiErr.Body) when you need code-level routing.
 	}
 }
 ```
 
-Parse `error_detail.code` from `apiErr.Body` when you need code-level routing. Treat message strings as display text; Core may change wording between releases.
+Parse `error_detail.code` from `apiErr.Body` when you need code-level routing. Treat message strings as display text; Core may change wording between releases. On older Core versions, `error_detail.code` may be absent from the body.
 
 | Status | When it happens | What to do |
 | :-- | :-- | :-- |
