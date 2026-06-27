@@ -1,0 +1,108 @@
+---
+mode: "wide"
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+api: "POST /transactions/bulk"
+description: "Submit multiple transactions in one request with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/bulk-transactions) in one request.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Transaction.CreateBulk wrap
+result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+	Atomic: true,
+	Transactions: []blnkgo.CreateTransactionRequest{
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				Amount:      1000,
+				Precision:   100,
+				Currency:    "USD",
+				Source:      "@source_1",
+				Destination: "@dest_1",
+				Reference:   "bulk_001",
+				Description: "Payment 1",
+			},
+		},
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				Amount:      2000,
+				Precision:   100,
+				Currency:    "USD",
+				Source:      "@source_2",
+				Destination: "@dest_2",
+				Reference:   "bulk_002",
+				Description: "Payment 2",
+			},
+		},
+	},
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Transactions` | `[]CreateTransactionRequest` | Transaction objects to create; references must be unique within the batch. |
+| `Atomic` | `bool` | When `true`, every transaction succeeds or fails together. |
+| `Inflight` | `bool` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Step>
+
+<Step title="Save the batch ID">
+
+Use `result.BatchID` as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch.
+
+</Step>
+
+<Step title="Response">
+
+<CodeGroup>
+```json Sync wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 4
+}
+```
+
+```json Async (RunAsync: true) wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_id` | `string` | Identifier for the batch. Use as `parent_transaction` to find child transactions, or with `Update` to commit or void an inflight batch. |
+| `status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | `number` | Number of transactions when processed synchronously. |
+| `message` | `string` | Status message when `RunAsync` is `true`. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk transactions guide" icon="layers" href="/transactions/bulk-transactions">
+Batch processing, webhooks, and retrieving a batch.
+</Card>
+
+<Card title="Bulk transactions" icon="book-open" href="/reference/bulk-transactions">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
