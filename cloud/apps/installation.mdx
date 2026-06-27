@@ -26,7 +26,7 @@ Here's what happens during installation:
 6. If the response succeeds, the app becomes active in Cloud.
 
 <Tip>
-See [Best practices](/cloud/apps/best-practices) for how to protect API keys, handle retries safely, and prepare for production.
+See [Best practices](/cloud/apps/best-practices) for how to protect API keys, handle duplicate events safely, and prepare for production.
 </Tip>
 
 ---
@@ -98,7 +98,9 @@ Use whatever encryption or key-management approach fits your stack before you wr
 
 ## Handling the uninstall event
 
-When a user uninstalls your app, Blnk Cloud revokes the app's API key and sends an uninstall event to the same [callback URL](/cloud/apps/codebase-setup#set-up-app-routes).
+When a user uninstalls your app, Blnk Cloud sends an uninstall event to the same [callback URL](/cloud/apps/codebase-setup#set-up-app-routes). 
+
+If your app returns `2xx`, Cloud marks the install uninstalled and revokes the app's API key. If the callback fails, the uninstall does not complete and the API key remains valid.
 
 Your app should use this event to stop treating the installation as active. You can also clean up any resources you created for that organization or instance.
 
@@ -135,11 +137,11 @@ You can also choose to delete encrypted keys, remove portal sessions, or clean u
 
 ---
 
-## Handling retries
+## Handling duplicate events
 
-Cloud may retry an install or uninstall event if it does not receive a successful response.
+Cloud sends one install or uninstall request per event, with a 10 second timeout. 
 
-Your handler should be safe to run more than once. Use the `idempotency_key` to check whether you have already processed the event:
+Your handler should still be safe to run more than once. Use the `idempotency_key` to check whether you have already processed the event. If you have already processed the event, return a `200` response to avoid processing the event again:
 
 ```js routes.ts wrap
 app.post("/api/callback", async (req, res) => {
