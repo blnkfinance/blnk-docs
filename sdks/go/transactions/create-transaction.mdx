@@ -18,20 +18,22 @@ Use `client.Transaction.Create` to post a [transaction](/transactions/introducti
 
 Move money from one source balance to one destination in a single call.
 
-```go client.Transaction.Create wrap
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(125034),
-		Precision:     100,
-		Currency:      "USD",
-		Source:        "@WorldUSD",
-		Destination:   "@MyBalance",
-		Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-		Description:   "Customer payment",
-		SkipQueue:     false,
+```go client.Transaction.Create
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(125034),
+			Precision: 100,
+			Currency: "USD",
+			Source: "@WorldUSD",
+			Destination: "@MyBalance",
+			Reference: "ref_f482a1b3-6c2d-4e89",
+			Description: "Customer payment",
+			SkipQueue: false,
+		},
+		AllowOverdraft: false,
 	},
-	AllowOverdraft: false,
-})
+)
 ```
 
 | Field | Type | Description |
@@ -53,24 +55,26 @@ transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequ
 
 Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/creating-inflight).
 
-```go client.Transaction.Create wrap {14-16}
+```go client.Transaction.Create
 expiry, _ := time.Parse(time.RFC3339, "2025-03-01T00:00:00Z")
 commit, _ := time.Parse(time.RFC3339, "2025-02-28T12:00:00Z")
 
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(10000),
-		Precision:     100,
-		Currency:      "USD",
-		Source:        "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-		Destination:   "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-		Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-		Description:   "For vacation",
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(10000),
+			Precision: 100,
+			Currency: "USD",
+			Source: "bln_28edb3e5-c168-4127-a1c4",
+			Destination: "bln_ebcd230f-6265-4d4a-a4ca",
+			Reference: "ref_f482a1b3-6c2d-4e89",
+			Description: "For vacation",
+		},
+		Inflight: true,
+		InflightExpiryDate: &expiry,
+		InflightCommitDate: &commit,
 	},
-	Inflight:           true,
-	InflightExpiryDate: &expiry,
-	InflightCommitDate: &commit,
-})
+)
 ```
 
 | Field | Type | Description |
@@ -88,60 +92,64 @@ See [Update inflight](/sdks/go/transactions/update-inflight) to commit or void.
 Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
 
 <CodeGroup>
-```go Multiple sources wrap {8-23}
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(3000000),
-		Precision:     100,
-		Currency:      "USD",
-		Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-		Description:   "Payment to Sarah",
-		Sources: []blnkgo.Source{
-			{
-				Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-				Distribution: "10%",
+```go Multiple sources
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(3000000),
+			Precision: 100,
+			Currency: "USD",
+			Reference: "ref_f482a1b3-6c2d-4e89",
+			Description: "Payment to Sarah",
+			Sources: []blnkgo.Source{
+				{
+					Identifier: "bln_f2073f6b-905a-4e3e-b5a2",
+					Distribution: "10%",
+				},
+				{
+					Identifier: "bln_64c50fb5-32d5-4f78-9f4a",
+					PreciseDistribution: "2000000",
+				},
+				{
+					Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a",
+					Distribution: "left",
+				},
 			},
-			{
-				Identifier:          "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-				PreciseDistribution: "2000000",
-			},
-			{
-				Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-				Distribution: "left",
-			},
+			Destination: "bln_92e4b9b6-0b85-4ef4-87a2",
+			Atomic: true,
 		},
-		Destination: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
-		Atomic:      true,
 	},
-})
+)
 ```
 
-```go Multiple destinations wrap {8-23}
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(3000000),
-		Precision:     100,
-		Currency:      "USD",
-		Reference:     "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
-		Description:   "Payment from Sarah",
-		Source:        "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
-		Destinations: []blnkgo.Source{
-			{
-				Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-				Distribution: "20%",
+```go Multiple destinations
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(3000000),
+			Precision: 100,
+			Currency: "USD",
+			Reference: "ref_c5d9e2a1-7b4f-4a3c-9e8d",
+			Description: "Payment from Sarah",
+			Source: "bln_92e4b9b6-0b85-4ef4-87a2",
+			Destinations: []blnkgo.Source{
+				{
+					Identifier: "bln_f2073f6b-905a-4e3e-b5a2",
+					Distribution: "20%",
+				},
+				{
+					Identifier: "bln_64c50fb5-32d5-4f78-9f4a",
+					PreciseDistribution: "1000000",
+				},
+				{
+					Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a",
+					Distribution: "left",
+				},
 			},
-			{
-				Identifier:          "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-				PreciseDistribution: "1000000",
-			},
-			{
-				Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-				Distribution: "left",
-			},
+			Atomic: true,
 		},
-		Atomic: true,
 	},
-})
+)
 ```
 </CodeGroup>
 
@@ -161,25 +169,27 @@ transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequ
 
 Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
 
-```go client.Transaction.Create wrap {1,17}
+```go client.Transaction.Create
 scheduledFor, _ := time.Parse(time.RFC3339, "2024-12-21T01:36:46+01:00")
 
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(10000000),
-		Precision:     100,
-		Currency:      "USD",
-		Source:        "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-		Destination:   "@fees",
-		Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-		Description:   "Monthly fee",
-		MetaData: map[string]interface{}{
-			"sender_name":    "John Doe",
-			"sender_account": "00000000000",
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(10000000),
+			Precision: 100,
+			Currency: "USD",
+			Source: "bln_28edb3e5-c168-4127-a1c4",
+			Destination: "@fees",
+			Reference: "ref_f482a1b3-6c2d-4e89",
+			Description: "Monthly fee",
+			MetaData: map[string]interface{}{
+				"sender_name":    "John Doe",
+				"sender_account": "00000000000",
+			},
 		},
+		ScheduledFor: &scheduledFor,
 	},
-	ScheduledFor: &scheduledFor,
-})
+)
 ```
 
 | Field | Type | Description |
@@ -193,21 +203,23 @@ transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequ
 
 Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
 
-```go client.Transaction.Create wrap {1,12}
+```go client.Transaction.Create
 effectiveDate, _ := time.Parse(time.RFC3339, "2025-02-15T10:30:00Z")
 
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: big.NewInt(35890),
-		Precision:     100,
-		Currency:      "NGN",
-		Source:        "@source_account",
-		Destination:   "@destination_account",
-		Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-		Description:   "Backdated transaction",
-		EffectiveDate: &effectiveDate,
+transaction, resp, err := client.Transaction.Create(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(35890),
+			Precision: 100,
+			Currency: "NGN",
+			Source: "@source_account",
+			Destination: "@destination_account",
+			Reference: "ref_f482a1b3-6c2d-4e89",
+			Description: "Backdated transaction",
+			EffectiveDate: &effectiveDate,
+		},
 	},
-})
+)
 ```
 
 | Field | Type | Description |

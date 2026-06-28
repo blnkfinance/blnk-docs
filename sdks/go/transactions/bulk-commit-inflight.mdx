@@ -13,15 +13,54 @@ Use `client.Transaction.BulkCommitInflight` to commit multiple inflight transact
 <Steps>
 <Step title="Call the method">
 
-```go client.Transaction.BulkCommitInflight wrap
-result, resp, err := client.Transaction.BulkCommitInflight(blnkgo.BulkCommitInflightRequest{
-	Transactions: []blnkgo.BulkCommitInflightItem{
-		{TransactionID: "txn_11111111-1111-4111-8111-111111111111"},
-		{TransactionID: "txn_22222222-2222-4222-8222-222222222222", Amount: 40},
-		{TransactionID: "txn_33333333-3333-4333-8333-333333333333", PreciseAmount: big.NewInt(125034)},
+<Tabs>
+<Tab title="Queued commit">
+
+```go client.Transaction.BulkCommitInflight
+result, resp, err := client.Transaction.BulkCommitInflight(
+	blnkgo.BulkCommitInflightRequest{
+		Transactions: []blnkgo.BulkCommitInflightItem{
+			{
+				TransactionID: "txn_c4e70eb8-e4d6-4e04",
+			},
+			{
+				TransactionID: "txn_6164573b-6cc8-45a4",
+				Amount: 40,
+			},
+			{
+				TransactionID: "txn_0b59f6e6-6c4a-4efa",
+				PreciseAmount: big.NewInt(125034),
+			},
+		},
 	},
-})
+)
 ```
+
+</Tab>
+
+<Tab title="Synchronous commit">
+
+Pass `SkipQueue: true` to process each commit synchronously instead of queuing.
+
+```go client.Transaction.BulkCommitInflight
+result, resp, err := client.Transaction.BulkCommitInflight(
+	blnkgo.BulkCommitInflightRequest{
+		SkipQueue: true,
+		Transactions: []blnkgo.BulkCommitInflightItem{
+			{
+				TransactionID: "txn_c4e70eb8-e4d6-4e04",
+			},
+			{
+				TransactionID: "txn_6164573b-6cc8-45a4",
+				Amount: 40,
+			},
+		},
+	},
+)
+```
+
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -47,15 +86,15 @@ Check `result.Results` for each transaction's outcome. Failed items include a co
   "failed": 1,
   "results": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
       "status": "failed",
       "code": "INVALID_AMOUNT",
       "message": "cannot commit more than inflight amount"

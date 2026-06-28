@@ -21,8 +21,8 @@ Only `NewClient` panics when the base URL is missing. SDK methods return errors 
 
 Read the error first. Use `resp.StatusCode` for logging and metrics after you confirm success.
 
-```go wrap
-txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+```go
+txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse
 	if errors.As(err, &apiErr) {
@@ -50,8 +50,8 @@ fmt.Printf("HTTP status: %d\n", resp.StatusCode)
 
 Confirm success before you use the result. On every call, check that `err` is `nil`.
 
-```go Error handling wrap
-txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+```go Error handling
+txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse
 	if errors.As(err, &apiErr) {
@@ -60,8 +60,7 @@ if err != nil {
 			// Resource not found
 		case http.StatusUnauthorized, http.StatusForbidden:
 			// Auth or scope failure: check the API key
-		default:
-			// Log apiErr.Status and string(apiErr.Body)
+		default: // Log apiErr.Status and string(apiErr.Body)
 		}
 	}
 	return err
@@ -98,7 +97,7 @@ When Core rejects a request, the SDK wraps the failure in `*ApiErrorResponse`. I
 
 On Core 0.15.0 and later, a rejected request looks like this:
 
-```go 404 Not Found wrap expandable
+```go 404 Not Found expandable
 txn, resp, err := client.Transaction.Get("txn_missing")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse

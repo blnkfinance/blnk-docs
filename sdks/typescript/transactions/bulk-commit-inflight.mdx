@@ -13,6 +13,9 @@ Use `blnk.Transactions.bulkCommitInflight` to commit multiple inflight transacti
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Queued commit">
+
 ```typescript blnk.Transactions.bulkCommitInflight wrap
 const response = await blnk.Transactions.bulkCommitInflight({
   transactions: [
@@ -31,12 +34,37 @@ const response = await blnk.Transactions.bulkCommitInflight({
 });
 ```
 
+</Tab>
+
+<Tab title="Synchronous commit">
+
+Pass `skip_queue: true` to process each commit synchronously instead of queuing.
+
+```typescript blnk.Transactions.bulkCommitInflight wrap
+const response = await blnk.Transactions.bulkCommitInflight({
+  skip_queue: true,
+  transactions: [
+    {
+      transaction_id: 'txn_11111111-1111-4111-8111-111111111111',
+    },
+    {
+      transaction_id: 'txn_22222222-2222-4222-8222-222222222222',
+      amount: 40,
+    },
+  ],
+});
+```
+
+</Tab>
+</Tabs>
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `transactions` | `object[]` | Up to 100 inflight transactions to commit. |
 | `transactions[].transaction_id` | `string` | Inflight transaction ID to commit. |
 | `transactions[].amount` | `number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
 | `transactions[].precise_amount` | `number` | Precision-applied partial commit amount. Takes precedence over amount. |
+| `skip_queue` | `boolean` | When `true`, process synchronously instead of queuing. |
 
 </Step>
 
