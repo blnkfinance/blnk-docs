@@ -1,0 +1,232 @@
+---
+title: "Using the SDK"
+description: "Configure authentication, timeouts, retries, logging, and request shapes for the Go SDK."
+sidebarTitle: "Using the SDK"
+icon: "code"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>
+Configurable client options ship in v1.2.0. See the [Changelog](/changelog/blnk-go) before upgrading.
+</Info>
+
+## Initialize the client
+
+Your Blnk client is the single entry point to everything: ledgers, balances, transactions, reconciliation, and more. Configure it once when your app starts, then use it everywhere.
+
+```go client.go
+package blnk
+
+import (
+	"net/url"
+	"os"
+	"time"
+
+	blnkgo "github.com/blnkfinance/blnk-go"
+)
+
+func NewBlnkClient() *blnkgo.Client {
+	baseURL, _ := url.Parse(os.Getenv("BLNK_BASE_URL"))
+	if baseURL == nil || baseURL.String() == "" {
+		baseURL, _ = url.Parse("http://localhost:5001/")
+	}
+
+	apiKey := os.Getenv("BLNK_API_KEY")
+	return blnkgo.NewClient(
+		baseURL,
+		&apiKey,
+		blnkgo.WithTimeout(10*time.Second),
+		blnkgo.WithRetry(2),
+	)
+}
+```
+
+That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
+
+```go create-ledger.go
+client := NewBlnkClient()
+
+ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+	Name: "Customer Savings Account",
+	MetaData: map[string]interface{}{
+		"project_owner": "YOUR_APP_NAME",
+	},
+})
+if err != nil {
+	return err
+}
+
+fmt.Printf("Ledger created (HTTP %d): %s\n", resp.StatusCode, ledger.LedgerID)
+```
+
+Per-method SDK pages in the sidebar list each call on `client.Ledger`, `client.LedgerBalance`, and other services.
+
+---
+
+## Authentication
+
+`NewClient` takes a base URL and an optional API key pointer. The SDK sends the key on every request in the `X-Blnk-Key` header when you pass a non-nil pointer.
+
+How you set the API key depends on whether Core runs in secure mode:
+
+<Tabs>
+<Tab title="Secure mode">
+
+When `server.secure` is enabled, pass a pointer to your API key as the second argument.
+
+```go
+apiKey := os.Getenv("BLNK_API_KEY")
+client := blnkgo.NewClient(baseURL, &apiKey)
+```
+
+</Tab>
+<Tab title="Auth disabled">
+
+When secure mode is off, pass `nil` as the API key.
+
+```go
+client := blnkgo.NewClient(baseURL, nil)
+```
+
+</Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+<Card title="Secure Blnk" icon="shield-check" href="/advanced/secure-blnk">
+Secure mode, master key, and server hardening.
+</Card>
+
+<Card title="Scoped API keys" icon="lock-keyhole" href="/api-keys/overview">
+Owner-scoped keys and permission limits.
+</Card>
+</CardGroup>
+
+---
+
+## Timeouts and retries
+
+When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. Pass functional options to `NewClient` to tune behavior:
+
+```go
+client := blnkgo.NewClient(
+	baseURL,
+	&apiKey,
+	blnkgo.WithTimeout(30*time.Second),
+	blnkgo.WithRetry(3),
+	blnkgo.WithRetryDelay(2*time.Second),
+)
+```
+
+| Option | Type | Default | What it does for you |
+| :-- | :-- | :-- | :-- |
+| `WithTimeout` | `time.Duration` | `10s` | How long to wait before giving up on a request. Bump this for slow operations like bulk reconciliations. |
+| `WithRetry` | `int` | `1` | Total attempts including the first try. `1` means no retries. `3` means up to three attempts. |
+| `WithRetryDelay` | `time.Duration` | `2s` | Base delay between retries. Uses linear backoff. |
+
+When to tune these:
+
+- Keep defaults if you're making fast, local calls and want to fail fast.
+- Increase `WithTimeout` if you're running large batch requests that may take a while to complete synchronously.
+- Increase `WithRetry` if you're reading data across an unreliable network.
+
+<Note>
+Retries apply to idempotent `GET` requests and retryable network failures. `POST`, `PUT`, and `DELETE` are not retried on HTTP errors.
+</Note>
+
+---
+
+## Custom logger
+
+By default, the SDK logs retry and transport events through a built-in logger that writes to stdout with `INFO:` and `ERROR:` prefixes.
+
+Pass a type that implements `blnkgo.Logger` to route these messages to your own logging system instead of stdout.
+
+```go
+type appLogger struct{}
+
+func (l appLogger) Info(msg string)  { log.Println("info:", msg) }
+func (l appLogger) Error(msg string) { log.Println("error:", msg) }
+
+client := blnkgo.NewClient(
+	baseURL,
+	&apiKey,
+	blnkgo.WithLogger(appLogger{}),
+)
+```
+
+| Level | When the SDK calls it |
+| :-- | :-- |
+| `Info` | Before a retry, or when a retryable network failure will be retried |
+| `Error` | When a request returns a retryable HTTP status on a `GET`, or exhausts retry attempts |
+
+---
+
+## Building transaction requests
+
+Call `client.Transaction.Create` and pass a `blnkgo.CreateTransactionRequest` struct. It has two parts:
+
+1. **`ParentTransaction`** holds the core transaction fields: amount, currency, source, destination, reference, and metadata.
+2. **Top-level fields** control how the request is processed, such as `AllowOverdraft`, `Inflight`, and `ScheduledFor`.
+
+<Note>
+`ParentTransaction` is an embedded struct in the Go SDK, not a field in the API request body. The API expects flat JSON with fields like `amount` and `source` at the root.
+
+Do not confuse this struct with the API response field `parent_transaction`, which is a transaction ID linking related records such as inflight commits or split distributions.
+</Note>
+
+```go
+blnkgo.CreateTransactionRequest{
+	ParentTransaction: blnkgo.ParentTransaction{
+		PreciseAmount: 100000,
+		Precision: 100,
+		Currency: "USD",
+		Source: "bln_28f25ef6-2e0d-4fa6",
+		Destination: "bln_86ba7976-499d-4282",
+		Reference: "payment_001",
+	},
+	AllowOverdraft: true,
+}
+```
+
+Transactions are the exception. Every other resource uses a single request struct with no nesting. Pass `CreateLedgerRequest` to `client.Ledger.Create`, `CreateLedgerBalanceRequest` to `client.LedgerBalance.Create`, and so on.
+
+---
+
+## JSON field names
+
+Go struct fields use PascalCase, like `MetaData` and `LedgerID`. These map to the API's snake_case JSON fields (`meta_data`, `ledger_id`).
+
+You should always use the Go field names in your code.
+
+---
+
+## Date and time fields
+
+Fields such as `DOB`, `EffectiveDate`, `ScheduledFor`, `InflightCommitDate`, and historical balance timestamps use `time.Time` (or `*time.Time`). Parse ISO 8601 strings with `time.Parse(time.RFC3339, "...")`, for example `"2024-04-22T15:28:03Z"` or `"2024-12-21T01:36:46+01:00"`, then pass the resulting value. Use a pointer when the field is optional so zero values omit from JSON.
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Quick start" icon="rocket" href="/sdks/go/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Error handling" icon="triangle-alert" href="/sdks/go/start/error-handling">
+Three-value returns and Core error bodies.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-go">
+Go SDK releases and version history.
+</Card>
+
+<Card title="Go SDK examples" icon="github" href="https://github.com/blnkfinance/blnk-go/tree/main/examples">
+Escrow, savings, cards, and reconciliation.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

@@ -1,0 +1,111 @@
+---
+mode: "wide"
+title: "Create identity"
+sidebarTitle: "Create identity"
+api: "POST /identities"
+description: "Create a new identity with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.Identity.Create` to create an [identity](/identities/introduction) for an individual or organization.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Identity.Create
+dob, _ := time.Parse(time.RFC3339, "1990-01-15T00:00:00Z")
+
+identity, resp, err := client.Identity.Create(blnkgo.Identity{
+	IdentityType: blnkgo.Individual,
+	FirstName: "Alice",
+	LastName: "Smith",
+	EmailAddress: "alice.smith@example.com",
+	DOB: &dob,
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `IdentityType` | `blnkgo.IdentityType` | `Individual` or `Organization`. |
+
+<Expandable title="Optional parameters">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `IdentityID` | `string` | Optional ID you can set yourself. Must be `idt_` + UUID. Blnk generates one if you omit it. |
+| `OrganizationName` | `string` | Name of the organization. |
+| `FirstName` | `string` | First name of the individual. |
+| `LastName` | `string` | Last name of the individual. |
+| `OtherNames` | `string` | Any other names for the individual. |
+| `Gender` | `string` | Gender of the individual. |
+| `DOB` | `*time.Time` | Date of birth. Parse with `time.Parse(time.RFC3339, "...")`. |
+| `EmailAddress` | `string` | Email address. |
+| `PhoneNumber` | `string` | Contact number. |
+| `Nationality` | `string` | Nationality of the individual. |
+| `Category` | `string` | Your own customer category. |
+| `Street` | `string` | Street address. |
+| `Country` | `string` | Country of residence. |
+| `State` | `string` | State of residence. |
+| `PostCode` | `string` | Postal code. |
+| `City` | `string` | City of residence. |
+| `MetaData` | `map[string]interface{}` | Optional metadata. |
+
+</Expandable>
+
+</Step>
+
+<Step title="Save the identity ID">
+
+Use `identity.IdentityId` to [link balances](/identities/link-balances) or update profile details later.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap
+{
+  "identity_id": "idt_a8f2c91d-4b3c-4ef4-9ab1-a0decf3d0aa3",
+  "identity_type": "individual",
+  "first_name": "Alice",
+  "last_name": "Smith",
+  "email_address": "alice.smith@example.com",
+  "phone_number": "+1234567890",
+  "nationality": "Canadian",
+  "category": "customer",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": {
+    "customer_id": "CUST123456"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `identity_id` | `string` | Unique ID for the identity. Use it to [link balances](/identities/link-balances). |
+| `identity_type` | `string` | Type you passed in the request. |
+| `created_at` | `string` | Date and time the identity was created. |
+| `meta_data` | `object` | Metadata stored with the identity. |
+
+The response echoes every field you sent.
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How identities work" icon="user" href="/identities/introduction">
+Linking balances and handling profile data.
+</Card>
+
+<Card title="Create new identity" icon="book-open" href="/reference/create-identity">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

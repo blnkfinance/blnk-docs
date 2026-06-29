@@ -3,12 +3,12 @@ mode: "wide"
 title: "Bulk void inflight"
 sidebarTitle: "Bulk void inflight"
 api: "POST /transactions/inflight/bulk/void"
-description: "Void multiple independently-created inflight transactions with the TypeScript SDK."
+description: "Void multiple independently-created inflight transactions with the Go SDK."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Use `blnk.Transactions.bulkVoidInflight` to void multiple inflight transactions.
+Use `client.Transaction.BulkVoidInflight` to void multiple inflight transactions.
 
 <Steps>
 <Step title="Call the method">
@@ -16,29 +16,33 @@ Use `blnk.Transactions.bulkVoidInflight` to void multiple inflight transactions.
 <Tabs>
 <Tab title="Queued void">
 
-```typescript blnk.Transactions.bulkVoidInflight wrap
-const response = await blnk.Transactions.bulkVoidInflight({
-  transaction_ids: [
-    'txn_11111111-1111-4111-8111-111111111111',
-    'txn_22222222-2222-4222-8222-222222222222',
-  ],
-});
+```go client.Transaction.BulkVoidInflight
+result, resp, err := client.Transaction.BulkVoidInflight(
+	blnkgo.BulkVoidInflightRequest{
+		TransactionIDs: []string{
+			"txn_c4e70eb8-e4d6-4e04",
+			"txn_6164573b-6cc8-45a4",
+		},
+	},
+)
 ```
 
 </Tab>
 
 <Tab title="Synchronous void">
 
-Pass `skip_queue: true` to process each void synchronously instead of queuing.
+Pass `SkipQueue: true` to process each void synchronously instead of queuing.
 
-```typescript blnk.Transactions.bulkVoidInflight wrap
-const response = await blnk.Transactions.bulkVoidInflight({
-  skip_queue: true,
-  transaction_ids: [
-    'txn_11111111-1111-4111-8111-111111111111',
-    'txn_22222222-2222-4222-8222-222222222222',
-  ],
-});
+```go client.Transaction.BulkVoidInflight
+result, resp, err := client.Transaction.BulkVoidInflight(
+	blnkgo.BulkVoidInflightRequest{
+		SkipQueue: true,
+		TransactionIDs: []string{
+			"txn_c4e70eb8-e4d6-4e04",
+			"txn_6164573b-6cc8-45a4",
+		},
+	},
+)
 ```
 
 </Tab>
@@ -46,14 +50,14 @@ const response = await blnk.Transactions.bulkVoidInflight({
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `transaction_ids` | `string[]` | Up to 100 inflight transaction IDs to void. |
-| `skip_queue` | `boolean` | When `true`, process synchronously instead of queuing. |
+| `TransactionIDs` | `[]string` | Up to 100 inflight transaction IDs to void. |
+| `SkipQueue` | `bool` | When `true`, process synchronously instead of queuing. |
 
 </Step>
 
 <Step title="Review per-item results">
 
-Check `response.data.results` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
+Check `result.Results` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
 
 </Step>
 
@@ -65,15 +69,15 @@ Check `response.data.results` for each transaction's outcome. Failed items inclu
   "failed": 1,
   "results": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
       "status": "failed",
       "code": "ALREADY_COMMITTED",
       "message": "cannot void. Transaction already committed"

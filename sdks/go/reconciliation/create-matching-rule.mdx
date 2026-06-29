@@ -1,0 +1,101 @@
+---
+mode: "wide"
+title: "Create matching rule"
+sidebarTitle: "Create matching rule"
+api: "POST /reconciliation/matching-rules"
+description: "Create a reconciliation matching rule with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.Reconciliation.CreateMatchingRule` to create a matching rule.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Reconciliation.CreateMatchingRule
+matchingRule, resp, err := client.Reconciliation.CreateMatchingRule(blnkgo.Matcher{
+	Name: "Amount match",
+	Description: "Match by amount with 1% drift",
+	Criteria: []blnkgo.Criteria{
+		{
+			Field: blnkgo.CriteriaFieldAmount,
+			Operator: blnkgo.ReconciliationOperatorEquals,
+			AllowableDrift: 0.01,
+		},
+		{
+			Field: blnkgo.CriteriaFieldCurrency,
+			Operator: blnkgo.ReconciliationOperatorEquals,
+		},
+		{
+			Field: blnkgo.CriteriaFieldReference,
+			Operator: blnkgo.ReconciliationOperatorContains,
+		},
+	},
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Name` | `string` | Name of the matching rule. |
+| `Description` | `string` | Short description of what the rule does. |
+| `Criteria` | `[]blnkgo.Criteria` | Array of match criteria. Each entry sets how one field is compared. |
+| `Criteria[].Field` | `blnkgo.CriteriaField` | Field to match: `CriteriaFieldAmount`, `CriteriaFieldCurrency`, `CriteriaFieldReference`, `CriteriaFieldDescription`, or `CriteriaFieldDate`. |
+| `Criteria[].Operator` | `blnkgo.ReconciliationOperator` | How to compare the field: `ReconciliationOperatorEquals` or `ReconciliationOperatorContains`. |
+| `Criteria[].AllowableDrift` | `float64` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+
+</Step>
+
+<Step title="Save the rule ID">
+
+Use `matchingRule.RuleID` in `MatchingRuleIDs` when you [start reconciliation](/sdks/go/reconciliation/start-reconciliation).
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Amount match",
+  "description": "Match by amount with 1% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.01
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-11-26T08:36:36.238244338Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `string` | Unique ID for the rule. Store it to apply during reconciliation runs. |
+| `name` | `string` | Rule name you passed. |
+| `criteria` | `object[]` | The match criteria stored for the rule. |
+| `created_at` | `string` | When the rule was created. |
+| `updated_at` | `string` | When the rule was last updated. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and drift behavior.
+</Card>
+
+<Card title="Create matching rule" icon="book-open" href="/reference/create-matching-rule">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
