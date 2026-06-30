@@ -14,13 +14,16 @@ They are helpful when one field on its own is not enough, but a combination of a
 
 ### Block if previous failed
 
-This rule blocks a very large transaction when the previous transaction status for the same flow was already marked as failed. It assumes your upstream system writes the prior status into metadata before the transaction reaches Watch.
+This rule blocks a very large transaction when the same source had a failed transaction in the last hour. Watch queries prior transactions in its store using `previous_transaction()`.
 
 ```bash BlockIfPreviousFailed.ws
 rule BlockIfPreviousFailed {
   description "Blocks a large transaction when the previous related transaction failed."
 
-  when metadata.previous_transaction_status == "failed"
+  when previous_transaction(
+      within: "PT1H",
+      match: { source: "$current.source", status: "failed" }
+    )
    and amount > 700000
 
   then block

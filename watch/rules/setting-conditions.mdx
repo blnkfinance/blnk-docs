@@ -283,7 +283,7 @@ For example, you might want to review large transactions late at night:
 
 ```bash lateNightLargeTransfer.ws {2-4}
 rule lateNightLargeTransfer {
-  when hour_of_day(timestamp) >= 22 
+  when hour_of_day(created_at) >= 22 
     and amount > 3000
 
   then review
@@ -294,31 +294,29 @@ rule lateNightLargeTransfer {
 
 In this rule, Watch checks the transaction timestamp and evaluates whether it occurred after 10 PM.
 
-Watch evaluates time using the timestamp provided with the transaction event. In practice this is the event time you send to Watch. 
-
-<Info>When transactions are injected through the API, this is typically the `created_at` value.</Info>
+Time-based functions read from **`created_at`** on the transaction: the value you send on inject or that Watch syncs from Blnk Core.
 
 You can write time-based conditions using helper functions that extract parts of the timestamp.
 
 | Function | Description | Example |
 | --- | --- | --- |
-| `hour_of_day(timestamp)` | Hour of day (0-23) | `hour_of_day(timestamp) >= 22` |
-| `day_of_week(timestamp)` | Weekday: 0 = Sunday, 6 = Saturday. With `in`, you can use day names | `day_of_week(timestamp) in (0, 6)` or `day_of_week(timestamp) in ("Saturday", "Sunday")` |
-| `day_of_month(timestamp)` | Day of month (1-31) | `day_of_month(timestamp) == 17` |
-| `day_of_year(timestamp)` | Day of year (1-366) | `day_of_year(timestamp) <= 31` |
-| `month_of_year(timestamp)` | Month (1-12) | `month_of_year(timestamp) == 3` |
-| `week_of_year(timestamp)` | ISO week number (1-53) | `week_of_year(timestamp) == 12` |
-| `year(timestamp)` | Year (e.g. 2026) | `year(timestamp) == 2026` |
+| `hour_of_day(created_at)` | Hour of day (0-23) | `hour_of_day(created_at) >= 22` |
+| `day_of_week(created_at)` | Weekday: 0 = Sunday, 6 = Saturday. With `in`, you can use day names | `day_of_week(created_at) in (0, 6)` or `day_of_week(created_at) in ("Saturday", "Sunday")` |
+| `day_of_month(created_at)` | Day of month (1-31) | `day_of_month(created_at) == 17` |
+| `day_of_year(created_at)` | Day of year (1-366) | `day_of_year(created_at) <= 31` |
+| `month_of_year(created_at)` | Month (1-12) | `month_of_year(created_at) == 3` |
+| `week_of_year(created_at)` | ISO week number (1-53) | `week_of_year(created_at) == 12` |
+| `year(created_at)` | Year (e.g. 2026) | `year(created_at) == 2026` |
 
-> **Also note:** Time-based conditions support standard comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`.
+> **Also note:** Time-based conditions support standard comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, and `not_in`.
 
-> For `day_of_week`, when using the `in` operator, you can use day names instead of numbers. So `day_of_week(timestamp) in ("Saturday", "Sunday")` is equivalent to `day_of_week(timestamp) in (0, 6)`.
+> For `day_of_week`, when using the `in` operator, you can use day names instead of numbers. So `day_of_week(created_at) in ("Saturday", "Sunday")` is equivalent to `day_of_week(created_at) in (0, 6)`.
 
 For example, to flag high value transactions that occur on a weekend:
 
 ```bash weekendHighValueTransactions.ws {2-4}
 rule weekendHighValueTransactions {
-  when day_of_week(timestamp) in ("Saturday", "Sunday")
+  when day_of_week(created_at) in ("Saturday", "Sunday")
     and amount > 10000
     and currency == "USD"
 
@@ -383,6 +381,8 @@ rule burstToSameDestination {
 >**Note:**
 >
 >- This is a boolean check, not a count. It only answers: “Did at least one matching transaction occur?”
+>- The lookback window ends at the **current transaction's `created_at`**, not server time.
+>- `match` keys must be **table columns** (`source`, `destination`, `status`, and so on) or **metadata paths** (`meta_data.status`, `metadata.status`). Dotted keys in object literals are supported (for example `meta_data.status: "failed"`).
 >- Uses the same transaction store and time window format as aggregate conditions.
 
 ---

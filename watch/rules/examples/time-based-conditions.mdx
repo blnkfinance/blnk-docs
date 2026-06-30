@@ -1,16 +1,16 @@
 ---
 sidebarTitle: "Time-based conditions"
 title: "Time-based condition examples"
-description: "Watch DSL examples that use time context from transaction metadata."
+description: "Watch DSL examples that use native time functions with created_at."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
 <Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
 
-These examples depend on time context that your application has already added to metadata, such as hour of day or day of week. 
+These examples use native time functions such as `hour_of_day(created_at)` and `day_of_week(created_at)`. Watch reads the timestamp from `created_at` on each transaction.
 
-That approach keeps the rules portable while letting you localize time logic upstream when needed.
+See [Setting conditions](/watch/rules/setting-conditions#time-based-functions) for the full list of time functions and operators.
 
 ### Late night transactions
 
@@ -20,7 +20,7 @@ This rule reviews larger transactions that occur late at night. It is useful for
 rule LateNightTransactions {
   description "Flags large transactions that occur late at night."
 
-  when metadata.hour_of_day >= 21
+  when hour_of_day(created_at) >= 21
    and amount > 1000
 
   then review
@@ -37,8 +37,8 @@ This rule reviews transactions that occur on Christmas Day. It is a simple seaso
 rule ReviewChristmasTransactions {
   description "Flags transactions that occur on Christmas Day."
 
-  when metadata.month_of_year == 12
-   and metadata.day_of_month == 25
+  when month_of_year(created_at) == 12
+   and day_of_month(created_at) == 25
 
   then review
        score   0.6
@@ -54,8 +54,8 @@ This rule reviews large transactions that happen in the early-morning window bet
 rule UnusualTransactionTime {
   description "Flags large transactions during unusual early-morning hours."
 
-  when metadata.hour_of_day >= 1
-   and metadata.hour_of_day < 5
+  when hour_of_day(created_at) >= 1
+   and hour_of_day(created_at) < 5
    and amount > 1000
 
   then review
@@ -72,7 +72,7 @@ This rule reviews large transactions that occur on a weekend. It is a practical 
 rule WeekendTransactionCheck {
   description "Flags large transactions that occur on weekends."
 
-  when metadata.day_of_week in (0, 6)
+  when day_of_week(created_at) in (0, 6)
    and amount > 5000
 
   then review
