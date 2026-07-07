@@ -13,7 +13,7 @@ Use `client.LedgerBalance.GetHistorical` to retrieve a [balance](/balances/histo
 <Steps>
 <Step title="Call the method">
 
-```go client.LedgerBalance.GetHistorical
+```go client.LedgerBalance.GetHistorical wrap
 timestamp, _ := time.Parse(time.RFC3339, "2025-02-24T08:55:26Z")
 
 historical, resp, err := client.LedgerBalance.GetHistorical(
@@ -28,12 +28,6 @@ historical, resp, err := client.LedgerBalance.GetHistorical(
 | `balanceID` | `string` | Balance ID to query. |
 | `timestamp` | `time.Time` | Point in time for the historical balance. Parse ISO 8601 strings with `time.Parse(time.RFC3339, "...")`. |
 | `fromSource` | `bool` | When `true`, reconstruct from transactions instead of snapshots. |
-
-</Step>
-
-<Step title="Use the historical amounts">
-
-Read `historical.Balance` for net, credit, and debit totals at the requested timestamp. Compare with the current balance if you are auditing or reconciling.
 
 </Step>
 
@@ -53,15 +47,17 @@ Read `historical.Balance` for net, credit, and debit totals at the requested tim
 }
 ```
 
+#### Go response (`*blnkgo.LedgerBalanceHistorical`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `timestamp` | `string` | Point in time you queried (ISO 8601). |
-| `from_source` | `boolean` | Whether the balance was reconstructed from transactions. |
-| `balance.balance_id` | `string` | Balance you queried. |
-| `balance.balance` | `number` | Net amount at that timestamp. |
-| `balance.credit_balance` | `number` | Total credits at that timestamp. |
-| `balance.debit_balance` | `number` | Total debits at that timestamp. |
-| `balance.currency` | `string` | Currency of the balance. |
+| `Timestamp` | `time.Time` | Point in time you queried (ISO 8601). |
+| `FromSource` | `bool` | Whether the balance was reconstructed from transactions. |
+| `Balance.BalanceID` | `string` | Balance you queried. |
+| `Balance.Balance` | `*big.Int` | Net amount at that timestamp. |
+| `Balance.CreditBalance` | `*big.Int` | Total credits at that timestamp. |
+| `Balance.DebitBalance` | `*big.Int` | Total debits at that timestamp. |
+| `Balance.Currency` | `string` | Currency of the balance. |
 
 </Step>
 </Steps>

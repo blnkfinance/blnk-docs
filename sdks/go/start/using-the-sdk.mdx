@@ -15,7 +15,9 @@ Configurable client options ship in v1.2.0. See the [Changelog](/changelog/blnk-
 
 Your Blnk client is the single entry point to everything: ledgers, balances, transactions, reconciliation, and more. Configure it once when your app starts, then use it everywhere.
 
-```go client.go
+Create a helper that reads your base URL and API key from the environment, then passes functional options for timeout and retries:
+
+```go client.go wrap
 package blnk
 
 import (
@@ -44,12 +46,14 @@ func NewBlnkClient() *blnkgo.Client {
 
 That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
 
-```go create-ledger.go
+Pass a request struct to the service method you need. For example, create a ledger with metadata:
+
+```go create-ledger.go wrap
 client := NewBlnkClient()
 
 ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
 	Name: "Customer Savings Account",
-	MetaData: map[string]interface{}{
+	MetaData: blnkgo.MetaData{
 		"project_owner": "YOUR_APP_NAME",
 	},
 })
@@ -75,7 +79,7 @@ How you set the API key depends on whether Core runs in secure mode:
 
 When `server.secure` is enabled, pass a pointer to your API key as the second argument.
 
-```go
+```go wrap
 apiKey := os.Getenv("BLNK_API_KEY")
 client := blnkgo.NewClient(baseURL, &apiKey)
 ```
@@ -85,7 +89,7 @@ client := blnkgo.NewClient(baseURL, &apiKey)
 
 When secure mode is off, pass `nil` as the API key.
 
-```go
+```go wrap
 client := blnkgo.NewClient(baseURL, nil)
 ```
 
@@ -108,7 +112,7 @@ Owner-scoped keys and permission limits.
 
 When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. Pass functional options to `NewClient` to tune behavior:
 
-```go
+```go wrap
 client := blnkgo.NewClient(
 	baseURL,
 	&apiKey,
@@ -142,7 +146,7 @@ By default, the SDK logs retry and transport events through a built-in logger th
 
 Pass a type that implements `blnkgo.Logger` to route these messages to your own logging system instead of stdout.
 
-```go
+```go wrap
 type appLogger struct{}
 
 func (l appLogger) Info(msg string)  { log.Println("info:", msg) }
@@ -175,7 +179,7 @@ Call `client.Transaction.Create` and pass a `blnkgo.CreateTransactionRequest` st
 Do not confuse this struct with the API response field `parent_transaction`, which is a transaction ID linking related records such as inflight commits or split distributions.
 </Note>
 
-```go
+```go wrap
 blnkgo.CreateTransactionRequest{
 	ParentTransaction: blnkgo.ParentTransaction{
 		PreciseAmount: 100000,
@@ -197,7 +201,7 @@ Transactions are the exception. Every other resource uses a single request struc
 
 Go struct fields use PascalCase, like `MetaData` and `LedgerID`. These map to the API's snake_case JSON fields (`meta_data`, `ledger_id`).
 
-You should always use the Go field names in your code.
+You should always use the Go field names in your code. Per-method Go SDK pages list the Go request and response field names for each call.
 
 ---
 

@@ -16,7 +16,7 @@ Use `client.Transaction.BulkCommitInflight` to commit multiple inflight transact
 <Tabs>
 <Tab title="Queued commit">
 
-```go client.Transaction.BulkCommitInflight
+```go client.Transaction.BulkCommitInflight wrap
 result, resp, err := client.Transaction.BulkCommitInflight(
 	blnkgo.BulkCommitInflightRequest{
 		Transactions: []blnkgo.BulkCommitInflightItem{
@@ -42,7 +42,7 @@ result, resp, err := client.Transaction.BulkCommitInflight(
 
 Pass `SkipQueue: true` to process each commit synchronously instead of queuing.
 
-```go client.Transaction.BulkCommitInflight
+```go client.Transaction.BulkCommitInflight wrap
 result, resp, err := client.Transaction.BulkCommitInflight(
 	blnkgo.BulkCommitInflightRequest{
 		SkipQueue: true,
@@ -64,17 +64,11 @@ result, resp, err := client.Transaction.BulkCommitInflight(
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `Transactions` | `[]BulkCommitInflightItem` | Up to 100 inflight transactions to commit. |
+| `Transactions` | `[]blnkgo.BulkCommitInflightItem` | Up to 100 inflight transactions to commit. |
 | `Transactions[].TransactionID` | `string` | Inflight transaction ID to commit. |
 | `Transactions[].Amount` | `float64` | Partial commit amount. Omit to commit the full remaining inflight amount. |
 | `Transactions[].PreciseAmount` | `*big.Int` | Precision-applied partial commit amount. Takes precedence over `Amount`. |
 | `SkipQueue` | `bool` | When `true`, process synchronously instead of queuing. |
-
-</Step>
-
-<Step title="Review per-item results">
-
-Check `result.Results` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
 
 </Step>
 
@@ -103,14 +97,17 @@ Check `result.Results` for each transaction's outcome. Failed items include a co
 }
 ```
 
+#### Go response (`*blnkgo.BulkCommitInflightResponse`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `succeeded` | `number` | Number committed successfully. |
-| `failed` | `number` | Number that failed. |
-| `results` | `object[]` | Per-transaction outcome in request order. |
-| `results[].status` | `string` | `succeeded` or `failed`. |
-| `results[].code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
-| `results[].message` | `string` | Human-readable failure message. |
+| `Succeeded` | `int` | Number committed successfully. |
+| `Failed` | `int` | Number that failed. |
+| `Results` | `[]blnkgo.BulkCommitInflightResult` | Per-transaction outcome in request order. |
+| `Results[].TransactionID` | `string` | Transaction ID from the request. |
+| `Results[].Status` | `string` | `succeeded` or `failed`. |
+| `Results[].Code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
+| `Results[].Message` | `string` | Human-readable failure message. |
 
 </Step>
 </Steps>

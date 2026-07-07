@@ -8,12 +8,12 @@ description: "Submit multiple transactions in one request with the Go SDK."
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/bulk-transactions) in one request.
+Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/bulk-transactions) in one request (up to `blnkgo.MaxBulkCreateItems`, **10,000** per request).
 
 <Steps>
 <Step title="Call the method">
 
-```go client.Transaction.CreateBulk
+```go client.Transaction.CreateBulk wrap
 result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
 	Atomic: true,
 	Transactions: []blnkgo.CreateTransactionRequest{
@@ -45,17 +45,11 @@ result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionR
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `Transactions` | `[]CreateTransactionRequest` | Transaction objects to create; references must be unique within the batch. |
+| `Transactions` | `[]blnkgo.CreateTransactionRequest` | Transaction objects to create; up to **10,000** per request (`blnkgo.MaxBulkCreateItems`). References must be unique within the batch. |
 | `Atomic` | `bool` | When `true`, every transaction succeeds or fails together. |
 | `Inflight` | `bool` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
 | `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
 | `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
-
-</Step>
-
-<Step title="Save the batch ID">
-
-Use `result.BatchID` as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch.
 
 </Step>
 
@@ -79,15 +73,21 @@ Use `result.BatchID` as `ParentTransactionID` to find child transactions, or wit
 ```
 </CodeGroup>
 
+#### Go response (`*blnkgo.CreateBulkTransactionResponse`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `batch_id` | `string` | Identifier for the batch. Use as `parent_transaction` to find child transactions, or with `Update` to commit or void an inflight batch. |
-| `status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
-| `transaction_count` | `number` | Number of transactions when processed synchronously. |
-| `message` | `string` | Status message when `RunAsync` is `true`. |
+| `BatchID` | `string` | Identifier for the batch. Use as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch. |
+| `Status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `TransactionCount` | `int` | Number of transactions when processed synchronously. |
+| `Message` | `string` | Status message when `RunAsync` is `true`. |
 
 </Step>
 </Steps>
+
+<Note>
+The Go SDK validates batch size before sending the request. If `len(Transactions)` exceeds `blnkgo.MaxBulkCreateItems` (10,000), `CreateBulk` returns a client-side validation error without calling the API.
+</Note>
 
 ---
 
