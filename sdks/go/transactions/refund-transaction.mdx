@@ -18,7 +18,7 @@ Use `client.Transaction.Refund` to refund a transaction.
 
 Omit the optional body to queue the refund using Core defaults.
 
-```go client.Transaction.Refund
+```go client.Transaction.Refund wrap
 refund, resp, err := client.Transaction.Refund(
 	"txn_c4e70eb8-e4d6-4e04",
 )
@@ -30,7 +30,7 @@ refund, resp, err := client.Transaction.Refund(
 
 Pass a `RefundTransactionRequest` with `SkipQueue: true` to process the refund synchronously.
 
-```go client.Transaction.Refund
+```go client.Transaction.Refund wrap
 refund, resp, err := client.Transaction.Refund(
 	"txn_c4e70eb8-e4d6-4e04",
 	&blnkgo.RefundTransactionRequest{
@@ -46,12 +46,6 @@ refund, resp, err := client.Transaction.Refund(
 | :-- | :-- | :-- |
 | `transactionID` | `string` | Transaction ID of the applied transaction to refund. |
 | `SkipQueue` | `bool` | When `true`, process the refund synchronously instead of queuing. |
-
-</Step>
-
-<Step title="Save the refund transaction ID">
-
-Use `refund.TransactionID` to track the refund. Check `refund.ParentTransactionID` to confirm it links to the original transaction.
 
 </Step>
 
@@ -76,13 +70,19 @@ Use `refund.TransactionID` to track the refund. Check `refund.ParentTransactionI
 }
 ```
 
+#### Go response (`*blnkgo.Transaction`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `transaction_id` | `string` | ID of the new refund transaction. |
-| `parent_transaction` | `string` | Original transaction being refunded. |
-| `source` | `string` | Original destination, now the source of the refund. |
-| `destination` | `string` | Original source, now the destination of the refund. |
-| `status` | `string` | Status of the refund transaction. |
+| `TransactionID` | `string` | ID of the new refund transaction. |
+| `ParentTransactionID` | `string` | Original transaction being refunded. |
+| `Source` | `string` | Original destination, now the source of the refund. |
+| `Destination` | `string` | Original source, now the destination of the refund. |
+| `Status` | `blnkgo.PryTransactionStatus` | Status of the refund transaction. |
+| `PreciseAmount` | `*big.Int` | Refund amount in minor units. |
+| `Amount` | `float64` | Float refund amount after precision is applied. |
+| `Currency` | `string` | Currency of the refund. |
+| `CreatedAt` | `time.Time` | Date and time the refund was created. |
 
 </Step>
 </Steps>

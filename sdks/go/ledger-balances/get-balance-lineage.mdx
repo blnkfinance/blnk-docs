@@ -15,7 +15,7 @@ Use `client.LedgerBalance.GetLineage` to inspect a balance's fund breakdown.
 <Steps>
 <Step title="Call the method">
 
-```go client.LedgerBalance.GetLineage
+```go client.LedgerBalance.GetLineage wrap
 lineage, resp, err := client.LedgerBalance.GetLineage(
 	"bln_5ce86029-3c2e-4e2a",
 )
@@ -24,12 +24,6 @@ lineage, resp, err := client.LedgerBalance.GetLineage(
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `balanceID` | `string` | Balance ID with fund lineage enabled. |
-
-</Step>
-
-<Step title="Use the provider breakdown">
-
-Read `lineage.Providers` to see how much each provider contributed, spent, and has available. Use `TotalWithLineage` for the aggregate tracked amount.
 
 </Step>
 
@@ -52,12 +46,19 @@ Read `lineage.Providers` to see how much each provider contributed, spent, and h
 }
 ```
 
+#### Go response (`*blnkgo.BalanceLineage`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `balance_id` | `string` | Balance you queried. |
-| `aggregate_balance_id` | `string` | Internal aggregate balance ID for combined provider funds. |
-| `total_with_lineage` | `string` | Total available funds tracked by lineage (minor units). |
-| `providers` | `object[]` | Provider-by-provider breakdown of received and spent funds. |
+| `BalanceID` | `string` | Balance you queried. |
+| `AggregateBalanceID` | `string` | Internal aggregate balance ID for combined provider funds. |
+| `TotalWithLineage` | `*big.Int` | Total available funds tracked by lineage (minor units). |
+| `Providers` | `[]LineageProviderBreakdown` | Provider-by-provider breakdown of received and spent funds. |
+| `Providers.Provider` | `string` | Provider name (for example `stripe`). |
+| `Providers.Amount` | `*big.Int` | Total amount received from the provider (minor units). |
+| `Providers.Available` | `*big.Int` | Remaining available amount (minor units). |
+| `Providers.Spent` | `*big.Int` | Amount spent from the provider (minor units). |
+| `Providers.ShadowBalanceID` | `string` | Shadow balance ID for this provider's funds. |
 
 </Step>
 </Steps>

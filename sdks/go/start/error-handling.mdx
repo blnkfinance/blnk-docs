@@ -1,15 +1,15 @@
 ---
 title: "Error Handling"
-description: "Check three-value returns, read Core error bodies, and handle validation and transport failures with the Go SDK."
+description: "Check three-value returns, read structured Core error codes, and handle validation and transport failures with the Go SDK."
 sidebarTitle: "Error handling"
 icon: "triangle-alert"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
 
-Every SDK method returns three values: the result, the HTTP response, and an error. Check `err` before you use the result.
+Every SDK method returns three values: the **result**, the **HTTP response**, and an **error**.
 
-On success, the result holds the resource and `resp.StatusCode` reflects Core's HTTP status. On failure, `err` describes what went wrong. For Core HTTP errors, the SDK wraps the response in `*blnkgo.ApiErrorResponse`.
+Check `err` before you use the result. When `err` is `nil`, the result holds the decoded response. When `err` is set, the result is empty and you should handle the failure.
 
 <Tip>
 Only `NewClient` panics when the base URL is missing. SDK methods return errors for API and validation failures.
@@ -17,29 +17,51 @@ Only `NewClient` panics when the base URL is missing. SDK methods return errors 
 
 ---
 
-## Parse the return values
+## What each return value holds
 
-Read the error first. Use `resp.StatusCode` for logging and metrics after you confirm success.
-
-```go
+```go wrap
 txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89")
-if err != nil {
-	var apiErr *blnkgo.ApiErrorResponse
-	if errors.As(err, &apiErr) {
-		fmt.Printf("API error %d: %s\n", apiErr.Status, string(apiErr.Body))
-	}
-	return err
-}
-
-// Use txn
-fmt.Printf("HTTP status: %d\n", resp.StatusCode)
 ```
 
 | Return value | Contains |
 | :-- | :-- |
-| Result | Decoded success body. May be zero when `err` is set. |
-| `*http.Response` | HTTP status, headers, and metadata. May be `nil` when validation fails before a request is sent. |
-| `error` | Core HTTP failure (`*ApiErrorResponse`), client-side validation error, JSON decode error, or transport failure. |
+| Result (`txn`) | Decoded success body. Zero or `nil` when `err` is set. |
+| `*http.Response` (`resp`) | HTTP status, headers, and metadata. `nil` when validation fails before a request is sent. |
+| `error` (`err`) | Core HTTP failure (`*ApiErrorResponse`), client-side validation error, JSON decode error, or transport failure. |
+
+After you confirm `err == nil`, use the result and optionally log `resp.StatusCode`.
+
+---
+
+## Core error types
+
+When Core rejects a request, the SDK wraps the failure in `*blnkgo.ApiErrorResponse`. Use `errors.As` to read structured fields instead of parsing message text.
+
+```go wrap
+type ApiErrorDetail struct {
+	Code    string
+	Message string
+	Details interface{}
+}
+
+type ApiErrorResponse struct {
+	Status      int
+	Message     string
+	LegacyError string
+	ErrorDetail *ApiErrorDetail
+	Body        []byte
+}
+```
+
+| Field | Description |
+| :-- | :-- |
+| `Status` | HTTP status code from Core (for example `404`). |
+| `Message` | HTTP status text (for example `"404 Not Found"`). |
+| `LegacyError` | Flat `"error"` string from Core when present. |
+| `ErrorDetail` | Structured details parsed from `error_detail`. Read `ErrorDetail.Code` for routing. |
+| `Body` | Raw JSON error payload from Core. |
+
+The SDK also exports `blnkgo.AsApiErrorResponse(err)` as a shortcut for `errors.As`.
 
 ---
 
@@ -48,19 +70,20 @@ fmt.Printf("HTTP status: %d\n", resp.StatusCode)
 <Steps>
 <Step title="Check err">
 
-Confirm success before you use the result. On every call, check that `err` is `nil`.
+On every call, confirm `err` is `nil` before you use the result.
 
-```go Error handling
+```go Error handling wrap
 txn, resp, err := client.Transaction.Get("txn_f482a1b3-6c2d-4e89")
 if err != nil {
 	var apiErr *blnkgo.ApiErrorResponse
 	if errors.As(err, &apiErr) {
 		switch apiErr.Status {
 		case http.StatusNotFound:
-			// Resource not found
+			// Check apiErr.ErrorDetail.Code (e.g. TXN_NOT_FOUND)
 		case http.StatusUnauthorized, http.StatusForbidden:
-			// Auth or scope failure: check the API key
-		default: // Log apiErr.Status and string(apiErr.Body)
+			// Check the API key and scopes
+		default:
+			// Log apiErr.Status and apiErr.ErrorDetail.Code
 		}
 	}
 	return err
@@ -73,57 +96,52 @@ if err != nil {
 
 <Step title="Read the error detail">
 
-Use the field that matches the failure type:
+Use the field that matches the failure:
 
-- **Core rejection** (`errors.As` matches `*ApiErrorResponse`): read `apiErr.Status` and parse `apiErr.Body` as JSON when you need structured fields such as `error_detail.code`.
-- **SDK validation** (plain `error` before any HTTP call): read `err.Error()` and fix the payload before retrying.
+- **Core rejection:** `errors.As` matches `*ApiErrorResponse`. Read `apiErr.ErrorDetail.Code` for logic. Use `apiErr.Status` when you only need broad handling (401, 404, 409, 5xx).
+- **SDK validation:** plain `error` before any HTTP call. Read `err.Error()` and fix the payload before retrying.
 
-Route on `apiErr.Status` when you do not need code-level logic (401, 404, 409, 5xx).
+See [API error codes](/advanced/error-codes) for the full list of codes Core returns and what each one means.
 
 </Step>
 
-<Step title="Configure transport handling">
+<Step title="Handle transport failures">
 
-When the SDK cannot reach Core or the request times out, you get a network or timeout error from the HTTP client. Configure timeout and logging in [your SDK client](/sdks/go/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
+When the SDK cannot reach Core or the request times out, you get a network or timeout error from the HTTP client. Configure timeout and logging in [your SDK client](/sdks/go/start/using-the-sdk#timeouts-and-retries).
 
 </Step>
 </Steps>
 
 ---
 
-## Core errors
+## What Core sends on rejection
 
-When Core rejects a request, the SDK wraps the failure in `*ApiErrorResponse`. It sets `Status` to Core's HTTP status, `Message` to the HTTP status text, and `Body` to Core's raw JSON error payload.
+When Core rejects a request, the response body looks like this:
 
-On Core 0.15.0 and later, a rejected request looks like this:
-
-```go 404 Not Found expandable
-txn, resp, err := client.Transaction.Get("txn_missing")
-if err != nil {
-	var apiErr *blnkgo.ApiErrorResponse
-	if errors.As(err, &apiErr) {
-		// apiErr:
-		//   Status:  404
-		//   Message: "404 Not Found"
-		//   Body:    []byte(`{"error":"transaction not found","error_detail":{"code":"TXN_NOT_FOUND","message":"transaction not found","details":{}}}`)
-		//
-		// Parse error_detail.code from string(apiErr.Body) when you need code-level routing.
-	}
+```json 404 Not Found wrap
+{
+  "error": "transaction not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "transaction not found"
+  }
 }
 ```
 
-Parse `error_detail.code` from `apiErr.Body` when you need code-level routing. Treat message strings as display text; Core may change wording between releases. On older Core versions, `error_detail.code` may be absent from the body.
+The SDK maps that JSON into `ApiErrorResponse`. Read `apiErr.ErrorDetail.Code` in your app, not the message string. Message text can change between releases.
+
+When Core returns only a flat `"error"` string with no `error_detail`, the SDK sets `ErrorDetail.Code` to `"UNKNOWN"`.
 
 | Status | When it happens | What to do |
 | :-- | :-- | :-- |
-| `404` | Resource ID or path does not exist | Parse `error_detail.code` from `apiErr.Body` when available (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
+| `404` | Resource ID or path does not exist | Check `apiErr.ErrorDetail.Code` (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
 | `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
 | `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
 | `400` | Core rejected the payload | Fix the request body before retrying |
 | `5xx` | Core or upstream failure | Retry later and check Core logs |
 
 <Warning>
-Do not match exact error message strings in application logic. Message text can change. Prefer `error_detail.code` from `apiErr.Body` for routing and message strings for user-facing text only. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
+Do not match exact error message strings in application logic. Prefer `apiErr.ErrorDetail.Code` for routing and `apiErr.ErrorDetail.Message` for user-facing text only.
 </Warning>
 
 ---
@@ -132,7 +150,7 @@ Do not match exact error message strings in application logic. Message text can 
 
 Some methods validate input before sending a request. When validation fails, Core never receives the call.
 
-| Field | Value |
+| Return value | Value |
 | :-- | :-- |
 | Result | Zero value (`nil` for pointers) |
 | `*http.Response` | `nil` |
@@ -144,17 +162,13 @@ Each [Core API](/reference/create-ledger) lists required fields for that call.
 
 ---
 
-## Transport failures
-
-When the SDK cannot reach Core or the request times out, you get a network or timeout error from `http.Client`. Configure timeout and logging in [your SDK client](/sdks/go/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
-
-When debugging transport failures, log the error, the endpoint you called, and any HTTP status returned before the failure.
-
----
-
 ## Related docs
 
 <CardGroup cols={2}>
+<Card title="API error codes" icon="book-open" href="/advanced/error-codes">
+Full list of Core error codes and what each one means.
+</Card>
+
 <Card title="Using the SDK" icon="code" href="/sdks/go/start/using-the-sdk">
 Timeouts, retries, and logging.
 </Card>
@@ -165,10 +179,6 @@ Error codes, inflight queuing, and reconciliation changes.
 
 <Card title="Quick start" icon="rocket" href="/sdks/go/start/quick-start">
 Install the SDK and create your first transaction.
-</Card>
-
-<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-go">
-Go SDK releases and version history.
 </Card>
 </CardGroup>
 

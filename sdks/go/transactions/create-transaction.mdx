@@ -18,7 +18,7 @@ Use `client.Transaction.Create` to post a [transaction](/transactions/introducti
 
 Move money from one source balance to one destination in a single call.
 
-```go client.Transaction.Create
+```go client.Transaction.Create wrap
 transaction, resp, err := client.Transaction.Create(
 	blnkgo.CreateTransactionRequest{
 		ParentTransaction: blnkgo.ParentTransaction{
@@ -55,7 +55,7 @@ transaction, resp, err := client.Transaction.Create(
 
 Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/creating-inflight).
 
-```go client.Transaction.Create
+```go client.Transaction.Create wrap
 expiry, _ := time.Parse(time.RFC3339, "2025-03-01T00:00:00Z")
 commit, _ := time.Parse(time.RFC3339, "2025-02-28T12:00:00Z")
 
@@ -92,7 +92,7 @@ See [Update inflight](/sdks/go/transactions/update-inflight) to commit or void.
 Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
 
 <CodeGroup>
-```go Multiple sources
+```go Multiple sources wrap
 transaction, resp, err := client.Transaction.Create(
 	blnkgo.CreateTransactionRequest{
 		ParentTransaction: blnkgo.ParentTransaction{
@@ -122,7 +122,7 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go Multiple destinations
+```go Multiple destinations wrap
 transaction, resp, err := client.Transaction.Create(
 	blnkgo.CreateTransactionRequest{
 		ParentTransaction: blnkgo.ParentTransaction{
@@ -155,11 +155,11 @@ transaction, resp, err := client.Transaction.Create(
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `Sources` | `[]Source` | Source legs when debiting more than one balance. |
-| `Destinations` | `[]Source` | Destination legs when crediting more than one balance. |
+| `Sources` | `[]blnkgo.Source` | Source legs when debiting more than one balance. |
+| `Destinations` | `[]blnkgo.Source` | Destination legs when crediting more than one balance. |
 | `Sources[].Identifier` | `string` | Balance ID or `@` internal name for a source leg. |
 | `Destinations[].Identifier` | `string` | Balance ID or `@` internal name for a destination leg. |
-| `Distribution` | `Distribution` | Percentage, fixed amount, or `left` for a split leg. |
+| `Distribution` | `blnkgo.Distribution` | Percentage, fixed amount, or `left` for a split leg. |
 | `PreciseDistribution` | `string` | Fixed split-leg amount in minor units. |
 | `Atomic` | `bool` | When `true`, every leg succeeds together or the entire split fails. |
 
@@ -169,7 +169,7 @@ transaction, resp, err := client.Transaction.Create(
 
 Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
 
-```go client.Transaction.Create
+```go client.Transaction.Create wrap
 scheduledFor, _ := time.Parse(time.RFC3339, "2024-12-21T01:36:46+01:00")
 
 transaction, resp, err := client.Transaction.Create(
@@ -182,7 +182,7 @@ transaction, resp, err := client.Transaction.Create(
 			Destination: "@fees",
 			Reference: "ref_f482a1b3-6c2d-4e89",
 			Description: "Monthly fee",
-			MetaData: map[string]interface{}{
+			MetaData: blnkgo.MetaData{
 				"sender_name":    "John Doe",
 				"sender_account": "00000000000",
 			},
@@ -195,7 +195,7 @@ transaction, resp, err := client.Transaction.Create(
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `ScheduledFor` | `*time.Time` | Date and time to post the transaction. ISO 8601 format. |
-| `MetaData` | `map[string]interface{}` | Optional metadata stored on the scheduled transaction. |
+| `MetaData` | `MetaData` | Optional metadata stored on the scheduled transaction. |
 
 </Tab>
 
@@ -203,7 +203,7 @@ transaction, resp, err := client.Transaction.Create(
 
 Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
 
-```go client.Transaction.Create
+```go client.Transaction.Create wrap
 effectiveDate, _ := time.Parse(time.RFC3339, "2025-02-15T10:30:00Z")
 
 transaction, resp, err := client.Transaction.Create(
@@ -441,17 +441,24 @@ transaction, resp, err := client.Transaction.Create(
 </Tab>
 </Tabs>
 
+#### Go response (`*blnkgo.Transaction`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `transaction_id` | `string` | Unique ID for the transaction. |
-| `status` | `string` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`). |
-| `precise_amount` | `number` | `amount` × `precision`. |
-| `source` | `string` | Resolved source balance. |
-| `destination` | `string` | Resolved destination balance. |
-| `hash` | `string` | [Hash](/transactions/hash) of the transaction details. |
-| `created_at` | `string` | Date and time the transaction was created. |
-
-Use `transaction.TransactionID` and other fields on the returned `*blnkgo.Transaction` struct.
+| `TransactionID` | `string` | Unique ID for the transaction. |
+| `Status` | `blnkgo.PryTransactionStatus` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`, `INFLIGHT`). |
+| `PreciseAmount` | `*big.Int` | Amount in minor units. |
+| `Amount` | `float64` | Float amount after precision is applied. |
+| `Precision` | `int64` | Precision for the currency. |
+| `Source` | `string` | Resolved source balance. |
+| `Destination` | `string` | Resolved destination balance. |
+| `Sources` | `[]blnkgo.Source` | Source legs for split transactions. |
+| `Destinations` | `[]blnkgo.Source` | Destination legs for split transactions. |
+| `Reference` | `string` | Unique reference for the transaction. |
+| `Description` | `string` | Narration of the transaction. |
+| `EffectiveDate` | `*time.Time` | Actual date the transaction occurred, for backdated transactions. |
+| `CreatedAt` | `time.Time` | Date and time the transaction was created. |
+| `MetaData` | `MetaData` | Optional metadata object. |
 
 </Step>
 </Steps>

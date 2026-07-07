@@ -16,7 +16,7 @@ Use `client.Transaction.BulkVoidInflight` to void multiple inflight transactions
 <Tabs>
 <Tab title="Queued void">
 
-```go client.Transaction.BulkVoidInflight
+```go client.Transaction.BulkVoidInflight wrap
 result, resp, err := client.Transaction.BulkVoidInflight(
 	blnkgo.BulkVoidInflightRequest{
 		TransactionIDs: []string{
@@ -33,7 +33,7 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 
 Pass `SkipQueue: true` to process each void synchronously instead of queuing.
 
-```go client.Transaction.BulkVoidInflight
+```go client.Transaction.BulkVoidInflight wrap
 result, resp, err := client.Transaction.BulkVoidInflight(
 	blnkgo.BulkVoidInflightRequest{
 		SkipQueue: true,
@@ -52,12 +52,6 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 | :-- | :-- | :-- |
 | `TransactionIDs` | `[]string` | Up to 100 inflight transaction IDs to void. |
 | `SkipQueue` | `bool` | When `true`, process synchronously instead of queuing. |
-
-</Step>
-
-<Step title="Review per-item results">
-
-Check `result.Results` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
 
 </Step>
 
@@ -86,14 +80,17 @@ Check `result.Results` for each transaction's outcome. Failed items include a co
 }
 ```
 
+#### Go response (`*blnkgo.BulkVoidInflightResponse`)
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `succeeded` | `number` | Number voided successfully. |
-| `failed` | `number` | Number that failed. |
-| `results` | `object[]` | Per-transaction outcome in request order. |
-| `results[].status` | `string` | `succeeded` or `failed`. |
-| `results[].code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
-| `results[].message` | `string` | Human-readable failure message. |
+| `Succeeded` | `int` | Number voided successfully. |
+| `Failed` | `int` | Number that failed. |
+| `Results` | `[]blnkgo.BulkVoidInflightResult` | Per-transaction outcome in request order. |
+| `Results[].TransactionID` | `string` | Transaction ID from the request. |
+| `Results[].Status` | `string` | `succeeded` or `failed`. |
+| `Results[].Code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
+| `Results[].Message` | `string` | Human-readable failure message. |
 
 </Step>
 </Steps>
