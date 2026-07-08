@@ -1,0 +1,130 @@
+---
+mode: "wide"
+title: "Bulk commit inflight"
+sidebarTitle: "Bulk commit inflight"
+api: "POST /transactions/inflight/bulk/commit"
+description: "Commit multiple independently-created inflight transactions with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions.bulk_commit_inflight` to commit multiple inflight transactions.
+
+<Steps>
+<Step title="Call the method">
+
+<Tabs>
+<Tab title="Queued commit">
+
+```python blnk.transactions.bulk_commit_inflight wrap
+response = blnk.transactions.bulk_commit_inflight({
+  "transactions": [
+    {
+      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+    },
+    {
+      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "amount": 40,
+    },
+    {
+      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "precise_amount": 125034,
+    },
+  ],
+})
+```
+
+</Tab>
+
+<Tab title="Synchronous commit">
+
+Pass `skip_queue: True` to process each commit synchronously instead of queuing.
+
+```python blnk.transactions.bulk_commit_inflight wrap
+response = blnk.transactions.bulk_commit_inflight({
+  "skip_queue": True,
+  "transactions": [
+    {
+      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+    },
+    {
+      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "amount": 40,
+    },
+  ],
+})
+```
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `list[dict]` | Up to 100 inflight transactions to commit. |
+| `transactions[].transaction_id` | `str` | Inflight transaction ID to commit. |
+| `transactions[].amount` | `number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
+| `transactions[].precise_amount` | `number` | Precision-applied partial commit amount. Takes precedence over amount. |
+| `skip_queue` | `bool` | When `True`, process synchronously instead of queuing. |
+
+</Step>
+
+<Step title="Review per-item results">
+
+Check `response.data["results"]` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "succeeded": 2,
+  "failed": 1,
+  "results": [
+    {
+      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "status": "failed",
+      "code": "INVALID_AMOUNT",
+      "message": "cannot commit more than inflight amount"
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `succeeded` | `number` | Number committed successfully. |
+| `failed` | `number` | Number that failed. |
+| `results` | `list[dict]` | Per-transaction outcome in request order. |
+| `results[].status` | `str` | `succeeded` or `failed`. |
+| `results[].code` | `str` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
+| `results[].message` | `str` | Human-readable failure message. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk inflight updates" icon="plane" href="/transactions/inflight#bulk-inflight-updates">
+Per-item failure codes and when to use batch updates.
+</Card>
+
+<Card title="Bulk commit inflight" icon="book-open" href="/reference/bulk-commit-inflight">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

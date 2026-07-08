@@ -1,0 +1,97 @@
+---
+mode: "wide"
+title: "Update matching rule"
+sidebarTitle: "Update matching rule"
+api: "PUT /reconciliation/matching-rules/{id}"
+description: "Update a reconciliation matching rule with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.reconciliation.update_matching_rule` to update a matching rule.
+
+<Steps>
+<Step title="Call the method">
+
+```python blnk.reconciliation.update_matching_rule wrap
+response = blnk.reconciliation.update_matching_rule("rule_abc123", {
+  "name": "Amount match (updated)",
+  "description": "Match by amount with 2% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.02
+    },
+    {
+      "field": "currency",
+      "operator": "equals"
+    },
+  ],
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ruleId` | `str` | ID of the matching rule to update. |
+| `name` | `str` | Updated name for the rule. |
+| `description` | `str` | Updated description of what the rule does. |
+| `criteria` | `list[dict]` | Full replacement array of match criteria. |
+| `criteria[].field` | `str` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `str` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | `number` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+
+</Step>
+
+<Step title="Verify the changes">
+
+Read `response.data` to confirm the updated criteria and description. The rule ID stays the same.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "rule_id": "rule_abc123",
+  "name": "Amount match (updated)",
+  "description": "Match by amount with 2% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.02
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-12-01T10:15:00.000000000Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `str` | Unchanged ID of the rule. |
+| `name` | `str` | Updated rule name. |
+| `criteria` | `list[dict]` | The updated match criteria stored for the rule. |
+| `updated_at` | `str` | When the rule was last updated. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and drift behavior.
+</Card>
+
+<Card title="Update matching rule" icon="book-open" href="/reference/update-matching-rule">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

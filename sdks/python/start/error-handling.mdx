@@ -1,0 +1,194 @@
+---
+title: "Error Handling"
+description: "Check ApiResponse envelopes, read Core error bodies, and handle validation and transport failures with the Python SDK."
+sidebarTitle: "Error handling"
+icon: "triangle-alert"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Every SDK method returns an `ApiResponse`. The SDK does not raise on API failures. Check `status` before you use `data`.
+
+On success, `data` holds the resource. On failure, `status` and `message` describe what went wrong. `error` holds structured Core error details when available. `data` may hold Core's raw error JSON or be `None`.
+
+<Tip>
+Do not wrap SDK calls in `try/except` for API failures. `blnk_init` raises `ValueError` only when `base_url` is missing.
+</Tip>
+
+---
+
+## Parse the response
+
+Read the envelope first. Use `status` to classify the failure, then read the field that carries detail for that type.
+
+```python wrap
+from dataclasses import dataclass
+from typing import Any, Optional
+
+@dataclass
+class BlnkApiErrorDetail:
+    code: str
+    message: str
+    details: Optional[Any] = None
+
+@dataclass
+class ApiResponse:
+    status: int
+    message: str
+    data: Any
+    error: Optional[BlnkApiErrorDetail] = None
+```
+
+| Property | Contains |
+| :-- | :-- |
+| `status` | HTTP-style codes: 2xx success, 4xx client error, etc. |
+| `data` | Success body, or Core error JSON on rejection. May be `None`. |
+| `error` | Structured error parsed from Core's `error_detail`. Use `error.code` for logic. |
+| `message` | Human-readable description. For logs and UI only. Do not use for logic. |
+
+---
+
+## How to handle errors
+
+<Steps>
+<Step title="Check status">
+
+Confirm success before you use `data`. On every call, check that `status` is in the 2xx range for the method you called.
+
+```python Error handling wrap
+response = blnk.transactions.get("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+
+if response.status < 200 or response.status >= 300:
+    error_code = response.error.code if response.error else None
+
+    if response.status == 404:
+        # Resource not found: check error_code (e.g. TXN_NOT_FOUND)
+        pass
+    elif response.status in (401, 403):
+        # Auth or scope failure: check the API key
+        pass
+    else:
+        # Log status, error_code, and response.message
+        pass
+else:
+    # Use response.data
+    pass
+```
+
+</Step>
+
+<Step title="Read the error detail">
+
+Use the field that matches the failure type:
+
+- **Core rejection** (`status` is a Core HTTP error and `data` is set): read `response.error.code` for the code Core returned.
+- **SDK validation** (`status == 400` and `data` is `None`): read `response.message` and fix the payload before retrying.
+
+Route on `response.status` when you do not need code-level logic (401, 404, 409, 5xx).
+
+</Step>
+
+<Step title="Configure transport handling">
+
+When the SDK cannot reach Core or the request times out, you get `status: 500` and `data: None`.
+
+Configure timeout and logging in [your SDK client](/sdks/python/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
+
+</Step>
+</Steps>
+
+---
+
+## Core errors
+
+When Core rejects a request, the SDK wraps the failure in an `ApiResponse`. It sets `status` to Core's HTTP status, `message` to the error message, `data` to Core's JSON error body, and `error` to structured details parsed from `error_detail`.
+
+On Core 0.15.0 and later, a rejected request looks like this:
+
+```python 404 Not Found wrap
+response = blnk.transactions.get("txn_missing")
+
+# response:
+# ApiResponse(
+#   status=404,
+#   message="transaction not found",
+#   data={
+#     "error": "transaction not found",
+#     "error_detail": {
+#       "code": "TXN_NOT_FOUND",
+#       "message": "transaction not found",
+#       "details": {},
+#     },
+#   },
+#   error=BlnkApiErrorDetail(
+#     code="TXN_NOT_FOUND",
+#     message="transaction not found",
+#     details={},
+#   ),
+# )
+```
+
+Read the failure from `response.error.code`. Use `response.status` to choose a broad response. Treat `response.error.message` as display text; Core may change wording between releases. On older Core versions, `response.error.code` may be `UNKNOWN`.
+
+| Status | When it happens | What to do |
+| :-- | :-- | :-- |
+| `404` | Resource ID or path does not exist | Check `response.error.code` (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
+| `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
+| `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
+| `400` | Core rejected the payload | Fix the request body before retrying |
+| `5xx` | Core or upstream failure | Retry later and check Core logs |
+
+<Warning>
+Do not match exact `error` strings in application logic. Message text can change. Prefer `response.error.code` for routing and `response.error.message` for user-facing messages only. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
+</Warning>
+
+---
+
+## Client-side validation
+
+Some methods validate input before sending a request. When validation fails, Core never receives the call.
+
+| Field | Value |
+| :-- | :-- |
+| `status` | `400` |
+| `message` | Validation error string, e.g. `reference field must be a valid string` |
+| `data` | `None` |
+| `error` | `None` |
+
+<Tip>
+Each [SDK method page](/sdks/python/ledgers/create-ledger) lists required fields for that call.
+</Tip>
+
+---
+
+## Transport failures
+
+When the SDK cannot reach Core or the request times out, you get `status: 500`, `data: None`, and a `message` describing the failure. Configure timeout and logging in [Using the SDK](/sdks/python/start/using-the-sdk#timeouts-and-retries).
+
+When debugging transport failures, log `status`, `message`, and the endpoint you called.
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Using the SDK" icon="code" href="/sdks/python/start/using-the-sdk">
+Timeouts, retries, and logging.
+</Card>
+
+<Card title="0.15.0 migration" icon="arrow-right" href="/changelog/v15-migration">
+Error codes, inflight queuing, and reconciliation changes.
+</Card>
+
+<Card title="Quick start" icon="rocket" href="/sdks/python/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-py">
+Python SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
