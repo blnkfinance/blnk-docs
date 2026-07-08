@@ -1,0 +1,84 @@
+---
+mode: "wide"
+title: "Historical balances"
+sidebarTitle: "Get historical balances"
+api: "GET /balances/{balance_id}/at"
+description: "Retrieve accurate historical balance information with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.ledger_balances.get_at` to retrieve a [balance](/balances/historical-balances) at a specific point in time.
+
+<Steps>
+<Step title="Call the method">
+
+```python blnk.ledger_balances.get_at wrap
+response = blnk.ledger_balances.get_at(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "timestamp": "2025-02-24T08:55:26Z",
+  },
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceId` | `str` | Balance ID to query. |
+| `timestamp` | `str` | Specifies the exact date and time for which a historical balance is requested. Use ISO 8601 format (for example `2025-02-24T08:55:26Z`). |
+| `from_source` | `bool` | When `True`, reconstruct from transactions instead of snapshots. |
+
+</Step>
+
+<Step title="Use the historical amounts">
+
+Read `response.data["balance"]` for net, credit, and debit totals at the requested timestamp. Compare with current balance if you are auditing or reconciling.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "timestamp": "2025-02-24T08:55:26Z",
+  "from_source": false,
+  "balance": {
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "balance": 5000,
+    "credit_balance": 5000,
+    "debit_balance": 0,
+    "currency": "USD"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `timestamp` | `str` | Point in time you queried (ISO 8601). |
+| `from_source` | `bool` | Whether the balance was reconstructed from transactions. |
+| `balance.balance_id` | `str` | Balance you queried. |
+| `balance.balance` | `number` | Net amount at that timestamp. |
+| `balance.credit_balance` | `number` | Total credits at that timestamp. |
+| `balance.debit_balance` | `number` | Total debits at that timestamp. |
+| `balance.currency` | `str` | Currency of the balance. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Retrieving historical balances" icon="clock" href="/balances/historical-balances">
+How point-in-time balance queries work.
+</Card>
+
+<Card title="Historical balances" icon="book-open" href="/reference/historical-balances">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

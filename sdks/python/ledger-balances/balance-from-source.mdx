@@ -1,0 +1,87 @@
+---
+mode: "wide"
+title: "Balance from source"
+sidebarTitle: "Get balance from source"
+api: "GET /balances/{balance_id}"
+description: "Compute balance directly from transactions with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.ledger_balances.get` with `from_source` set to `True` to reconstruct a balance from its transactions.
+
+<Steps>
+<Step title="Call the method">
+
+```python blnk.ledger_balances.get wrap
+response = blnk.ledger_balances.get(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "from_source": True,
+  },
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `str` | Balance ID to compute from source. |
+| `from_source` | `bool` | Must be `True` to reconstruct from transactions. |
+
+</Step>
+
+<Step title="Compare with stored balance">
+
+Use the computed amounts to audit or reconcile against the stored balance. Differences may indicate pending transactions or snapshot lag.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+    "identity_id": "",
+    "created_at": "2024-11-26T08:36:36.238244338Z",
+    "meta_data": null
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance.balance` | `number` | Net amount computed from all transactions. |
+| `balance.balance_id` | `str` | Unique ID for the balance. |
+| `balance.credit_balance` | `number` | Total computed from credit transactions. |
+| `balance.debit_balance` | `number` | Total computed from debit transactions. |
+| `balance.currency` | `str` | Currency of the balance. |
+| `balance.ledger_id` | `str` | Ledger this balance belongs to. |
+| `balance.identity_id` | `str` | Linked identity, if any. |
+| `balance.created_at` | `str` | Date and time the balance was created. |
+| `balance.meta_data` | `dict` | Optional metadata on the balance. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance from source guide" icon="database" href="/balances/balance-from-source">
+Transaction-based balance computation.
+</Card>
+
+<Card title="Balance from source" icon="book-open" href="/reference/balance-from-source">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

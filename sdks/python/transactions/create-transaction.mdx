@@ -1,0 +1,442 @@
+---
+mode: "wide"
+title: "Create transaction"
+sidebarTitle: "Create transaction"
+api: "POST /transactions"
+description: "Post a transaction with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions.create` to post a [transaction](/transactions/introduction) between a source and destination balance.
+
+<Steps>
+<Step title="Call the method">
+
+<Tabs>
+<Tab title="Single transaction">
+
+Move money from one source balance to one destination in a single call.
+
+```python blnk.transactions.create wrap
+response = blnk.transactions.create({
+  "precise_amount": 125034,
+  "precision": 100,
+  "currency": "USD",
+  "source": "@WorldUSD",
+  "destination": "@MyBalance",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Customer payment",
+  "allow_overdraft": False,
+  "skip_queue": False,
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `precise_amount` | `number` | Amount in minor units. Use with `precision`. |
+| `amount` | `number` | Float amount. Blnk applies `precision`. Use one of `amount` or `precise_amount`. |
+| `precision` | `number` | Precision for the currency (for example `100` for cents). |
+| `currency` | `str` | Currency of the transaction. |
+| `reference` | `str` | Unique reference for the transaction. |
+| `source` | `str` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `destination` | `str` | Balance receiving the amount. |
+| `description` | `str` | Narration of the transaction. |
+| `allow_overdraft` | `bool` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `skip_queue` | `bool` | Bypass the transaction queue and process directly. |
+
+</Tab>
+
+<Tab title="Inflight transaction">
+
+Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/creating-inflight).
+
+```python blnk.transactions.create wrap {9-11}
+response = blnk.transactions.create({
+  "precise_amount": 10000,
+  "precision": 100,
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "For vacation",
+  "inflight": True,
+  "inflight_expiry_date": "2025-03-01T00:00:00Z",
+  "inflight_commit_date": "2025-02-28T12:00:00Z",
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `inflight` | `bool` | Hold the transaction until you commit or void it. |
+| `inflight_expiry_date` | `str` | When the inflight transaction expires and rolls back. ISO 8601 format. |
+| `inflight_commit_date` | `str` | When Core auto-commits the inflight transaction. ISO 8601 format. |
+
+See [Update inflight](/sdks/python/transactions/update-inflight) to commit or void.
+
+</Tab>
+
+<Tab title="Split transaction">
+
+Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+<CodeGroup>
+```python Multiple sources wrap {7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
+response = blnk.transactions.create({
+  "precise_amount": 3000000,
+  "precision": 100,
+  "currency": "USD",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Payment to Sarah",
+  "sources": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "10%",
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "precise_distribution": "2000000",
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+    },
+  ],
+  "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "atomic": True,
+})
+```
+
+```python Multiple destinations wrap {8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
+response = blnk.transactions.create({
+  "precise_amount": 3000000,
+  "precision": 100,
+  "currency": "USD",
+  "reference": "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  "description": "Payment from Sarah",
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "precise_distribution": "1000000",
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+    },
+  ],
+  "atomic": True,
+})
+```
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `sources` | `list[dict]` | Source legs when debiting more than one balance. |
+| `destinations` | `list[dict]` | Destination legs when crediting more than one balance. |
+| `sources[].identifier` | `str` | Balance ID or `@` internal name for a source leg. |
+| `destinations[].identifier` | `str` | Balance ID or `@` internal name for a destination leg. |
+| `distribution` | `str` | Percentage, fixed amount, or `left` for a split leg. |
+| `precise_distribution` | `str` | Fixed split-leg amount in minor units. |
+| `atomic` | `bool` | When `True`, every leg succeeds together or the entire split fails. |
+
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
+
+```python blnk.transactions.create wrap {9}
+response = blnk.transactions.create({
+  "precise_amount": 10000000,
+  "precision": 100,
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "@fees",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Monthly fee",
+  "scheduled_for": "2024-12-21T01:36:46+01:00",
+  "meta_data": {
+    "sender_name": "John Doe",
+    "sender_account": "00000000000",
+  },
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `scheduled_for` | `str` | Date and time to post the transaction. ISO 8601 format. |
+| `meta_data` | `dict` | Optional metadata stored on the scheduled transaction. |
+
+</Tab>
+
+<Tab title="Backdated transaction">
+
+Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
+
+```python blnk.transactions.create wrap {9}
+response = blnk.transactions.create({
+  "precise_amount": 35890,
+  "precision": 100,
+  "currency": "NGN",
+  "source": "@source_account",
+  "destination": "@destination_account",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Backdated transaction",
+  "effective_date": "2025-02-15T10:30:00Z",
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `effective_date` | `str` | Actual date the transaction occurred. ISO 8601 format. |
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step title="Response">
+
+<Tabs>
+<Tab title="Single transaction">
+
+```json 201 Created wrap expandable
+{
+  "amount": 1250.34,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "parent_transaction": "",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "bln_d5cbde84-d20a-485b-8ce8-6677d782c3a1",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "currency": "USD",
+  "description": "Customer payment",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+</Tab>
+
+<Tab title="Inflight transaction">
+
+```json 201 Created wrap expandable
+{
+  "amount": 100,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 10000,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "parent_transaction": "",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "currency": "USD",
+  "description": "For vacation",
+  "status": "INFLIGHT",
+  "hash": "8cfdc0f2562ce30c3728ef624dc29fbd0e4207c77df9220df0c699d45de0eef",
+  "allow_overdraft": false,
+  "inflight": true,
+  "created_at": "2024-12-21T01:36:46.997063436Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "2025-03-01T00:00:00Z",
+  "inflight_commit_date": "2025-02-28T12:00:00Z"
+}
+```
+
+</Tab>
+
+<Tab title="Split transaction">
+
+<CodeGroup>
+```json 201 Created Multiple sources wrap expandable
+{
+  "precise_amount": 3000000,
+  "amount": 30000,
+  "rate": 1,
+  "precision": 100,
+  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "parent_transaction": "",
+  "source": "",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "currency": "USD",
+  "description": "Payment to Sarah",
+  "status": "QUEUED",
+  "hash": "8cfdc0f2562ce30c3728ef624dc29fbd0e4207c77df9220df0c699d45de0eef",
+  "allow_overdraft": false,
+  "inflight": false,
+  "atomic": true,
+  "sources": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "10%",
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "2000000",
+      "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+    }
+  ],
+  "destination": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "created_at": "2025-09-18T01:26:30.648049042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 201 Created Multiple destinations wrap expandable
+{
+  "precise_amount": 3000000,
+  "amount": 30000,
+  "rate": 1,
+  "precision": 100,
+  "transaction_id": "txn_8a3c1f2e-9d4b-4e5a-b6c7-1d2e3f4a5b6c",
+  "parent_transaction": "",
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "reference": "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  "currency": "USD",
+  "description": "Payment from Sarah",
+  "status": "QUEUED",
+  "hash": "8cfdc0f2562ce30c3728ef624dc29fbd0e4207c77df9220df0c699d45de0eef",
+  "allow_overdraft": false,
+  "inflight": false,
+  "atomic": true,
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "1000000",
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94"
+    }
+  ],
+  "created_at": "2025-09-18T01:26:30.648049042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+</CodeGroup>
+
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+```json 201 Created wrap expandable
+{
+  "amount": 100000,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 10000000,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "parent_transaction": "",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "currency": "USD",
+  "description": "Monthly fee",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-12-21T01:36:46.997063436Z",
+  "scheduled_for": "2024-12-21T01:36:46+01:00",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z",
+  "meta_data": {
+    "sender_name": "John Doe",
+    "sender_account": "00000000000"
+  }
+}
+```
+
+</Tab>
+
+<Tab title="Backdated transaction">
+
+```json 201 Created wrap expandable
+{
+  "amount": 358.9,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 35890,
+  "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
+  "parent_transaction": "",
+  "source": "bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66",
+  "destination": "bln_68be0aed-383c-4d27-87db-fb0650093686",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "currency": "NGN",
+  "description": "Backdated transaction",
+  "status": "APPLIED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2025-03-02T15:30:45Z",
+  "effective_date": "2025-02-15T10:30:00Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `str` | Unique ID for the transaction. |
+| `status` | `str` | Transaction [status](/transactions/transaction-lifecycle#statuses) (for example `QUEUED`, `APPLIED`). |
+| `precise_amount` | `number` | `amount` × `precision`. |
+| `source` | `str` | Resolved source balance. |
+| `destination` | `str` | Resolved destination balance. |
+| `hash` | `str` | [Hash](/transactions/hash) of the transaction details. |
+| `created_at` | `str` | Date and time the transaction was created. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How transactions work" icon="arrow-left-right" href="/transactions/introduction">
+Money movement, statuses, and the transaction lifecycle.
+</Card>
+
+<Card title="Create new transaction" icon="book-open" href="/reference/create-transaction">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

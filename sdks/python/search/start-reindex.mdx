@@ -1,0 +1,73 @@
+---
+mode: "wide"
+title: "Start reindex"
+sidebarTitle: "Start reindex"
+api: "POST /search/reindex"
+description: "Trigger a Typesense reindex from your existing database with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.search.start_reindex` to rebuild the search index.
+
+<Steps>
+<Step title="Call the method">
+
+```python blnk.search.start_reindex wrap
+response = blnk.search.start_reindex({
+  "batch_size": 1000,
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_size` | `number` | Records processed per batch. Omit the argument to use the Core default. Must be a positive integer when set. |
+
+</Step>
+
+<Step title="Poll reindex progress">
+
+Use [get reindex status](/sdks/python/search/get-reindex) to track progress until `status` is `completed`.
+
+</Step>
+
+<Step title="Response">
+
+```json 202 Accepted wrap
+{
+  "message": "Reindex operation started",
+  "progress": {
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 2145709,
+    "processed_records": 0,
+    "started_at": "2026-02-12T12:13:10.448612096Z"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `message` | `str` | Confirmation that the reindex job started. |
+| `progress` | `dict` | Initial progress snapshot with `status`, `phase`, `total_records`, `processed_records`, and `started_at`. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reindexing works" icon="rotate" href="/search/typesense/reindex">
+When and why to rebuild the index.
+</Card>
+
+<Card title="Start Typesense reindex" icon="book-open" href="/reference/start-reindex">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

@@ -1,0 +1,210 @@
+---
+title: "Using the SDK"
+description: "Configure authentication, timeouts, retries, and logging for the Python SDK."
+sidebarTitle: "Using the SDK"
+icon: "code"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>
+Configurable client options ship in v1.3.0. See the [Changelog](/changelog/blnk-py) before upgrading.
+</Info>
+
+## Initialize the client
+
+Your Blnk client is the single entry point to everything: ledgers, balances, transactions, webhooks, and more. Configure it once when your app starts, then use it everywhere.
+
+```python blnk_client.py wrap
+import os
+
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+blnk = blnk_init(
+    os.environ.get("BLNK_API_KEY", ""),
+    BlnkClientOptions(
+        base_url=os.environ.get("BLNK_BASE_URL", "http://localhost:5001"),
+    ),
+)
+```
+
+That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
+
+```python create_ledger.py wrap
+from blnk_client import blnk
+
+response = blnk.ledgers.create(
+    {
+        "name": "Customer Savings Account",
+        "meta_data": {
+            "project_owner": "YOUR_APP_NAME",
+        },
+    }
+)
+
+print("Ledger Created:", response.data)
+```
+
+Use a context manager when you want the underlying `requests.Session` closed automatically:
+
+```python wrap
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+with blnk_init(api_key, BlnkClientOptions(base_url=base_url)) as blnk:
+    response = blnk.ledgers.create({"name": "Temporary ledger"})
+```
+
+---
+
+## Authentication
+
+`blnk_init` takes two arguments: an API key and a `BlnkClientOptions` object.
+
+The options object must include `base_url`, the root URL of your Blnk Core instance. The SDK sends the API key on every request in the `X-Blnk-Key` header.
+
+How you set the API key depends on whether Core runs in secure mode:
+
+<Tabs>
+<Tab title="Secure mode">
+
+When `server.secure` is enabled, pass your API key as the first argument. Set `base_url` to the URL where Core is reachable.
+
+```python wrap
+import os
+
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+blnk = blnk_init(
+    os.environ.get("BLNK_API_KEY", ""),
+    BlnkClientOptions(
+        base_url=os.environ.get("BLNK_BASE_URL", "http://localhost:5001"),
+    ),
+)
+```
+
+</Tab>
+<Tab title="Auth disabled">
+
+When secure mode is off, pass an empty string as the first argument.
+
+```python wrap
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+blnk = blnk_init(
+    "",
+    BlnkClientOptions(base_url="http://localhost:5001"),
+)
+```
+
+</Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+<Card title="Secure Blnk" icon="shield-check" href="/advanced/secure-blnk">
+Secure mode, master key, and server hardening.
+</Card>
+
+<Card title="Scoped API keys" icon="lock-keyhole" href="/api-keys/overview">
+Owner-scoped keys and permission limits.
+</Card>
+</CardGroup>
+
+---
+
+## Timeouts and retries
+
+When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. Pass these parameters on `BlnkClientOptions`:
+
+```python wrap
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+blnk = blnk_init(
+    api_key,
+    BlnkClientOptions(
+        base_url="http://localhost:5001",
+        timeout=30000,
+        retry_count=3,
+        retry_delay_ms=2000,
+    ),
+)
+```
+
+| Option | Type | Default | What it does for you |
+| :-- | :-- | :-- | :-- |
+| `timeout` | `int` | `10000` | Milliseconds to wait before giving up on a request. Bump this for slow operations like bulk reconciliations. |
+| `retry_count` | `int` | `1` | Total attempts including the first. `1` means one attempt, no retries. `3` means try up to 3 times. |
+| `retry_delay_ms` | `int` | `2000` | Milliseconds between retries. Uses linear backoff. |
+
+When to tune these:
+
+- Keep defaults if you're making fast, local calls and want to fail fast.
+- Increase `timeout` if you're running large batch requests that may take a while to complete synchronously.
+- Increase `retry_count` if you're reading data across an unreliable network.
+
+---
+
+## Custom logger
+
+By default, the SDK logs internal events through a built-in logger that writes to the console with `INFO:`, `ERROR:`, and `DEBUG:` prefixes.
+
+Pass a custom logger to route these messages to your own logging system instead of the console.
+
+```python wrap
+from blnk_sdk import BlnkClientOptions, CustomLogger, blnk_init
+
+
+class AppLogger(CustomLogger):
+    def info(self, message, *meta):
+        app_logger.info(message, extra={"meta": meta})
+
+    def error(self, message, *meta):
+        app_logger.error(message, extra={"meta": meta})
+
+
+blnk = blnk_init(
+    api_key,
+    BlnkClientOptions(
+        base_url="http://localhost:5001",
+        logger=AppLogger(),
+    ),
+)
+```
+
+<Note>
+Metadata passed to the logger is redacted. The SDK strips values for keys such as `api_key`, `authorization`, `token`, and `secret` before logging.
+</Note>
+
+| Level | When the SDK calls it |
+| :-- | :-- |
+| `info` | Before a retry, or when a retryable `GET` failure will be retried |
+| `error` | When a request times out, returns a non-retryable HTTP error, or fails with a network error |
+
+```bash Example logs wrap
+INFO: Retrying request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
+
+ERROR: Request timed out { endpoint: 'transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94', timeoutMs: 30000 }
+
+ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed with status 404.
+```
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Quick start" icon="rocket" href="/sdks/python/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Error handling" icon="triangle-alert" href="/sdks/python/start/error-handling">
+ApiResponse checks and Core error bodies.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-py">
+Python SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

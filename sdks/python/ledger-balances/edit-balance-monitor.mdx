@@ -1,0 +1,83 @@
+---
+mode: "wide"
+title: "Update balance monitor"
+sidebarTitle: "Update balance monitor"
+api: "PUT /balance-monitors/{monitor_id}"
+description: "Update the details of a balance monitor with the Python SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.balance_monitor.update` to update a balance monitor.
+
+<Steps>
+<Step title="Call the method">
+
+```python blnk.balance_monitor.update wrap
+response = blnk.balance_monitor.update(
+  "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  {
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "condition": {
+      "field": "credit_balance",
+      "operator": "<",
+      "value": 500,
+      "precision": 100,
+    },
+    "call_back_url": "https://api.example.com/balance-monitor",
+  },
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `str` | Monitor ID to update. |
+| `balance_id` | `str` | Balance to monitor. |
+| `condition` | `dict` | Threshold rule with `field`, `operator`, `value`, and `precision`. |
+| `condition.field` | `str` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `condition.operator` | `str` | Comparison operator: `>`, `<`, `=`, `!=`, `>=`, `<=`. |
+| `condition.value` | `number` | Threshold amount. |
+| `condition.precision` | `number` | Currency precision (for example `100` for cents). |
+| `call_back_url` | `str` | Webhook URL when the condition is met. |
+| `description` | `str` | Optional description for the monitor. |
+
+</Step>
+
+<Step title="Confirm the update">
+
+On success, Core returns a confirmation message. Fetch the monitor with [get balance monitor](/sdks/python/ledger-balances/get-balance-monitor) to verify the new condition and webhook URL.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "message": "BalanceMonitor updated successfully"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `message` | `str` | Confirmation from Core. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Conditions and webhook behavior.
+</Card>
+
+<Card title="Update balance monitor" icon="book-open" href="/reference/edit-balance-monitor">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
