@@ -68,6 +68,19 @@ When prose refers to an SDK method, it uses Java names: `createBulk`, `updateSta
 
 ---
 
+## Response bodies
+
+Every method returns `ApiResponse<JsonNode>`. Treat `response.data()` as parsed JSON:
+
+- **Object responses:** `response.data().get("ledger_id").asText()`
+- **Array responses:** check `response.data().isArray()`, then read `response.data().get(i).get("field")`
+- **Nested arrays:** `response.data().get("results").get(i).get("status").asText()`
+- **No body (204):** `response.data()` is `null`; branch on `response.status()` only
+
+Field tables on method pages use wire JSON names because they match the HTTP API. Read those fields from the `JsonNode` returned in `response.data()`.
+
+---
+
 ## Authentication
 
 `Blnk.init` takes two arguments: an API key and a `BlnkClientOptions` object.

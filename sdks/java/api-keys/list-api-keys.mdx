@@ -26,7 +26,16 @@ ApiResponse<JsonNode> response = blnk.apiKeys().list(
 
 <Step title="Use the key list">
 
-Iterate over `response.data()` to find keys by name, scopes, or expiration. Plaintext key values are not included in list results.
+When `response.data().isArray()`, iterate by index and read fields with `get`:
+
+```java wrap
+JsonNode keys = response.data();
+for (int i = 0; i < keys.size(); i++) {
+  String keyId = keys.get(i).get("api_key_id").asText();
+}
+```
+
+Plaintext key values are not included in list results.
 
 </Step>
 
@@ -48,7 +57,8 @@ Iterate over `response.data()` to find keys by name, scopes, or expiration. Plai
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `response.data()` | `List<Map<String, Object>>` | Array of API key records without the plaintext key value. |
+| `response.data()` | `JsonNode` | JSON array of API key records without the plaintext key value. |
+| `response.data().get(i).get("api_key_id")` | `String` | Unique API key ID. |
 
 </Step>
 </Steps>

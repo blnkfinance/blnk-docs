@@ -26,7 +26,16 @@ ApiResponse<JsonNode> response = blnk.hooks().list(
 
 <Step title="Use the hook list">
 
-Iterate over `response.data()` to find hooks by type or active status. Save hook IDs you need for updates or deletion.
+When `response.data().isArray()`, iterate by index:
+
+```java wrap
+JsonNode hooks = response.data();
+for (int i = 0; i < hooks.size(); i++) {
+  String hookId = hooks.get(i).get("id").asText();
+}
+```
+
+Save hook IDs you need for updates or deletion.
 
 </Step>
 
@@ -51,7 +60,7 @@ Iterate over `response.data()` to find hooks by type or active status. Save hook
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `response.data()` | `List<Map<String, Object>>` | Array of hook objects returned by Core. |
+| `response.data()` | `JsonNode` | JSON array of hook objects returned by Core. |
 | `response.data().get(i).get("id")` | `String` | Unique hook ID. |
 | `response.data().get(i).get("type")` | `String` | Hook timing, such as `PRE_TRANSACTION` or `POST_TRANSACTION`. |
 | `response.data().get(i).get("active")` | `boolean` | Whether the hook is enabled. |
