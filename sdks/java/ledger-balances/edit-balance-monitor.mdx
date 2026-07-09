@@ -1,0 +1,84 @@
+---
+mode: "wide"
+title: "Update balance monitor"
+sidebarTitle: "Update balance monitor"
+api: "PUT /balance-monitors/{monitor_id}"
+description: "Update the details of a balance monitor with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.balanceMonitor().update` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String monitorId = "mon_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+
+MonitorCondition condition = MonitorCondition.create()
+    .field("credit_balance")
+    .operator(">=")
+    .precision(100)
+    .value(2000);
+
+ApiResponse<JsonNode> response = blnk.balanceMonitor().update(
+    monitorId,
+    MonitorData.create()
+        .balanceId("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f")
+        .description("Updated monitor")
+        .condition(condition));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `String` | Monitor ID to update. |
+| `balance_id` | `String` | Balance to monitor. |
+| `condition` | `Map<String, Object>` | Threshold rule with `field`, `operator`, `value`, and `precision`. |
+| `condition.field` | `String` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `condition.operator` | `String` | Comparison operator: `>`, `<`, `=`, `!=`, `>=`, `<=`. |
+| `condition.value` | `Number` | Threshold amount. |
+| `condition.precision` | `Number` | Currency precision (for example `100` for cents). |
+| `call_back_url` | `String` | Webhook URL when the condition is met. |
+| `description` | `String` | Optional description for the monitor. |
+
+</Step>
+
+<Step title="Confirm the update">
+
+On success, Core returns a confirmation message. Fetch the monitor with [get balance monitor](/sdks/java/ledger-balances/get-balance-monitor) to verify the new condition and webhook URL.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "message": "BalanceMonitor updated successfully"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `message` | `String` | Confirmation from Core. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Conditions and webhook behavior.
+</Card>
+
+<Card title="Update balance monitor" icon="book-open" href="/reference/edit-balance-monitor">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

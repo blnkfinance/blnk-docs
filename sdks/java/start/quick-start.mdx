@@ -1,0 +1,175 @@
+---
+title: "Quick Start"
+description: "Install the Java SDK and create your first transaction."
+sidebarTitle: "Quick start"
+icon: "rocket"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+This guide walks you through adding the Blnk Java SDK to your project, initializing the client, and creating your first transaction.
+
+By the end, you'll have a working connection to Blnk and be ready to build financial products from your Java application.
+
+<Steps>
+<Step title="Install the SDK">
+
+Add the dependency to your `pom.xml`. Requires JDK 17 or later.
+
+```xml pom.xml wrap
+<dependency>
+  <groupId>com.blnkfinance</groupId>
+  <artifactId>blnk-sdk</artifactId>
+  <version>1.3.0</version>
+</dependency>
+```
+
+For local development from source:
+
+```bash wrap
+mvn install
+```
+
+</Step>
+
+<Step title="Create a sample class">
+
+Create a `Main.java` file as shown below to create your first transaction with the SDK.
+
+<Note>
+Make sure you have a running Blnk Core instance. Set the URL and API key as environment variables in your project.
+</Note>
+
+```java Main.java wrap
+import com.blnkfinance.blnk.Blnk;
+import com.blnkfinance.blnk.BlnkClientOptions;
+import com.blnkfinance.blnk.types.ApiResponse;
+import com.blnkfinance.blnk.types.CreateTransactions;
+import com.fasterxml.jackson.databind.JsonNode;
+
+public class Main {
+  public static void main(String[] args) {
+    Blnk blnk = Blnk.init(
+        System.getenv().getOrDefault("BLNK_API_KEY", ""),
+        BlnkClientOptions.builder()
+            .baseUrl(System.getenv().getOrDefault("BLNK_BASE_URL", "http://localhost:5001"))
+            .build());
+
+    ApiResponse<JsonNode> response = blnk.transactions().create(
+        CreateTransactions.create()
+            .preciseAmount(100000)
+            .reference("first_txn_001")
+            .currency("USD")
+            .precision(100)
+            .source("@FundingPool")
+            .destination("@MyBalance")
+            .description("My first Blnk transaction")
+            .allowOverdraft(true));
+
+    if (response.status() != 201 || response.data() == null) {
+      throw new RuntimeException(response.message());
+    }
+
+    System.out.println(response.data().toPrettyString());
+  }
+}
+```
+
+</Step>
+
+<Step title="Execute the class">
+
+Compile and run.
+
+```bash wrap
+mvn compile exec:java -Dexec.mainClass="Main"
+```
+
+You should get a response similar to:
+
+```json 201 Created wrap expandable
+{
+  "amount": 1000,
+  "precision": 100,
+  "precise_amount": 100000,
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "parent_transaction": "",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "bln_d5cbde84-d20a-485b-8ce8-6677d782c3a1",
+  "reference": "first_txn_001",
+  "currency": "USD",
+  "description": "My first Blnk transaction",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": true,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+</Step>
+
+<Step title="View the transaction">
+
+Confirm the transaction landed in your ledger.
+
+<Tabs>
+<Tab title="Blnk Cloud">
+
+1. Open **Transactions** in the sidebar.
+2. Find your transaction by reference (`first_txn_001`) or by the `transaction_id` from the script output.
+3. Click the row to open the details and verify the amount, status, source, and destination.
+
+<Frame caption="The Transactions table shows every transaction synced from your Core instance.">
+<img
+  src="/cloud/img/transactions/transactions-table.png"
+  alt="Blnk Cloud Transactions table with reference, amount, status, source, and destination columns"
+  className="rounded-lg"
+/>
+</Frame>
+
+<Info>
+If the transaction is missing, click **Refresh** on the table to pull the latest data from Core.
+</Info>
+
+</Tab>
+<Tab title="CLI">
+
+Fetch the transaction by ID:
+
+```bash wrap
+blnk transactions list --id txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad
+```
+
+Replace the transaction ID with the value printed by your class.
+
+</Tab>
+</Tabs>
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Using the SDK" icon="code" href="/sdks/java/start/using-the-sdk">
+Authentication, timeouts, retries, and logging.
+</Card>
+
+<Card title="Error handling" icon="triangle-alert" href="/sdks/java/start/error-handling">
+ApiResponse checks and Core error bodies.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-java">
+Java SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

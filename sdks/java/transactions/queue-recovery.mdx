@@ -1,0 +1,66 @@
+---
+mode: "wide"
+title: "Queue recovery"
+sidebarTitle: "Recover queued transactions"
+api: "POST /transactions/recover"
+description: "Recover stuck queued transactions with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().recoverQueue` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.transactions().recoverQueue(
+    RecoverQueueRequest.create().threshold("24h"));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `threshold` | `String` | Minimum age of transactions to recover (for example `5m`, `1h`). Default `2m`. Minimum 2 minutes. |
+
+</Step>
+
+<Step title="Check how many were recovered">
+
+Read `response.data().get("recovered")` to see how many transactions were re-enqueued. Use Search or get by ID to verify individual transaction statuses afterward.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "recovered": 3,
+  "threshold": "5m0s"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `recovered` | `Number` | Number of transactions re-enqueued for processing. |
+| `threshold` | `String` | Threshold duration that was used. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Concurrency & queuing" icon="zap" href="/guides/concurrency">
+Why Blnk queues transactions for hot balances.
+</Card>
+
+<Card title="Recover queued transactions" icon="book-open" href="/reference/queue-recovery">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

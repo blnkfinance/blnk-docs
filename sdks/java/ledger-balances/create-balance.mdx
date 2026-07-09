@@ -1,0 +1,87 @@
+---
+mode: "wide"
+title: "Create new balance"
+sidebarTitle: "Create new balance"
+api: "POST /balances"
+description: "Create a new ledger balance with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.ledgerBalances().create` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc")
+        .currency("USD")
+        .metaData(Map.of()));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ledger_id` | `String` | Ledger the balance belongs to. |
+| `currency` | `String` | Currency or asset class for the balance. |
+| `identity_id` | `String` | Identity to link to the balance. Required when `track_fund_lineage` is `true`. |
+| `track_fund_lineage` | `boolean` | Enable [fund lineage](/transactions/lineage) tracking on this balance. |
+| `allocation_strategy` | `String` | How tagged provider funds are allocated on spend: `FIFO`, `LIFO`, or `PROPORTIONAL`. |
+| `meta_data` | `Map<String, Object>` | Optional metadata for extra context. |
+
+</Step>
+
+<Step title="Save the balance ID">
+
+Use `response.data().get("balance_id").asText()` as the `source` or `destination` on transactions, or when creating balance monitors.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "identity_id": "",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance_id` | `String` | Unique ID for the balance. Use as `source` or `destination` on transactions. |
+| `ledger_id` | `String` | Ledger ID you passed in the request. |
+| `currency` | `String` | Currency you passed in the request. |
+| `balance` | `Number` | Current net amount in the balance. |
+| `created_at` | `String` | Date and time the balance was created. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="View balance docs" icon="wallet" href="/balances/introduction">
+Balance concepts and setup.
+</Card>
+
+<Card title="Create new balance" icon="book-open" href="/reference/create-balance">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

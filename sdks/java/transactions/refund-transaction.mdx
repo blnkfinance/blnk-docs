@@ -1,0 +1,85 @@
+---
+mode: "wide"
+title: "Refund transaction"
+sidebarTitle: "Refund transaction"
+api: "POST /refund-transaction/{transaction_id}"
+description: "Refund a transaction with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().refund` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
+
+ApiResponse<JsonNode> response = blnk.transactions().refund(
+    transactionId,
+    RefundTransactionRequest.create().skipQueue(true));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionId` | `String` | Transaction ID of the applied transaction to refund. |
+| `skip_queue` | `boolean` | When `true`, process the refund synchronously instead of queuing. |
+
+</Step>
+
+<Step title="Save the refund transaction ID">
+
+Use `response.data().get("transaction_id").asText()` to track the refund. Check `parent_transaction` to confirm it links to the original transaction.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
+{
+  "amount": 1250.34,
+  "rate": 0,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "ref_2ye281ewiu",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `String` | ID of the new refund transaction. |
+| `parent_transaction` | `String` | Original transaction being refunded. |
+| `source` | `String` | Original destination, now the source of the refund. |
+| `destination` | `String` | Original source, now the destination of the refund. |
+| `status` | `String` | Status of the refund transaction. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Refunds" icon="undo-2" href="/transactions/refunds">
+Reversal behavior and edge cases.
+</Card>
+
+<Card title="Refund transaction" icon="book-open" href="/reference/refund-transaction">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
