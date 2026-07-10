@@ -17,12 +17,13 @@ Most hot balance scenarios fall into one of the following patterns:
 2. **N → A:** many source balances fund one destination balance concurrently.
 3. **A → B and B → A:** the same two balances exchange funds concurrently.
 
-This guide explains the different strategies Blnk natively supports to handle these patterns safely. We'll cover:
+This guide explains strategies to handle these patterns safely. We'll cover:
 
 1. Using the queue
 2. Coalescing
-3. Lock wait timeout
-4. Hot-lane routing
+3. Sharding balances
+4. Lock wait timeout
+5. Hot-lane routing
 
 
 ---
@@ -79,11 +80,87 @@ It is a good fit when:
 - You see repeated contention on the same balance pair, source, or destination.
 - Your system experiences frequent bursts, with many similar transactions happening concurrently.
 - You want to reduce repeated lock contention errors in the queue and improve throughput.
+- A single balance ID is the root cause of contention. Consider [Sharding balances](#sharding-balances) in addition to coalescing.
 
 Coalescing is less useful when:
 
 - Traffic is low-volume and spread across many balances. 
 - You use `skip_queue: true` to process transactions immediately.
+
+---
+
+## Sharding balances
+
+Consider a treasury pool, settlement account, or fee sink that must handle thousands of concurrent deposits or payouts through one balance, e.g. `A → N` or `N → A`.
+
+**With balance sharding**, you split that single hot balance into multiple shard balances (for example `@Settlement-0` through `@Settlement-19`) and route each transaction to one shard in your application.
+
+Here's how it looks in practice 
+
+```javascript Shard routing example wrap
+function shardIndex(key, shardCount):
+  hash = stableHash(key)
+  return hash mod shardCount
+
+shardCount = 20 
+shard = shardIndex(destinationId, shardCount)
+
+// Route each transaction to a shard before you create it:
+source = "@Treasury-" + shard
+
+createTransaction(
+  source: source,
+  destination: destinationId,
+  amount: ...,
+  currency: ...,
+  reference: ...
+)
+```
+
+At higher load, this is the strategy that turns one bottleneck into many parallel lanes:
+
+- **More transactions apply at once.** Each shard is a separate balance, so updates no longer queue behind a single balance ID.
+- **Less lock contention per balance.** Fewer transactions compete for the same balance lock, whether you use the queue or process immediately with `skip_queue: true`.
+- **Your queue drains faster.** With queued processing, volume that previously stacked on one balance spreads across shards, so workers can process unrelated shards concurrently instead of waiting on one lock.
+- **Coalescing stays effective.** With the queue enabled, each shard still batches transactions that share the same `source`, `destination`, and `currency`, but with far less contention per pair than a single overloaded balance.
+
+### How to use
+
+1. Create `N` shard balances on the same ledger.
+2. Implement a routing function in your application.
+3. If you use queued processing, tune queue throughput so workers can keep up once traffic spreads across shards (see below).
+4. If you use queued processing, enable coalescing for additional throughput (see [Coalescing](#coalescing)).
+
+If you use the default queue, raise queue capacity and worker concurrency gradually as load grows:
+
+```bash .env
+BLNK_QUEUE_NUMBER_OF_QUEUES=20
+BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=4
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_QUEUE_NUMBER_OF_QUEUES` | Number of transaction queue shards. Increase when sharded traffic needs more parallel lanes. |
+| `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` | Worker concurrency for normal transaction queues. Raise gradually once sharding spreads work across shards. |
+
+For full queue settings, see [queue configuration](/advanced/configuration/queue).
+
+### When to use
+
+Choose balance sharding when one balance ID limits how much traffic your system can process, even after enabling the queue and coalescing.
+
+It is a good fit when:
+
+- Throughput plateaus because every transaction touches the same balance.
+- Lock contention errors stay high on one source or destination under sustained load.
+- You have a hot source (`A → N`) or hot destination (`N → A`) and need volume to spread across parallel lanes.
+- You use `skip_queue: true` and need lower lock contention on synchronous requests.
+- You can aggregate shard balances for reporting and reconciliation.
+
+Balance sharding is less useful when:
+
+- Contention is already spread across many balances.
+- You need a single balance identity for external reconciliation or regulatory reporting without aggregation.
 
 ---
 
@@ -168,8 +245,9 @@ It is a good fit when:
 It is less useful when:
 
 - Traffic is broadly distributed with no clear hot pairs.
-- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) instead.
-- Most of your traffic is synchronous and bypasses the queue. Consider [Lock wait timeout](#lock-wait-timeout) instead.
+- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) or [Sharding balances](#sharding-balances) instead.
+- One balance ID (not just one pair) is the throughput bottleneck. Consider [Sharding balances](#sharding-balances).
+- Most of your traffic is synchronous and bypasses the queue. Consider [Sharding balances](#sharding-balances) or [Lock wait timeout](#lock-wait-timeout).
 
 ---
 
