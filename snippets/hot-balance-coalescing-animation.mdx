@@ -1,0 +1,104 @@
+export const HotBalanceCoalescingAnimation = () => {
+  const [playing, setPlaying] = useState(true)
+  const [step, setStep] = useState(0)
+  const [reduced, setReduced] = useState(false)
+
+  const STEP_MS = 3000
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const onMotionChange = () => setReduced(mq.matches)
+    onMotionChange()
+    mq.addEventListener("change", onMotionChange)
+    return () => mq.removeEventListener("change", onMotionChange)
+  }, [])
+
+  useEffect(() => {
+    if (reduced || !playing) {
+      return undefined
+    }
+
+    let cancelled = false
+    let timeoutId
+
+    const tick = () => {
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) {
+          return
+        }
+        setStep((current) => (current + 1) % 4)
+        tick()
+      }, STEP_MS)
+    }
+
+    tick()
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [playing, reduced])
+
+  const currentStep = reduced ? 3 : step
+  const captions = [
+    "Five queued transactions share the same source, destination, and currency.",
+    "Blnk groups them into one in-memory batch.",
+    "A single commit updates the destination balance.",
+    "Five commits become one, reducing lookups and lock contention.",
+  ]
+
+  return (
+    <figure className="hb-anim not-prose" aria-label="Coalescing merges overlapping queued transactions into one batch commit">
+      <div className="hb-anim-stage">
+        <button type="button" className="hb-anim-toggle" onClick={() => setPlaying((current) => !current)} aria-pressed={playing}>
+          {playing ? "Pause" : "Play"}
+        </button>
+        <svg viewBox="0 0 720 220" className="hb-anim-svg" role="img" aria-hidden="true">
+          <defs>
+            <marker id="hb-coalesce-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" className="hb-anim-arrowhead" />
+            </marker>
+          </defs>
+          <g transform="translate(40, 88)">
+            <rect x={0} y={0} width={96} height={40} rx={8} className={`hb-anim-node${currentStep >= 2 ? " hb-anim-node--active" : ""}`} />
+            <text x={48} y={24} textAnchor="middle" className="hb-anim-label">Source A</text>
+          </g>
+          <g transform="translate(190, 64)">
+            <rect x={0} y={0} width={120} height={92} rx={8} className={`hb-anim-queue${currentStep >= 1 ? " hb-anim-queue--active" : ""}`} />
+            <text x={60} y={16} textAnchor="middle" className="hb-anim-label hb-anim-label--small">Queue</text>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <rect
+                key={index}
+                x={14 + index * 4}
+                y={28 + index * 6}
+                width={92}
+                height={8}
+                rx={4}
+                opacity={currentStep === 0 || index === 0 ? 1 : 0}
+                className={`hb-anim-queue-item${currentStep >= 1 ? " hb-anim-queue-item--active" : ""}`}
+              />
+            ))}
+          </g>
+          <g transform="translate(390, 88)">
+            <rect x={0} y={0} width={96} height={40} rx={8} className={`hb-anim-node${currentStep >= 2 ? " hb-anim-node--active" : ""}${currentStep >= 2 ? " hb-anim-node--accent" : ""}`} />
+            <text x={48} y={24} textAnchor="middle" className="hb-anim-label">Dest N</text>
+          </g>
+          <circle cx={250} cy={44} r={5} className={`hb-anim-tx${currentStep === 0 ? " hb-anim-tx--active" : ""}`} opacity={currentStep === 0 ? 1 : 0} />
+          <circle cx={270} cy={58} r={5} className={`hb-anim-tx${currentStep === 0 ? " hb-anim-tx--active" : ""}`} opacity={currentStep === 0 ? 1 : 0} />
+          <circle cx={240} cy={72} r={5} className={`hb-anim-tx${currentStep === 0 ? " hb-anim-tx--active" : ""}`} opacity={currentStep === 0 ? 1 : 0} />
+          <circle cx={260} cy={86} r={5} className={`hb-anim-tx${currentStep === 0 ? " hb-anim-tx--active" : ""}`} opacity={currentStep === 0 ? 1 : 0} />
+          <circle cx={250} cy={100} r={5} className={`hb-anim-tx${currentStep === 0 ? " hb-anim-tx--active" : ""}`} opacity={currentStep === 0 ? 1 : 0} />
+          <line x1={136} y1={108} x2={190} y2={108} className={`hb-anim-arrow${currentStep >= 1 ? " hb-anim-arrow--active" : ""}`} strokeDasharray="5 4" markerEnd="url(#hb-coalesce-arrowhead)" />
+          <line x1={310} y1={108} x2={390} y2={108} className={`hb-anim-arrow${currentStep >= 2 ? " hb-anim-arrow--active" : ""}`} markerEnd="url(#hb-coalesce-arrowhead)" />
+          <g transform="translate(530, 88)">
+            <rect x={0} y={0} width={140} height={44} rx={8} className="hb-anim-stat" />
+            <text x={70} y={28} textAnchor="middle" className="hb-anim-stat-label">{currentStep < 3 ? "5 commits" : "1 commit"}</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption className="hb-anim-caption">{captions[currentStep]}</figcaption>
+    </figure>
+  )
+}
+
+<HotBalanceCoalescingAnimation />

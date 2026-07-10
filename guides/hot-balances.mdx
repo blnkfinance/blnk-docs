@@ -8,6 +8,11 @@ description: "Strategies for managing high-traffic balances and preventing lock 
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import HotBalanceQueueAnimation from "/snippets/hot-balance-queue-animation.mdx";
+import HotBalanceCoalescingAnimation from "/snippets/hot-balance-coalescing-animation.mdx";
+import HotBalanceShardingAnimation from "/snippets/hot-balance-sharding-animation.mdx";
+import HotBalanceLockTimeoutAnimation from "/snippets/hot-balance-lock-timeout-animation.mdx";
+import HotBalanceHotLaneAnimation from "/snippets/hot-balance-hot-lane-animation.mdx";
 
 **Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience. 
 
@@ -34,6 +39,8 @@ For high traffic or overlapping balances, we recommend using the default queue-b
 
 The queue helps Blnk handle contention more effectively and reduces the chance of lock errors by allowing retries, hot-lane routing, and coalescing. Learn more: [How Queueing Works](/guides/concurrency#queueing-transactions).
 
+<HotBalanceQueueAnimation />
+
 <Note>
 **Note:** Lock contention can still happen in queued processing. Workers also [acquire distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) when applying transactions.
 
@@ -51,6 +58,8 @@ Consider a deposit workflow involving one internal source balance concurrently f
 **With Coalescing**, Blnk identifies the queued transactions based on if they share the same `source`, `destination`, and `currency`, batches them in-memory, and applies them in a single commit. 
 
 This reduces the number of balance lookups and commits required, improving throughput and performance overall.
+
+<HotBalanceCoalescingAnimation />
 
 <Check> **Please note:** Coalescing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
 
@@ -94,6 +103,8 @@ Coalescing is less useful when:
 Consider a treasury pool, settlement account, or fee sink that must handle thousands of concurrent deposits or payouts through one balance, e.g. `A → N` or `N → A`.
 
 **With balance sharding**, you split that single hot balance into multiple shard balances (for example `@Settlement-0` through `@Settlement-19`) and route each transaction to one shard in your application.
+
+<HotBalanceShardingAnimation />
 
 Here's how it looks in practice 
 
@@ -174,6 +185,8 @@ This applies to both queued and immediate processing. In queued processing, it a
 
 This is especially important for immediate processing. If no timeout is set, a lock conflict can fail the request immediately. Setting a timeout gives the lock time to clear, which can reduce lock errors, but it also means the caller may wait longer for a response.
 
+<HotBalanceLockTimeoutAnimation />
+
 <Note>
 **Note:** A **shorter timeout** keeps requests more responsive, but makes lock errors more likely during contention, while **a longer timeout** gives contention more time to clear, but increases request latency and how long the caller may remain blocked.
 </Note>
@@ -214,6 +227,8 @@ Consider a workflow where a small number of balance pairs keep receiving heavy c
 With **hot-lane routing**, Blnk identifies queued transactions for a specific source, destination, and currency pair that is showing repeated lock contention, and routes new traffic for that exact pair into a dedicated hot queue.
 
 This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
+
+<HotBalanceHotLaneAnimation />
 
 <Check> **Please note:** Hot-lane routing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
 

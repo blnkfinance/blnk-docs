@@ -1,0 +1,95 @@
+export const HotBalanceLockTimeoutAnimation = () => {
+  const [playing, setPlaying] = useState(true)
+  const [step, setStep] = useState(0)
+  const [reduced, setReduced] = useState(false)
+
+  const STEP_MS = 3000
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const onMotionChange = () => setReduced(mq.matches)
+    onMotionChange()
+    mq.addEventListener("change", onMotionChange)
+    return () => mq.removeEventListener("change", onMotionChange)
+  }, [])
+
+  useEffect(() => {
+    if (reduced || !playing) {
+      return undefined
+    }
+
+    let cancelled = false
+    let timeoutId
+
+    const tick = () => {
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) {
+          return
+        }
+        setStep((current) => (current + 1) % 4)
+        tick()
+      }, STEP_MS)
+    }
+
+    tick()
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [playing, reduced])
+
+  const currentStep = reduced ? 3 : step
+  const captions = [
+    "A transaction waits while another holds the balance lock.",
+    "Blnk waits up to the configured timeout, for example 3 seconds.",
+    "If the lock clears in time, the transaction proceeds.",
+    "If the timeout expires, Blnk returns a lock error.",
+  ]
+
+  return (
+    <figure className="hb-anim not-prose" aria-label="Lock wait timeout shows success and failure outcomes after waiting for a balance lock">
+      <div className="hb-anim-stage">
+        <button type="button" className="hb-anim-toggle" onClick={() => setPlaying((current) => !current)} aria-pressed={playing}>
+          {playing ? "Pause" : "Play"}
+        </button>
+        <svg viewBox="0 0 720 220" className="hb-anim-svg" role="img" aria-hidden="true">
+          <g transform="translate(280, 80)">
+            <rect x={0} y={0} width={120} height={40} rx={8} className={`hb-anim-node${currentStep >= 1 ? " hb-anim-node--active" : ""}${currentStep === 2 ? " hb-anim-node--accent" : ""}`} />
+            <text x={60} y={24} textAnchor="middle" className="hb-anim-label">Balance</text>
+          </g>
+          <circle cx={180} cy={108} r={5} className={`hb-anim-tx${currentStep <= 1 ? " hb-anim-tx--active" : ""}`} />
+          <circle cx={220} cy={148} r={5} className={`hb-anim-tx hb-anim-tx--held${currentStep === 0 ? " hb-anim-tx--active" : ""}`} />
+          <g transform="translate(430, 72)">
+            <circle cx={50} cy={50} r={42} className="hb-anim-timer-ring" />
+            <circle
+              cx={50}
+              cy={50}
+              r={42}
+              className="hb-anim-timer-progress"
+              style={{ strokeDashoffset: currentStep === 0 ? 264 : currentStep === 1 ? 132 : 0 }}
+            />
+            <text x={50} y={54} textAnchor="middle" className="hb-anim-label">3s</text>
+          </g>
+          <g transform="translate(560, 88)">
+            <rect
+              x={0}
+              y={0}
+              width={120}
+              height={44}
+              rx={8}
+              className={`hb-anim-outcome${currentStep === 2 ? " hb-anim-outcome--success" : ""}${currentStep === 3 ? " hb-anim-outcome--error" : ""}`}
+            />
+            <text x={60} y={28} textAnchor="middle" className="hb-anim-stat-label">
+              {currentStep === 2 ? "Proceeds" : currentStep === 3 ? "Lock error" : "Waiting"}
+            </text>
+          </g>
+          <text x={280} y={150} className="hb-anim-annotation" opacity={currentStep >= 1 && currentStep <= 2 ? 1 : 0}>lock held</text>
+        </svg>
+      </div>
+      <figcaption className="hb-anim-caption">{captions[currentStep]}</figcaption>
+    </figure>
+  )
+}
+
+<HotBalanceLockTimeoutAnimation />
