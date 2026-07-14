@@ -1,0 +1,80 @@
+---
+mode: "wide"
+title: "Get transaction lineage"
+sidebarTitle: "Get transaction lineage"
+api: "GET /transactions/{transaction_id}/lineage"
+description: "See how a transaction's spend was allocated across providers with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().getLineage` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.transactions().getLineage("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94");
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionId` | `String` | Transaction ID with fund lineage enabled. |
+
+</Step>
+
+<Step title="Use the provider breakdown">
+
+Read `fund_allocation` for how much came from each provider. Read `shadow_transactions` for the internal records Blnk created to track each provider's share.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "fund_allocation": [
+    {
+      "provider": "stripe",
+      "amount": "2500"
+    }
+  ],
+  "shadow_transactions": [
+    {
+      "transaction_id": "txn_shadow_123",
+      "reference": "ref_002_release_stripe_0",
+      "precise_amount": "2500",
+      "currency": "USD",
+      "status": "APPLIED"
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `String` | Transaction you queried. |
+| `fund_allocation` | `JsonNode` | JSON array describing how much of the spend came from each provider. Amounts are strings in minor units. |
+| `shadow_transactions` | `JsonNode` | JSON array of internal records Blnk creates to track each provider's share of the spend. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Fund lineage" icon="git-branch" href="/transactions/lineage">
+Tagged funds, allocation strategies, and shadow transactions.
+</Card>
+
+<Card title="View transaction lineage" icon="book-open" href="/reference/get-transaction-lineage">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

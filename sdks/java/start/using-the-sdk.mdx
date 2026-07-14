@@ -1,0 +1,232 @@
+---
+title: "Using the SDK"
+description: "Configure authentication, timeouts, retries, and logging for the Java SDK."
+sidebarTitle: "Using the SDK"
+icon: "code"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+<Info>
+Configurable client options ship in v1.3.0. See the [Changelog](/changelog/blnk-java) before upgrading.
+</Info>
+
+## Initialize the client
+
+Your Blnk client is the single entry point to everything: ledgers, balances, transactions, webhooks, and more. Configure it once when your app starts, then use it everywhere.
+
+```java BlnkClient.java wrap
+import com.blnkfinance.blnk.Blnk;
+import com.blnkfinance.blnk.BlnkClientOptions;
+
+public final class BlnkClient {
+  public static final Blnk BLNK = Blnk.init(
+      System.getenv().getOrDefault("BLNK_API_KEY", ""),
+      BlnkClientOptions.builder()
+          .baseUrl(System.getenv().getOrDefault("BLNK_BASE_URL", "http://localhost:5001"))
+          .build());
+}
+```
+
+That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
+
+```java CreateLedgerExample.java wrap
+import com.blnkfinance.blnk.types.ApiResponse;
+import com.blnkfinance.blnk.types.CreateLedger;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.Map;
+
+ApiResponse<JsonNode> response = BlnkClient.BLNK.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Savings Account")
+        .metaData(Map.of("project_owner", "YOUR_APP_NAME")));
+
+System.out.println("Ledger Created: " + response.data());
+```
+
+Services are accessed through methods on the client: `ledgers()`, `ledgerBalances()`, `transactions()`, `balanceMonitor()`, `reconciliation()`, `identity()`, `metadata()`, `hooks()`, `search()`, `apiKeys()`, and `system()`.
+
+---
+
+## Builders and wire fields
+
+Request bodies are built with fluent types in `com.blnkfinance.blnk.types`. Builder methods use **camelCase** (for example `metaData()`, `skipQueue()`, `preciseAmount()`). Blnk Core receives **snake_case** JSON on the wire (for example `meta_data`, `skip_queue`, `precise_amount`).
+
+On method pages, request field tables list the **wire field** name because it matches the HTTP API and response JSON. Map it to the Java builder in your code:
+
+| Wire field (table) | Java builder |
+| :-- | :-- |
+| `meta_data` | `.metaData()` |
+| `skip_queue` | `.skipQueue()` |
+| `precise_amount` | `.preciseAmount()` |
+| `allow_overdraft` | `.allowOverdraft()` |
+| `identity_type` | `.identityType()` |
+| `expires_at` | `.expiresAt()` |
+
+When prose refers to an SDK method, it uses Java names: `createBulk`, `updateStatus`, `blnk.transactions().create`. JSON examples and metadata keys may still use snake_case (for example a custom metadata key named `update_status`).
+
+---
+
+## Response bodies
+
+Every method returns `ApiResponse<JsonNode>`. Treat `response.data()` as parsed JSON:
+
+- **Object responses:** `response.data().get("ledger_id").asText()`
+- **Array responses:** check `response.data().isArray()`, then read `response.data().get(i).get("field")`
+- **Nested arrays:** `response.data().get("results").get(i).get("status").asText()`
+- **No body (204):** `response.data()` is `null`; branch on `response.status()` only
+
+Field tables on method pages use wire JSON names because they match the HTTP API. Read those fields from the `JsonNode` returned in `response.data()`.
+
+---
+
+## Authentication
+
+`Blnk.init` takes two arguments: an API key and a `BlnkClientOptions` object.
+
+The options object must include `baseUrl`, the root URL of your Blnk Core instance. The SDK sends the API key on every request in the `X-Blnk-Key` header.
+
+How you set the API key depends on whether Core runs in secure mode:
+
+<Tabs>
+<Tab title="Secure mode">
+
+When `server.secure` is enabled, pass your API key as the first argument. Set `baseUrl` to the URL where Core is reachable.
+
+```java wrap
+Blnk blnk = Blnk.init(
+    System.getenv().getOrDefault("BLNK_API_KEY", ""),
+    BlnkClientOptions.builder()
+        .baseUrl(System.getenv().getOrDefault("BLNK_BASE_URL", "http://localhost:5001"))
+        .build());
+```
+
+</Tab>
+<Tab title="Auth disabled">
+
+When secure mode is off, pass an empty string as the first argument.
+
+```java wrap
+Blnk blnk = Blnk.init(
+    "",
+    BlnkClientOptions.builder()
+        .baseUrl("http://localhost:5001")
+        .build());
+```
+
+</Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+<Card title="Secure Blnk" icon="shield-check" href="/advanced/secure-blnk">
+Secure mode, master key, and server hardening.
+</Card>
+
+<Card title="Scoped API keys" icon="lock-keyhole" href="/api-keys/overview">
+Owner-scoped keys and permission limits.
+</Card>
+</CardGroup>
+
+---
+
+## Timeouts and retries
+
+When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. Pass these parameters on `BlnkClientOptions.builder()`:
+
+```java wrap
+Blnk blnk = Blnk.init(
+    apiKey,
+    BlnkClientOptions.builder()
+        .baseUrl("http://localhost:5001")
+        .timeout(30000)
+        .retryCount(3)
+        .retryDelayMs(2000)
+        .build());
+```
+
+| Option | Type | Default | What it does for you |
+| :-- | :-- | :-- | :-- |
+| `timeout` | `int` | `10000` | Milliseconds to wait before giving up on a request. Bump this for slow operations like bulk reconciliations. |
+| `retryCount` | `int` | `1` | Total attempts including the first. `1` means one attempt, no retries. `3` means try up to 3 times. |
+| `retryDelayMs` | `int` | `2000` | Milliseconds between retries. Uses linear backoff. |
+
+When to tune these:
+
+- Keep defaults if you're making fast, local calls and want to fail fast.
+- Increase `timeout` if you're running large batch requests that may take a while to complete synchronously.
+- Increase `retryCount` if you're reading data across an unreliable network.
+
+<Note>
+Retries apply to `GET` requests only. Timeouts return a synthetic `408` response and are never retried.
+</Note>
+
+---
+
+## Custom logger
+
+By default, the SDK logs internal events through a built-in logger that writes to the console with `INFO:` and `ERROR:` prefixes.
+
+Pass a custom `BlnkLogger` to route these messages to your own logging system instead of the console.
+
+```java wrap
+import com.blnkfinance.blnk.BlnkLogger;
+
+public final class AppLogger implements BlnkLogger {
+  @Override
+  public void info(String message, Object... meta) {
+    appLogger.info(message);
+  }
+
+  @Override
+  public void error(String message, Object... meta) {
+    appLogger.error(message);
+  }
+}
+
+Blnk blnk = Blnk.init(
+    apiKey,
+    BlnkClientOptions.builder()
+        .baseUrl("http://localhost:5001")
+        .logger(new AppLogger())
+        .build());
+```
+
+<Note>
+Metadata passed to the logger is redacted. The SDK strips values for keys such as `api_key`, `authorization`, `token`, and `secret` before logging.
+</Note>
+
+| Level | When the SDK calls it |
+| :-- | :-- |
+| `info` | Before a retry, or when a retryable `GET` failure will be retried |
+| `error` | When a request times out, returns a non-retryable HTTP error, or fails with a network error |
+
+```bash Example logs wrap
+INFO: Retrying request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
+
+ERROR: Request timed out { endpoint: 'transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94', timeoutMs: 30000 }
+
+ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed with status 404.
+```
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Quick start" icon="rocket" href="/sdks/java/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Error handling" icon="triangle-alert" href="/sdks/java/start/error-handling">
+ApiResponse checks and Core error bodies.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-java">
+Java SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

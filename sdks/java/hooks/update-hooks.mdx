@@ -1,0 +1,91 @@
+---
+mode: "wide"
+title: "Update an existing hook"
+sidebarTitle: "Update hooks"
+api: "PUT /hooks/{id}"
+description: "Update an existing hook with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.hooks().update` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String hookId = "hk_test_123";
+
+ApiResponse<JsonNode> response = blnk.hooks().update(
+    hookId,
+    CreateHookData.create()
+        .name("Validate payment v2")
+        .url("https://api.example.com/validate-v2")
+        .type(HookType.PRE_TRANSACTION)
+        .active(true)
+        .timeout(45)
+        .retryCount(2));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `String` | ID of the hook to update. |
+| `name` | `String` | Descriptive name for the hook. |
+| `url` | `String` | Endpoint URL Blnk calls when the hook runs. |
+| `type` | `String` | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `active` | `boolean` | Whether the hook is enabled. |
+| `timeout` | `Number` | Maximum time in seconds allowed for the hook to execute. |
+| `retry_count` | `Number` | Maximum number of retry attempts if the hook fails. |
+
+</Step>
+
+<Step title="Verify the changes">
+
+Read `response.data()` to confirm the updated URL, type, and active status. The hook ID stays the same.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "id": "hk_test_123",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/validate",
+  "type": "PRE_TRANSACTION",
+  "active": false,
+  "timeout": 30,
+  "retry_count": 3,
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "last_run": "0001-01-01T00:00:00Z",
+  "last_success": false
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `String` | Unique ID for the hook. |
+| `created_at` | `String` | Date and time the hook was created. |
+| `last_run` | `String` | Date and time the hook last executed. |
+| `last_success` | `boolean` | Whether the most recent execution succeeded. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How webhooks work" icon="webhook" href="/hooks/overview">
+Hook types, payloads, and execution.
+</Card>
+
+<Card title="Update an existing hook" icon="book-open" href="/reference/update-hooks">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

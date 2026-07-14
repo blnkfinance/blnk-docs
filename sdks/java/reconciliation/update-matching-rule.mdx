@@ -1,0 +1,95 @@
+---
+mode: "wide"
+title: "Update matching rule"
+sidebarTitle: "Update matching rule"
+api: "PUT /reconciliation/matching-rules/{id}"
+description: "Update a reconciliation matching rule with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.reconciliation().updateMatchingRule` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String ruleId = "rule_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+
+Criteria referenceMatch = Criteria.create()
+    .field("reference")
+    .operator("equals")
+    .allowableDrift(0);
+
+ApiResponse<JsonNode> response = blnk.reconciliation().updateMatchingRule(
+    ruleId,
+    Matcher.create()
+        .name("Updated rule")
+        .description("Updated criteria")
+        .criteria(List.of(referenceMatch)));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ruleId` | `String` | ID of the matching rule to update. |
+| `name` | `String` | Updated name for the rule. |
+| `description` | `String` | Updated description of what the rule does. |
+| `criteria` | `List<Criteria>` | Full replacement list of match criteria built with `Criteria.create()`. |
+| `criteria[].field` | `String` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `String` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | `Number` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+
+</Step>
+
+<Step title="Verify the changes">
+
+Read `response.data()` to confirm the updated criteria and description. The rule ID stays the same.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "rule_id": "rule_abc123",
+  "name": "Amount match (updated)",
+  "description": "Match by amount with 2% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.02
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-12-01T10:15:00.000000000Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `String` | Unchanged ID of the rule. |
+| `name` | `String` | Updated rule name. |
+| `criteria` | `JsonNode` | JSON array of match criteria stored for the rule. |
+| `updated_at` | `String` | When the rule was last updated. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/matching-rules">
+Criteria, operators, and drift behavior.
+</Card>
+
+<Card title="Update matching rule" icon="book-open" href="/reference/update-matching-rule">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

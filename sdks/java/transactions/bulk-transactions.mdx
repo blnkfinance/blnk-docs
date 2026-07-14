@@ -1,0 +1,103 @@
+---
+mode: "wide"
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+api: "POST /transactions/bulk"
+description: "Submit multiple transactions in one request with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().createBulk` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+CreateTransactions payment1 = CreateTransactions.create()
+    .amount(1000)
+    .precision(100)
+    .currency("USD")
+    .source("@source_1")
+    .destination("@dest_1")
+    .reference("bulk_001")
+    .description("Payment 1");
+
+CreateTransactions payment2 = CreateTransactions.create()
+    .amount(2000)
+    .precision(100)
+    .currency("USD")
+    .source("@source_2")
+    .destination("@dest_2")
+    .reference("bulk_002")
+    .description("Payment 2");
+
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .atomic(true)
+        .transactions(List.of(payment1, payment2)));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `List<CreateTransactions>` | Transaction objects to create; references must be unique within the batch. |
+| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Step>
+
+<Step title="Save the batch ID">
+
+Use `response.data().get("batch_id").asText()` as `parent_transaction` to find child transactions, or with `updateStatus` to commit or void an inflight batch.
+
+</Step>
+
+<Step title="Response">
+
+<CodeGroup>
+```json Sync wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 2
+}
+```
+
+```json Async (run_async: true) wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_id` | `String` | Identifier for the batch. Use as parent_transaction to find child transactions, or with `updateStatus` to commit or void an inflight batch. |
+| `status` | `String` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | `Number` | Number of transactions when processed synchronously. |
+| `message` | `String` | Status message when `run_async` is `true`. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk transactions guide" icon="layers" href="/transactions/bulk-transactions">
+Batch processing, webhooks, and retrieving a batch.
+</Card>
+
+<Card title="Bulk transactions" icon="book-open" href="/reference/bulk-transactions">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

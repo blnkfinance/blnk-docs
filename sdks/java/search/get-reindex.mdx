@@ -1,0 +1,71 @@
+---
+mode: "wide"
+title: "Get reindex status"
+sidebarTitle: "Get reindex status"
+api: "GET /search/reindex"
+description: "Poll the progress of a Typesense reindex with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.search().getReindexStatus` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.search().getReindexStatus();
+```
+
+This method takes no arguments.
+
+</Step>
+
+<Step title="Track reindex progress">
+
+Poll until `response.data().get("status").asText()` is `completed`. Compare `processed_records` to `total_records` to estimate remaining work.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "status": "in_progress",
+  "phase": "indexing_transactions",
+  "total_records": 2145709,
+  "processed_records": 2145709,
+  "started_at": "2026-02-12T12:13:10.448612096Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `status` | `String` | Current state, `in_progress` or `completed`. |
+| `phase` | `String` | Current phase, for example `indexing_transactions`, or `done` when complete. |
+| `total_records` | `Number` | Total number of records to index. |
+| `processed_records` | `Number` | Number of records processed so far. |
+| `started_at` | `String` | Timestamp when the reindex began. |
+| `completed_at` | `String` | Timestamp when the reindex finished. Only present once `status` is `completed`. |
+| `errors` | `JsonNode` | JSON array of error messages. Only present when an error occurs. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reindexing works" icon="rotate" href="/search/typesense/reindex">
+When and why to rebuild the index.
+</Card>
+
+<Card title="Check reindex progress" icon="book-open" href="/reference/get-reindex">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

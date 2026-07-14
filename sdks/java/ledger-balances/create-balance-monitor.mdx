@@ -1,0 +1,95 @@
+---
+mode: "wide"
+title: "Create balance monitor"
+sidebarTitle: "Create balance monitor"
+api: "POST /balance-monitors"
+description: "Create a balance monitor with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.balanceMonitor().create` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+MonitorCondition condition = MonitorCondition.create()
+    .field("credit_balance")
+    .operator(">=")
+    .precision(100)
+    .value(1000);
+
+ApiResponse<JsonNode> response = blnk.balanceMonitor().create(
+    MonitorData.create()
+        .balanceId("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f")
+        .description("Tier 1 account")
+        .condition(condition));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance_id` | `String` | Balance to monitor. |
+| `condition` | `MonitorCondition` | Threshold rule built with `MonitorCondition.create()`. |
+| `condition.field` | `String` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `condition.operator` | `String` | Comparison operator: `>`, `<`, `=`, `!=`, `>=`, `<=`. |
+| `condition.value` | `Number` | Threshold amount. |
+| `condition.precision` | `Number` | Currency precision (for example `100` for cents). |
+| `call_back_url` | `String` | Webhook URL when the condition is met. |
+| `description` | `String` | Optional description for the monitor. |
+
+</Step>
+
+<Step title="Save the monitor ID">
+
+Use `response.data().get("monitor_id").asText()` to retrieve or update the monitor later.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "condition": {
+    "field": "credit_balance",
+    "operator": ">",
+    "value": 1000,
+    "precision": 100
+  },
+  "call_back_url": "https://api.example.com/balance-monitor",
+  "description": "Low balance alert",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `monitor_id` | `String` | Unique ID for the monitor. |
+| `balance_id` | `String` | Balance being monitored. |
+| `condition` | `JsonNode` | Threshold rule object from the response. |
+| `call_back_url` | `String` | Webhook URL for notifications. |
+| `description` | `String` | Description for the monitor. |
+| `created_at` | `String` | Date and time when the monitor was created. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Conditions and webhook behavior.
+</Card>
+
+<Card title="Create balance monitor" icon="book-open" href="/reference/create-balance-monitor">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

@@ -1,0 +1,75 @@
+---
+mode: "wide"
+title: "Start reconciliation"
+sidebarTitle: "Start reconciliation"
+api: "POST /reconciliation/start"
+description: "Start a batch reconciliation run with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.reconciliation().run` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String uploadId = "upload_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+String ruleId = "rule_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+
+ApiResponse<JsonNode> response = blnk.reconciliation().run(
+    RunReconData.create()
+        .uploadId(uploadId)
+        .matchingRuleIds(List.of(ruleId))
+        .strategy("one_to_many")
+        .dryRun(true));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `upload_id` | `String` | Upload ID returned by `blnk.reconciliation().upload`. |
+| `strategy` | `String` | Match strategy: `one_to_one`, `one_to_many`, or `many_to_one`. |
+| `dry_run` | `boolean` | Set `true` to test without writing results to the ledger. |
+| `grouping_criteria` | `String` | Field used to group records, for example `reference`. |
+| `matching_rule_ids` | `List<String>` | IDs of the matching rules to apply. |
+
+</Step>
+
+<Step title="Save the reconciliation ID">
+
+Use `response.data().get("reconciliation_id").asText()` with `blnk.reconciliation().get` to poll status and match counts.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "reconciliation_id": "rec_a8f2c91d-1234-4abc-9def-0123456789ab"
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `reconciliation_id` | `String` | ID of the reconciliation run. Use it with `blnk.reconciliation().get` to check status. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reconciliation works" icon="scale" href="/reconciliations/overview">
+Batch and instant reconciliation workflows.
+</Card>
+
+<Card title="Start reconciliation" icon="book-open" href="/reference/start-reconciliation">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
