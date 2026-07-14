@@ -116,6 +116,16 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
       allocation_strategy: 'FIFO',
     });
     ```
+
+    ```go Go wrap {5,6}
+    balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+      LedgerID:           "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+      IdentityID:         "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+      Currency:           "USD",
+      TrackFundLineage:   true,
+      AllocationStrategy: blnkgo.AllocationStrategyFIFO,
+    })
+    ```
     </CodeGroup>
 
     Allocation strategy defines how Blnk will allocate the funds when you spend from the balance. Supported allocation strategies are:
@@ -159,6 +169,23 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
         BLNK_LINEAGE_PROVIDER: 'stripe',
       },
     });
+    ```
+
+    ```go Go wrap {10}
+    transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+      ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: 10000,
+        Precision:     100,
+        Currency:      "USD",
+        Reference:     "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        Source:        "@World",
+        Destination:   "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        Description:   "Top up via card",
+        MetaData: map[string]interface{}{
+          "BLNK_LINEAGE_PROVIDER": "stripe",
+        },
+      },
+    })
     ```
     </CodeGroup>
 
@@ -204,6 +231,20 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
       destination: '@MerchantSettlement',
       description: 'Purchase',
     });
+    ```
+
+    ```go Go wrap
+    transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+      ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: 2500,
+        Precision:     100,
+        Currency:      "USD",
+        Reference:     "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+        Source:        "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        Destination:   "@MerchantSettlement",
+        Description:   "Purchase",
+      },
+    })
     ```
     </CodeGroup>
 
@@ -260,6 +301,12 @@ const response = await blnk.LedgerBalances.getLineage(
   'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
 );
 ```
+
+```go Go wrap
+lineage, resp, err := client.LedgerBalance.GetLineage(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+)
+```
 </CodeGroup>
 
 This returns, per provider:
@@ -302,6 +349,12 @@ curl -X GET "http://localhost:5001/transactions/txn_8d2ce2f0-0d75-4a91-9d43-2ad2
 const response = await blnk.Transactions.getLineage(
   'txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad',
 );
+```
+
+```go Go wrap
+lineage, resp, err := client.Transaction.GetLineage(
+  "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+)
 ```
 </CodeGroup>
 

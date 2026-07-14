@@ -167,6 +167,42 @@ const response = await blnk.Transactions.createBulk({
   ],
 });
 ```
+
+```go Go wrap
+effectiveDate1, _ := time.Parse(time.RFC3339, "2024-09-15T10:30:00Z")
+effectiveDate2, _ := time.Parse(time.RFC3339, "2024-09-18T14:15:00Z")
+result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+  Atomic:   true,
+  Inflight: false,
+  RunAsync: true,
+  Transactions: []blnkgo.CreateTransactionRequest{
+    {
+      ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: 35890,
+        Precision:     100,
+        Reference:     "migration_2024_001",
+        Description:   "Invoice payment - Client A",
+        Currency:      "NGN",
+        Source:        "@source_account",
+        Destination:   "@destination_account",
+        EffectiveDate: &effectiveDate1,
+      },
+    },
+    {
+      ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: 125000,
+        Precision:     100,
+        Reference:     "migration_2024_002",
+        Description:   "Supplier payment",
+        Currency:      "NGN",
+        Source:        "@source_account",
+        Destination:   "@vendor_account",
+        EffectiveDate: &effectiveDate2,
+      },
+    },
+  },
+})
+```
 </CodeGroup>
 
 ```json Response (async)
