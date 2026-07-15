@@ -162,6 +162,27 @@ func createLedgers() (mainLedgerID, pointsLedgerID string, err error) {
     return mainLedger.LedgerID, pointsLedger.LedgerID, nil
 }
 ```
+
+```python Python wrap expandable
+# Create a ledger for customer main wallets (USD)
+main_ledger = blnk.ledgers.create({
+  "name": "Customer Main Wallets",
+  "meta_data": {
+    "description": "Ledger for customer USD wallets",
+  },
+})
+
+# Create a ledger for customer points wallets
+points_ledger = blnk.ledgers.create({
+  "name": "Customer Points Wallets",
+  "meta_data": {
+    "description": "Ledger for customer loyalty points",
+  },
+})
+
+print("Created main wallet ledger:", main_ledger.data["ledger_id"])
+print("Created points wallet ledger:", points_ledger.data["ledger_id"])
+```
 </CodeGroup>
 
 ---
@@ -273,6 +294,33 @@ func createCustomerWallets(mainLedgerID, pointsLedgerID, identityID string) (mai
     fmt.Println("Created points wallet:", pointsWallet.BalanceID)
     return mainWallet.BalanceID, pointsWallet.BalanceID, nil
 }
+```
+
+```python Python wrap expandable
+# Create main wallet (USD)
+main_wallet = blnk.ledger_balances.create({
+  "ledger_id": main_ledger_id,
+  "identity_id": identity_id,
+  "currency": "USD",
+  "meta_data": {
+    "wallet_type": "main",
+    "status": "active",
+  },
+})
+
+# Create points wallet
+points_wallet = blnk.ledger_balances.create({
+  "ledger_id": points_ledger_id,
+  "identity_id": identity_id,
+  "currency": "POINTS",
+  "meta_data": {
+    "wallet_type": "points",
+    "status": "active",
+  },
+})
+
+print("Created main wallet:", main_wallet.data["balance_id"])
+print("Created points wallet:", points_wallet.data["balance_id"])
 ```
 </CodeGroup>
 
@@ -424,6 +472,46 @@ func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchase
     fmt.Println("Points awarded:", pointsAward.TransactionID)
     return purchase.TransactionID, pointsAward.TransactionID, nil
 }
+```
+
+```python Python wrap expandable
+from datetime import datetime
+
+# Generate a unique reference for this purchase
+purchase_reference = f"purchase-{int(datetime.now().timestamp())}"
+
+# Step 1: Process the purchase payment
+purchase = blnk.transactions.create({
+  "precise_amount": purchase_amount * 100,
+  "precision": 100,
+  "reference": purchase_reference,
+  "currency": "USD",
+  "source": main_wallet_id,
+  "destination": "@RevenueUSD",
+  "description": "Product purchase",
+  "meta_data": {
+    "transaction_type": "purchase",
+  },
+})
+
+# Step 2: Award loyalty points
+points_award = blnk.transactions.create({
+  "precise_amount": points_to_award,
+  "precision": 1,  # Points typically don't have decimal places
+  "reference": f"points-{purchase_reference}",
+  "currency": "POINTS",
+  "source": "@PointsPool",
+  "destination": points_wallet_id,
+  "description": "Loyalty points award",
+  "allow_overdraft": True,  # Points pool can have negative balance
+  "meta_data": {
+    "purchase_reference": purchase_reference,
+    "purchase_amount": purchase_amount,
+  },
+})
+
+print("Purchase processed:", purchase.data["transaction_id"])
+print("Points awarded:", points_award.data["transaction_id"])
 ```
 </CodeGroup>
 
@@ -596,6 +684,52 @@ func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount
     fmt.Println("Discounted purchase processed:", discountedPurchase.TransactionID)
     return pointsRedemption.TransactionID, discountedPurchase.TransactionID, nil
 }
+```
+
+```python Python wrap expandable
+from datetime import datetime
+
+# Calculate points conversion to dollar: 10 points = 1 dollar
+converted_amount = points_to_redeem / 10
+
+# Generate a unique reference for this redemption
+redemption_reference = f"redemption-{int(datetime.now().timestamp())}"
+
+# Step 1: Redeem points
+points_redemption = blnk.transactions.create({
+  "precise_amount": points_to_redeem,
+  "precision": 1,
+  "reference": redemption_reference,
+  "currency": "POINTS",
+  "source": points_wallet_id,
+  "destination": "@PointsPool",
+  "description": "Points redemption for discount",
+  "meta_data": {
+    "transaction_type": "redemption",
+    "convert_to_usd": converted_amount,
+  },
+})
+
+# Step 2: Process the discounted purchase
+discounted_amount = purchase_amount - converted_amount
+
+discounted_purchase = blnk.transactions.create({
+  "precise_amount": discounted_amount * 100,
+  "precision": 100,
+  "reference": f"purchase-{redemption_reference}",
+  "currency": "USD",
+  "source": main_wallet_id,
+  "destination": "@RevenueUSD",
+  "description": "Discounted purchase with points",
+  "meta_data": {
+    "redemption_reference": redemption_reference,
+    "original_amount": purchase_amount,
+    "points_redeemed": points_to_redeem,
+  },
+})
+
+print("Points redeemed:", points_redemption.data["transaction_id"])
+print("Discounted purchase processed:", discounted_purchase.data["transaction_id"])
 ```
 </CodeGroup>
 

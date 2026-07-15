@@ -148,6 +148,27 @@ func createEscrowTransaction(buyerWalletID, sellerWalletID string, amount float6
     return escrow.TransactionID, nil
 }
 ```
+
+```python Python wrap expandable
+escrow = blnk.transactions.create({
+  "precise_amount": amount * 100,
+  "precision": 100,
+  "reference": unique_reference,
+  "description": description or "Escrow payment",
+  "currency": "USD",
+  "source": buyer_wallet_id,
+  "destination": seller_wallet_id,
+  "inflight": True,  # Holds funds in escrow
+  "meta_data": {
+    "transaction_type": "escrow",
+    "escrow_status": "pending",
+    "buyer_confirmation": False,
+    "seller_confirmation": False,
+  },
+})
+
+print("Escrow transaction created:", escrow.data["transaction_id"])
+```
 </CodeGroup>
 
 <Note>
@@ -203,6 +224,14 @@ func commitInflightTransaction(transactionID string) (*blnkgo.Transaction, error
     return committed, nil
 }
 ```
+
+```python Python wrap
+response = blnk.transactions.update_status(transaction_id, {
+  "status": "commit",
+})
+
+print(f"Transaction {transaction_id} successfully committed")
+```
 </CodeGroup>
 
 ---
@@ -253,6 +282,14 @@ func voidInflightTransaction(transactionID string) (*blnkgo.Transaction, error) 
     fmt.Printf("Transaction %s successfully voided\n", transactionID)
     return voided, nil
 }
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(transaction_id, {
+  "status": "void",
+})
+
+print(f"Transaction {transaction_id} successfully voided")
 ```
 </CodeGroup>
 
@@ -309,6 +346,15 @@ func commitPartialInflightTransaction(transactionID string, partialAmount float6
     fmt.Printf("Transaction %s successfully committed\n", transactionID)
     return committed, nil
 }
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(transaction_id, {
+  "status": "commit",
+  "precise_amount": partial_amount * 100,
+})
+
+print(f"Transaction {transaction_id} successfully committed")
 ```
 </CodeGroup>
 
