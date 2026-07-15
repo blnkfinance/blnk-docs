@@ -98,6 +98,7 @@ const maticLedger = await blnk.Ledgers.create({
 
 Create balances for both users in each ledger:
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 // Create ETH balances
 const johnEthBalance = await blnk.LedgerBalances.create({
@@ -181,6 +182,7 @@ emily_matic_balance = blnk.ledger_balances.create({
   "currency": "MATIC",
 })
 ```
+</CodeGroup>
 
 ### Fund the initial balances
 
@@ -188,6 +190,7 @@ emily_matic_balance = blnk.ledger_balances.create({
   In this example, we use a precision of 100 for simplicity (e.g., 1 ETH = 100 units). In production, cryptocurrencies like ETH use a precision of 10^18 (1 ETH = 10^18 wei). Adjust the `precision` parameter in all transaction calls accordingly and ensure amount calculations reflect this precision.
 </Note>
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 // Fund John's ETH balance
 await blnk.Transactions.create({
@@ -277,6 +280,7 @@ blnk.transactions.create({
   "allow_overdraft": True,
 })
 ```
+</CodeGroup>
 
 
 ---
@@ -404,6 +408,7 @@ When John or Emily creates an order, we need to:
 
 When two orders are matched (e.g., John and Emily), we want to link them together with a common matching ID. This helps us track which orders in our Ledger were matched with each other.
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function linkMatchedOrders(transaction1Id: string, transaction2Id: string) {
     const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -495,6 +500,7 @@ matching_id = link_matched_orders(
     emily_order["transaction"]["transaction_id"],  # Emily's inflight transaction ID
 )
 ```
+</CodeGroup>
 
 ---
 
@@ -505,6 +511,7 @@ Finally, we need to execute the exchange of assets between the matched orders - 
 1. We need to commit these transactions to move the funds to escrow.
 2. Then we create new transactions to move funds from escrow to the respective recipient balances (John's MATIC balance and Emily's ETH balance).
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function settleMatchedOrders(
     johnTxId: string,    // John's ETH inflight transaction ID
@@ -699,6 +706,7 @@ def settle_matched_orders(john_tx_id, emily_tx_id):
     except Exception as error:
         return {"success": False, "error": str(error)}
 ```
+</CodeGroup>
 
 ---
 

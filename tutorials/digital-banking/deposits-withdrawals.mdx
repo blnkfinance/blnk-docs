@@ -56,6 +56,7 @@ When recording a deposit with fee processing, we’ll use the [Multiple Destinat
 
 We’ll also apply `inflight` to validate the deposits against predefined business rules before finalizing the transaction.
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function recordDeposit(sourceId, customerBalanceId, amount, reference, stripePaymentId) {
   
@@ -180,6 +181,7 @@ def record_deposit(source_id, customer_balance_id, amount, reference, stripe_pay
     print(f"Deposit recorded with ID: {transaction.data['transaction_id']}")
     return transaction.data
 ```
+</CodeGroup>
 
 <Tip>
   When you apply `inflight` to a multiple destinations transaction, all associated transactions-distributing funds to both destinations-are also placed in an `inflight` state until the commit or void is executed.
@@ -195,6 +197,7 @@ Next, we’ll develop functions to process deposits according to the following b
 
 #### Rule 1: Check if balance is blocked or frozen
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function processDepositBasedOnRules(transactionId) {
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -313,9 +316,11 @@ def process_deposit_based_on_rules(transaction_id):
 
     return process_deposit_by_amount(transaction_id)
 ```
+</CodeGroup>
 
 #### Rule 2: Check amount rule
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function processDepositByAmount(transactionId) {
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -431,11 +436,13 @@ def process_deposit_by_amount(transaction_id):
     print(f"Transaction {transaction_id} flagged for investigation: large amount")
     return flagged
 ```
+</CodeGroup>
 
 Read more: [Webhooks overview →](/webhooks/overview)
 
 ### Putting it all together
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
   
@@ -504,11 +511,13 @@ def handle_stripe_deposit(stripe_payment_id, customer_balance_id, amount):
         "message": f"Deposit processed with status: {result['status']}",
     }
 ```
+</CodeGroup>
 
 ### Refunding deposits
 
 To process refunds in your ledger and reverse a deposit:
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function refundDeposit(transactionId, reason = 'Customer requested refund') {
   
@@ -574,6 +583,7 @@ def refund_deposit(transaction_id, reason="Customer requested refund"):
     print(f"Deposit refunded: {refund.data['refund_id']}")
     return refund.data
 ```
+</CodeGroup>
 
 ---
 
@@ -595,6 +605,7 @@ From our map, we can verify:
 
 Here, the payout was successfully completed by your payout provider:
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 // Initiate a payout with inflight
 async function initiatePayout(customerBalanceId, billsAmount, reference) {
@@ -739,9 +750,11 @@ def initiate_payout(customer_balance_id, bills_amount, reference):
 def get_expiry_date(hours):
     return (datetime.utcnow() + timedelta(hours=hours)).isoformat()
 ```
+</CodeGroup>
 
 #### Commit based on feedback from payout provider
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 // Webhook handler for payment processor notifications
 async function handlePaymentWebhook(webhookBody) {
@@ -889,6 +902,7 @@ def handle_payment_webhook(webhook_body):
             "transaction_id": transaction_id,
         }
 ```
+</CodeGroup>
 
 #### How multiple destinations work
 
@@ -907,6 +921,7 @@ This unified approach simplifies managing complex transactions involving multipl
 
 The payout is pending, but a failure message was received from the provider, resulting in the transaction being voided:
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function handlePaymentWebhook(webhookBody) {
   const { 
@@ -1053,11 +1068,13 @@ def handle_payment_webhook(webhook_body):
             "transaction_id": transaction_id,
         }
 ```
+</CodeGroup>
 
 ### Path 2: Successful payout but reversed
 
 The payout was initially successful, with confirmation received from the provider, but the funds were reversed by the provider due to an inability to settle the transaction:
 
+<CodeGroup>
 ```typescript TypeScript wrap expandable
 async function refundPayout(transactionId, reason = "Can't complete payout") {
   
@@ -1123,6 +1140,7 @@ def refund_payout(transaction_id, reason="Can't complete payout"):
     print(f"Payout refunded: {refund.data['refund_id']}")
     return refund.data
 ```
+</CodeGroup>
 
 ---
 
