@@ -57,6 +57,37 @@ When recording a deposit with fee processing, we’ll use the [Multiple Destinat
 We’ll also apply `inflight` to validate the deposits against predefined business rules before finalizing the transaction.
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10000,
+    "precision": 100,
+    "reference": "stripe_payment_ref_001",
+    "currency": "USD",
+    "source": "@Stripe",
+    "inflight": true,
+    "skip_queue": true,
+    "destinations": [
+      {
+        "identifier": "bln_CUSTOMER_BALANCE_ID",
+        "distribution": "99.5",
+        "narration": "Deposit to your account"
+      },
+      {
+        "identifier": "@Fees",
+        "distribution": "0.5",
+        "narration": "Processing fee"
+      }
+    ],
+    "meta_data": {
+      "fee_amount": 0.5,
+      "stripe_payment_id": "pi_123456"
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function recordDeposit(sourceId, customerBalanceId, amount, reference, stripePaymentId) {
   
@@ -198,6 +229,34 @@ Next, we’ll develop functions to process deposits according to the following b
 #### Rule 1: Check if balance is blocked or frozen
 
 <CodeGroup>
+```bash cURL wrap expandable
+# Get transaction details
+curl -X GET "http://localhost:5001/transactions/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+
+# Get customer balance metadata
+curl -X GET "http://localhost:5001/balances/{balance_id}" \
+  -H "X-blnk-key: <api-key>"
+
+# Add void reason metadata
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "void_reason": "Account frozen"
+    }
+  }'
+
+# Void inflight transaction if account is frozen/blocked
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "void"
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function processDepositBasedOnRules(transactionId) {
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -321,6 +380,32 @@ def process_deposit_based_on_rules(transaction_id):
 #### Rule 2: Check amount rule
 
 <CodeGroup>
+```bash cURL wrap expandable
+# Get transaction amount
+curl -X GET "http://localhost:5001/transactions/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+
+# Commit if below threshold ($1M)
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+
+# Or flag large deposits for investigation
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "investigation_required": true,
+      "investigation_reason": "Large deposit amount",
+      "flagged_at": "2024-12-21T01:36:46.997063436Z"
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function processDepositByAmount(transactionId) {
   const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -443,6 +528,30 @@ Read more: [Webhooks overview →](/webhooks/overview)
 ### Putting it all together
 
 <CodeGroup>
+```bash cURL wrap expandable
+# Step 1: Record deposit with fee processing (see recordDeposit)
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10000,
+    "precision": 100,
+    "reference": "stripe_pi_123456",
+    "currency": "USD",
+    "source": "@Stripe",
+    "inflight": true,
+    "skip_queue": true,
+    "destinations": [
+      {"identifier": "bln_CUSTOMER_BALANCE_ID", "distribution": "99.5"},
+      {"identifier": "@Fees", "distribution": "0.5"}
+    ]
+  }'
+
+# Step 2: Apply business rules (see processDepositBasedOnRules)
+curl -X GET "http://localhost:5001/transactions/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
 ```typescript TypeScript wrap expandable
 async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
   
@@ -518,6 +627,20 @@ def handle_stripe_deposit(stripe_payment_id, customer_balance_id, amount):
 To process refunds in your ledger and reverse a deposit:
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+
+curl -X POST "http://localhost:5001/{refund_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "refund_reason": "Customer requested refund"
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function refundDeposit(transactionId, reason = 'Customer requested refund') {
   
@@ -606,6 +729,39 @@ From our map, we can verify:
 Here, the payout was successfully completed by your payout provider:
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10100,
+    "precision": 100,
+    "reference": "payout_ref_001",
+    "description": "Payout for bills",
+    "currency": "USD",
+    "source": "bln_CUSTOMER_BALANCE_ID",
+    "inflight": true,
+    "inflight_expiry_date": "2024-12-22T01:36:46.997063436Z",
+    "skip_queue": true,
+    "destinations": [
+      {
+        "identifier": "@BillsPayment",
+        "distribution": "100",
+        "narration": "Payout for bills"
+      },
+      {
+        "identifier": "@Fees",
+        "distribution": "1",
+        "narration": "Payout processing fee"
+      }
+    ],
+    "meta_data": {
+      "payout_status": "pending",
+      "fee_amount": 1
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 // Initiate a payout with inflight
 async function initiatePayout(customerBalanceId, billsAmount, reference) {
@@ -755,6 +911,35 @@ def get_expiry_date(hours):
 #### Commit based on feedback from payout provider
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payout_ref_001",
+    "query_by": "reference",
+    "filter_by": "status:=INFLIGHT"
+  }'
+
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "payout_status": "confirmed",
+      "provider_payout_id": "po_123456",
+      "confirmation_time": "2024-12-21T01:36:46.997063436Z"
+    }
+  }'
+
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 // Webhook handler for payment processor notifications
 async function handlePaymentWebhook(webhookBody) {
@@ -922,6 +1107,35 @@ This unified approach simplifies managing complex transactions involving multipl
 The payout is pending, but a failure message was received from the provider, resulting in the transaction being voided:
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payout_ref_001",
+    "query_by": "reference",
+    "filter_by": "status:=INFLIGHT"
+  }'
+
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "payout_status": "failed",
+      "provider_payout_id": "po_123456",
+      "confirmation_time": "2024-12-21T01:36:46.997063436Z"
+    }
+  }'
+
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "void"
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function handlePaymentWebhook(webhookBody) {
   const { 
@@ -1075,6 +1289,20 @@ def handle_payment_webhook(webhook_body):
 The payout was initially successful, with confirmation received from the provider, but the funds were reversed by the provider due to an inability to settle the transaction:
 
 <CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+
+curl -X POST "http://localhost:5001/{refund_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "refund_reason": "Can't complete payout"
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function refundPayout(transactionId, reason = "Can't complete payout") {
   
