@@ -126,6 +126,18 @@ func createCustomerLedger() (string, error) {
     return ledger.LedgerID, nil
 }
 ```
+
+```python Python wrap
+customer_ledger = blnk.ledgers.create({
+  "name": "Customer Wallets Ledger",
+  "meta_data": {
+    "description": "Ledger for managing customer wallets",
+    "application": "Wallet Management System",
+  },
+})
+
+print("Customer Ledger created:", customer_ledger.data["ledger_id"])
+```
 </CodeGroup>
 
 <Warning>
@@ -198,6 +210,22 @@ func createCustomerIdentity(customerData CustomerData) (string, error) {
     return identity.IdentityID, nil
 }
 ```
+
+```python Python wrap expandable
+identity = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "Alice",
+  "last_name": "Johnson",
+  "email_address": "alice@example.com",
+  "phone_number": "+1234567890",
+  "meta_data": {
+    "customer_id": "CUST-001",
+    "registration_date": "2024-02-25T10:30:00Z",
+  },
+})
+
+print("Customer Identity created:", identity.data["identity_id"])
+```
 </CodeGroup>
 
 <Warning>
@@ -266,6 +294,21 @@ func createMainWallet(ledgerID, identityID, currency string) (string, error) {
     fmt.Println("Main Wallet created:", balance.BalanceID)
     return balance.BalanceID, nil
 }
+```
+
+```python Python wrap expandable
+main_wallet = blnk.ledger_balances.create({
+  "ledger_id": ledger_id,
+  "identity_id": identity_id,
+  "currency": currency,
+  "meta_data": {
+    "wallet_type": "main",
+    "purpose": "general",
+    "status": "active",
+  },
+})
+
+print("Main Wallet created:", main_wallet.data["balance_id"])
 ```
 </CodeGroup>
 
@@ -355,6 +398,25 @@ func depositToWallet(customerBalanceID string, amount float64, uniqueReference, 
     return deposit.TransactionID, nil
 }
 ```
+
+```python Python wrap expandable
+deposit = blnk.transactions.create({
+  "precise_amount": 100000,
+  "precision": 100,
+  "reference": "DEP-20250225-103000",
+  "description": "Initial deposit",
+  "currency": "USD",
+  "source": "@WorldUSD",
+  "destination": customer_balance_id,
+  "allow_overdraft": True,
+  "meta_data": {
+    "transaction_type": "deposit",
+    "channel": "bank_transfer",
+  },
+})
+
+print("Deposit transaction created:", deposit.data["transaction_id"])
+```
 </CodeGroup>
 
 <Note>
@@ -440,6 +502,24 @@ func withdrawFromWallet(customerBalanceID string, amount float64, uniqueReferenc
     return withdrawal.TransactionID, nil
 }
 ```
+
+```python Python wrap expandable
+withdrawal = blnk.transactions.create({
+  "precise_amount": 10000,
+  "precision": 100,
+  "reference": "WDR-20250225-104500",
+  "description": "Wallet withdrawal",
+  "currency": "USD",
+  "source": customer_balance_id,
+  "destination": "@WorldUSD",
+  "meta_data": {
+    "transaction_type": "withdrawal",
+    "channel": "bank_transfer",
+  },
+})
+
+print("Withdrawal transaction created:", withdrawal.data["transaction_id"])
+```
 </CodeGroup>
 
 ---
@@ -520,6 +600,26 @@ func createCardWallet(ledgerID, identityID, currency string) (string, error) {
     return balance.BalanceID, nil
 }
 ```
+
+```python Python wrap expandable
+card_wallet = blnk.ledger_balances.create({
+  "ledger_id": ledger_id,
+  "identity_id": identity_id,
+  "currency": currency,
+  "meta_data": {
+    "wallet_type": "card",
+    "purpose": "card_payments",
+    "status": "active",
+    "card_details": {
+      "masked_number": "xxxx-xxxx-xxxx-1234",
+      "expiry": "12/25",
+      "type": "virtual",
+    },
+  },
+})
+
+print("Card Wallet created:", card_wallet.data["balance_id"])
+```
 </CodeGroup>
 
 ---
@@ -598,6 +698,24 @@ func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, u
     fmt.Println("Transfer transaction created:", transfer.TransactionID)
     return transfer.TransactionID, nil
 }
+```
+
+```python Python wrap expandable
+transfer = blnk.transactions.create({
+  "precise_amount": 20000,
+  "precision": 100,
+  "reference": "TRF-20250225-110000",
+  "description": "Transfer to card wallet",
+  "currency": "USD",
+  "source": main_balance_id,
+  "destination": card_balance_id,
+  "meta_data": {
+    "transaction_type": "internal_transfer",
+    "purpose": "fund_card",
+  },
+})
+
+print("Transfer transaction created:", transfer.data["transaction_id"])
 ```
 </CodeGroup>
 

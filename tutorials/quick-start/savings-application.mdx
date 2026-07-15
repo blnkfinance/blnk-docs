@@ -122,6 +122,23 @@ func createSavingsWallet(savingsLedgerID, identityID, currency string) (string, 
     return balance.BalanceID, nil
 }
 ```
+
+```python Python wrap expandable
+savings_wallet = blnk.ledger_balances.create({
+  "ledger_id": savings_ledger_id,
+  "identity_id": identity_id,
+  "currency": currency,
+  "meta_data": {
+    "wallet_type": "savings",
+    "schedule_savings": True,
+    "savings_frequency": "monthly",
+    "savings_amount": 10000,
+    "next_scheduled_savings": "",
+  },
+})
+
+print("Savings Wallet created:", savings_wallet.data["balance_id"])
+```
 </CodeGroup>
 
 This creates a savings balance with a set of default metadata:
@@ -206,6 +223,24 @@ func createScheduledSavingsTransaction(savingsBalanceID string, savingsAmount fl
     fmt.Println("Savings successfully scheduled:", scheduledSavings.TransactionID)
     return scheduledSavings.TransactionID, nil
 }
+```
+
+```python Python wrap expandable
+scheduled_savings = blnk.transactions.create({
+  "precise_amount": 100000,
+  "precision": 100,
+  "reference": "SAV_0001",
+  "description": "Scheduled savings deposit",
+  "currency": "USD",
+  "source": "@WorldUSD",
+  "destination": savings_balance_id,
+  "scheduled_for": "2025-12-25T02:42:19Z",
+  "meta_data": {
+    "transaction_type": "savings",
+  },
+})
+
+print("Savings successfully scheduled:", scheduled_savings.data["transaction_id"])
 ```
 </CodeGroup>
 
@@ -433,6 +468,81 @@ func handleTransactionWebhook(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 ```
+
+```python Python wrap expandable
+from datetime import datetime, timedelta
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.post("/webhooks/transactions")
+def handle_transaction_webhook():
+    payload = request.get_json()
+    event = payload.get("event")
+    data = payload.get("data", {})
+
+    if event != "transaction.applied":
+        return "Webhook received", 200
+
+    if (data.get("meta_data") or {}).get("transaction_type") != "savings":
+        return "Webhook received", 200
+
+    print("Scheduled savings completed:", data.get("transaction_id"))
+
+    savings_balance_id = data["destination"]
+    savings_balance = blnk.ledger_balances.get(savings_balance_id)
+    balance_meta = savings_balance.data.get("meta_data") or {}
+
+    if balance_meta.get("schedule_savings") is not True:
+        print(f"Scheduled savings is no longer active for balance {savings_balance_id}")
+        return "Webhook received", 200
+
+    frequency = balance_meta.get("savings_frequency") or "monthly"
+    amount = balance_meta.get("savings_amount")
+    next_scheduled_date = calculate_next_scheduled_date(frequency)
+
+    # 1. Update metadata with the next scheduled date
+    blnk.metadata.update(savings_balance_id, {
+      "meta_data": {
+        "next_scheduled_savings": next_scheduled_date.isoformat(),
+      },
+    })
+
+    # 2. Create a new scheduled transaction
+    unique_reference = f"sch-savings-{int(datetime.now().timestamp())}"
+    scheduled_savings = blnk.transactions.create({
+      "precise_amount": amount * 100,
+      "precision": 100,
+      "reference": unique_reference,
+      "description": "Scheduled savings deposit",
+      "currency": "USD",
+      "source": "@WorldUSD",
+      "destination": savings_balance_id,
+      "scheduled_for": next_scheduled_date.isoformat(),
+      "meta_data": {
+        "transaction_type": "savings",
+      },
+    })
+
+    print(f"Next scheduled deposit created for {next_scheduled_date.isoformat()}:", scheduled_savings.data["transaction_id"])
+    return "Webhook received", 200
+
+
+def calculate_next_scheduled_date(frequency):
+    now = datetime.now()
+    if frequency == "daily":
+        return now + timedelta(days=1)
+    if frequency == "weekly":
+        return now + timedelta(days=7)
+    if frequency == "biweekly":
+        return now + timedelta(days=14)
+    # monthly (default)
+    return now + timedelta(days=30)
+
+
+if __name__ == "__main__":
+    app.run(port=3000)
+```
 </CodeGroup>
 
 ---
@@ -497,6 +607,16 @@ func updateSavingsFrequency(balanceID, newFrequency string) error {
     fmt.Printf("Successfully updated savings frequency to %s for balance %s\n", newFrequency, balanceID)
     return nil
 }
+```
+
+```python Python wrap
+blnk.metadata.update(balance_id, {
+  "meta_data": {
+    "savings_frequency": new_frequency,
+  },
+})
+
+print(f"Successfully updated savings frequency to {new_frequency} for balance {balance_id}")
 ```
 </CodeGroup>
 

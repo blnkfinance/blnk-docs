@@ -126,6 +126,16 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
       AllocationStrategy: blnkgo.AllocationStrategyFIFO,
     })
     ```
+
+    ```python Python wrap {5,6}
+    response = blnk.ledger_balances.create({
+      "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+      "identity_id": "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+      "currency": "USD",
+      "track_fund_lineage": True,
+      "allocation_strategy": "FIFO",
+    })
+    ```
     </CodeGroup>
 
     Allocation strategy defines how Blnk will allocate the funds when you spend from the balance. Supported allocation strategies are:
@@ -187,6 +197,21 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
       },
     })
     ```
+
+    ```python Python wrap {10}
+    response = blnk.transactions.create({
+      "precise_amount": 10000,
+      "precision": 100,
+      "currency": "USD",
+      "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "source": "@World",
+      "destination": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "description": "Top up via card",
+      "meta_data": {
+        "BLNK_LINEAGE_PROVIDER": "stripe",
+      },
+    })
+    ```
     </CodeGroup>
 
     This tells Blnk how to classify the incoming funds. No other configuration is needed.
@@ -244,6 +269,18 @@ Fund lineage is enabled at the balance level. You need to first ensure that the 
         Destination:   "@MerchantSettlement",
         Description:   "Purchase",
       },
+    })
+    ```
+
+    ```python Python wrap
+    response = blnk.transactions.create({
+      "precise_amount": 2500,
+      "precision": 100,
+      "currency": "USD",
+      "reference": "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "destination": "@MerchantSettlement",
+      "description": "Purchase",
     })
     ```
     </CodeGroup>
@@ -307,6 +344,12 @@ lineage, resp, err := client.LedgerBalance.GetLineage(
   "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
 )
 ```
+
+```python Python wrap
+response = blnk.ledger_balances.get_lineage(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+)
+```
 </CodeGroup>
 
 This returns, per provider:
@@ -353,6 +396,12 @@ const response = await blnk.Transactions.getLineage(
 
 ```go Go wrap
 lineage, resp, err := client.Transaction.GetLineage(
+  "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+)
+```
+
+```python Python wrap
+response = blnk.transactions.get_lineage(
   "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
 )
 ```

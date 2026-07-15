@@ -98,6 +98,43 @@ const maticLedger = await blnk.Ledgers.create({
 
 Create balances for both users in each ledger:
 
+<CodeGroup>
+```bash cURL wrap expandable
+# Create ETH balances
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_ETH_LEDGER_ID",
+    "currency": "ETH"
+  }'
+
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_ETH_LEDGER_ID",
+    "currency": "ETH"
+  }'
+
+# Create MATIC balances
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_MATIC_LEDGER_ID",
+    "currency": "MATIC"
+  }'
+
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_MATIC_LEDGER_ID",
+    "currency": "MATIC"
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 // Create ETH balances
 const johnEthBalance = await blnk.LedgerBalances.create({
@@ -122,11 +159,105 @@ const emilyMaticBalance = await blnk.LedgerBalances.create({
 });
 ```
 
+```go Go wrap expandable
+// Create ETH balances
+johnEthBalance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: ethLedger.LedgerID,
+    Currency: "ETH",
+})
+if err != nil {
+    return err
+}
+
+emilyEthBalance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: ethLedger.LedgerID,
+    Currency: "ETH",
+})
+if err != nil {
+    return err
+}
+
+// Create MATIC balances
+johnMaticBalance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: maticLedger.LedgerID,
+    Currency: "MATIC",
+})
+if err != nil {
+    return err
+}
+
+emilyMaticBalance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: maticLedger.LedgerID,
+    Currency: "MATIC",
+})
+if err != nil {
+    return err
+}
+```
+
+```python Python wrap expandable
+# Create ETH balances
+john_eth_balance = blnk.ledger_balances.create({
+  "ledger_id": eth_ledger.data["ledger_id"],
+  "currency": "ETH",
+})
+
+emily_eth_balance = blnk.ledger_balances.create({
+  "ledger_id": eth_ledger.data["ledger_id"],
+  "currency": "ETH",
+})
+
+# Create MATIC balances
+john_matic_balance = blnk.ledger_balances.create({
+  "ledger_id": matic_ledger.data["ledger_id"],
+  "currency": "MATIC",
+})
+
+emily_matic_balance = blnk.ledger_balances.create({
+  "ledger_id": matic_ledger.data["ledger_id"],
+  "currency": "MATIC",
+})
+```
+</CodeGroup>
+
 ### Fund the initial balances
 
 <Note>
   In this example, we use a precision of 100 for simplicity (e.g., 1 ETH = 100 units). In production, cryptocurrencies like ETH use a precision of 10^18 (1 ETH = 10^18 wei). Adjust the `precision` parameter in all transaction calls accordingly and ensure amount calculations reflect this precision.
 </Note>
+
+<CodeGroup>
+```bash cURL wrap expandable
+# Fund John's ETH balance
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 100,
+    "currency": "ETH",
+    "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "precision": 100,
+    "source": "@ETH_FundingPool",
+    "destination": "bln_JOHN_ETH_BALANCE_ID",
+    "description": "Initial ETH funding",
+    "allow_overdraft": true
+  }'
+
+# Fund Emily's MATIC balance
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 1000,
+    "currency": "MATIC",
+    "reference": "ref_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "precision": 100,
+    "source": "@MATIC_FundingPool",
+    "destination": "bln_EMILY_MATIC_BALANCE_ID",
+    "description": "Initial MATIC funding",
+    "allow_overdraft": true
+  }'
+```
 
 ```typescript TypeScript wrap expandable
 // Fund John's ETH balance
@@ -153,6 +284,71 @@ await blnk.Transactions.create({
   allow_overdraft: true
 });
 ```
+
+```go Go wrap expandable
+// Fund John's ETH balance
+_, _, err = client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(100),
+        Precision:   100,
+        Reference:   fmt.Sprintf("ref_%s", uuid.New().String()),
+        Currency:    "ETH",
+        Source:      "@ETH_FundingPool",
+        Destination: johnEthBalance.BalanceID,
+        Description: "Initial ETH funding",
+    },
+    AllowOverdraft: true,
+})
+if err != nil {
+    return err
+}
+
+// Fund Emily's MATIC balance
+_, _, err = client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(1000),
+        Precision:   100,
+        Reference:   fmt.Sprintf("ref_%s", uuid.New().String()),
+        Currency:    "MATIC",
+        Source:      "@MATIC_FundingPool",
+        Destination: emilyMaticBalance.BalanceID,
+        Description: "Initial MATIC funding",
+    },
+    AllowOverdraft: true,
+})
+if err != nil {
+    return err
+}
+```
+
+```python Python wrap expandable
+import uuid
+
+# Fund John's ETH balance
+blnk.transactions.create({
+  "precise_amount": 100,
+  "currency": "ETH",
+  "reference": f"ref_{uuid.uuid4()}",
+  "precision": 100,
+  "source": "@ETH_FundingPool",
+  "destination": john_eth_balance.data["balance_id"],
+  "description": "Initial ETH funding",
+  "allow_overdraft": True,
+})
+
+# Fund Emily's MATIC balance
+blnk.transactions.create({
+  "precise_amount": 1000,
+  "currency": "MATIC",
+  "reference": f"ref_{uuid.uuid4()}",
+  "precision": 100,
+  "source": "@MATIC_FundingPool",
+  "destination": emily_matic_balance.data["balance_id"],
+  "description": "Initial MATIC funding",
+  "allow_overdraft": True,
+})
+```
+</CodeGroup>
 
 
 ---
@@ -280,6 +476,29 @@ When John or Emily creates an order, we need to:
 
 When two orders are matched (e.g., John and Emily), we want to link them together with a common matching ID. This helps us track which orders in our Ledger were matched with each other.
 
+<CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "matching_id": "match_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "matched_with_tx": "txn_EMILY_ORDER_ID"
+    }
+  }'
+
+curl -X POST "http://localhost:5001/{transaction_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "matching_id": "match_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "matched_with_tx": "txn_JOHN_ORDER_ID"
+    }
+  }'
+```
+
 ```typescript TypeScript wrap expandable
 async function linkMatchedOrders(transaction1Id: string, transaction2Id: string) {
     const baseUrl = process.env.BLNK_BASE_URL ?? 'http://localhost:5001';
@@ -316,6 +535,63 @@ const matchingId = await linkMatchedOrders(
 );
 ```
 
+```go Go wrap expandable
+func linkMatchedOrders(transaction1ID, transaction2ID string) (string, error) {
+    client := getClient()
+    matchingID := fmt.Sprintf("match_%s", uuid.New().String())
+
+    for _, pair := range [][2]string{
+        {transaction1ID, transaction2ID},
+        {transaction2ID, transaction1ID},
+    } {
+        _, _, err := client.Metadata.UpdateMetadata(pair[0], blnkgo.UpdateMetaDataRequest{
+            MetaData: blnkgo.MetaData{
+                "matching_id":     matchingID,
+                "matched_with_tx": pair[1],
+            },
+        })
+        if err != nil {
+            return "", err
+        }
+    }
+
+    return matchingID, nil
+}
+
+// Example usage when John and Emily's orders are matched:
+matchingID, err := linkMatchedOrders(
+    johnOrder.Transaction.TransactionID, // John's inflight transaction ID
+    emilyOrder.Transaction.TransactionID, // Emily's inflight transaction ID
+)
+```
+
+```python Python wrap expandable
+import uuid
+
+def link_matched_orders(transaction1_id, transaction2_id):
+    matching_id = f"match_{uuid.uuid4()}"
+
+    for txn_id, matched_with in [
+        (transaction1_id, transaction2_id),
+        (transaction2_id, transaction1_id),
+    ]:
+        blnk.metadata.update(txn_id, {
+            "meta_data": {
+                "matching_id": matching_id,
+                "matched_with_tx": matched_with,
+            },
+        })
+
+    return matching_id
+
+# Example usage when John and Emily's orders are matched:
+matching_id = link_matched_orders(
+    john_order["transaction"]["transaction_id"],  # John's inflight transaction ID
+    emily_order["transaction"]["transaction_id"],  # Emily's inflight transaction ID
+)
+```
+</CodeGroup>
+
 ---
 
 ## Phase 3: Settling the Matched Orders
@@ -324,6 +600,58 @@ Finally, we need to execute the exchange of assets between the matched orders - 
 
 1. We need to commit these transactions to move the funds to escrow.
 2. Then we create new transactions to move funds from escrow to the respective recipient balances (John's MATIC balance and Emily's ETH balance).
+
+<CodeGroup>
+```bash cURL wrap expandable
+# Commit both inflight transactions
+curl -X PUT "http://localhost:5001/transactions/inflight/{john_tx_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+
+curl -X PUT "http://localhost:5001/transactions/inflight/{emily_tx_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+
+# Move ETH from escrow to Emily
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 100,
+    "currency": "ETH",
+    "precision": 100,
+    "source": "@ETH_Escrow",
+    "destination": "bln_EMILY_ETH_BALANCE_ID",
+    "reference": "settlement_ref_eth",
+    "meta_data": {
+      "matching_id": "match_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "settlement_type": "exchange"
+    }
+  }'
+
+# Move MATIC from escrow to John
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 1000,
+    "currency": "MATIC",
+    "precision": 100,
+    "source": "@MATIC_Escrow",
+    "destination": "bln_JOHN_MATIC_BALANCE_ID",
+    "reference": "settlement_ref_matic",
+    "meta_data": {
+      "matching_id": "match_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "settlement_type": "exchange"
+    }
+  }'
+```
 
 ```typescript TypeScript wrap expandable
 async function settleMatchedOrders(
@@ -386,6 +714,140 @@ async function settleMatchedOrders(
     }
 }
 ```
+
+```go Go wrap expandable
+func settleMatchedOrders(johnTxID, emilyTxID string) (map[string]interface{}, error) {
+    client := getClient()
+
+    for _, txID := range []string{johnTxID, emilyTxID} {
+        _, _, err := client.Transaction.Update(txID, blnkgo.UpdateStatus{
+            Status: "commit",
+        })
+        if err != nil {
+            return map[string]interface{}{"success": false, "error": err.Error()}, nil
+        }
+    }
+
+    johnTx, _, err := client.Transaction.Get(johnTxID)
+    if err != nil {
+        return map[string]interface{}{"success": false, "error": err.Error()}, nil
+    }
+
+    emilyTx, _, err := client.Transaction.Get(emilyTxID)
+    if err != nil {
+        return map[string]interface{}{"success": false, "error": err.Error()}, nil
+    }
+
+    matchingID, ok := johnTx.MetaData["matching_id"].(string)
+    if !ok || matchingID == "" {
+        matchingID = fmt.Sprintf("match_%s", uuid.New().String())
+    }
+
+    settlementReference := fmt.Sprintf("settlement_%s", uuid.New().String())
+
+    // Step 3: Move ETH from escrow to Emily
+    ethTransfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            PreciseAmount: johnTx.PreciseAmount,
+            Precision:     johnTx.Precision,
+            Currency:      "ETH",
+            Source:        "@ETH_Escrow",
+            Destination:   emilyEthBalance.BalanceID,
+            Reference:     fmt.Sprintf("%s_eth", settlementReference),
+            MetaData: blnkgo.MetaData{
+                "matching_id":     matchingID,
+                "settlement_type": "exchange",
+            },
+        },
+    })
+    if err != nil {
+        return map[string]interface{}{"success": false, "error": err.Error()}, nil
+    }
+
+    // Step 4: Move MATIC from escrow to John
+    maticTransfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            PreciseAmount: emilyTx.PreciseAmount,
+            Precision:     emilyTx.Precision,
+            Currency:      "MATIC",
+            Source:        "@MATIC_Escrow",
+            Destination:   johnMaticBalance.BalanceID,
+            Reference:     fmt.Sprintf("%s_matic", settlementReference),
+            MetaData: blnkgo.MetaData{
+                "matching_id":     matchingID,
+                "settlement_type": "exchange",
+            },
+        },
+    })
+    if err != nil {
+        return map[string]interface{}{"success": false, "error": err.Error()}, nil
+    }
+
+    return map[string]interface{}{
+        "success":       true,
+        "matchingId":    matchingID,
+        "ethTransfer":   ethTransfer,
+        "maticTransfer": maticTransfer,
+    }, nil
+}
+```
+
+```python Python wrap expandable
+import uuid
+
+def settle_matched_orders(john_tx_id, emily_tx_id):
+    try:
+        for tx_id in [john_tx_id, emily_tx_id]:
+            commit = blnk.transactions.update_status(tx_id, {
+                "status": "commit",
+            })
+            if commit.status != 200 or not commit.data:
+                raise Exception(commit.message or f"Failed to commit {tx_id}")
+
+        john_tx = blnk.transactions.get(john_tx_id)
+        emily_tx = blnk.transactions.get(emily_tx_id)
+
+        matching_id = john_tx.data.get("meta_data", {}).get("matching_id") or f"match_{uuid.uuid4()}"
+        settlement_reference = f"settlement_{uuid.uuid4()}"
+
+        # Step 3: Move ETH from escrow to Emily
+        eth_transfer = blnk.transactions.create({
+            "precise_amount": john_tx.data["precise_amount"],
+            "currency": "ETH",
+            "precision": 100,
+            "source": "@ETH_Escrow",
+            "destination": emily_eth_balance.data["balance_id"],
+            "reference": f"{settlement_reference}_eth",
+            "meta_data": {
+                "matching_id": matching_id,
+                "settlement_type": "exchange",
+            },
+        })
+
+        # Step 4: Move MATIC from escrow to John
+        matic_transfer = blnk.transactions.create({
+            "precise_amount": emily_tx.data["precise_amount"],
+            "currency": "MATIC",
+            "precision": 100,
+            "source": "@MATIC_Escrow",
+            "destination": john_matic_balance.data["balance_id"],
+            "reference": f"{settlement_reference}_matic",
+            "meta_data": {
+                "matching_id": matching_id,
+                "settlement_type": "exchange",
+            },
+        })
+
+        return {
+            "success": True,
+            "matchingId": matching_id,
+            "ethTransfer": eth_transfer,
+            "maticTransfer": matic_transfer,
+        }
+    except Exception as error:
+        return {"success": False, "error": str(error)}
+```
+</CodeGroup>
 
 ---
 

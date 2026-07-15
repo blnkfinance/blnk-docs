@@ -142,6 +142,26 @@ func createLoanLedger() (string, error) {
     return ledger.LedgerID, nil
 }
 ```
+
+```python Python wrap expandable
+customer_ledger = blnk.ledgers.create({
+  "name": "Customer Accounts",
+  "meta_data": {
+    "description": "Contains all customer main balances",
+  },
+})
+
+print("Customer Ledger created:", customer_ledger.data)
+
+loan_ledger = blnk.ledgers.create({
+  "name": "Loan Accounts",
+  "meta_data": {
+    "description": "Contains all customer loan balances",
+  },
+})
+
+print("Loan Ledger created:", loan_ledger.data)
+```
 </CodeGroup>
 
 ---
@@ -207,6 +227,21 @@ func createCustomerMainBalance(customerLedgerID string, customerDetails Customer
     return balance.BalanceID, nil
 }
 ```
+
+```python Python wrap expandable
+main_balance = blnk.ledger_balances.create({
+  "ledger_id": customer_ledger_id,
+  "currency": "USD",
+  "meta_data": {
+    "customer_id": customer_details["id"],
+    "customer_name": customer_details["name"],
+    "account_type": "main",
+    "account_status": "active",
+  },
+})
+
+print("Customer Main Balance created:", main_balance.data)
+```
 </CodeGroup>
 
 Next, we create the loan balance:
@@ -261,6 +296,19 @@ func createLoanBalance(loanLedgerID string, customerDetails CustomerDetails) (st
     fmt.Println("Loan Balance created:", balance.BalanceID)
     return balance.BalanceID, nil
 }
+```
+
+```python Python wrap expandable
+loan_balance = blnk.ledger_balances.create({
+  "ledger_id": loan_ledger_id,
+  "currency": "USD",
+  "meta_data": {
+    "customer_id": customer_details["id"],
+    "customer_name": customer_details["name"],
+  },
+})
+
+print("Loan Balance created:", loan_balance.data)
 ```
 </CodeGroup>
 
@@ -382,6 +430,35 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
     fmt.Println("Loan disbursed:", disbursement.TransactionID)
     return disbursement.TransactionID, nil
 }
+```
+
+```python Python wrap expandable
+from datetime import datetime
+
+# Generate a unique reference for this transaction
+reference = f"LOAN-DISBURSE-{int(datetime.now().timestamp())}"
+
+disbursement = blnk.transactions.create({
+  "precise_amount": loan_amount * 100,
+  "precision": 100,
+  "reference": reference,
+  "currency": "USD",
+  "source": loan_balance_id,
+  "destination": customer_balance_id,
+  "description": "Loan disbursement",
+  "allow_overdraft": True,  # This allows the loan balance to go negative
+  "meta_data": {
+    "transaction_type": "loan_disbursement",
+  },
+})
+
+print("Loan disbursed:", disbursement.data)
+
+blnk.metadata.update(loan_balance_id, {
+  "meta_data": {
+    "loan_status": "active",
+  },
+})
 ```
 </CodeGroup>
 
@@ -515,6 +592,45 @@ func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (str
     return interestTransaction.TransactionID, nil
 }
 ```
+
+```python Python wrap expandable
+from datetime import datetime
+
+# Get current loan balance
+loan_balance = blnk.ledger_balances.get(loan_balance_id)
+
+# Get the principal amount (convert negative balance to positive)
+principal = abs(loan_balance.data["balance"])
+
+# Calculate daily interest amount
+daily_rate = interest_rate / 365  # Convert annual rate to daily
+interest_amount = principal * daily_rate
+
+# Round to 2 decimal places
+rounded_interest = round(interest_amount * 100) / 100
+
+# Generate a unique reference
+reference = f"INTEREST-{int(datetime.now().timestamp())}"
+
+# Transfer interest from loan balance to interest revenue balance
+interest_transaction = blnk.transactions.create({
+  "precise_amount": rounded_interest * 100,
+  "precision": 100,
+  "reference": reference,
+  "currency": "USD",
+  "source": loan_balance_id,
+  "destination": "@InterestRevenue",
+  "description": "Daily interest charge",
+  "allow_overdraft": True,  # Allow loan balance to go further negative
+  "meta_data": {
+    "transaction_type": "interest_charge",
+    "interest_rate": interest_rate,
+    "principal_amount": principal / 100,  # Convert back to dollars for readability
+  },
+})
+
+print("Interest charged:", interest_transaction.data)
+```
 </CodeGroup>
 
 ---
@@ -642,6 +758,43 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
     return repayment.TransactionID, nil
 }
 ```
+
+```python Python wrap expandable
+from datetime import datetime
+
+# Generate a unique reference
+reference = f"LOAN-REPAY-{int(datetime.now().timestamp())}"
+
+# Transfer from customer's balance to loan balance
+repayment = blnk.transactions.create({
+  "precise_amount": repayment_amount * 100,
+  "precision": 100,
+  "reference": reference,
+  "currency": "USD",
+  "source": customer_balance_id,
+  "destination": loan_balance_id,
+  "description": "Loan repayment",
+  "meta_data": {
+    "transaction_type": "loan_repayment",
+    "payment_method": "bank_transfer",
+  },
+})
+
+print("Loan repayment processed:", repayment.data)
+
+# Check if loan is fully repaid
+updated_loan_balance = blnk.ledger_balances.get(loan_balance_id)
+
+if updated_loan_balance.data["balance"] >= 0:
+    # Loan is fully repaid, update status
+    blnk.metadata.update(loan_balance_id, {
+      "meta_data": {
+        "loan_status": "fully_repaid",
+        "repayment_completed_date": datetime.utcnow().isoformat(),
+      },
+    })
+    print("Loan fully repaid!")
+```
 </CodeGroup>
 
 ---
@@ -696,6 +849,20 @@ func checkLoanStatus(loanBalanceID string) (map[string]interface{}, error) {
     fmt.Println("Loan status:", status)
     return status, nil
 }
+```
+
+```python Python wrap expandable
+loan_balance = blnk.ledger_balances.get(loan_balance_id)
+
+status = {
+  "balance_id": loan_balance_id,
+  "current_balance": loan_balance.data["balance"] / 100,  # Convert cents to dollars
+  "is_fully_repaid": loan_balance.data["balance"] >= 0,
+  "loan_status": loan_balance.data["meta_data"]["loan_status"],
+  "loan_details": loan_balance.data["meta_data"],
+}
+
+print("Loan status:", status)
 ```
 </CodeGroup>
 
