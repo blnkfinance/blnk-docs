@@ -107,7 +107,7 @@ func createSavingsWallet(savingsLedgerID, identityID, currency string) (string, 
         LedgerID:   savingsLedgerID,
         IdentityID: identityID,
         Currency:   currency,
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "wallet_type":            "savings",
             "schedule_savings":       true,
             "savings_frequency":      "monthly",
@@ -194,7 +194,7 @@ func createScheduledSavingsTransaction(savingsBalanceID string, savingsAmount fl
             Currency:    "USD",
             Source:      "@WorldUSD",
             Destination: savingsBalanceID,
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "savings",
             },
         },
@@ -399,7 +399,7 @@ func handleTransactionWebhook(w http.ResponseWriter, r *http.Request) {
     nextScheduledDate := calculateNextScheduledDate(frequency)
 
     _, _, err = client.Metadata.UpdateMetadata(savingsBalanceID, blnkgo.UpdateMetaDataRequest{
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "next_scheduled_savings": nextScheduledDate.Format(time.RFC3339),
         },
     })
@@ -418,7 +418,7 @@ func handleTransactionWebhook(w http.ResponseWriter, r *http.Request) {
             Currency:    "USD",
             Source:      "@WorldUSD",
             Destination: savingsBalanceID,
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "savings",
             },
         },
@@ -487,7 +487,7 @@ async function updateSavingsFrequency(balanceId, newFrequency) {
 func updateSavingsFrequency(balanceID, newFrequency string) error {
     client := getClient()
     _, _, err := client.Metadata.UpdateMetadata(balanceID, blnkgo.UpdateMetaDataRequest{
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "savings_frequency": newFrequency,
         },
     })

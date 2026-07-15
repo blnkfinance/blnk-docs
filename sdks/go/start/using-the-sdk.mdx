@@ -182,7 +182,7 @@ Do not confuse this struct with the API response field `parent_transaction`, whi
 ```go wrap
 blnkgo.CreateTransactionRequest{
 	ParentTransaction: blnkgo.ParentTransaction{
-		PreciseAmount: 100000,
+		PreciseAmount: big.NewInt(100000),
 		Precision: 100,
 		Currency: "USD",
 		Source: "bln_28f25ef6-2e0d-4fa6",
@@ -202,6 +202,14 @@ Transactions are the exception. Every other resource uses a single request struc
 Go struct fields use PascalCase, like `MetaData` and `LedgerID`. These map to the API's snake_case JSON fields (`meta_data`, `ledger_id`).
 
 You should always use the Go field names in your code. Per-method Go SDK pages list the Go request and response field names for each call.
+
+---
+
+## Precise amounts
+
+Transaction `PreciseAmount` fields use `*big.Int` in the Go SDK. Pass minor units with `big.NewInt(...)`, for example `big.NewInt(75000)` with `Precision: 100` for 750.00. Add `import "math/big"` at the top of your file when you use `big.NewInt`.
+
+You can still use `Amount` as a `float64` when you prefer float-style values; the SDK and Core apply `Precision` to derive `precise_amount`.
 
 ---
 

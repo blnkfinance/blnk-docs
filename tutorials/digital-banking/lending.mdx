@@ -116,7 +116,7 @@ func createCustomerLedger() (string, error) {
     client := getClient()
     ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
         Name: "Customer Accounts",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "description": "Contains all customer main balances",
         },
     })
@@ -131,7 +131,7 @@ func createLoanLedger() (string, error) {
     client := getClient()
     ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
         Name: "Loan Accounts",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "description": "Contains all customer loan balances",
         },
     })
@@ -193,7 +193,7 @@ func createCustomerMainBalance(customerLedgerID string, customerDetails Customer
     balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
         LedgerID: customerLedgerID,
         Currency: "USD",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "customer_id":    customerDetails.ID,
             "customer_name":  customerDetails.Name,
             "account_type":   "main",
@@ -250,7 +250,7 @@ func createLoanBalance(loanLedgerID string, customerDetails CustomerDetails) (st
     balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
         LedgerID: loanLedgerID,
         Currency: "USD",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "customer_id":   customerDetails.ID,
             "customer_name": customerDetails.Name,
         },
@@ -360,7 +360,7 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
             Source:      loanBalanceID,
             Destination: customerBalanceID,
             Description: "Loan disbursement",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "loan_disbursement",
             },
         },
@@ -371,7 +371,7 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
     }
 
     _, _, err = client.Metadata.UpdateMetadata(loanBalanceID, blnkgo.UpdateMetaDataRequest{
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "loan_status": "active",
         },
     })
@@ -499,7 +499,7 @@ func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (str
             Source:      loanBalanceID,
             Destination: "@InterestRevenue",
             Description: "Daily interest charge",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "interest_charge",
                 "interest_rate":    interestRate,
                 "principal_amount": principal / 100,
@@ -609,7 +609,7 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
             Source:      customerBalanceID,
             Destination: loanBalanceID,
             Description: "Loan repayment",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "loan_repayment",
                 "payment_method":     "bank_transfer",
             },
@@ -627,7 +627,7 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
     repaidBalance, _ := updatedLoanBalance.Balance.Float64()
     if repaidBalance >= 0 {
         _, _, err = client.Metadata.UpdateMetadata(loanBalanceID, blnkgo.UpdateMetaDataRequest{
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "loan_status":                "fully_repaid",
                 "repayment_completed_date": time.Now().UTC().Format(time.RFC3339),
             },

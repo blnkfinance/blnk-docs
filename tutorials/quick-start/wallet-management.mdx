@@ -114,7 +114,7 @@ func createCustomerLedger() (string, error) {
     client := getClient()
     ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
         Name: "Customer Wallets Ledger",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "description": "Ledger for managing customer wallets",
             "application": "Wallet Management System",
         },
@@ -186,7 +186,7 @@ func createCustomerIdentity(customerData CustomerData) (string, error) {
         LastName:     customerData.LastName,
         EmailAddress: customerData.Email,
         PhoneNumber:  customerData.Phone,
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "customer_id":       customerData.CustomerID,
             "registration_date": time.Now().UTC().Format(time.RFC3339),
         },
@@ -254,7 +254,7 @@ func createMainWallet(ledgerID, identityID, currency string) (string, error) {
         LedgerID:   ledgerID,
         IdentityID: identityID,
         Currency:   currency,
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "wallet_type": "main",
             "purpose":     "general",
             "status":      "active",
@@ -341,7 +341,7 @@ func depositToWallet(customerBalanceID string, amount float64, uniqueReference, 
             Currency:    "USD",
             Source:      "@WorldUSD",
             Destination: customerBalanceID,
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "deposit",
                 "channel":          "bank_transfer",
             },
@@ -427,7 +427,7 @@ func withdrawFromWallet(customerBalanceID string, amount float64, uniqueReferenc
             Currency:    "USD",
             Source:      customerBalanceID,
             Destination: "@WorldUSD",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "withdrawal",
                 "channel":          "bank_transfer",
             },
@@ -502,7 +502,7 @@ func createCardWallet(ledgerID, identityID, currency string) (string, error) {
         LedgerID:   ledgerID,
         IdentityID: identityID,
         Currency:   currency,
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "wallet_type": "card",
             "purpose":     "card_payments",
             "status":      "active",
@@ -586,7 +586,7 @@ func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, u
             Currency:    "USD",
             Source:      mainBalanceID,
             Destination: cardBalanceID,
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "internal_transfer",
                 "purpose":          "fund_card",
             },

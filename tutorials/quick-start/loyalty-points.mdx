@@ -139,7 +139,7 @@ func createLedgers() (mainLedgerID, pointsLedgerID string, err error) {
 
     mainLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
         Name: "Customer Main Wallets",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "description": "Ledger for customer USD wallets",
         },
     })
@@ -149,7 +149,7 @@ func createLedgers() (mainLedgerID, pointsLedgerID string, err error) {
 
     pointsLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
         Name: "Customer Points Wallets",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "description": "Ledger for customer loyalty points",
         },
     })
@@ -247,7 +247,7 @@ func createCustomerWallets(mainLedgerID, pointsLedgerID, identityID string) (mai
         LedgerID:   mainLedgerID,
         IdentityID: identityID,
         Currency:   "USD",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "wallet_type": "main",
             "status":      "active",
         },
@@ -260,7 +260,7 @@ func createCustomerWallets(mainLedgerID, pointsLedgerID, identityID string) (mai
         LedgerID:   pointsLedgerID,
         IdentityID: identityID,
         Currency:   "POINTS",
-        MetaData: map[string]interface{}{
+        MetaData: blnkgo.MetaData{
             "wallet_type": "points",
             "status":      "active",
         },
@@ -391,7 +391,7 @@ func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchase
             Source:      mainWalletID,
             Destination: "@RevenueUSD",
             Description: "Product purchase",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "purchase",
             },
         },
@@ -409,7 +409,7 @@ func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchase
             Source:      "@PointsPool",
             Destination: pointsWalletID,
             Description: "Loyalty points award",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "purchase_reference": purchaseReference,
                 "purchase_amount":    purchaseAmount,
             },
@@ -561,7 +561,7 @@ func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount
             Source:      pointsWalletID,
             Destination: "@PointsPool",
             Description: "Points redemption for discount",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "transaction_type": "redemption",
                 "convert_to_usd":   convertedAmount,
             },
@@ -581,7 +581,7 @@ func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount
             Source:      mainWalletID,
             Destination: "@RevenueUSD",
             Description: "Discounted purchase with points",
-            MetaData: map[string]interface{}{
+            MetaData: blnkgo.MetaData{
                 "redemption_reference": redemptionReference,
                 "original_amount":      purchaseAmount,
                 "points_redeemed":      pointsToRedeem,
