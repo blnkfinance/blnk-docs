@@ -13,11 +13,11 @@ See [Secure your Blnk server](https://docs.blnkfinance.com/advanced/secure-blnk)
 
 ## Deploy and config
 
+- [ ] Deployment path chosen deliberately: **Blnk Cloud managed** ([managed instances](https://docs.blnkfinance.com/cloud/instances/deploy)) or **self-host** ([deploy](https://docs.blnkfinance.com/home/deploy)). Prefer Cloud when the team should not operate Core infra themselves.
 - [ ] Running **latest Blnk Core** (or newest approved release); see [Blnk Core changelog](https://docs.blnkfinance.com/changelog/blnk-core)
 - [ ] App SDKs are current official releases (`sdks` skill)
-- [ ] Postgres and Redis URLs are production-grade (TLS, auth, backups)
-- [ ] Config reviewed: [configuration overview](https://docs.blnkfinance.com/advanced/configuration/overview), [deploy](https://docs.blnkfinance.com/home/deploy)
-- [ ] Backup path configured ([backup](https://docs.blnkfinance.com/advanced/configuration/backup))
+- [ ] If self-hosting: Postgres and Redis URLs are production-grade (TLS, auth, backups); config reviewed ([configuration overview](https://docs.blnkfinance.com/advanced/configuration/overview)); backup path configured ([backup](https://docs.blnkfinance.com/advanced/configuration/backup))
+- [ ] If on Blnk Cloud managed: instance is connected, Core URL and scoped keys taken from the Cloud dashboard, not from a local `blnk.json`
 
 ## Money movement choices (deliberate)
 
