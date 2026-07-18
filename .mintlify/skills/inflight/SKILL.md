@@ -36,8 +36,6 @@ Use inflight when a money movement is **not complete yet**: other steps must suc
 
 Queue vs `skip_queue` still follows the `queueing` skill.
 
-For order-book FX escrow, also load the `fx` skill.
-
 ## Verification
 
 - Check inflight credit/debit fields on balances while held.

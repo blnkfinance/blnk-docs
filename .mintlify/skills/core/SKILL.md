@@ -53,7 +53,7 @@ Balances change only through transactions. You cannot set a balance amount direc
 
 5. **Stop here for money movement**
    - Do not create ledgers, balances, or sample transfers as part of "setup" unless asked.
-   - Next: `ledger-architecture` (map) → `naming-patterns` → `integration-patterns` or domain skills → implement via `sdks`.
+   - Next: `ledger-architecture` (map) → `naming-patterns` → domain skills → implement via `sdks`.
 
 ## Hard rules
 
@@ -76,7 +76,6 @@ Open [references/production-readiness.md](references/production-readiness.md).
 | SDK / HTTP client usage | `sdks` |
 | Names, `@` indicators, references | `naming-patterns` |
 | Ledger layout / money map | `ledger-architecture` |
-| Product recipes (wallet, escrow) | `integration-patterns` |
 | Queue vs `skip_queue` | `queueing` |
 | Holds / authorize-capture | `inflight` |
 | Applied transaction APIs | `transactions` |

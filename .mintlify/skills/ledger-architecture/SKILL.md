@@ -31,7 +31,7 @@ Do not invent a map from a thin prompt. Load [references/discover-context.md](re
 5. Open [references/architecture-choices.md](references/architecture-choices.md) and run the balance-grouping process.
 6. Emit deliverables below.
 7. Load the `documentation` skill and persist money-movement-map + ledger-architecture decision docs under `.blnk_context/` (next free `NN_<slug>.md`).
-8. Hand off contested edges → `queueing`; hold edges → `inflight`; product recipes → `integration-patterns`. If intent stays ambiguous, load `support`.
+8. Hand off contested edges → `queueing`; hold edges → `inflight`. If intent stays ambiguous, load `support`.
 
 ## Deliverables
 

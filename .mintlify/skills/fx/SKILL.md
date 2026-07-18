@@ -1,6 +1,6 @@
 ---
 name: fx
-description: Design and record Blnk currency exchange with nostro legs, FX spread, order-book escrow, and multi-leg or multi-day settlement. Use when converting currencies, building FX or swaps, recording exchange rates or spread, implementing crypto order exchange, or modeling delayed settlement with intermediary balances.
+description: Design and record Blnk currency exchange with nostro legs, FX spread, and multi-leg or multi-day settlement. Use when converting currencies, building FX or swaps, recording exchange rates or spread, implementing crypto order exchange, or modeling delayed settlement with intermediary balances.
 metadata:
   author: blnk
   version: "0.2"
@@ -48,7 +48,6 @@ Link legs with bulk/atomic transactions when they must apply together. Full step
 | :-- | :-- |
 | Instant convert | [references/nostro-exchange.md](references/nostro-exchange.md) |
 | FX spread revenue | [references/spread.md](references/spread.md) |
-| Match / order book | [references/order-book-escrow.md](references/order-book-escrow.md) (uses the `inflight` skill) |
 | Anti-patterns | [references/anti-patterns.md](references/anti-patterns.md) |
 
 5. For same-moment multi-currency legs: use bulk/atomic linking so they succeed or fail together.
