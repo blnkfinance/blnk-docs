@@ -32,7 +32,7 @@ Which edges wait on other work before commit (inflight).
 
 ### Maps tool
 - Import file: `NN_money-movement-map.json` (if generated; same number as this doc)
-- Ask team to import into https://map.blnkfinance.com
+- In chat, tell the user to import into https://map.blnkfinance.com
 
 ## Consequences
 Implementation order, webhooks to subscribe to, out-of-scope flows.

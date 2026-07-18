@@ -8,7 +8,7 @@ The map is the blueprint for ledger implementation, reporting, and stakeholder a
 
 **Prerequisite:** complete [discover-context.md](discover-context.md). The map is only as good as the intent, reporting needs, constraints, connected tools, and ops workflows you captured.
 
-**Final map artifact:** importable JSON for the maps tool. Open [map-tool-json.md](map-tool-json.md), emit the JSON, and ask the team to import it.
+**Final map artifact:** importable JSON for the maps tool. Open [map-tool-json.md](map-tool-json.md), emit the JSON, and in the **chat reply** tell the user to import it at [map.blnkfinance.com](https://map.blnkfinance.com).
 
 ## Principles
 
@@ -26,7 +26,7 @@ The map is the blueprint for ledger implementation, reporting, and stakeholder a
 6. Introduce `@` internal balances for “outside” and org accounts (`@PayIn`, `@PayOut`, `@World`, nostro, fees). Load the `naming-patterns` skill.
 7. Add fees, rails, and multi-leg paths as separate movements. Respect **technical constraints** (settlement timing, FX, queue, precision).
 8. Open [map-tool-json.md](map-tool-json.md) and generate the maps-tool JSON (`name`, `nodes`, `edges`).
-9. Hand the JSON to the team to import into [map.blnkfinance.com](https://map.blnkfinance.com).
+9. In the chat reply, tell the user to import the JSON at [map.blnkfinance.com](https://map.blnkfinance.com) (link the file or include the JSON).
 10. Continue to [architecture-choices.md](architecture-choices.md) using **reporting needs** from the brief.
 
 ## Output checklist
@@ -36,5 +36,5 @@ The map is the blueprint for ledger implementation, reporting, and stakeholder a
 - [ ] External world and connected rails represented with `@` or named balances
 - [ ] Naming matches the `naming-patterns` skill
 - [ ] Maps-tool JSON produced via [map-tool-json.md](map-tool-json.md)
-- [ ] Team asked to import the JSON into the maps tool
+- [ ] Chat reply told the user to import the JSON at map.blnkfinance.com
 - [ ] Ready for [architecture-choices.md](architecture-choices.md)

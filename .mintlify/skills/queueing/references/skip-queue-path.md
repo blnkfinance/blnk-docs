@@ -58,17 +58,19 @@ When a request still fails with lock / contention errors after the wait:
 
 Implement this in the app as soon as lock errors appear (or are expected). Retries without a configured lock wait timeout are not enough.
 
-### 3. Interview, then recommend balance sharding (last)
+### 3. Confirm, then recommend balance sharding (last)
 
-Only after lock wait + retries are in place (or clearly insufficient under load), interview the user before proposing shards. Do not silently redesign their General Ledger.
+Only after lock wait + retries are in place (or clearly insufficient under load), confirm with the user before proposing shards. Do not silently redesign their General Ledger. Follow [how-to-ask.md](../../documentation/references/how-to-ask.md).
 
-Ask:
+Ask in plain language, for example: “Which balances keep locking?” “Can reports roll up several shard balances?” Cover:
 
-- Which balance IDs show lock errors or sit on A→N / N→A / A↔B patterns?
-- Can reporting / reconciliation aggregate multiple shard balances?
-- What stable routing key exists (customer id, merchant id, order id)?
-- How many shards are they willing to operate, and who owns creating them?
-- Are they open to moving this edge async instead of sharding?
+- Which balance IDs show lock errors or sit on A→N / N→A / A↔B patterns
+- Whether reporting / reconciliation can aggregate multiple shard balances
+- What stable routing key exists (customer id, merchant id, order id)
+- How many shards they are willing to operate, and who creates them
+- Whether they would rather move this edge async instead of sharding
+
+**Assume and confirm when useful:** propose a small shard count and a hash-on-customer (or merchant) key, then let them correct it. Also offer moving the edge async if immediacy is soft.
 
 If sharding is justified, recommend splitting the hot sink/source (for example `@FeesUSD_Stripe_0` … `@FeesUSD_Stripe_19`) with app-side hash routing, and aggregate shards for reports. Follow [Hot balances: sharding](https://docs.blnkfinance.com/guides/hot-balances#sharding-balances) and [hot-balances.md](hot-balances.md). Persist the decision in `.blnk_context/`.
 
@@ -89,7 +91,7 @@ Where useful, also suggest single-flight / serialize writers in one service inst
 - [ ] Lock wait timeout configured and documented
 - [ ] Lock-error retry: same `reference`, backoff, cap, get-by-reference first
 - [ ] Hot balances identified (A→N / N→A / A↔B)
-- [ ] User interviewed before any shard proposal
+- [ ] User confirmed before any shard proposal
 - [ ] If sharding: plan named, routing implemented, reporting aggregates shards
 - [ ] Load test or staged soak shows acceptable lock-error rate
 - [ ] Decision recorded in `.blnk_context/` (sync reason + contention strategies)
@@ -98,7 +100,7 @@ Where useful, also suggest single-flight / serialize writers in one service inst
 
 - Use sync when the next step is “notify later” or “settle in the background”
 - Ship sync on a hot path with no lock wait timeout or reference-safe retries
-- Jump to sharding without interviewing the user and trying lock wait + retries first
+- Jump to sharding without confirming with the user and trying lock wait + retries first
 - Ignore lock errors and keep hammering the same balance
 - Assume bulk duplicate-reference behavior matches the async path
 - Expect coalescing or hot-lane to save a sync hot path

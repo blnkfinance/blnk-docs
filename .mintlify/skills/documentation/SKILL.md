@@ -3,7 +3,7 @@ name: documentation
 description: Record Blnk product decisions as numbered markdown files in .blnk_context/. Use when capturing money movement maps, ledger architecture, metadata structure, naming, precision, queueing, or any other Blnk design decision for the team; when starting or updating a Blnk integration context pack.
 metadata:
   author: blnk
-  version: "0.2"
+  version: "0.3"
 ---
 
 # Blnk context documentation
@@ -11,6 +11,10 @@ metadata:
 Persist every Blnk decision in **`.blnk_context/`** at the repo (or app) root. One decision per file. Clear, concise, numbered in the **order they are created**.
 
 Do not bury decisions only in chat. If the team cannot open `.blnk_context/` and reconstruct the design, the documentation step is incomplete.
+
+## Asking the user
+
+When any Blnk skill needs product or ops answers, follow [references/how-to-ask.md](references/how-to-ask.md): plain-language questions, one cluster at a time, assume common defaults and confirm. Topic lists in skills are checklists, not chat scripts.
 
 ## Folder and naming
 

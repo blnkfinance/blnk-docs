@@ -60,7 +60,7 @@ If the user has Pro Support, prefer Slack for urgent or design-review escalation
 2. If the path is still unclear or high-risk, **stop inventing**.
 3. Summarize known facts and open questions.
 4. Recommend Blnk Support with the contact options above.
-5. Offer to prepare a money movement map or question list for the Support conversation. Do not pretend that draft is the final approved design.
+5. Offer to prepare a money movement map or a short question list for the Support conversation (plain language; follow [how-to-ask.md](../documentation/references/how-to-ask.md)). If you emit map JSON, tell them in chat to import it at [map.blnkfinance.com](https://map.blnkfinance.com). Do not pretend that draft is the final approved design.
 
 ## Anti-patterns
 

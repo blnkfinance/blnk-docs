@@ -1,10 +1,10 @@
 # Watch configuration
 
-Configure Watch after rules and the risk rubric exist. **Prefer Blnk Cloud with embedded Watch** over installing and operating the standalone `blnk-watch` binary. Interview until the deployment path and config sketch match ops reality. Do not paste production secrets into chat or `.blnk_context/`.
+Configure Watch after rules and the risk rubric exist. **Prefer Blnk Cloud with embedded Watch** over installing and operating the standalone `blnk-watch` binary. Confirm the deployment path and config sketch match ops reality. Do not paste production secrets into chat or `.blnk_context/`.
 
 Docs: [Deploy Production License](https://docs.blnkfinance.com/cloud/start/deploy), [Cloud Watch (Git rules)](https://docs.blnkfinance.com/cloud/license/configuration/watch), [Configuration](https://docs.blnkfinance.com/watch/configuration), [Integration](https://docs.blnkfinance.com/watch/integration), [Commands](https://docs.blnkfinance.com/watch/commands), [Webhooks](https://docs.blnkfinance.com/watch/webhooks).
 
-Ask **one cluster at a time**. Recommend defaults when the user is unsure.
+Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume Cloud + Git + sensible alert defaults and confirm.
 
 ## Decision framework
 
@@ -18,7 +18,7 @@ Ask **one cluster at a time**. Recommend defaults when the user is unsure.
 
 Lock the **risk rubric** ([risk-score-rubric.md](risk-score-rubric.md)) before setting `ALERT_WEBHOOK_RISK_THRESHOLD` so the number matches a band boundary.
 
-## 0. Deployment path (ask first)
+## 0. Deployment path (confirm first)
 
 The Production License stack includes **Core, Cloud Dashboard, and Watch** in one dedicated environment. You can run that stack in your own infra or in a **dedicated cloud environment managed by Blnk**. Prefer the managed Cloud path unless the user already self-hosts or cannot use Cloud.
 
@@ -27,27 +27,25 @@ The Production License stack includes **Core, Cloud Dashboard, and Watch** in on
 | **Cloud + embedded Watch** (default) | Staging, production, any team that should not operate Watch/Core themselves | Git rule loading, alert webhooks, risk threshold; point at Cloud deploy docs for the stack |
 | **Self-host Watch binary** | Local experiments, air-gapped, or explicit choice to run `blnk-watch` | Full `.env`: `DB_URL`, ingest, sync, rules, alerts |
 
-Questions:
+**Assume and confirm:** Cloud + embedded Watch. Ask simply only if unclear: “Are you on Blnk Cloud, or do you need to run Watch yourself?” Skip a long hosting interview when Cloud is already obvious.
 
-- Are you already on Blnk Cloud / a Production License, or planning to be?
-- Any hard requirement to run Watch as a separate binary (air-gap, existing standalone install)?
-- Who should operate Postgres, Redis, Watch process, and upgrades: your team or Blnk?
+On the Cloud path, skip self-host ingest/`DB_URL` topics unless they also need a local evaluator for development.
 
 **Recommend Cloud + embedded Watch** when unsure. Do not default to `curl …/install/watch` for production. Self-host binary docs remain valid for local/dev and constrained environments ([Deploy Watch](https://docs.blnkfinance.com/watch/deployment)).
 
-On the Cloud path, skip self-host ingest/`DB_URL` questions unless they also need a local evaluator for development.
-
 ---
 
-## Interview (Cloud + embedded Watch)
+## Confirm (Cloud + embedded Watch)
 
 ### 1. Where do rules live?
 
 On Cloud / Production License, prefer **Git-backed** `.ws` files so rule changes are reviewable and the embedded Watch can pull them.
 
-- Which repo and branch hold production rules?
-- Private repo? Then set username + token (store token as a secret).
-- Still prototyping alone locally? Local `WATCH_SCRIPT_DIR` is fine until you cut over to Git.
+Ask simply: “Which repo holds the rules?” Cover branch and private-repo auth only when needed.
+
+- Which repo and branch hold production rules
+- Private repo → username + token (store token as a secret)
+- Still prototyping alone locally → local `WATCH_SCRIPT_DIR` until cutover to Git
 
 Cloud license env (see [Cloud Watch config](https://docs.blnkfinance.com/cloud/license/configuration/watch)):
 
@@ -60,15 +58,19 @@ Cloud license env (see [Cloud Watch config](https://docs.blnkfinance.com/cloud/l
 
 Also valid on any Watch: `WATCH_SCRIPT_DIR` (local dir / clone target; default `watch_scripts`).
 
-Recommend **Git** for shared Cloud deploys; local dir only for early solo design.
+**Assume and confirm:** Git on `main` for shared Cloud deploys; local dir only for early solo design.
 
 ### 2. Alert webhooks
 
-- Should Watch notify an HTTP endpoint when scores cross a threshold?
-- Primary URL only, or secondary + backup for failover?
-- Bearer token required (`ALERT_WEBHOOK_API_KEY`)?
-- What minimum score should notify? Align with the rubric (often the bottom of the “review” or “soft signal” band).
-- Disable in early sandbox (`ALERT_WEBHOOK_ENABLED=false`)?
+Ask simply: “Should Watch ping an HTTP endpoint when risk crosses a threshold?”
+
+Cover:
+
+- Enable alerts or not
+- Primary URL only, or secondary + backup for failover
+- Bearer token (`ALERT_WEBHOOK_API_KEY`)
+- Minimum score to notify (align with the rubric)
+- Disable in early sandbox (`ALERT_WEBHOOK_ENABLED=false`)
 
 | Variable | Role | Default |
 | :-- | :-- | :-- |
@@ -79,7 +81,7 @@ Recommend **Git** for shared Cloud deploys; local dir only for early solo design
 | `ALERT_WEBHOOK_RISK_THRESHOLD` | Minimum score to alert | `0.5` |
 | `ALERT_WEBHOOK_ENABLED` | Master switch | `true` |
 
-Remind: threshold compares to risk score; set it deliberately against the rubric, not as a magic `0.5`.
+**Assume and confirm:** alerts enabled in staging/prod with threshold `0.5` (or the rubric’s soft/review boundary); sandbox can start disabled. Remind: set the threshold against the rubric, not as a magic number.
 
 ### 3. Cloud prerequisites
 
@@ -90,22 +92,25 @@ Remind: threshold compares to risk score; set it deliberately against the rubric
 
 ---
 
-## Interview (self-host binary only)
+## Confirm (self-host binary only)
 
 Use this section only after the user opts out of Cloud embedded Watch (or needs a local evaluator).
 
 ### 1. How do transactions enter Watch?
 
-- Should Watch read Blnk Core’s Postgres (`blnk.transactions`) continuously?
-- Or should something push transactions into Watch’s HTTP API (API-only / inject)?
-- Do you need historical backfill on startup, or only live traffic?
+Ask simply: “Should Watch read Core’s database, or will something push transactions in?”
+
+Cover:
+
+- DB sync from Blnk Core Postgres (`blnk.transactions`) vs API inject
+- Historical backfill on startup vs live traffic only
 
 | Mode | When to recommend | Required config |
 | :-- | :-- | :-- |
 | **DB sync** (`start` / `sync` / `sync-once`) | Stay aligned with Core, least glue code | `DB_URL` |
 | **API inject** | Watch as pure evaluator; custom pipeline already forwards txns | `DB_URL` not required for evaluation-only |
 
-On self-host, recommend **DB sync** unless they already own an ingest pipeline or cannot share DB access.
+**Assume and confirm:** DB sync on self-host unless they already own an ingest pipeline or cannot share DB access.
 
 ### 2. Rule source
 
@@ -120,7 +125,9 @@ These do **not** change rule logic; they control where the **first** sync starts
 | `SYNC_TRANSACTION_LOOKBACK` | Relative window (Go duration) | `48h` |
 | `SYNC_TRANSACTION_START_TIME` | Absolute start; overrides lookback | unset |
 
-Runtime batching/interval: CLI flags (`-sync-interval`, `-batch-size`), not env — see Commands docs when tuning load.
+**Assume and confirm:** `48h` lookback unless they need a specific start time.
+
+Runtime batching/interval: CLI flags (`-sync-interval`, `-batch-size`), not env. See Commands docs when tuning load.
 
 ### 4. Alert webhooks
 

@@ -1,6 +1,8 @@
 # Map tool JSON
 
-Build an importable workflow for [map.blnkfinance.com](https://map.blnkfinance.com). Your **deliverable is JSON**. Ask the team to import that file into the maps tool; do not treat a prose diagram as the final map artifact.
+Build an importable workflow for [map.blnkfinance.com](https://map.blnkfinance.com). Your **deliverable is JSON**. Do not treat a prose diagram as the final map artifact.
+
+**Required chat line:** after you emit the JSON, tell the user in the chat reply to import it at [map.blnkfinance.com](https://map.blnkfinance.com).
 
 Docs: [Money movement map](https://docs.blnkfinance.com/ledgers/money-movement-map).
 
@@ -14,7 +16,7 @@ After the product flow is clear (plain-language steps + named balances). Produce
 2. Use fresh UUIDs for every `id` field (nodes, edges, nested `balance.id`, `transaction.id`, `controller.id`).
 3. Leave `validationErrors` as `[]`. Do not copy warnings from sample exports.
 4. Omit UI-only fields: `selected`, `dragging`, `positionAbsolute`.
-5. Tell the user: import the JSON into [map.blnkfinance.com](https://map.blnkfinance.com) (or share it with the team for import).
+5. In the chat reply, say they should import the JSON at [map.blnkfinance.com](https://map.blnkfinance.com). Link the file path or provide the JSON to copy.
 
 ## Top-level shape
 
@@ -175,7 +177,7 @@ Separate independent flows vertically (for example deposit row, fee row, payout 
 4. For each inflight txn → emit a controller node pointing at that txn node id.
 5. Wire edges: source → txn → destination (+ txn → controller when inflight).
 6. Validate: every money edge has currency; every inflight txn has a controller edge; no dangling node ids.
-7. Hand the JSON to the team for import into the maps tool.
+7. Tell the user in chat to import the JSON at [map.blnkfinance.com](https://map.blnkfinance.com).
 
 ## Minimal example (applied P2P)
 
@@ -282,5 +284,5 @@ In real outputs, generate new random UUIDs for every `id` field.
 - [ ] Inflight txns have a controller + animated edges
 - [ ] Edges form source → txn → destination for each leg
 - [ ] `@` naming matches `naming-patterns`
-- [ ] JSON handed off for import into the maps tool
+- [ ] Chat reply told the user to import at map.blnkfinance.com
 - [ ] Ready for [architecture-choices.md](architecture-choices.md)

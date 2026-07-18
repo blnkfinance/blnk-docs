@@ -4,7 +4,7 @@ Watch does **not** ship a fixed risk policy. You define what scores mean. This r
 
 Docs: [Defining verdicts](https://docs.blnkfinance.com/watch/rules/defining-verdicts).
 
-Ask **one question (or a small cluster) at a time**. Prefer codebase evidence (existing scores, ops runbooks) over guessing. Recommend a default when the user is unsure.
+Ask in **plain language**, one small cluster at a time. Prefer codebase evidence (existing scores, ops runbooks) over guessing. Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): for standard policy choices, propose the starter bands below and ask them to confirm.
 
 ## Why this comes after rules
 
@@ -67,48 +67,60 @@ If a hard-stop rule can co-fire with many low-score rules, either:
 
 Call this out explicitly in the rubric deliverable.
 
-## Interview (fill the rubric)
+## Fill the rubric
 
-Ask in this order. Skip questions the codebase already answers.
+Cover topics in this order. Skip what the codebase already answers. Prefer “I’ll use the starter bands unless you want different cutoffs” over a long score interview.
 
 ### 1. Appetite and ownership
 
-- Who owns risk policy (compliance, fraud, product, ops)?
-- Prefer false positives (more reviews) or false negatives (fewer blocks)?
-- Regulatory or partner constraints that force hard stops?
+Ask simply: “Who owns risk decisions?” “Would you rather over-review or under-block?”
+
+Cover:
+
+- Who owns risk policy (compliance, fraud, product, ops)
+- Prefer false positives (more reviews) or false negatives (fewer blocks)
+- Regulatory or partner constraints that force hard stops
+
+**Assume and confirm:** balanced appetite; hard stops only for must-block patterns they name.
 
 ### 2. Action model
 
-For each outcome, what should happen in the product?
+Ask simply: “When something looks risky, what should the product do?”
 
-- Continue silently vs continue with an audit row?
-- Notify Slack/PagerDuty/email?
-- Queue for human review (and who)?
-- Reject / void / hold (inflight) / reverse?
-- Difference between “policy deny” and “fraud block” in your ops language?
+For each outcome, what should happen:
+
+- Continue silently vs continue with an audit row
+- Notify Slack/PagerDuty/email
+- Queue for human review (and who)
+- Reject / void / hold (inflight) / reverse
+- Difference between “policy deny” and “fraud block” in their ops language
 
 Map answers to Watch’s six rule verdicts where useful, knowing consolidation still keys off score.
 
+**Assume and confirm:** soft → alert/log; mid → review queue; ≥ 0.7 → block processing.
+
 ### 3. Bands and thresholds
 
-- What score should mean “notify me” (webhook threshold candidate)?
-- What score should mean “hard stop” (must be ≥ `0.7` for consolidated `block` today)?
-- Do you want a wide review band or a sharp cliff into block?
-- Should `1.0` be rare (only unblockable patterns)?
+Ask simply: “Is the starter score table fine, or do you want different cutoffs?”
+
+Cover:
+
+- Score that should mean “notify me” (webhook threshold candidate)
+- Score that should mean “hard stop” (must be ≥ `0.7` for consolidated `block` today)
+- Wide review band vs sharp cliff into block
+- Whether `1.0` stays rare (only unblockable patterns)
+
+**Assume and confirm:** starter bands above; webhook threshold `0.5`; hard-stop rules at `1.0`.
 
 ### 4. Per-pattern severity
 
-For each rule from the writing-rules list:
-
-- Severity: informational / soft / review / hard-stop?
-- Can it fire together with others? If yes, what should the **average** still do?
-- Is the rule-level verdict for auditors only, or does a worker read `dsl_verdicts`?
+For each rule from the writing-rules list, confirm severity in plain language (“soft”, “review”, or “hard stop”), then assign scores. Cover co-fire / average behavior only when multiple rules can hit the same txn.
 
 ### 5. Consistency pass
 
-- Are two “same severity” rules within ~0.1 of each other?
-- Any orphan scores that do not appear in the band table?
-- Does `ALERT_WEBHOOK_RISK_THRESHOLD` sit cleanly on a band boundary?
+- Same severity → scores within ~0.1
+- No orphan scores outside the band table
+- `ALERT_WEBHOOK_RISK_THRESHOLD` sits on a band boundary
 
 ## Rubric template
 

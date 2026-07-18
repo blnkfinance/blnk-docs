@@ -3,7 +3,7 @@ name: watch
 description: Design Blnk Watch risk controls—clean .ws rules, a risk-score rubric, and Watch configuration—via a question-driven workflow. Prefer Blnk Cloud with embedded Watch over self-hosting the Watch binary. Use when writing or reviewing watch scripts, assigning scores or verdicts, consolidating risk outcomes, configuring Cloud Watch / WATCH_SCRIPT_* / ALERT_WEBHOOK_*, or wiring Watch next to Core.
 metadata:
   author: blnk
-  version: "0.2"
+  version: "0.3"
 ---
 
 # Blnk Watch
@@ -17,19 +17,19 @@ Watch evaluates **transactions only** (not balances, ledgers, or identities). Ex
 ## Quick start
 
 1. Open [references/writing-rules.md](references/writing-rules.md). Discover risk patterns, then write small focused `.ws` rules.
-2. Open [references/risk-score-rubric.md](references/risk-score-rubric.md). Interview until a score/verdict rubric exists; only then fill `score` / `then` on rules.
-3. Open [references/configuration.md](references/configuration.md). Prefer Cloud + embedded Watch; interview until rule source, alerts, and (only if self-host) ingest/env match the ops model.
+2. Open [references/risk-score-rubric.md](references/risk-score-rubric.md). Confirm a score/verdict rubric (assume starter bands when unsure); only then fill `score` / `then` on rules.
+3. Open [references/configuration.md](references/configuration.md). Prefer Cloud + embedded Watch; confirm rule source, alerts, and (only if self-host) ingest/env.
 4. Emit the deliverables below. Persist with the `documentation` skill when the team needs a durable decision pack.
 
 ## Mandatory order
 
 1. **Rules** — [references/writing-rules.md](references/writing-rules.md) (patterns → conditions → reasons). Leave scores as placeholders or omit until step 2 if the rubric is not ready.
-2. **Risk scores** — [references/risk-score-rubric.md](references/risk-score-rubric.md) (questions → rubric → assign scores consistently).
+2. **Risk scores** — [references/risk-score-rubric.md](references/risk-score-rubric.md) (topics → rubric → assign scores consistently).
 3. **Configuration** — [references/configuration.md](references/configuration.md) (Cloud path first; self-host only when required).
 4. **Persist** — load `documentation` and write `.blnk_context/NN_watch-rules.md` and/or `.blnk_context/NN_watch-risk-rubric.md` (next free `NN`) when decisions should survive the chat.
-5. If product risk policy stays ambiguous after questioning, load `support`.
+5. If product risk policy stays ambiguous after a short confirm pass, load `support`.
 
-Ask **one focused cluster at a time**. Prefer codebase answers (`meta_data` keys, existing `.ws`, `.env`) over asking.
+Follow [how-to-ask.md](../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Prefer codebase answers (`meta_data` keys, existing `.ws`, `.env`) over asking.
 
 ## Product model (read once)
 

@@ -6,27 +6,31 @@ Docs: [Rule structure](https://docs.blnkfinance.com/watch/rules/rule-structure),
 
 ## Discover patterns first
 
-Do not draft rules from a one-line “add fraud checks” request. Investigate until you can list discrete **risk patterns**. Ask one cluster at a time; explore the codebase for existing `meta_data`, transaction descriptions, and money flows (`ledger-architecture` context if present).
+Do not draft rules from a one-line “add fraud checks” request. Investigate until you can list discrete **risk patterns**. Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Explore the codebase for existing `meta_data`, transaction descriptions, and money flows (`ledger-architecture` context if present).
 
-### Pattern discovery questions
+### Pattern discovery topics
 
-**What are you protecting?**
+Cover these in simple language. Example prompts: “What are you trying to catch?” “Which flows first: payouts, deposits, transfers?” Do not paste this list into chat.
 
-- Fraud / abuse, compliance, operational guardrails, promo abuse, partner SLA, or a mix?
-- Which journeys matter first (payouts, deposits, transfers, refunds, FX, card auth)?
-- What must never go through without a hard stop vs what only needs logging?
+**What they are protecting**
 
-**What signals exist on the transaction today?**
+- Fraud / abuse, compliance, operational guardrails, promo abuse, partner SLA, or a mix
+- Which journeys matter first (payouts, deposits, transfers, refunds, FX, card auth)
+- Hard stops vs logging-only signals
 
-- Which of `amount`, `currency`, `source`, `destination`, `description`, `reference`, `created_at` are reliable?
-- What is already in `meta_data` (KYC tier, channel, country, promo, partner id)?
-- What would rules need that is **not** on the payload yet? (Those become an app contract, not invented fields.)
+**What signals exist on the transaction today**
 
-**What does “useful” mean when a rule fires?**
+- Which of `amount`, `currency`, `source`, `destination`, `description`, `reference`, `created_at` are reliable
+- What is already in `meta_data` (KYC tier, channel, country, promo, partner id)
+- What rules would need that is **not** on the payload yet (app contract, not invented fields)
 
-- Who reads the `reason` (ops, compliance, support, automated worker)?
-- Should the rule stand alone in an audit log without opening the `.ws` file?
-- Which patterns are velocity / history based (aggregates, `previous_transaction`) vs single-txn?
+**What “useful” means when a rule fires**
+
+- Who reads the `reason` (ops, compliance, support, automated worker)
+- Whether the rule can stand alone in an audit log without opening the `.ws` file
+- Velocity / history patterns (aggregates, `previous_transaction`) vs single-txn
+
+**Assume and confirm when reasonable:** start with the journeys already on their money map; use existing `meta_data` keys only; hard-stop only for must-block patterns they name.
 
 Stop drafting when you can fill:
 

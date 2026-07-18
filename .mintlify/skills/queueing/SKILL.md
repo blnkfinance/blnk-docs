@@ -3,7 +3,7 @@ name: queueing
 description: Choose Blnk queue vs skip_queue per step from whether the next action needs an immediate ledger outcome or can proceed async. Use when setting skip_queue, mixing sync auth with async settlement, handling QUEUED status, or wiring confirmation after create or commit.
 metadata:
   author: blnk
-  version: "0.4"
+  version: "0.5"
 ---
 
 # Queueing
@@ -23,16 +23,16 @@ Docs: [Concurrency](https://docs.blnkfinance.com/guides/concurrency), [Transacti
 
 ## Mental model
 
-Ask only this first, **for each API call** in the journey:
+Decide this first, **for each API call** in the journey (ask in plain language):
 
-> After this call returns, must the caller already know the ledger result to take the next step?
+> After this call returns, does the next step already need to know the ledger result?
 
 - **Yes** → sync → [references/skip-queue-path.md](references/skip-queue-path.md)
 - **No** → async → [references/queued-path.md](references/queued-path.md)
 
-### Mixed journeys (expected)
+Follow [how-to-ask.md](../documentation/references/how-to-ask.md). Walk the flow step-by-step in simple words (“Does checkout need the answer right away?”). Sync on one side does **not** imply sync on the rest.
 
-Interview the flow step-by-step. Sync on one side does **not** imply sync on the rest.
+**Assume and confirm** for familiar patterns:
 
 | Step | Likely choice | Why |
 | :-- | :-- | :-- |
@@ -41,6 +41,8 @@ Interview the flow step-by-step. Sync on one side does **not** imply sync on the
 | Checkout debit the customer sees immediately | Sync | Next step is the user-facing result |
 | Payout “submitted” then partner settles later | Async | Next step is acceptance, not final rail settle |
 | Internal bookkeeping with no waiting caller | Async | No immediate next-step dependency |
+
+Propose the table, then ask them to correct any row. Do not re-interview every step from scratch when the pattern is clear.
 
 Load the `inflight` skill for auth → commit/void mechanics; keep queueing decisions independent per call.
 
@@ -71,7 +73,7 @@ For **each** step:
 
 Then apply secondary constraints **on sync steps that are hot**:
 
-- Contended / hot balances on **sync** → escalate in order in [references/skip-queue-path.md](references/skip-queue-path.md): **lock wait timeout → reference-safe retries → interview then recommend sharding**. Also open [references/hot-balances.md](references/hot-balances.md). Revisit async if immediacy is not truly required.
+- Contended / hot balances on **sync** → escalate in order in [references/skip-queue-path.md](references/skip-queue-path.md): **lock wait timeout → reference-safe retries → confirm with the user, then recommend sharding**. Also open [references/hot-balances.md](references/hot-balances.md). Revisit async if immediacy is not truly required.
 - High throughput on **async** → coalescing / hot-lane / sharding via [references/hot-balances.md](references/hot-balances.md).
 
 ## Anti-patterns (do not)
@@ -81,7 +83,7 @@ Then apply secondary constraints **on sync steps that are hot**:
 - Choosing async but treating create/commit success as final without confirmation
 - Choosing sync only to avoid building webhook/poll confirmation when that step did not need immediacy
 - Sync on a hot path with no lock wait timeout or reference-safe retries
-- Jumping to balance sharding without interviewing the user and trying lock wait + retries first
+- Jumping to balance sharding without confirming with the user and trying lock wait + retries first
 - Blind retry with a new `reference` after timeout
 - Mixing sync/async on a journey **without** documenting which step is which
 

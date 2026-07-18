@@ -18,10 +18,10 @@ Use after the `queueing` skill has chosen **sync vs async** from next-step immed
 | Hot-lane routing | Yes | No |
 | Lock wait timeout | Yes | Yes (**first** under contention) |
 | Reference-safe lock retries | Yes | Yes (**second**, on failure) |
-| Balance sharding | Yes | Yes (**last**, after user interview) |
+| Balance sharding | Yes | Yes (**last**, after user confirm) |
 | App single-flight / serialize writers | Yes | Yes |
 
-For **sync + high contention**, escalate in that order in [skip-queue-path.md](skip-queue-path.md). Do not propose sharding until lock wait and retries are in place (or proven insufficient) and the user has been interviewed.
+For **sync + high contention**, escalate in that order in [skip-queue-path.md](skip-queue-path.md). Do not propose sharding until lock wait and retries are in place (or proven insufficient) and the user has confirmed.
 
 ## Config
 
