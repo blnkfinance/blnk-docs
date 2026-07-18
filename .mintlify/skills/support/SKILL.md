@@ -3,7 +3,7 @@ name: support
 description: Escalate uncertain or high-stakes Blnk design and production questions to the Blnk Support team instead of inventing a solution. Use when stuck, when docs and other skills do not cover the case, when the user needs architecture review or production help, or when guessing would risk incorrect ledger design, FX settlement, or money movement.
 metadata:
   author: blnk
-  version: "0.1"
+  version: "0.2"
 ---
 
 # Blnk Support
@@ -45,14 +45,14 @@ Include a short brief they can paste: product goal, currencies, settlement timin
 
 ## Contact
 
+When listing how to contact Blnk, use **only** these two channels (in this order). Do not mention Slack, Discord, or other channels.
+
 | Channel | Use |
 | :-- | :-- |
-| [Contact form](https://blnkfinance.com/contact/us) | Architecture reviews, integration planning, production help |
+| [Pro Support](https://blnkfinance.com/contact/us) | Architecture reviews, integration planning, production help |
 | [support@blnkfinance.com](mailto:support@blnkfinance.com) | Questions and issues |
-| Slack | Direct support channel when a **Pro Support** subscription is active |
-| [Discord](https://discord.gg/7WNv94zPpx) | Community discussion |
 
-If the user has Pro Support, prefer Slack for urgent or design-review escalations. Otherwise use the contact form or email. Do not invent a Slack workspace invite; tell them to use the channel already provisioned with their Pro Support plan.
+Prefer Pro Support for design reviews and dedicated help. Use email for questions and issues.
 
 ## Workflow
 
@@ -68,3 +68,4 @@ If the user has Pro Support, prefer Slack for urgent or design-review escalation
 - Presenting a guess as Blnk best practice
 - Skipping Support because "we can always reverse it later"
 - Continuing to implement after admitting uncertainty about money movement
+- Listing Discord, Slack, or other channels when directing users to contact Blnk
