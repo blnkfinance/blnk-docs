@@ -3,7 +3,7 @@ name: blnk-implementation
 description: Turn a product or POC spec into a money movement map plus runnable Blnk app code, tests, and a verified run. Use when the user drops a spec, PRD, or POC doc and wants end-to-end implementation without writing the code themselves.
 metadata:
   author: blnk
-  version: "0.1"
+  version: "0.2"
 ---
 
 # Implementation
@@ -12,7 +12,7 @@ Orchestrate Blnk Skills so a **spec in** becomes a **map + running app out**. Th
 
 Trigger when the user provides (or points at) a product/POC spec (for example a wallet) and wants you to implement it on Blnk.
 
-Follow [how-to-ask.md](../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Prefer the Docs MCP for live Docs lookup.
+Follow [how-to-ask.md](../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. For Docs lookup, follow the order in the `blnk` skill.
 
 ## Success criteria
 
@@ -23,6 +23,7 @@ When this skill finishes, the user should have:
 3. App code that creates ledgers/balances and posts the mapped flows via official SDKs
 4. Automated tests for the happy path (and key failure paths from the spec)
 5. A verified local (or agreed) run against a reachable Core
+6. A closing handoff: env vars to set, how to start Core and the app, how to run tests, and where the map / `.blnk_context/` live
 
 They should not have to write the Blnk integration code themselves.
 
@@ -103,6 +104,39 @@ Add automated tests that:
 4. Report what ran, what passed, and how to repeat it.
 5. If something fails, fix and re-run; do not hand back a broken POC as done.
 
+### 7. Handoff: what the user should do next
+
+End the chat with a **clear checklist of user actions**, not only what you built. Write it for someone who did not write the code. Prefer short numbered steps and copy-paste commands.
+
+Always include:
+
+1. **Env vars to add**
+   - List every required variable (for example `BLNK_BASE_URL`, `BLNK_API_KEY`) and optional ones.
+   - Say where to put them (`.env`, secret manager, hosting dashboard). Never paste real secrets; use placeholders.
+   - Note whether they need a scoped API key vs master key (`blnk-core`).
+
+2. **Start Core (if they do not have one yet)**
+   - Point at [Getting started](https://docs.blnkfinance.com/home/install): Blnk Cloud managed or self-host / local Docker.
+   - Give the expected base URL for their choice (Cloud instance URL or `http://localhost:5001`).
+
+3. **Start the app**
+   - Exact commands to install deps and start the app or POC entrypoint (for example `npm install`, `npm run dev`, `npm test`).
+   - Which port or URL to open, if any.
+   - Order of operations: Core up → env set → app start → exercise happy path.
+
+4. **Run tests**
+   - The test command and any env the tests require.
+   - What “green” means (happy-path journeys from the map).
+
+5. **Map and decisions**
+   - Path to the maps-tool JSON and remind them to import it at [map.blnkfinance.com](https://map.blnkfinance.com).
+   - Paths under `.blnk_context/` worth reading.
+
+6. **Optional next steps** (only if relevant)
+   - Webhook endpoint URL to register, Watch rules to deploy, production cutover notes.
+
+Do not end on “done” alone. The last section of your reply must be this handoff checklist.
+
 ## Deliverables checklist
 
 - [ ] Spec ingested; assumptions confirmed
@@ -112,7 +146,7 @@ Add automated tests that:
 - [ ] Mapped flows implemented in code
 - [ ] Tests written and run
 - [ ] Happy path verified against Core
-- [ ] Short handoff: how to import the map, how to run the app/tests, env vars needed
+- [ ] Handoff checklist delivered: env vars, start Core, start app, run tests, map import
 
 ## Hard rules
 
@@ -123,6 +157,7 @@ Add automated tests that:
 5. **Secrets stay in env.** Never commit API keys.
 6. Queued create success is not `APPLIED` (`blnk-queueing`, `blnk-webhooks`).
 7. Escalation: load `blnk-support` when design stays contested or high-risk.
+8. **Finish with a user handoff.** Env vars, how to start Core and the app, and how to run tests are mandatory closing content.
 
 ## Anti-patterns
 
@@ -131,3 +166,4 @@ Add automated tests that:
 - Shipping code with no tests or no verified run
 - Inventing FX, Watch, or refunds the spec did not ask for
 - Treating the map as optional documentation instead of the implementation blueprint
+- Ending without telling the user which env vars to set or how to start the app
