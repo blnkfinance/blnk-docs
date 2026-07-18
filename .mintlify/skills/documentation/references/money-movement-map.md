@@ -47,4 +47,4 @@ Implementation order, webhooks to subscribe to, out-of-scope flows.
 - <related NN_slug.md files>
 ```
 
-Fill from the `ledger-architecture` deliverables (context brief, nodes, edges, inflight edges, maps-tool JSON).
+Fill from the `blnk-ledger-architecture` deliverables (context brief, nodes, edges, inflight edges, maps-tool JSON).

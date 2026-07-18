@@ -2,7 +2,7 @@
 
 Docs: [Handling hot balances](https://docs.blnkfinance.com/guides/hot-balances), [Concurrency](https://docs.blnkfinance.com/guides/concurrency).
 
-Use after the `queueing` skill has chosen **sync vs async** from next-step immediacy. Hot balances are a contention problem to solve on top of that choice.
+Use after the `blnk-queueing` skill has chosen **sync vs async** from next-step immediacy. Hot balances are a contention problem to solve on top of that choice.
 
 ## Hot patterns
 

@@ -66,4 +66,4 @@ Call sites should look like `transactionAmountFields(10, Currency.USD)`, not `{ 
 
 ## SDK
 
-Use SDK fields that match Core (`precise_amount`, `precision`). Build request bodies through your helpers so SDK examples still go through the same precision table.
+Use SDK fields that match Core (`precise_amount`, `blnk-precision`). Build request bodies through your helpers so SDK examples still go through the same precision table.

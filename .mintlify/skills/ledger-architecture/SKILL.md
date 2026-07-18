@@ -1,5 +1,5 @@
 ---
-name: ledger-architecture
+name: blnk-ledger-architecture
 description: Investigate product intent and design Blnk money movement maps (including maps-tool JSON) and ledger architecture before coding balances and transactions. Use when structuring ledgers, discovering reporting needs or connected tools, drawing fund flows, exporting map.blnkfinance.com JSON, grouping balances into ledgers, or planning General Ledger @ balances.
 metadata:
   author: blnk
@@ -16,22 +16,22 @@ Do not invent a map from a thin prompt. Load [references/discover-context.md](re
 
 1. Open [references/discover-context.md](references/discover-context.md) and fill the context brief.
 2. Open [references/money-movement-map.md](references/money-movement-map.md) and list balances + movements from that brief.
-3. Load the `naming-patterns` skill while labeling `@` internals.
+3. Load the `blnk-naming-patterns` skill while labeling `@` internals.
 4. Open [references/map-tool-json.md](references/map-tool-json.md), emit importable JSON, and in chat tell the user to import it at [map.blnkfinance.com](https://map.blnkfinance.com).
 5. Open [references/architecture-choices.md](references/architecture-choices.md) and run the balance-grouping process (topics → confirm axis → ledger table).
 6. Emit the deliverables below before writing API calls.
-7. Load the `documentation` skill and write `.blnk_context/NN_money-movement-map.md` and `.blnk_context/NN_ledger-architecture.md` using the next free numbers.
+7. Load the `blnk-documentation` skill and write `.blnk_context/NN_money-movement-map.md` and `.blnk_context/NN_ledger-architecture.md` using the next free numbers.
 
 ## Mandatory order
 
 1. Open [references/discover-context.md](references/discover-context.md) and complete discovery (ready check).
 2. Open [references/money-movement-map.md](references/money-movement-map.md) and produce the map plan.
-3. Load the `naming-patterns` skill while labeling nodes.
+3. Load the `blnk-naming-patterns` skill while labeling nodes.
 4. Open [references/map-tool-json.md](references/map-tool-json.md) and emit maps-tool JSON; tell the user in chat to import at [map.blnkfinance.com](https://map.blnkfinance.com).
 5. Open [references/architecture-choices.md](references/architecture-choices.md) and run the balance-grouping process.
 6. Emit deliverables below.
-7. Load the `documentation` skill and persist money-movement-map + ledger-architecture decision docs under `.blnk_context/` (next free `NN_<slug>.md`).
-8. Hand off contested edges → `queueing`; hold edges → `inflight`. If intent stays ambiguous, load `support`.
+7. Load the `blnk-documentation` skill and persist money-movement-map + ledger-architecture decision docs under `.blnk_context/` (next free `NN_<slug>.md`).
+8. Hand off contested edges → `blnk-queueing`; hold edges → `blnk-inflight`. If intent stays ambiguous, load `blnk-support`.
 
 ## Deliverables
 

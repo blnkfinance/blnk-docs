@@ -23,8 +23,8 @@ Docs: [Overdrafts](https://docs.blnkfinance.com/transactions/overdrafts), [Negat
 ## Rules
 
 1. Decide per **balance role**, not globally for the app. Same journey can overdraft `@WorldUSD_Stripe` and refuse overdraft on the customer wallet.
-2. Do not use overdraft to hide race conditions; that is a `queueing` / funding design problem.
-3. If the movement is not complete until something else happens, prefer `inflight` over letting spendable go negative accidentally.
+2. Do not use overdraft to hide race conditions; that is a `blnk-queueing` / funding design problem.
+3. If the movement is not complete until something else happens, prefer `blnk-inflight` over letting spendable go negative accidentally.
 4. Document which balances may overdraft in `.blnk_context/` / the naming sheet.
 
 ## Checklist

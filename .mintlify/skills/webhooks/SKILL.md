@@ -1,5 +1,5 @@
 ---
-name: webhooks
+name: blnk-webhooks
 description: Subscribe to Blnk webhooks and transaction hooks securely with HMAC verification and idempotent handlers. Use when handling X-Blnk-Signature, transaction.applied events, PRE/POST hooks, or keeping app state in sync after money movements on either the queued or skip_queue path.
 metadata:
   author: blnk
@@ -12,7 +12,7 @@ Subscribe safely. Verify signatures. Handle events idempotently.
 
 **Webhooks work with both queue modes.** Global events fire when ledger state changes whether you posted with `skip_queue: false` or `skip_queue: true`. Queueing chooses when the HTTP response is final; it does not turn webhooks on or off.
 
-Pair with the `queueing` skill for per-step sync vs async. Use this skill for delivery, security, and handlers.
+Pair with the `blnk-queueing` skill for per-step sync vs async. Use this skill for delivery, security, and handlers.
 
 ## Quick start
 
@@ -30,7 +30,7 @@ Pair with the `queueing` skill for per-step sync vs async. Use this skill for de
 
 Same verify + idempotent receiver for both. Do not skip webhooks (or treat them as unused) just because a step is sync.
 
-Details on events and handlers: [references/events.md](references/events.md), [references/receiver.md](references/receiver.md). Load `queueing` for when to choose each path.
+Details on events and handlers: [references/events.md](references/events.md), [references/receiver.md](references/receiver.md). Load `blnk-queueing` for when to choose each path.
 
 ## Choose mechanism
 

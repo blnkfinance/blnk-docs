@@ -4,7 +4,7 @@ Do not draft a map from a one-line product pitch. Investigate until you can expl
 
 Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. The bullets below are **topics to cover**, not a questionnaire to paste into chat. If the codebase can answer, explore it instead of asking.
 
-Escalate with the `support` skill when the product intent stays ambiguous after investigation.
+Escalate with the `blnk-support` skill when the product intent stays ambiguous after investigation.
 
 ## Goal of discovery
 
@@ -19,7 +19,7 @@ Cover:
 - Product or workflow (wallet, marketplace, cards, lending, FX, payroll, …)
 - Who owns the money (customer, merchant, platform, partner)
 - Happy-path journeys where value changes hands
-- What must be true for a movement to be **complete** (load `inflight` when completion waits on other work)
+- What must be true for a movement to be **complete** (load `blnk-inflight` when completion waits on other work)
 - Failure, refund, chargeback, clawback, or reversal paths that matter
 - What is out of scope for this map
 
@@ -45,10 +45,10 @@ Capture limits that change nodes, edges, or timing. Ask simply, for example: “
 
 Cover:
 
-- Currencies and precision (load `precision` when multi-currency or subunits matter)
-- Instant vs delayed settlement; multi-day or multi-hop rails (load `fx` when exchange is involved)
-- Throughput / hot balances (load `queueing` → hot-balances when volume is high)
-- Queue vs synchronous needs (load `queueing`)
+- Currencies and precision (load `blnk-precision` when multi-currency or subunits matter)
+- Instant vs delayed settlement; multi-day or multi-hop rails (load `blnk-fx` when exchange is involved)
+- Throughput / hot balances (load `blnk-queueing` → hot-balances when volume is high)
+- Queue vs synchronous needs (load `blnk-queueing`)
 - Overdraft policy, holds, authorize-capture, escrow
 - Idempotency / reference strategy they already use
 - Existing Blnk ledgers, balances, or transactions that must be preserved
@@ -65,7 +65,7 @@ Cover:
 - KYC/KYB, risk, fraud, or compliance systems that gate movements
 - Billing, invoicing, ERP, or accounting exports
 - Wallets, card issuing, lending, or other product services in the monorepo
-- Webhooks, workers, or internal APIs that assume certain balance names or statuses (load `webhooks` when event-driven)
+- Webhooks, workers, or internal APIs that assume certain balance names or statuses (load `blnk-webhooks` when event-driven)
 - Blnk Cloud, dashboards, or custom apps that display balances
 - Partner settlements or marketplace split recipients
 
@@ -133,4 +133,4 @@ Only proceed to [money-movement-map.md](money-movement-map.md) when:
 - [ ] Reporting priorities are known enough to group balances later
 - [ ] Connected tools that move or display money are listed
 - [ ] Ops workflows that gate or reverse money are listed
-- [ ] Open questions are either answered or parked with the `support` skill
+- [ ] Open questions are either answered or parked with the `blnk-support` skill

@@ -61,7 +61,7 @@ After the product flow is clear (plain-language steps + named balances). Produce
 | `system` | External world / rail-facing `@` balances (for example `@WorldUSD`, `@WorldUSD_Paypal`) |
 | `internal` | Org internals (for example `@FeesUSD_Stripe`, `@NostroUSD`, `@SpreadGBP`, `@EscrowUSD`) |
 
-`identifier` and `label` should match. Use a single `@` on internals (never `@@`). Follow the `naming-patterns` skill.
+`identifier` and `label` should match. Use a single `@` on internals (never `@@`). Follow the `blnk-naming-patterns` skill.
 
 ### Transaction (`transaction-node`)
 
@@ -95,8 +95,8 @@ After the product flow is clear (plain-language steps + named balances). Produce
 }
 ```
 
-- Set `inflight: true` when the movement waits on other work (load the `inflight` skill). Use height `118` when inflight.
-- Prefer stable, readable `reference` / `label` values (not random demo refs). Load `naming-patterns` for reference style.
+- Set `inflight: true` when the movement waits on other work (load the `blnk-inflight` skill). Use height `118` when inflight.
+- Prefer stable, readable `reference` / `label` values (not random demo refs). Load `blnk-naming-patterns` for reference style.
 - Use illustrative amounts; the map is a design artifact, not funded balances.
 
 ### Inflight controller (`inflight-controller-node`)
@@ -172,7 +172,7 @@ Separate independent flows vertically (for example deposit row, fee row, payout 
 ## Build steps
 
 1. Name the workflow (`name`).
-2. List balances → emit `balance-node`s (`naming-patterns` for `@` names).
+2. List balances → emit `balance-node`s (`blnk-naming-patterns` for `@` names).
 3. List movements → emit `transaction-node`s (set `inflight` when completion waits on other work).
 4. For each inflight txn → emit a controller node pointing at that txn node id.
 5. Wire edges: source → txn → destination (+ txn → controller when inflight).
@@ -283,6 +283,6 @@ In real outputs, generate new random UUIDs for every `id` field.
 - [ ] Every movement is a `transaction-node` with currency, amount, reference
 - [ ] Inflight txns have a controller + animated edges
 - [ ] Edges form source → txn → destination for each leg
-- [ ] `@` naming matches `naming-patterns`
+- [ ] `@` naming matches `blnk-naming-patterns`
 - [ ] Chat reply told the user to import at map.blnkfinance.com
 - [ ] Ready for [architecture-choices.md](architecture-choices.md)

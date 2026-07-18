@@ -1,5 +1,5 @@
 ---
-name: documentation
+name: blnk-documentation
 description: Record Blnk product decisions as numbered markdown files in .blnk_context/. Use when capturing money movement maps, ledger architecture, metadata structure, naming, precision, queueing, or any other Blnk design decision for the team; when starting or updating a Blnk integration context pack.
 metadata:
   author: blnk
@@ -58,13 +58,13 @@ When writing a common decision type, use the matching template (then save as `NN
 
 | Topic | Template | Typical source skill |
 | :-- | :-- | :-- |
-| Money movement map | [references/money-movement-map.md](references/money-movement-map.md) | `ledger-architecture` |
-| Ledger architecture | [references/ledger-architecture.md](references/ledger-architecture.md) | `ledger-architecture` |
-| Metadata structure | [references/metadata-structure.md](references/metadata-structure.md) | `naming-patterns` |
+| Money movement map | [references/money-movement-map.md](references/money-movement-map.md) | `blnk-ledger-architecture` |
+| Ledger architecture | [references/ledger-architecture.md](references/ledger-architecture.md) | `blnk-ledger-architecture` |
+| Metadata structure | [references/metadata-structure.md](references/metadata-structure.md) | `blnk-naming-patterns` |
 
 Shared format: [references/format.md](references/format.md).
 
-Other topics (precision, queueing, inflight, fx, naming internals, watch rules / risk rubric / Watch config, …) use the same format with a fitting slug. No special template required. Typical Watch slugs from the `watch` skill: `watch-rules`, `watch-risk-rubric`, `watch-configuration`.
+Other topics (precision, queueing, inflight, fx, naming internals, watch rules / risk rubric / Watch config, …) use the same format with a fitting slug. No special template required. Typical Watch slugs from the `blnk-watch` skill: `watch-rules`, `watch-risk-rubric`, `watch-configuration`.
 
 ## Workflow
 

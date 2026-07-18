@@ -1,5 +1,5 @@
 ---
-name: sdks
+name: blnk-sdks
 description: Use official Blnk SDKs (TypeScript, Go, Python, and Java) with shared client behavior; fall back to HTTP only when no Blnk SDK covers the language or endpoint. Use when initializing Blnk clients, calling ledger APIs from apps, or choosing between SDK and raw HTTP.
 metadata:
   author: blnk
@@ -23,7 +23,7 @@ metadata:
 3. Open [references/sdk-behavior.md](references/sdk-behavior.md) and follow the shared behavior rules (init once, env secrets, success checks, precision, fallbacks).
 4. Confirm the method exists (docs method pages or SDK source) before writing HTTP.
 5. If the endpoint is missing → [references/http-fallback.md](references/http-fallback.md). For terminal exploration only → [references/when-to-use-curl.md](references/when-to-use-curl.md).
-6. Pair with the `precision` and `queueing` skills for real posts. Ensure Core itself is latest via the `core` skill.
+6. Pair with the `blnk-precision` and `blnk-queueing` skills for real posts. Ensure Core itself is latest via the `blnk-core` skill.
 
 ## Quick start (TypeScript)
 

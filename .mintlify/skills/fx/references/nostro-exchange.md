@@ -13,7 +13,7 @@ Example: customer converts USD → GBP at `$1 = £0.79`:
 | USD | customer-usd | `@NostroUSD` | Debit customer USD |
 | GBP | `@NostroGBP` | customer-gbp | Credit customer GBP |
 
-When legs must apply together (same-moment convert), link them with [bulk transactions](https://docs.blnkfinance.com/transactions/bulk-transactions). When settlement spans time or intermediaries, map the flow first (`ledger-architecture`), then post separate transactions correlated by shared order metadata.
+When legs must apply together (same-moment convert), link them with [bulk transactions](https://docs.blnkfinance.com/transactions/bulk-transactions). When settlement spans time or intermediaries, map the flow first (`blnk-ledger-architecture`), then post separate transactions correlated by shared order metadata.
 
 ## meta_data
 

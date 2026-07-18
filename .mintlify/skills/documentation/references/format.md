@@ -33,6 +33,6 @@ What follows for implementation, reporting, and ops.
 
 - Title matches the decision, not only the filename slug.
 - **Decision** is the source of truth; do not leave the real choice only in Context.
-- Use the same vocabulary as the money movement map and `naming-patterns` skill.
+- Use the same vocabulary as the money movement map and `blnk-naming-patterns` skill.
 - If superseded, set Status to `superseded` and point to the replacement file. Do not delete numbered files.
 - Link maps-tool JSON, diagrams, or extras as relative paths under `.blnk_context/`.

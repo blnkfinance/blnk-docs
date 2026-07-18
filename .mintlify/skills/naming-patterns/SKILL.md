@@ -1,5 +1,5 @@
 ---
-name: naming-patterns
+name: blnk-naming-patterns
 description: Consistent names for Blnk ledgers, @ internal balances, transaction references, and meta_data keys. Use when naming indicators, General Ledger balances, references, ledger titles, or metadata join keys.
 metadata:
   author: blnk
@@ -14,8 +14,8 @@ Fill a naming sheet before creating resources. Pick what you are naming, then op
 
 1. List ledgers, `@` internals, and reference prefixes on the naming sheet below.
 2. Open the matching reference for each kind of name.
-3. Continue with the `ledger-architecture` skill for map and layout.
-4. When `meta_data` keys are fixed, load the `documentation` skill and write `.blnk_context/NN_metadata-structure.md` (next free number).
+3. Continue with the `blnk-ledger-architecture` skill for map and layout.
+4. When `meta_data` keys are fixed, load the `blnk-documentation` skill and write `.blnk_context/NN_metadata-structure.md` (next free number).
 
 ## What are you naming?
 

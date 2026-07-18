@@ -212,5 +212,5 @@ ALERT_WEBHOOK_RISK_THRESHOLD=0.5
 
 ## Related next steps
 
-- Wire alert consumers → [Watch webhooks](https://docs.blnkfinance.com/watch/webhooks) (and Core `webhooks` skill only if mixing Core event hooks).
-- Persist the brief with the `documentation` skill as `.blnk_context/NN_watch-configuration.md` when the team needs it.
+- Wire alert consumers → [Watch webhooks](https://docs.blnkfinance.com/watch/webhooks) (and Core `blnk-webhooks` skill only if mixing Core event hooks).
+- Persist the brief with the `blnk-documentation` skill as `.blnk_context/NN_watch-configuration.md` when the team needs it.

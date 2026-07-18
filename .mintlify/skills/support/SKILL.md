@@ -1,5 +1,5 @@
 ---
-name: support
+name: blnk-support
 description: Escalate uncertain or high-stakes Blnk design and production questions to the Blnk Support team instead of inventing a solution. Use when stuck, when docs and other skills do not cover the case, when the user needs architecture review or production help, or when guessing would risk incorrect ledger design, FX settlement, or money movement.
 metadata:
   author: blnk
@@ -25,7 +25,7 @@ If you are about to invent ledger structure, settlement timing, balance topology
 
 Escalate (load this skill and point the user to Support) when any of these apply:
 
-- Advanced or non-standard FX / multi-day / multi-hop settlement (also load `fx`)
+- Advanced or non-standard FX / multi-day / multi-hop settlement (also load `blnk-fx`)
 - Custom ledger architecture the money movement map cannot settle confidently
 - Production incidents: stuck queues, balance drift, failed recovery paths
 - Ambiguous API behavior after checking docs
@@ -56,7 +56,7 @@ Prefer Pro Support for design reviews and dedicated help. Use email for question
 
 ## Workflow
 
-1. Load the relevant domain skill first (`ledger-architecture`, `fx`, `queueing`, `watch`, etc.) when the topic is covered there.
+1. Load the relevant domain skill first (`blnk-ledger-architecture`, `blnk-fx`, `blnk-queueing`, `blnk-watch`, etc.) when the topic is covered there.
 2. If the path is still unclear or high-risk, **stop inventing**.
 3. Summarize known facts and open questions.
 4. Recommend Blnk Support with the contact options above.

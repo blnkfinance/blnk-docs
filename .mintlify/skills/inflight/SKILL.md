@@ -1,5 +1,5 @@
 ---
-name: inflight
+name: blnk-inflight
 description: Mental model and workflows for Blnk inflight transactions when other work must finish before a movement is complete. Use when authorizing then capturing, escrow holds, commit or void inflight, inflight expiry, split inflight, or bulk commit/void.
 metadata:
   author: blnk
@@ -15,7 +15,7 @@ Use inflight when a money movement is **not complete yet**: other steps must suc
 1. Open [references/mental-model.md](references/mental-model.md).
 2. Create with `inflight: true` and a unique `reference`.
 3. After the external or business steps finish: commit (full/partial) or void. Never leave holds hanging.
-4. Choose `skip_queue` **per call** with the `queueing` skill (auth may need sync; commit/void often async).
+4. Choose `skip_queue` **per call** with the `blnk-queueing` skill (auth may need sync; commit/void often async).
 5. For authorize-capture or escrow, also read [references/commit-void.md](references/commit-void.md).
 
 ## Do you need a hold?
@@ -23,7 +23,7 @@ Use inflight when a money movement is **not complete yet**: other steps must suc
 | Need | Action |
 | :-- | :-- |
 | Movement waits on other work before it is complete | Stay on this skill |
-| Final same-currency transfer with nothing left to wait on | Use the `transactions` skill |
+| Final same-currency transfer with nothing left to wait on | Use the `blnk-transactions` skill |
 
 ## Workflow
 
@@ -34,7 +34,7 @@ Use inflight when a money movement is **not complete yet**: other steps must suc
 5. Multi-leg holds: [references/split-and-bulk.md](references/split-and-bulk.md).
 6. Commit/void details: [references/commit-void.md](references/commit-void.md).
 
-Queue vs `skip_queue` still follows the `queueing` skill.
+Queue vs `skip_queue` still follows the `blnk-queueing` skill.
 
 ## Verification
 

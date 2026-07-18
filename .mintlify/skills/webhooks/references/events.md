@@ -34,7 +34,7 @@ Lifecycle events fire on **both** paths. `skip_queue` only changes whether the c
 | `skip_queue: false` | Treat `transaction.applied` / `transaction.rejected` (and related) as **completion signals**. Do not treat create HTTP success as final. |
 | `skip_queue: true` | Response already carries the outcome for the caller. Events still fire for fan-out, notifications, and other listeners. |
 
-See the `queueing` skill for choosing the path; keep the same allowlist and handlers regardless of flag.
+See the `blnk-queueing` skill for choosing the path; keep the same allowlist and handlers regardless of flag.
 
 ## Tip
 

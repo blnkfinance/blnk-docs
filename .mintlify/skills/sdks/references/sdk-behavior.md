@@ -11,7 +11,7 @@ Official Blnk SDKs share the same integration rules. Language packages differ in
 | Python | `blnk-python` (`from blnk_sdk import ...`) | [Python SDK](https://docs.blnkfinance.com/sdks/python) |
 | Java | `com.blnkfinance:blnk-sdk` (JDK 17+) | [blnk-java](https://github.com/blnkfinance/blnk-java) |
 
-Install or upgrade to the **latest** published version. Pair with latest Core (`core` skill).
+Install or upgrade to the **latest** published version. Pair with latest Core (`blnk-core` skill).
 
 ## Shared behavior (all SDKs)
 
@@ -20,8 +20,8 @@ Install or upgrade to the **latest** published version. Pair with latest Core (`
 3. **Show only the API call in examples.** Assume `blnk` / `client` is already initialized. Link install docs for setup.
 4. **Auth is the SDK’s job.** Pass the scoped API key at init; the client sends `X-blnk-key`. Do not hand-roll auth headers when using the SDK.
 5. **Check success in app code.** Do not assume a resolved promise / non-nil value means business success. Inspect status / error envelopes as each SDK documents.
-6. **Money fields via `precision` skill.** Prefer `precise_amount` + `precision` from your currency enum helpers. Do not invent a second unit system.
-7. **Queue / inflight via domain skills.** `skip_queue`, webhooks, and holds are product decisions (`queueing`, `webhooks`, `inflight`), not SDK-specific.
+6. **Money fields via `blnk-precision` skill.** Prefer `precise_amount` + `precision` from your currency enum helpers. Do not invent a second unit system.
+7. **Queue / inflight via domain skills.** `skip_queue`, webhooks, and holds are product decisions (`blnk-queueing`, `blnk-webhooks`, `blnk-inflight`), not SDK-specific.
 8. **Confirm methods before falling back.** Check docs method pages or SDK source. If missing, use [http-fallback.md](http-fallback.md) for that gap only, and plan to switch when the method ships.
 9. **No secrets in source.** Keys and base URLs come from env or a secret manager.
 

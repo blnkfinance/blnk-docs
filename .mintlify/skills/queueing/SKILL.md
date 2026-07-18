@@ -1,5 +1,5 @@
 ---
-name: queueing
+name: blnk-queueing
 description: Choose Blnk queue vs skip_queue per step from whether the next action needs an immediate ledger outcome or can proceed async. Use when setting skip_queue, mixing sync auth with async settlement, handling QUEUED status, or wiring confirmation after create or commit.
 metadata:
   author: blnk
@@ -44,7 +44,7 @@ Follow [how-to-ask.md](../documentation/references/how-to-ask.md). Walk the flow
 
 Propose the table, then ask them to correct any row. Do not re-interview every step from scratch when the pattern is clear.
 
-Load the `inflight` skill for auth → commit/void mechanics; keep queueing decisions independent per call.
+Load the `blnk-inflight` skill for auth → commit/void mechanics; keep queueing decisions independent per call.
 
 When mapping, label **each** edge/step with sync or async. Example:
 
@@ -58,9 +58,9 @@ card_release (void):             skip_queue: false
 
 1. **No product default.** Every mapped step gets an explicit sync or async choice.
 2. **Decide from that step’s next dependency**, not from sibling calls. Auth needing sync does not force settlement to sync.
-3. **Async:** HTTP/SDK success ≠ money applied (or commit finished). Confirm via webhooks (preferred) or poll-by-reference. Load the `webhooks` skill.
-4. **Sync:** design the request path around the response outcome; still use unique deterministic `reference` (`naming-patterns`).
-5. Record the per-step table on the map / in `.blnk_context/` (load `documentation`).
+3. **Async:** HTTP/SDK success ≠ money applied (or commit finished). Confirm via webhooks (preferred) or poll-by-reference. Load the `blnk-webhooks` skill.
+4. **Sync:** design the request path around the response outcome; still use unique deterministic `reference` (`blnk-naming-patterns`).
+5. Record the per-step table on the map / in `.blnk_context/` (load `blnk-documentation`).
 
 ## After you choose
 
@@ -89,4 +89,4 @@ Then apply secondary constraints **on sync steps that are hot**:
 
 ## Persist
 
-Write the per-step sync/async table with the `documentation` skill (next free `NN_<slug>.md`).
+Write the per-step sync/async table with the `blnk-documentation` skill (next free `NN_<slug>.md`).

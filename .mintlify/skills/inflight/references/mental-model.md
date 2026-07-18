@@ -12,7 +12,7 @@ Typical UI math for spendable funds:
 available ≈ balance - inflight_debit_balance
 ```
 
-(Exact field names: see balance responses in the docs. Load the `precision` skill for available-balance display rules.)
+(Exact field names: see balance responses in the docs. Load the `blnk-precision` skill for available-balance display rules.)
 
 ## Inflight vs QUEUED
 
@@ -30,7 +30,7 @@ Use inflight whenever completion depends on something outside the single post, f
 - Card-style authorize, then capture when the charge is confirmed
 - Escrow until delivery, match, or dispute resolution
 - Payout review, then send or cancel
-- Order-book: reserve into escrow until match (load the `fx` skill)
+- Order-book: reserve into escrow until match (load the `blnk-fx` skill)
 - Any flow where partner confirmation, compliance check, or multi-step settlement must finish first
 
 ## When not to use inflight

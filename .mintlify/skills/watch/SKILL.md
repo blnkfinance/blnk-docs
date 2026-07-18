@@ -1,5 +1,5 @@
 ---
-name: watch
+name: blnk-watch
 description: Design Blnk Watch risk controls—clean .ws rules, a risk-score rubric, and Watch configuration—via a question-driven workflow. Prefer Blnk Cloud with embedded Watch over self-hosting the Watch binary. Use when writing or reviewing watch scripts, assigning scores or verdicts, consolidating risk outcomes, configuring Cloud Watch / WATCH_SCRIPT_* / ALERT_WEBHOOK_*, or wiring Watch next to Core.
 metadata:
   author: blnk
@@ -19,15 +19,15 @@ Watch evaluates **transactions only** (not balances, ledgers, or identities). Ex
 1. Open [references/writing-rules.md](references/writing-rules.md). Discover risk patterns, then write small focused `.ws` rules.
 2. Open [references/risk-score-rubric.md](references/risk-score-rubric.md). Confirm a score/verdict rubric (assume starter bands when unsure); only then fill `score` / `then` on rules.
 3. Open [references/configuration.md](references/configuration.md). Prefer Cloud + embedded Watch; confirm rule source, alerts, and (only if self-host) ingest/env.
-4. Emit the deliverables below. Persist with the `documentation` skill when the team needs a durable decision pack.
+4. Emit the deliverables below. Persist with the `blnk-documentation` skill when the team needs a durable decision pack.
 
 ## Mandatory order
 
 1. **Rules** — [references/writing-rules.md](references/writing-rules.md) (patterns → conditions → reasons). Leave scores as placeholders or omit until step 2 if the rubric is not ready.
 2. **Risk scores** — [references/risk-score-rubric.md](references/risk-score-rubric.md) (topics → rubric → assign scores consistently).
 3. **Configuration** — [references/configuration.md](references/configuration.md) (Cloud path first; self-host only when required).
-4. **Persist** — load `documentation` and write `.blnk_context/NN_watch-rules.md` and/or `.blnk_context/NN_watch-risk-rubric.md` (next free `NN`) when decisions should survive the chat.
-5. If product risk policy stays ambiguous after a short confirm pass, load `support`.
+4. **Persist** — load `blnk-documentation` and write `.blnk_context/NN_watch-rules.md` and/or `.blnk_context/NN_watch-risk-rubric.md` (next free `NN`) when decisions should survive the chat.
+5. If product risk policy stays ambiguous after a short confirm pass, load `blnk-support`.
 
 Follow [how-to-ask.md](../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Prefer codebase answers (`meta_data` keys, existing `.ws`, `.env`) over asking.
 
@@ -86,8 +86,8 @@ Do not treat “ship Watch” as complete until rules are small and named, the r
 
 | Need | Load skill |
 | :-- | :-- |
-| Ledger map / which flows exist | `ledger-architecture` |
-| `meta_data` key naming | `naming-patterns` |
-| Persist decisions | `documentation` |
-| Ambiguous risk/compliance policy | `support` |
-| Core / Cloud app wiring (keys, client) | `core` |
+| Ledger map / which flows exist | `blnk-ledger-architecture` |
+| `meta_data` key naming | `blnk-naming-patterns` |
+| Persist decisions | `blnk-documentation` |
+| Ambiguous risk/compliance policy | `blnk-support` |
+| Core / Cloud app wiring (keys, client) | `blnk-core` |

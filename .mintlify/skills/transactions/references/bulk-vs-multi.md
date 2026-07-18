@@ -11,7 +11,7 @@ These solve different problems. Do not use bulk to fake a split, or multi-destin
 | One economic event, money splits across balances (principal + fee, split payout) | **Multi-source / multi-destination** on a single create |
 | Many independent movements in one API call (payroll rows, migration batch, many P2Ps) | **Bulk** (`/transactions/bulk`) |
 | One source → one destination | Simple create (`source` + `destination`) |
-| Holds / partial capture across legs | `inflight` skill (split + bulk commit/void as needed) |
+| Holds / partial capture across legs | `blnk-inflight` skill (split + bulk commit/void as needed) |
 
 ## Multi-source / multi-destination (one transaction)
 
@@ -29,8 +29,8 @@ Rules:
 - Each entry needs `identifier` plus `distribution` or `precise_distribution`.
 - `"left"` takes the remainder after fixed/percentage legs.
 - Set `atomic: true` when all legs must succeed together.
-- With `precise_amount`, use `precise_distribution` for fixed legs (`precision` skill).
-- Name fee / spread balances via `naming-patterns` (`@FeesUSD_*`, etc.). Do not hide fees by shrinking the customer credit with no ledger edge.
+- With `precise_amount`, use `precise_distribution` for fixed legs (`blnk-precision` skill).
+- Name fee / spread balances via `blnk-naming-patterns` (`@FeesUSD_*`, etc.). Do not hide fees by shrinking the customer credit with no ledger edge.
 
 ## Bulk (many transactions)
 
@@ -45,7 +45,7 @@ Examples:
 Rules:
 
 - Every item needs a unique deterministic `reference`.
-- Decide `skip_queue` per the `queueing` skill; bulk queued submit ≠ every child already applied.
+- Decide `skip_queue` per the `blnk-queueing` skill; bulk queued submit ≠ every child already applied.
 - Duplicate-reference behavior differs for queued vs `skip_queue: true` (read the bulk docs).
 - Do not stuff one principal+fee event into bulk as two disconnected posts unless you intentionally want two transactions (prefer multi-destination for one event).
 

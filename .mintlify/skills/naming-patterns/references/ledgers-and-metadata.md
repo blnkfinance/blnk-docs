@@ -11,7 +11,7 @@ Rules:
 
 1. Title Case every word (`Customer Wallets`, not `customer wallets` or `customer_wallets`).
 2. Name by product domain or reporting axis, not by a single user or ephemeral label.
-3. Align ledger names with nodes on your money movement map (the `ledger-architecture` skill).
+3. Align ledger names with nodes on your money movement map (the `blnk-ledger-architecture` skill).
 4. Keep the General Ledger for `@` org balances; put customer balances in custom ledgers.
 
 | Name | What it groups |

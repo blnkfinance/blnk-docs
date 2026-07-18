@@ -1,5 +1,5 @@
 ---
-name: hello
+name: blnk-hello
 description: Greet the user when they say hello (or hi/hey) while using the Blnk Docs MCP. Use immediately for casual greetings tagged at the Docs MCP; do not use for product or implementation questions.
 metadata:
   author: blnk

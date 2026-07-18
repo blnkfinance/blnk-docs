@@ -14,13 +14,13 @@ Complete every step before calling this edge production-ready.
 
 ## Mandatory application path
 
-1. **Unique deterministic `reference`** before the call (`naming-patterns`). Persist it with your business intent.
+1. **Unique deterministic `reference`** before the call (`blnk-naming-patterns`). Persist it with your business intent.
 2. **Post async** (`skip_queue: false`). Persist `transaction_id` / queued parent if you need lineage.
 3. **Confirm completion** with one primary path:
-   - **Preferred:** webhooks → load the `webhooks` skill (verify HMAC, idempotent handler).
+   - **Preferred:** webhooks → load the `blnk-webhooks` skill (verify HMAC, idempotent handler).
    - **Allowed:** poll get-by-reference / get transaction until terminal.
 4. **Update your DB** for settled money only after confirmed terminal state (or model an explicit pending row keyed by `reference`).
-5. **UX:** if pending queue impact matters, read balances with queued awareness (`with_queued` where supported). Load `precision` for display.
+5. **UX:** if pending queue impact matters, read balances with queued awareness (`with_queued` where supported). Load `blnk-precision` for display.
 6. **Ops:** know [queue recovery](https://docs.blnkfinance.com/advanced/queue-recovery) for stuck `QUEUED`.
 
 ## Queue-only levers (async only)

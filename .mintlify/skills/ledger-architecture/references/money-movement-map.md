@@ -23,7 +23,7 @@ The map is the blueprint for ledger implementation, reporting, and stakeholder a
 3. List **balances** (nodes) and **transaction types** (edges), including whether each edge is applied or inflight (use **completion depends on** + ops workflows).
 4. Fold in **connected tools**: pay-in/pay-out rails, partner splits, and systems that must see specific balances or statuses.
 5. Collapse many customers into one “customer” node when explaining the pattern; expand to per-user balances in architecture.
-6. Introduce `@` internal balances for “outside” and org accounts (`@PayIn`, `@PayOut`, `@World`, nostro, fees). Load the `naming-patterns` skill.
+6. Introduce `@` internal balances for “outside” and org accounts (`@PayIn`, `@PayOut`, `@World`, nostro, fees). Load the `blnk-naming-patterns` skill.
 7. Add fees, rails, and multi-leg paths as separate movements. Respect **technical constraints** (settlement timing, FX, queue, precision).
 8. Open [map-tool-json.md](map-tool-json.md) and generate the maps-tool JSON (`name`, `nodes`, `edges`).
 9. In the chat reply, tell the user to import the JSON at [map.blnkfinance.com](https://map.blnkfinance.com) (link the file or include the JSON).
@@ -34,7 +34,7 @@ The map is the blueprint for ledger implementation, reporting, and stakeholder a
 - [ ] Context brief complete (intent, reporting, constraints, tools, ops)
 - [ ] Every movement has source, destination, currency, and whether it is applied vs inflight
 - [ ] External world and connected rails represented with `@` or named balances
-- [ ] Naming matches the `naming-patterns` skill
+- [ ] Naming matches the `blnk-naming-patterns` skill
 - [ ] Maps-tool JSON produced via [map-tool-json.md](map-tool-json.md)
 - [ ] Chat reply told the user to import the JSON at map.blnkfinance.com
 - [ ] Ready for [architecture-choices.md](architecture-choices.md)

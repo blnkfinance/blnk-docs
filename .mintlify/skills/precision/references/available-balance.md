@@ -6,7 +6,7 @@ Balances expose more than a single number. For spendable UX while holds exist:
 available ≈ balance - inflight_debit_balance
 ```
 
-Also consider queued impact when using the queue (`with_queued` where supported). See the `queueing` skill.
+Also consider queued impact when using the queue (`with_queued` where supported). See the `blnk-queueing` skill.
 
 ## Rules
 
@@ -17,5 +17,5 @@ Also consider queued impact when using the queue (`with_queued` where supported)
 
 ## Related
 
-- Load the `inflight` skill for hold-field semantics
+- Load the `blnk-inflight` skill for hold-field semantics
 - Balance fields in [balances introduction](https://docs.blnkfinance.com/balances/introduction)

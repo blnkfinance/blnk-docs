@@ -99,11 +99,11 @@ Reject unknown currencies. Do not default to `100`.
 - Never mix different precisions for the **same** currency in one product.
 - Every writer (HTTP handlers, workers, migrations, scripts) must call `precisionOf(currency)`.
 - UI and statements must divide with the same function.
-- Name per-currency `@` balances when needed (`@RevenueUSD`), per the `naming-patterns` skill (`@<Purpose><Currency>_<Source>`).
+- Name per-currency `@` balances when needed (`@RevenueUSD`), per the `blnk-naming-patterns` skill (`@<Purpose><Currency>_<Source>`).
 
 ## Multi-currency / crypto + fiat
 
-When asset precisions differ, follow Blnk guidance: standardize on the **highest** precision used in the ledger when mixing currencies that require a shared scale, and convert rates carefully. Load the `fx` skill for exchange legs.
+When asset precisions differ, follow Blnk guidance: standardize on the **highest** precision used in the ledger when mixing currencies that require a shared scale, and convert rates carefully. Load the `blnk-fx` skill for exchange legs.
 
 Document the product decision in the architecture / naming sheet:
 

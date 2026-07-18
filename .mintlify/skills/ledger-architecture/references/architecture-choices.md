@@ -49,7 +49,7 @@ Cover these in plain language before locking ledgers. Prefer short written answe
 ### Operations and risk
 
 - Which ledger boundaries make reconciliation, audits, or access scopes simpler?
-- Do high-throughput or hot balances need isolation? (Also load `queueing` → hot balances when relevant.)
+- Do high-throughput or hot balances need isolation? (Also load `blnk-queueing` → hot balances when relevant.)
 - Are multi-currency or FX nostros clearer with a product ledger or in General Ledger?
 
 ### Consistency
@@ -83,6 +83,6 @@ Other axes (currency, legal entity, region) can win when the topics above point 
 
 ## After choosing
 
-Create ledgers and balances in map order. Implement edges with the `transactions`, `inflight`, and `fx` skills as needed. If grouping stays ambiguous after a short confirm pass, load the `support` skill instead of inventing a hybrid.
+Create ledgers and balances in map order. Implement edges with the `blnk-transactions`, `blnk-inflight`, and `blnk-fx` skills as needed. If grouping stays ambiguous after a short confirm pass, load the `blnk-support` skill instead of inventing a hybrid.
 
 Reuse **reporting needs** and **connected tools** from [discover-context.md](discover-context.md) when choosing the axis. Do not regroup in a way that breaks a system that already depends on a balance boundary.

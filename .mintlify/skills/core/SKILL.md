@@ -1,5 +1,5 @@
 ---
-name: core
+name: blnk-core
 description: Prepare an application codebase to talk to Blnk Core (latest Core + SDKs, client, env, auth, secrets). Use when wiring Blnk into an existing app, upgrading Blnk versions, adding Blnk config or API keys, enabling secure mode expectations, or checking production readiness. Do not use this skill to implement the install quickstart or a first ledger/transfer demo.
 metadata:
   author: blnk
@@ -36,7 +36,7 @@ Balances change only through transactions. You cannot set a balance amount direc
 
 1. **Use the latest Blnk**
    - Target the **latest Blnk Core** release for new setups and upgrades. Check [Blnk Core changelog](https://docs.blnkfinance.com/changelog/blnk-core) and [Getting started](https://docs.blnkfinance.com/home/install) / [Deploy](https://docs.blnkfinance.com/home/deploy) for current images and tags. Prefer `latest` or the newest semver tag; do not pin an old Core without a written reason. On Blnk Cloud managed instances, Core upgrades are handled by Blnk; still confirm the instance is on a current release.
-   - Pair app clients with **current official SDKs** (load the `sdks` skill). Install/upgrade to the newest published package versions unless compatibility requires otherwise.
+   - Pair app clients with **current official SDKs** (load the `blnk-sdks` skill). Install/upgrade to the newest published package versions unless compatibility requires otherwise.
    - If the repo already runs an older Core or SDK, call that out and recommend upgrading before building new ledger paths. Note breaking changes via changelogs / migration guides (for example [0.15.0 migration](https://docs.blnkfinance.com/changelog/v15-migration) when relevant).
 
 2. **Confirm Core is reachable**
@@ -49,13 +49,13 @@ Balances change only through transactions. You cannot set a balance amount direc
    - Every request sends `X-blnk-key` (SDKs set this from the key you pass at init).
 
 4. **Wire the app**
-   - Load the `sdks` skill. Add the official SDK when the language has one (latest version).
+   - Load the `blnk-sdks` skill. Add the official SDK when the language has one (latest version).
    - Add env (never commit secrets): e.g. `BLNK_BASE_URL`, `BLNK_API_KEY` (scoped key).
    - Create a single shared client module (init once). No keys in source, no ad-hoc HTTP clients when an SDK exists.
 
 5. **Stop here for money movement**
    - Do not create ledgers, balances, or sample transfers as part of "setup" unless asked.
-   - Next: `ledger-architecture` (map) → `naming-patterns` → domain skills → implement via `sdks`.
+   - Next: `blnk-ledger-architecture` (map) → `blnk-naming-patterns` → domain skills → implement via `blnk-sdks`.
 
 ## Hard rules
 
@@ -63,9 +63,9 @@ Balances change only through transactions. You cannot set a balance amount direc
 - Setup and upgrades target **latest Blnk Core** and **current SDKs** unless the user documents a temporary pin.
 - Scoped keys in app code; master key only for key admin / local bootstrap.
 - Secrets in env or a secret manager, never in git.
-- One shared Blnk client; prefer SDKs (`sdks` skill).
-- Unique `reference` and consistent `precision` when you later post transactions (`precision` skill).
-- HTTP 2xx on a queued post is not `APPLIED` (`queueing`, `webhooks`).
+- One shared Blnk client; prefer SDKs (`blnk-sdks` skill).
+- Unique `reference` and consistent `precision` when you later post transactions (`blnk-precision` skill).
+- HTTP 2xx on a queued post is not `APPLIED` (`blnk-queueing`, `blnk-webhooks`).
 
 ## Before shipping
 
@@ -73,16 +73,19 @@ Open [references/production-readiness.md](references/production-readiness.md).
 
 ## Route to other skills
 
+On any Blnk task, prefer starting from the root `blnk` skill, then load the matching child skill below.
+
 | Need | Load skill |
 | :-- | :-- |
-| SDK / HTTP client usage | `sdks` |
-| Names, `@` indicators, references | `naming-patterns` |
-| Ledger layout / money map | `ledger-architecture` |
-| Queue vs `skip_queue` | `queueing` |
-| Holds / authorize-capture | `inflight` |
-| Applied transaction APIs | `transactions` |
-| FX / multi-currency convert | `fx` |
-| Webhook receivers | `webhooks` |
-| Watch rules, risk scores, Watch config | `watch` |
-| Uncertain / high-risk design | `support` |
-| Persist decisions in `.blnk_context/` | `documentation` |
+| Root entry / skill router | `blnk` |
+| SDK / HTTP client usage | `blnk-sdks` |
+| Names, `@` indicators, references | `blnk-naming-patterns` |
+| Ledger layout / money map | `blnk-ledger-architecture` |
+| Queue vs `skip_queue` | `blnk-queueing` |
+| Holds / authorize-capture | `blnk-inflight` |
+| Applied transaction APIs | `blnk-transactions` |
+| FX / multi-currency convert | `blnk-fx` |
+| Webhook receivers | `blnk-webhooks` |
+| Watch rules, risk scores, Watch config | `blnk-watch` |
+| Uncertain / high-risk design | `blnk-support` |
+| Persist decisions in `.blnk_context/` | `blnk-documentation` |

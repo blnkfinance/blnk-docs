@@ -1,5 +1,5 @@
 ---
-name: precision
+name: blnk-precision
 description: Encode and display Blnk amounts correctly with precise_amount and a single precision source of truth (prefer currency enums). Use when handling cents, zero-decimal currencies, available balance display, converting human amounts, or preventing precision drift across services.
 metadata:
   author: blnk
@@ -30,7 +30,7 @@ human $10.00  →  precise_amount: 1000, precision: 100
 | Field | Role |
 | :-- | :-- |
 | `precise_amount` | Integer in smallest units (recommended write path) |
-| `precision` | Scale factor (`human ≈ precise_amount / precision`) |
+| `blnk-precision` | Scale factor (`human ≈ precise_amount / precision`) |
 | `amount` | Float path Blnk can derive; avoid for app writes (15-digit limit, drift risk) |
 
 Balance fields are integers in minor units. Core does **not** return `precision` on balances. Your app must divide by the same precision used when posting.
@@ -42,7 +42,7 @@ Balance fields are integers in minor units. Core does **not** return `precision`
 3. Convert human ↔ precise only via helpers that read that table (never hardcode `precision: 100` at call sites).
 4. Post with `precise_amount` + `precision` from the table.
 5. Display balances with the same table. For holds, apply available-balance rules.
-6. For FX legs, also load the `fx` skill.
+6. For FX legs, also load the `blnk-fx` skill.
 
 ## Hard rules
 

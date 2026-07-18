@@ -25,7 +25,7 @@ If you cannot name the next step that needs immediacy → **do not** use sync.
 
 ## Mandatory application path
 
-1. **Unique deterministic `reference`** before the call (`naming-patterns`).
+1. **Unique deterministic `reference`** before the call (`blnk-naming-patterns`).
 2. Post with `skip_queue: true`.
 3. **Branch on the response** in the request path (success vs error). Drive the next step from that outcome.
 4. **Timeouts / ambiguous failures:** fail closed. Reconcile with get-by-reference. **Never** retry with a new reference.

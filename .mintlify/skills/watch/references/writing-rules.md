@@ -6,7 +6,7 @@ Docs: [Rule structure](https://docs.blnkfinance.com/watch/rules/rule-structure),
 
 ## Discover patterns first
 
-Do not draft rules from a one-line “add fraud checks” request. Investigate until you can list discrete **risk patterns**. Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Explore the codebase for existing `meta_data`, transaction descriptions, and money flows (`ledger-architecture` context if present).
+Do not draft rules from a one-line “add fraud checks” request. Investigate until you can list discrete **risk patterns**. Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume common defaults and confirm. Explore the codebase for existing `meta_data`, transaction descriptions, and money flows (`blnk-ledger-architecture` context if present).
 
 ### Pattern discovery topics
 

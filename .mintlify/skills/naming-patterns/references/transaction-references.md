@@ -21,7 +21,7 @@ Docs: [Get transaction by reference](https://docs.blnkfinance.com/reference/get-
 
 | Part | Role |
 | :-- | :-- |
-| `intent` | What kind of movement (`deposit`, `payout`, `fx`, `hold`) |
+| `intent` | What kind of movement (`deposit`, `payout`, `blnk-fx`, `hold`) |
 | `stable_id` | Business or provider id that will not change on retry |
 | `leg_or_qualifier` | Optional: currency leg, fee leg, commit step, migration tag |
 
@@ -76,7 +76,7 @@ Build the reference from **stable inputs you already trust** (order id, payment 
 
 ### Multi-leg and multi-day flows
 
-When FX or settlement uses separate transactions (see the `fx` skill), keep a shared business stem and vary only the leg:
+When FX or settlement uses separate transactions (see the `blnk-fx` skill), keep a shared business stem and vary only the leg:
 
 ```text
 fx_ord_a91c2e3f_usd

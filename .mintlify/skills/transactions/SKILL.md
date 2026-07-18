@@ -1,6 +1,6 @@
 ---
-name: transactions
-description: Post and manage applied Blnk transactions—overdraft policy, bulk vs multi-source/destination, scheduling vs cron, backdating, refunds, and lifecycle. Use when creating or updating applied transfers. For holds load inflight; for skip_queue load queueing; for amounts load precision; for cross-currency load fx; for contention load queueing hot-balances.
+name: blnk-transactions
+description: Post and manage applied Blnk transactions—overdraft policy, bulk vs multi-source/destination, scheduling vs cron, backdating, refunds, and lifecycle. Use when creating or updating applied transfers. For holds load blnk-inflight; for skip_queue load blnk-queueing; for amounts load blnk-precision; for cross-currency load blnk-fx; for contention load blnk-queueing hot-balances.
 metadata:
   author: blnk
   version: "0.2"
@@ -8,17 +8,17 @@ metadata:
 
 # Transactions
 
-Post and manage **applied** money movements. This skill decides *how* to shape and time each post, not the product money map (`ledger-architecture`) or sync vs async (`queueing`).
+Post and manage **applied** money movements. This skill decides *how* to shape and time each post, not the product money map (`blnk-ledger-architecture`) or sync vs async (`blnk-queueing`).
 
 | Concern | Load instead |
 | :-- | :-- |
-| Holds / commit / void | `inflight` |
-| `skip_queue` per step | `queueing` |
-| Amount encoding | `precision` |
-| Cross-currency legs | `fx` |
-| Hot balance contention | `queueing` → [references/hot-balances.md](../queueing/references/hot-balances.md) |
+| Holds / commit / void | `blnk-inflight` |
+| `skip_queue` per step | `blnk-queueing` |
+| Amount encoding | `blnk-precision` |
+| Cross-currency legs | `blnk-fx` |
+| Hot balance contention | `blnk-queueing` → [references/hot-balances.md](../queueing/references/hot-balances.md) |
 
-Prefer Blnk SDKs (`sdks` skill). Unique deterministic `reference` (`naming-patterns`).
+Prefer Blnk SDKs (`blnk-sdks` skill). Unique deterministic `reference` (`blnk-naming-patterns`).
 
 ## Quick start
 
@@ -38,7 +38,7 @@ Before shipping a post, run the decision checklist below.
 
 ## Decision checklist (every post)
 
-1. **Queue** → `queueing` skill (per step).
+1. **Queue** → `blnk-queueing` skill (per step).
 2. **Overdraft** → [references/overdraft.md](references/overdraft.md).
 3. **One split event vs many posts** → [references/bulk-vs-multi.md](references/bulk-vs-multi.md).
 4. **When it should hit the ledger** → [references/timing.md](references/timing.md) (`scheduled_for` vs app cron vs `effective_date`).

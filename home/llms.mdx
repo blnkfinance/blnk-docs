@@ -1,0 +1,150 @@
+---
+title: "Build with LLMs"
+sidebarTitle: "LLM"
+icon: "bot"
+description: "Install Skills and connect the Docs MCP so your LLM gets guided, up-to-date help while you build on Blnk Core."
+"og:title": "Build with LLMs • Blnk Developer Documentation"
+"og:description": "Install Skills and connect the Docs MCP so your LLM gets guided, up-to-date help while you build on Blnk Core."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { CtaCallout } from "/snippets/cta-callout.jsx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use an LLM with **Skills** and the **Docs MCP** so it builds Blnk the recommended way and can search these Docs while you work. That keeps implementation grounded in current best practices and the live guides instead of outdated training data.
+
+1. Start with Skills (how to build and implement on Blnk).
+2. Then connect the Docs MCP (lookup against the live Docs).
+
+<CtaCallout
+  title="Get dedicated Pro Support"
+  href="https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Fllms"
+  buttonLabel="Get Pro Support"
+  trackingEvent="clicked_pro_support"
+>
+  Pair your LLM with expert guidance so you implement Blnk the right way for your product, with confidence in the architecture and money flows you ship.
+</CtaCallout>
+
+---
+
+## Installing Skills
+
+Skills teach your LLM how to design and implement Blnk using recommended best practices. Install them first so the LLM follows Blnk guidance instead of improvising.
+
+<Steps>
+<Step title="Add Skills">
+From your project (or any directory where you use the LLM), run:
+
+```bash wrap
+npx skills add https://docs.blnkfinance.com
+```
+
+The CLI detects tools such as Cursor and Claude Code, and installs the skills for you. Confirm when prompted if you want them on more than one tool.
+</Step>
+
+<Step title="Confirm they loaded">
+Ask your LLM to use the `blnk` skill. That is the root entry point; it routes to the other Blnk skills for architecture, money movement, and implementation.
+</Step>
+</Steps>
+
+---
+
+## Installing the Docs MCP
+
+Connect the Docs MCP so your LLM can search and read these Docs while it builds with Skills.
+
+The Docs MCP is available at:
+
+```
+https://docs.blnkfinance.com/mcp
+```
+
+<Steps>
+<Step title="Add the Docs MCP">
+Connect the Docs MCP in your LLM tool:
+
+<Tabs>
+<Tab title="Cursor">
+1. Open the command palette with `Command + Shift + P` (or `Ctrl + Shift + P` on Windows).
+2. Search for `Open MCP settings`.
+3. Click **Add custom MCP**. This opens your `mcp.json` file.
+4. Add the Docs MCP server:
+
+```json wrap
+{
+  "mcpServers": {
+    "blnk-docs": {
+      "url": "https://docs.blnkfinance.com/mcp"
+    }
+  }
+}
+```
+
+5. Save the file, then ask Cursor what MCP tools it has available. You should see the Docs MCP tools listed.
+</Tab>
+
+<Tab title="Claude Code">
+Run:
+
+```bash wrap
+claude mcp add --transport http blnk-docs https://docs.blnkfinance.com/mcp
+```
+
+Confirm the server is connected:
+
+```bash wrap
+claude mcp list
+```
+</Tab>
+
+<Tab title="VS Code">
+1. Create a `.vscode/mcp.json` file in your project (or edit an existing one).
+2. Add the Docs MCP server:
+
+```json wrap
+{
+  "servers": {
+    "blnk-docs": {
+      "type": "http",
+      "url": "https://docs.blnkfinance.com/mcp"
+    }
+  }
+}
+```
+</Tab>
+
+<Tab title="Claude">
+1. Open **Settings → Connectors**.
+2. Click **Add custom connector**.
+3. Set the name to `Docs MCP` and the URL to `https://docs.blnkfinance.com/mcp`.
+4. Click **Add**.
+5. In a chat, use the attachments control and select the Docs MCP connector when you want Docs-backed answers.
+</Tab>
+</Tabs>
+
+<Tip>
+You can also install with `npx add-mcp https://docs.blnkfinance.com/mcp` if your LLM tool supports that flow.
+</Tip>
+</Step>
+
+<Step title="Direct your LLM to use it">
+Add this instruction to your project rules so the LLM reaches for the Docs MCP on every Blnk task:
+
+```text Project instructions wrap
+When working with Blnk, use the Docs MCP to search and read the official Docs before suggesting architecture, API calls, or code. Prefer Docs over prior knowledge.
+```
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Cloud MCP", href: "/cloud/integrations/mcp" },
+    { title: "Quick start", href: "/home/install" },
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "SDKs", href: "/home/sdks" },
+  ]}
+/>
