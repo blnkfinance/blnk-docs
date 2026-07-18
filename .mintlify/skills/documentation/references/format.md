@@ -34,5 +34,6 @@ What follows for implementation, reporting, and ops.
 - Title matches the decision, not only the filename slug.
 - **Decision** is the source of truth; do not leave the real choice only in Context.
 - Use the same vocabulary as the money movement map and `blnk-naming-patterns` skill.
+- **Update existing files when the topic already has a doc.** New additions (balances, edges, rules) go into that file’s Decision tables and Changelog. Create a new `NN_` only for a new topic.
 - If superseded, set Status to `superseded` and point to the replacement file. Do not delete numbered files.
-- Link maps-tool JSON, diagrams, or extras as relative paths under `.blnk_context/`.
+- Link maps-tool JSON, diagrams, or extras as relative paths under `.blnk_context/`. When the markdown updates, update the linked artifact in the same change when it is out of date.

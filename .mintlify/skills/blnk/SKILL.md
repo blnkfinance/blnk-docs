@@ -1,6 +1,6 @@
 ---
 name: blnk
-description: Root skill for building and implementing on Blnk with recommended best practices. Use whenever the user is designing, integrating, or coding against Blnk Core, Watch, SDKs, or money movement. Load this skill first, then load the child skills it routes to.
+description: Root skill for building and implementing on Blnk with recommended best practices. Use whenever the user is designing, integrating, or coding against Blnk Core, Watch, SDKs, or money movement. Load this skill first, then load the child skills it routes to. For a full spec-to-running-app flow, load blnk-implementation.
 metadata:
   author: blnk
   version: "0.1"
@@ -25,12 +25,15 @@ Asking the user: follow [how-to-ask.md](../documentation/references/how-to-ask.m
 5. Persist decisions → `blnk-documentation` (`.blnk_context/`)
 6. If design stays ambiguous or high-risk → `blnk-support`
 
+When the user drops a **product/POC spec** and wants map + runnable code + tests without writing the integration themselves, load `blnk-implementation` (it runs this order end-to-end).
+
 Do not invent ledgers, balances, or sample transfers before the map and architecture exist unless the user explicitly asks for a throwaway demo.
 
 ## Route to child skills
 
 | Need | Load skill |
 | :-- | :-- |
+| Spec → map → code → tests → verified run | `blnk-implementation` |
 | App wiring, auth, secrets, production readiness | `blnk-core` |
 | Official SDK / HTTP client usage | `blnk-sdks` |
 | Money movement map and ledger layout | `blnk-ledger-architecture` |

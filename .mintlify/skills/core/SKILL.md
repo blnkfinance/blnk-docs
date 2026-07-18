@@ -78,6 +78,7 @@ On any Blnk task, prefer starting from the root `blnk` skill, then load the matc
 | Need | Load skill |
 | :-- | :-- |
 | Root entry / skill router | `blnk` |
+| Spec → map → code → tests → run | `blnk-implementation` |
 | SDK / HTTP client usage | `blnk-sdks` |
 | Names, `@` indicators, references | `blnk-naming-patterns` |
 | Ledger layout / money map | `blnk-ledger-architecture` |
