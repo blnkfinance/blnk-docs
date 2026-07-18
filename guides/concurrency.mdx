@@ -24,10 +24,17 @@ This guide explains the main mechanisms Blnk uses to handle concurrent transacti
 
 Queueing means a transaction is first recorded as work to be processed, instead of being applied to the ledger immediately in the same request.
 
-**Here is how it works:** Blnk first saves the transaction in a `QUEUED` state. After that, a worker picks it up and applies it to the ledger. Transactions that affect the same balance are routed in a way that reduces them clashing with each other, while transactions for unrelated balances can still move in parallel.
+**Here is how it works:**
+
+1. Blnk saves the transaction in a `QUEUED` state and returns that status to the caller.
+2. It then enqueues the work onto one of several **queue shards**. Blnk hashes the source balance ID and maps it to a shard (`new:transaction_1` … `new:transaction_N`). The shard count is controlled by `BLNK_QUEUE_NUMBER_OF_QUEUES` (default `20`).
+3. Workers pull from those shards in parallel. Transactions that share a source tend to land on the same shard, which reduces contention before locks run. Unrelated sources spread across shards and process concurrently.
+4. When a worker picks up the job, it acquires the balance locks, applies the update, and moves the transaction out of `QUEUED`.
+
+Queue sharding lowers the chance of unrelated traffic colliding in the same worker lane. It does not replace locking: if many transactions still hit the same balances, Blnk uses the other safeguards below (and, for hot sinks or pairs, strategies in [Handling hot balances](/guides/hot-balances)).
 
 <Check>
-By default, Blnk uses the queue when receiving a transaction request. Learn more: [Transaction lifecycle](/transactions/transaction-lifecycle)
+By default, Blnk uses the queue when receiving a transaction request. Learn more: [Transaction lifecycle](/transactions/transaction-lifecycle) · [Queue configuration](/advanced/configuration/queue)
 </Check>
 
 ### Skipping the queue

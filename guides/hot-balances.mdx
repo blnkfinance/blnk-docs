@@ -50,7 +50,7 @@ Consider a deposit workflow involving one internal source balance concurrently f
 
 **With Coalescing**, Blnk identifies the queued transactions based on if they share the same `source`, `destination`, and `currency`, batches them in-memory, and applies them in a single commit. 
 
-This reduces the number of balance lookups and commits required, improving throughput and performance overall.
+This reduces the number of balance lookups, locks and commits required, improving throughput and performance overall.
 
 <Check> **Please note:** Coalescing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
 
@@ -134,13 +134,11 @@ At higher load, this is the strategy that turns one bottleneck into many paralle
 If you use the default queue, raise queue capacity and worker concurrency gradually as load grows:
 
 ```bash .env
-BLNK_QUEUE_NUMBER_OF_QUEUES=20
 BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=4
 ```
 
 | Settings | Description |
 | :-- | :-- |
-| `BLNK_QUEUE_NUMBER_OF_QUEUES` | Number of transaction queue shards. Increase when sharded traffic needs more parallel lanes. |
 | `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` | Worker concurrency for normal transaction queues. Raise gradually once sharding spreads work across shards. |
 
 For full queue settings, see [queue configuration](/advanced/configuration/queue).
