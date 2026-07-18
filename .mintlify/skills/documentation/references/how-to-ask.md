@@ -17,7 +17,8 @@ Examples of safe assume-and-confirm defaults (adjust when the product clearly di
 
 | Topic | Reasonable default to propose |
 | :-- | :-- |
-| Core hosting (staging/prod) | Blnk Cloud managed, unless they already self-host or cannot use Cloud |
+| Core hosting (POC / staging) | Blnk Cloud **sandbox** (managed) unless they already self-host or cannot use Cloud |
+| Core hosting (production) | Blnk Cloud managed production, unless they already self-host or cannot use Cloud |
 | Org `@` balances | Live in the General Ledger |
 | Watch deployment | Cloud + embedded Watch, Git-backed `.ws` rules |
 | Watch alert threshold | `0.5`, aligned with the review / soft-signal band in their rubric |

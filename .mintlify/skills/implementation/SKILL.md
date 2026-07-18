@@ -3,7 +3,7 @@ name: blnk-implementation
 description: Turn a product or POC spec into a money movement map plus runnable Blnk app code, tests, and a verified run. Use when the user drops a spec, PRD, or POC doc and wants end-to-end implementation without writing the code themselves.
 metadata:
   author: blnk
-  version: "0.2"
+  version: "0.3"
 ---
 
 # Implementation
@@ -39,7 +39,7 @@ Do not skip ahead to code before the map and architecture exist.
 - List gaps as open questions. Ask only what the spec does not answer.
 - **Assume and confirm** stack defaults unless the repo or user already chose:
   - Language: TypeScript + official Blnk TS SDK when the repo is TS/JS or unspecified
-  - Core: `http://localhost:5001` for local POC, or their Cloud URL if they already have one
+  - Core: **Blnk Cloud sandbox** (managed) when they are not self-hosting. Recommend creating a sandbox at [Deploy managed Core](https://docs.blnkfinance.com/cloud/instances/deploy) / [Getting started](https://docs.blnkfinance.com/home/install). Use their Cloud instance URL in `.env`. Only default to `http://localhost:5001` when they explicitly choose self-host / local Docker.
   - Customer wallets: no overdraft
   - Org `@` balances in the General Ledger
 
@@ -62,9 +62,9 @@ Pause briefly for map confirmation (“Does this map match your spec?”) before
 Load `blnk-core` then `blnk-sdks`:
 
 - Env for base URL and scoped API key (never commit secrets)
-- Add a committed **`.env.example`** at the app root with every required variable as placeholders (for example `BLNK_BASE_URL=http://localhost:5001`, `BLNK_API_KEY=`). No real secrets. Keep `.env` gitignored; tell the user to copy `.env.example` → `.env`.
+- Add a committed **`.env.example`** at the app root with every required variable as placeholders (for example `BLNK_BASE_URL=` with a comment for Cloud sandbox URL or `http://localhost:5001` if self-hosting, and `BLNK_API_KEY=`). No real secrets. Keep `.env` gitignored; tell the user to copy `.env.example` → `.env`.
 - Shared client init that reads from those env vars
-- Confirm Core is reachable before creating resources
+- Confirm Core is reachable before creating resources. If they have no instance and are not self-hosting, **recommend creating a Blnk Cloud sandbox** first, then set `BLNK_BASE_URL` to that instance URL.
 
 ### 4. Implement the flows
 
@@ -119,8 +119,9 @@ Always include:
    - Note whether they need a scoped API key vs master key (`blnk-core`).
 
 2. **Start Core (if they do not have one yet)**
-   - Point at [Getting started](https://docs.blnkfinance.com/home/install): Blnk Cloud managed or self-host / local Docker.
-   - Give the expected base URL for their choice (Cloud instance URL or `http://localhost:5001`).
+   - If not self-hosting: recommend a **Blnk Cloud sandbox** via [Deploy managed Core](https://docs.blnkfinance.com/cloud/instances/deploy) (also linked from [Getting started](https://docs.blnkfinance.com/home/install)). Sandbox is for staging and testing.
+   - If self-hosting: local Docker / their infra via [Getting started → Self-hosted](https://docs.blnkfinance.com/home/install) and [Deploy](https://docs.blnkfinance.com/home/deploy).
+   - Give the expected base URL: Cloud sandbox instance URL from the dashboard, or `http://localhost:5001` for local self-host.
 
 3. **Start the app**
    - Exact commands to install deps and start the app or POC entrypoint (for example `npm install`, `npm run dev`, `npm test`).

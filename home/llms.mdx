@@ -11,7 +11,9 @@ import NeedHelp from "/snippets/need-help.mdx";
 import { CtaCallout } from "/snippets/cta-callout.jsx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-**Skills** teach your LLM how to work with these Docs and build on Blnk the recommended way: money movement map first, then architecture, then code and tests. Install them so the LLM follows Blnk guidance instead of improvising from training data.
+Use AI to integrate Blnk into your product. 
+
+Install **Skills** so your coding agents design money movement, architecture, and code the recommended way instead of improvising or guessing.
 
 <CtaCallout
   title="Get dedicated Pro Support"
@@ -19,7 +21,7 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
   buttonLabel="Get Pro Support"
   trackingEvent="clicked_pro_support"
 >
-  Pair your LLM with expert guidance so you implement Blnk the right way for your product, with confidence in the architecture and money flows you ship.
+  Pair your coding agent with expert guidance so you implement Blnk the right way for your product, with confidence in the architecture and money flows you ship.
 </CtaCallout>
 
 ---
@@ -38,74 +40,15 @@ The CLI detects tools such as Cursor and Claude Code, and installs the skills fo
 </Step>
 
 <Step title="Confirm they loaded">
-Ask your LLM to use the `blnk` skill. That is the root entry point; it routes to the other Blnk skills for architecture, money movement, and implementation.
+To use the skill, start with `/blnk` and ask any question. That is the root entry point; it routes to the other Blnk skills for architecture, money movement, and implementation.
 </Step>
 
 <Step title="Connect the Docs MCP">
-To improve the LLM's knowledge base with live Docs lookup, connect the [Blnk Docs MCP](https://docs.blnkfinance.com/mcp):
+To improve the LLM's knowledge base with live Docs lookup, connect the Docs MCP in your LLM tool:
 
-<Tabs>
-<Tab title="Cursor">
-1. Open the command palette with `Command + Shift + P` (or `Ctrl + Shift + P` on Windows).
-2. Search for `Open MCP settings`.
-3. Click **Add custom MCP**. This opens your `mcp.json` file.
-4. Add the Docs MCP server:
-
-```json wrap
-{
-  "mcpServers": {
-    "blnk-docs": {
-      "url": "https://docs.blnkfinance.com/mcp"
-    }
-  }
-}
 ```
-
-5. Save the file, then ask Cursor what MCP tools it has available. You should see the Docs MCP tools listed.
-</Tab>
-
-<Tab title="Claude Code">
-Run:
-
-```bash wrap
-claude mcp add --transport http blnk-docs https://docs.blnkfinance.com/mcp
+https://docs.blnkfinance.com/mcp
 ```
-
-Confirm the server is connected:
-
-```bash wrap
-claude mcp list
-```
-</Tab>
-
-<Tab title="VS Code">
-1. Create a `.vscode/mcp.json` file in your project (or edit an existing one).
-2. Add the Docs MCP server:
-
-```json wrap
-{
-  "servers": {
-    "blnk-docs": {
-      "type": "http",
-      "url": "https://docs.blnkfinance.com/mcp"
-    }
-  }
-}
-```
-</Tab>
-
-<Tab title="Claude">
-1. Open **Settings → Connectors**.
-2. Click **Add custom connector**.
-3. Set the name to `Docs MCP` and the URL to `https://docs.blnkfinance.com/mcp`.
-4. Click **Add**.
-5. In a chat, use the attachments control and select the Docs MCP connector when you want Docs-backed answers.
-</Tab>
-</Tabs>
-
-<Tip>
-You can also install with `npx add-mcp https://docs.blnkfinance.com/mcp` if your LLM tool supports that flow.
-</Tip>
 </Step>
 </Steps>
 
@@ -113,7 +56,7 @@ You can also install with `npx add-mcp https://docs.blnkfinance.com/mcp` if your
 
 ## Try it: build a wallet product
 
-Once Skills are installed, you do not need a special ritual. Open a chat in your project and describe what you are building in plain language, the same way you would brief a teammate.
+To give it a try, open a chat in your project and describe what you are building in plain language, the same way you would brief a teammate.
 
 Say you are adding customer wallets: people deposit from a bank, hold a USD balance, and can send money to each other.
 
@@ -129,34 +72,47 @@ We're adding customer USD wallets.
 - They can transfer money to another customer
 - No overdraft
 
-Use the Blnk skills. Design the money movement first, then help me implement it.
+Design the money movement first, then help me implement it.
+
+/blnk
 ```
 
-You do not need to name ledgers, balances, or API fields yourself. The Skills steer the LLM to map the money first.
+You do not need to name ledgers, balances, or API fields yourself.
 </Step>
 
 <Step title="Answer a few plain questions">
-The LLM should ask short, product-level questions (for example who owns the funds before a deposit clears, or whether transfers are instant). Answer in normal language. Confirm defaults when they sound right.
+The LLM should ask short, product-level questions (for example who owns the funds before a deposit clears, or whether transfers are instant). 
+
+Answer as best as you can. Confirm defaults when they sound right.
 </Step>
 
 <Step title="Review the money map">
-It should propose a money movement map and ledger layout before writing integration code. When it gives you maps-tool JSON, import it at [map.blnkfinance.com](https://map.blnkfinance.com) so you can see the flow. Correct anything that does not match your product, then tell it to continue.
+Before any integration code, the LLM should give you a money movement map and ledger layout. To view it:
+
+1. Go to [map.blnkfinance.com](https://map.blnkfinance.com).
+2. Click **Menu → Import**.
+3. Paste the maps-tool JSON and load it.
+
+If something does not match your product, say so in chat and wait for an updated map. When it looks right, tell the LLM to continue.
 </Step>
 
 <Step title="Ask it to implement">
 When the map looks right, keep going in the same chat:
 
 ```text wrap
-That map looks right. Implement it in this repo with the TypeScript SDK against local Core, add happy-path tests, and save the decisions in .blnk_context/.
+That map looks right. Implement it in this repo with the TypeScript SDK.
+Use a Blnk Cloud sandbox for Core unless we are self-hosting.
 ```
+</Step>
 
-You review the PR-style output the same way you would review a teammate's work.
+<Step title="Ask follow-ups as you go">
+Stuck mid-build? Ask a normal follow-up in the same chat.
+
+```text wrap
+How should we hold a deposit until the bank confirms?
+```
 </Step>
 </Steps>
-
-<Tip>
-Stuck mid-build? Ask a normal follow-up: "How should we hold a deposit until the bank confirms?" or "Show me the create-transaction call for the P2P transfer." Skills stay in play for those questions too.
-</Tip>
 
 ---
 
