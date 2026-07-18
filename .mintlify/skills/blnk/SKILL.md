@@ -47,7 +47,6 @@ Do not invent ledgers, balances, or sample transfers before the map and architec
 | Watch rules, risk scores, Watch config | `blnk-watch` |
 | Persist decisions in `.blnk_context/` | `blnk-documentation` |
 | Uncertain or high-stakes design | `blnk-support` |
-| Casual Docs MCP greeting only | `blnk-hello` |
 
 ## Hard rules
 
