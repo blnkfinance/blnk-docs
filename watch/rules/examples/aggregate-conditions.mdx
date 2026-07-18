@@ -13,6 +13,8 @@ These examples look at patterns over a rolling window instead of only the curren
 
 They are useful for detecting bursts, velocity spikes, repeated amounts, or cumulative exposure that a single transaction would not reveal.
 
+Use `when` inside aggregate filters (not `where`). See [Setting conditions](/watch/rules/setting-conditions#aggregate-operators) for the full syntax, including `avg`, `max`, and `min`.
+
 ### Destination high inflow
 
 This rule reviews a destination that has received more than a threshold amount in the last 24 hours. It is a straightforward inflow monitoring pattern for merchants, wallets, or payout endpoints.
@@ -21,7 +23,7 @@ This rule reviews a destination that has received more than a threshold amount i
 rule DestinationHighInflow {
   description "Flags destinations with high inflow over the last 24 hours."
 
-  when sum(amount where destination == $current.destination, "PT24H") > 100
+  when sum(amount when destination == $current.destination, "PT24H") > 100
 
   then review
        score   0.5
@@ -37,7 +39,7 @@ This rule reviews a source account when its total sent amount in the last hour c
 rule HighAmountVelocitySource {
   description "Flags high-velocity spending from a single source over one hour."
 
-  when sum(amount where source == $current.source, "PT1H") > 3000
+  when sum(amount when source == $current.source, "PT1H") > 3000
 
   then review
        score   0.7
@@ -53,12 +55,60 @@ This rule reviews repeat traffic to the same destination when the count becomes 
 rule HighFrequencyDestination {
   description "Flags unusually frequent payments to the same destination."
 
-  when count(destination == $current.destination, "PT24H") > 10
+  when count(when destination == $current.destination, "PT24H") > 10
    and amount > 100
 
   then review
        score   0.5
        reason  "High transaction frequency to the same destination in 24 hours"
+}
+```
+
+### Average amount source
+
+This rule reviews a source when its average transaction amount over a short window is unusually high. Use `avg` when the mean value matters more than the total.
+
+```bash AverageAmountSource.ws
+rule AverageAmountSource {
+  description "Flags sources whose average amount spikes over 30 seconds."
+
+  when avg(amount when source == $current.source, "PT30S") > 2000
+
+  then review
+       score   0.6
+       reason  "Average amount from the source is unusually high"
+}
+```
+
+### Max amount source
+
+This rule reviews a source when any single related amount in the window exceeds a ceiling. Use `max` for peak-value checks without summing everything.
+
+```bash MaxAmountSource.ws
+rule MaxAmountSource {
+  description "Flags sources that send a peak amount above the threshold in 10 minutes."
+
+  when max(amount when source == $current.source, "PT10M") > 10000
+
+  then review
+       score   0.7
+       reason  "Peak amount from the source exceeds the threshold"
+}
+```
+
+### Min amount destination
+
+This rule reviews a destination when the smallest related amount in the window falls below a floor. Use `min` for unusually small transfers into an endpoint that normally sees larger values.
+
+```bash MinAmountDestination.ws
+rule MinAmountDestination {
+  description "Flags destinations whose minimum amount in one hour is below the floor."
+
+  when min(amount when destination == $current.destination, "PT1H") < 2000
+
+  then review
+       score   0.4
+       reason  "Minimum amount to the destination is below the expected floor"
 }
 ```
 
@@ -71,7 +121,7 @@ rule LowKycDailyTotal {
   description "Flags low-tier KYC customers that exceed a 24-hour total threshold."
 
   when metadata.kyc_tier == 1
-   and sum(amount where source == $current.source, "PT24H") > 5000
+   and sum(amount when source == $current.source, "PT24H") > 5000
 
   then review
        score   0.5
@@ -88,7 +138,7 @@ rule RapidSmallBurst {
   description "Flags bursts of small transactions from the same source."
 
   when amount < 500
-   and count(source == $current.source, "PT30M") >= 5
+   and count(when source == $current.source, "PT30M") >= 5
 
   then review
        score   0.65
@@ -104,7 +154,7 @@ This rule reviews transactions when the same amount repeats several times within
 rule RepeatedIdenticalAmount {
   description "Flags repeated transactions with the same amount within one hour."
 
-  when count(amount == $current.amount, "PT1H") > 2
+  when count(when amount == $current.amount, "PT1H") > 2
 
   then review
        score   0.6
@@ -120,8 +170,8 @@ This rule reviews a source when both the transaction count and the repeated amou
 rule RepeatedIdenticalAmount2 {
   description "Flags repeated identical-amount activity from the same source over seven days."
 
-  when count(source == $current.source, "P7D") >= 3
-   and count(amount == $current.amount, "P7D") >= 3
+  when count(when source == $current.source, "P7D") >= 3
+   and count(when amount == $current.amount, "P7D") >= 3
 
   then review
        score   0.55
@@ -137,7 +187,7 @@ This rule reviews a source account once its total outflow in the last 24 hours b
 rule SourceHighOutflow {
   description "Flags sources with high cumulative outflow over 24 hours."
 
-  when sum(amount where source == $current.source, "PT24H") > 5000
+  when sum(amount when source == $current.source, "PT24H") > 5000
 
   then review
        score   0.5

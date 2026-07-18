@@ -55,7 +55,7 @@ Cloud license env (see [Cloud Watch config](https://docs.blnkfinance.com/cloud/l
 | :-- | :-- | :-- |
 | `WATCH_SCRIPT_GIT_REPO` | Git URL containing `.ws` rules | unset |
 | `WATCH_SCRIPT_GIT_BRANCH` | Branch to track | `main` |
-| `WATCH_SCRIPT_GIT_USERNAME` | HTTPS clone username for private repos | `git` (often) |
+| `WATCH_SCRIPT_GIT_USERNAME` | HTTPS clone username for private repos | `x-access-token` |
 | `WATCH_SCRIPT_GIT_TOKEN` | PAT/password for private repos | unset (secret) |
 
 Also valid on any Watch: `WATCH_SCRIPT_DIR` (local dir / clone target; default `watch_scripts`).
@@ -167,7 +167,7 @@ Open questions:
 ```bash
 WATCH_SCRIPT_GIT_REPO=https://github.com/your-org/watch-rules.git
 WATCH_SCRIPT_GIT_BRANCH=main
-WATCH_SCRIPT_GIT_USERNAME=git
+WATCH_SCRIPT_GIT_USERNAME=x-access-token
 WATCH_SCRIPT_GIT_TOKEN=REPLACE_ME
 
 ALERT_WEBHOOK_ENABLED=true
