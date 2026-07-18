@@ -21,9 +21,10 @@ When this skill finishes, the user should have:
 1. A money movement map (maps-tool JSON) and chat guidance to import it at [map.blnkfinance.com](https://map.blnkfinance.com)
 2. `.blnk_context/` decision docs for the map and ledger architecture
 3. App code that creates ledgers/balances and posts the mapped flows via official SDKs
-4. Automated tests for the happy path (and key failure paths from the spec)
-5. A verified local (or agreed) run against a reachable Core
-6. A closing handoff: env vars to set, how to start Core and the app, how to run tests, and where the map / `.blnk_context/` live
+4. A committed `.env.example` with the env vars the app needs (placeholders only)
+5. Automated tests for the happy path (and key failure paths from the spec)
+6. A verified local (or agreed) run against a reachable Core
+7. A closing handoff: copy `.env.example` → `.env`, how to start Core and the app, how to run tests, and where the map / `.blnk_context/` live
 
 They should not have to write the Blnk integration code themselves.
 
@@ -61,7 +62,8 @@ Pause briefly for map confirmation (“Does this map match your spec?”) before
 Load `blnk-core` then `blnk-sdks`:
 
 - Env for base URL and scoped API key (never commit secrets)
-- Shared client init
+- Add a committed **`.env.example`** at the app root with every required variable as placeholders (for example `BLNK_BASE_URL=http://localhost:5001`, `BLNK_API_KEY=`). No real secrets. Keep `.env` gitignored; tell the user to copy `.env.example` → `.env`.
+- Shared client init that reads from those env vars
 - Confirm Core is reachable before creating resources
 
 ### 4. Implement the flows
@@ -111,8 +113,9 @@ End the chat with a **clear checklist of user actions**, not only what you built
 Always include:
 
 1. **Env vars to add**
+   - Point at the committed `.env.example` and tell them to copy it to `.env` (or their secret store).
    - List every required variable (for example `BLNK_BASE_URL`, `BLNK_API_KEY`) and optional ones.
-   - Say where to put them (`.env`, secret manager, hosting dashboard). Never paste real secrets; use placeholders.
+   - Never paste real secrets; keep placeholders only in `.env.example` and chat.
    - Note whether they need a scoped API key vs master key (`blnk-core`).
 
 2. **Start Core (if they do not have one yet)**
@@ -142,11 +145,11 @@ Do not end on “done” alone. The last section of your reply must be this hand
 - [ ] Spec ingested; assumptions confirmed
 - [ ] Maps-tool JSON emitted; user told to import at map.blnkfinance.com
 - [ ] `.blnk_context/` map + architecture docs written
-- [ ] App wired (`blnk-core` + `blnk-sdks`)
+- [ ] App wired (`blnk-core` + `blnk-sdks`), including committed `.env.example`
 - [ ] Mapped flows implemented in code
 - [ ] Tests written and run
 - [ ] Happy path verified against Core
-- [ ] Handoff checklist delivered: env vars, start Core, start app, run tests, map import
+- [ ] Handoff checklist delivered: copy `.env.example`, start Core, start app, run tests, map import
 
 ## Hard rules
 
@@ -154,7 +157,7 @@ Do not end on “done” alone. The last section of your reply must be this hand
 2. **Spec is source of truth.** Do not expand scope beyond the spec without asking.
 3. **User writes answers, not Blnk code.** You own implementation, tests, and the run.
 4. **Official SDKs** for supported languages and endpoints (`blnk-sdks`).
-5. **Secrets stay in env.** Never commit API keys.
+5. **Secrets stay in env.** Never commit API keys. Do commit `.env.example` with placeholders; keep real `.env` out of git.
 6. Queued create success is not `APPLIED` (`blnk-queueing`, `blnk-webhooks`).
 7. Escalation: load `blnk-support` when design stays contested or high-risk.
 8. **Finish with a user handoff.** Env vars, how to start Core and the app, and how to run tests are mandatory closing content.
@@ -166,4 +169,4 @@ Do not end on “done” alone. The last section of your reply must be this hand
 - Shipping code with no tests or no verified run
 - Inventing FX, Watch, or refunds the spec did not ask for
 - Treating the map as optional documentation instead of the implementation blueprint
-- Ending without telling the user which env vars to set or how to start the app
+- Ending without a `.env.example`, without telling the user which env vars to set, or how to start the app

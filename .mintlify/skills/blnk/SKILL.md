@@ -12,9 +12,19 @@ Root skill for **building and implementing on Blnk**. Load this first on any Bln
 
 Teach the agent to follow Blnk recommended best practices: design money movement before posting, use official SDKs, keep amounts and references consistent, choose sync vs async deliberately, and escalate uncertain high-stakes design to Support instead of inventing ledger topology.
 
-Prefer the **Docs MCP** for live Docs lookup. Prefer these Skills for how to design and implement.
+Prefer these Skills for how to design and implement. Prefer live Docs over prior knowledge when looking up examples, API details, or current guidance.
 
 Asking the user: follow [how-to-ask.md](../documentation/references/how-to-ask.md) (plain language, assume-and-confirm, one cluster at a time).
+
+## Docs lookup
+
+When you need Docs content, try sources in this order and stop when you have what you need:
+
+1. **Blnk Docs MCP** (`https://docs.blnkfinance.com/mcp`) if it is connected
+2. **[llms-full.txt](https://docs.blnkfinance.com/llms-full.txt)**
+3. **[docs.blnkfinance.com](https://docs.blnkfinance.com)**
+
+Do not invent endpoints, fields, or examples when a lookup source can answer.
 
 ## Default build order
 
