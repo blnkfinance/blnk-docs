@@ -60,7 +60,7 @@ When writing a common decision type, use the matching template (then save as `NN
 
 Shared format: [references/format.md](references/format.md).
 
-Other topics (precision, queueing, inflight, fx, naming internals, …) use the same format with a fitting slug. No special template required.
+Other topics (precision, queueing, inflight, fx, naming internals, watch rules / risk rubric / Watch config, …) use the same format with a fitting slug. No special template required. Typical Watch slugs from the `watch` skill: `watch-rules`, `watch-risk-rubric`, `watch-configuration`.
 
 ## Workflow
 

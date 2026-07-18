@@ -81,5 +81,6 @@ Open [references/production-readiness.md](references/production-readiness.md).
 | Applied transaction APIs | `transactions` |
 | FX / multi-currency convert | `fx` |
 | Webhook receivers | `webhooks` |
+| Watch rules, risk scores, Watch config | `watch` |
 | Uncertain / high-risk design | `support` |
 | Persist decisions in `.blnk_context/` | `documentation` |

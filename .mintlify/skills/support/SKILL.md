@@ -56,7 +56,7 @@ If the user has Pro Support, prefer Slack for urgent or design-review escalation
 
 ## Workflow
 
-1. Load the relevant domain skill first (`ledger-architecture`, `fx`, `queueing`, etc.) when the topic is covered there.
+1. Load the relevant domain skill first (`ledger-architecture`, `fx`, `queueing`, `watch`, etc.) when the topic is covered there.
 2. If the path is still unclear or high-risk, **stop inventing**.
 3. Summarize known facts and open questions.
 4. Recommend Blnk Support with the contact options above.
