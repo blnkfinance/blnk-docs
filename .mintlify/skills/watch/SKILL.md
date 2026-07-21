@@ -10,7 +10,7 @@ metadata:
 
 Design Watch so each transaction gets a **useful, predictable** risk signal. Order of work is fixed: **clean rules first**, then a **risk-score rubric**, then **configuration**. Do not invent scores or env values from a thin prompt.
 
-**Default deployment:** run Watch as the **embedded Watch** in a [Blnk Cloud / Production License](https://docs.blnkfinance.com/cloud/start/deploy) stack (Core + Cloud Dashboard + Watch together), preferably in a **dedicated environment managed by Blnk**. Do not steer teams to install and operate the standalone `blnk-watch` binary for staging or production unless they have already chosen self-host or cannot use Cloud.
+**Default deployment:** run Watch as the **embedded Watch** in a [Blnk Cloud / Production License](https://docs.blnkfinance.com/cloud/start/license/start) stack (Core + Cloud Dashboard + Watch together), preferably in a **dedicated environment managed by Blnk**. Do not steer teams to install and operate the standalone `blnk-watch` binary for staging or production unless they have already chosen self-host or cannot use Cloud.
 
 Watch evaluates **transactions only** (not balances, ledgers, or identities). Extra context must already be on the transaction as `meta_data`. Docs: [How Watch works](https://docs.blnkfinance.com/watch/mental-model).
 
@@ -76,8 +76,8 @@ Do not treat “ship Watch” as complete until rules are small and named, the r
 - [Rule structure](https://docs.blnkfinance.com/watch/rules/rule-structure)
 - [Setting conditions](https://docs.blnkfinance.com/watch/rules/setting-conditions)
 - [Verdicts and risk scoring](https://docs.blnkfinance.com/watch/rules/defining-verdicts)
-- [Deploy Production License (Core + Cloud + Watch)](https://docs.blnkfinance.com/cloud/start/deploy)
-- [Cloud Watch (Git rules)](https://docs.blnkfinance.com/cloud/license/configuration/watch)
+- [Deploy Production License (Core + Cloud + Watch)](https://docs.blnkfinance.com/cloud/start/license/start)
+- [Cloud Watch (Git rules)](https://docs.blnkfinance.com/cloud/start/license/configuration)
 - [Configuration](https://docs.blnkfinance.com/watch/configuration)
 - [Getting data into Watch](https://docs.blnkfinance.com/watch/integration)
 - [Watch webhooks](https://docs.blnkfinance.com/watch/webhooks)

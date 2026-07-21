@@ -2,7 +2,7 @@
 
 Configure Watch after rules and the risk rubric exist. **Prefer Blnk Cloud with embedded Watch** over installing and operating the standalone `blnk-watch` binary. Confirm the deployment path and config sketch match ops reality. Do not paste production secrets into chat or `.blnk_context/`.
 
-Docs: [Deploy Production License](https://docs.blnkfinance.com/cloud/start/deploy), [Cloud Watch (Git rules)](https://docs.blnkfinance.com/cloud/license/configuration/watch), [Configuration](https://docs.blnkfinance.com/watch/configuration), [Integration](https://docs.blnkfinance.com/watch/integration), [Commands](https://docs.blnkfinance.com/watch/commands), [Webhooks](https://docs.blnkfinance.com/watch/webhooks).
+Docs: [Deploy Production License](https://docs.blnkfinance.com/cloud/start/license/start), [License configuration](https://docs.blnkfinance.com/cloud/start/license/configuration), [Configuration](https://docs.blnkfinance.com/watch/configuration), [Integration](https://docs.blnkfinance.com/watch/integration), [Commands](https://docs.blnkfinance.com/watch/commands), [Webhooks](https://docs.blnkfinance.com/watch/webhooks).
 
 Follow [how-to-ask.md](../../documentation/references/how-to-ask.md): plain language, one cluster at a time, assume Cloud + Git + sensible alert defaults and confirm.
 
@@ -47,7 +47,7 @@ Ask simply: “Which repo holds the rules?” Cover branch and private-repo auth
 - Private repo → username + token (store token as a secret)
 - Still prototyping alone locally → local `WATCH_SCRIPT_DIR` until cutover to Git
 
-Cloud license env (see [Cloud Watch config](https://docs.blnkfinance.com/cloud/license/configuration/watch)):
+Cloud license env (see [License configuration](https://docs.blnkfinance.com/cloud/start/license/configuration)):
 
 | Variable | Role | Default |
 | :-- | :-- | :-- |
@@ -183,7 +183,7 @@ ALERT_WEBHOOK_API_KEY=REPLACE_ME
 ALERT_WEBHOOK_RISK_THRESHOLD=0.5
 ```
 
-Point the team at [Deploy Production License](https://docs.blnkfinance.com/cloud/start/deploy) for the stack; do not invent a parallel Watch host.
+Point the team at [Deploy Production License](https://docs.blnkfinance.com/cloud/start/license/start) for the stack; do not invent a parallel Watch host.
 
 **Self-host: DB sync + local rules + alerts:**
 
