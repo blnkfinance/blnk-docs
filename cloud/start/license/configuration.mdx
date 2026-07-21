@@ -2,7 +2,7 @@
 title: "License configuration"
 sidebarTitle: "Configuration"
 icon: "settings"
-description: "Configure the enterprise launcher, branding, authentication, email, data management, and Watch for your production license deployment."
+description: "Configure the enterprise launcher, branding, authentication, email, cold storage, monitoring, and Watch for your production license deployment."
 og:title: "License configuration | Blnk Cloud Guide"
 og:description: "Environment variable reference for your Blnk production license deployment"
 ---
@@ -10,9 +10,11 @@ og:description: "Environment variable reference for your Blnk production license
 import { CtaCallout } from "/snippets/cta-callout.jsx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-This is the configuration reference for your Production License. Use these environment variables to control launcher behavior, public access, branding, authentication, email delivery, and more.
+This is the full configuration reference for your Production License. 
 
-Set these values in your runtime `.env` or `enterprise.env` file before starting the deployment.
+Use these environment variables to control launcher behavior, public access, branding, authentication, email delivery, and more.
+
+<Tip>Set these values in your runtime `.env` or `enterprise.env` file before starting the deployment.</Tip>
 
 <CtaCallout
   title="Need more custom configurations?"
@@ -23,8 +25,9 @@ Set these values in your runtime `.env` or `enterprise.env` file before starting
   Reach out to us to discuss your requirements and customize your setup for you.
 </CtaCallout>
 
-<Tabs>
-<Tab title="Enterprise launcher">
+---
+
+## Enterprise launcher
 
 The enterprise launcher starts and coordinates the services in your production stack. Use these variables to connect the launcher to shared infrastructure and provide the license used at startup.
 
@@ -32,6 +35,7 @@ The enterprise launcher starts and coordinates the services in your production s
 ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
 ENTERPRISE_REDIS_URL=redis://host:6379/0
 ENTERPRISE_LICENSE_B64=your_base64_license_string
+ENTERPRISE_LICENSE_FILE=/run/secrets/blnk-enterprise.lic
 
 # Core and Cloud use separate databases on the Postgres instance above
 # Defaults: blnk (Core ledger) and blnk-cloud (Cloud Dashboard)
@@ -39,13 +43,40 @@ ENTERPRISE_CORE_DB_NAME=blnk
 ENTERPRISE_PLANE_DB_NAME=blnk-cloud
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `ENTERPRISE_POSTGRES_URL` | Postgres connection string used by the launcher to derive the Core and Plane database connections. Point this at the Postgres server that hosts both databases. |
-| `ENTERPRISE_REDIS_URL` | Redis connection string passed to Core for queueing, caching, and other Redis-backed runtime work. |
-| `ENTERPRISE_LICENSE_B64` | Base64-encoded license string from your onboarding email. To use a mounted license file instead, set `ENTERPRISE_LICENSE_FILE` to the path of your `.lic` file. |
-| `ENTERPRISE_CORE_DB_NAME` | Name of the Postgres database the launcher assigns to Blnk Core ledger data. |
-| `ENTERPRISE_PLANE_DB_NAME` | Name of the Postgres database the launcher assigns to Plane, which powers the Cloud Dashboard. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | — | Postgres connection string used by the launcher to derive the Core and Plane database connections. Point this at the Postgres server that hosts both databases. |
+| `ENTERPRISE_REDIS_URL` | — | Redis connection string passed to Core for queueing, caching, and other Redis-backed runtime work. |
+| `ENTERPRISE_LICENSE_B64` | — | Base64-encoded license string from your onboarding email. Takes precedence over `ENTERPRISE_LICENSE_FILE` when both are set. |
+| `ENTERPRISE_LICENSE_FILE` | — | Path to your `.lic` license file mounted into the container. Use this instead of `ENTERPRISE_LICENSE_B64` when you mount the license as a file. |
+| `ENTERPRISE_CORE_DB_NAME` | `blnk` | Name of the Postgres database the launcher assigns to Blnk Core ledger data. |
+| `ENTERPRISE_PLANE_DB_NAME` | `blnk-cloud` | Name of the Postgres database the launcher assigns to Plane, which powers the Cloud Dashboard. |
+
+---
+
+## Bundled services
+
+The production license ships Core, workers, Watch, and query-agent bootstrap in a single enterprise image. Use these variables when you want to run Cloud and Plane only and manage those services separately.
+
+```dotenv .env wrap
+ENTERPRISE_SKIP_CORE=true
+ENTERPRISE_SKIP_MIGRATIONS=true
+ENTERPRISE_SKIP_WORKERS=true
+ENTERPRISE_SKIP_WATCH=true
+ENTERPRISE_SKIP_QUERY_AGENT=true
+```
+
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `ENTERPRISE_SKIP_CORE` | `true` | Do not start bundled Core in the image. |
+| `ENTERPRISE_SKIP_MIGRATIONS` | `true` | Do not run Core migrations. Implied when `ENTERPRISE_SKIP_CORE=true`. |
+| `ENTERPRISE_SKIP_WORKERS` | `true` | Do not start Core workers. Implied when `ENTERPRISE_SKIP_CORE=true`. |
+| `ENTERPRISE_SKIP_WATCH` | `true` | Do not start bundled Watch. |
+| `ENTERPRISE_SKIP_QUERY_AGENT` | `true` | Do not bootstrap query-agent. |
+
+---
+
+## Public app configuration
 
 These variables control how users reach the deployment and how the launcher connects the internal services.
 
@@ -56,34 +87,46 @@ ENTERPRISE_PUBLIC_PORT=8080
 ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
 ENTERPRISE_CORE_PORT=5001
 ENTERPRISE_WORKERS_PORT=5004
+ENTERPRISE_WATCH_PORT=8081
 ENTERPRISE_UI_PORT=3001
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `ENTERPRISE_PUBLIC_PORT` | Port the launcher exposes for the public Plane gateway. Map your host or load balancer to this port when running the deployment. |
-| `ENTERPRISE_PUBLIC_URL` | Public URL where users open the Cloud Dashboard, including the scheme such as `https://`. Use the same origin in `CORS_ORIGINS`. |
-| `ENTERPRISE_CORE_PORT` | Internal port used by the Blnk Core API process. |
-| `ENTERPRISE_WORKERS_PORT` | Internal port used by the Core workers monitoring endpoint. |
-| `ENTERPRISE_UI_PORT` | Internal port used by the Cloud Dashboard UI process. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `ENTERPRISE_PUBLIC_PORT` | `8080` | Port the launcher exposes for the public Plane gateway. Map your host or load balancer to this port when running the deployment. |
+| `ENTERPRISE_PUBLIC_URL` | — | Public URL where users open the Cloud Dashboard, including the scheme such as `https://`. Use the same origin in `CORS_ORIGINS`. |
+| `ENTERPRISE_CORE_PORT` | `5001` | Internal port used by the Blnk Core API process. |
+| `ENTERPRISE_WORKERS_PORT` | `5004` | Internal port used by the Core workers monitoring endpoint. |
+| `ENTERPRISE_WATCH_PORT` | `8081` | Internal port used by the bundled Watch service. |
+| `ENTERPRISE_UI_PORT` | `3001` | Internal port used by the Cloud Dashboard UI process. |
 
-</Tab>
-<Tab title="Custom branding">
+---
+
+## Custom branding
 
 Customize the Cloud Dashboard theme to match your brand colours. Set your organization name and primary colour so the dashboard feels like your product, not a generic install.
 
 ```dotenv .env wrap
 ENTERPRISE_BRAND_NAME=Acme Ledger
 ENTERPRISE_BRAND_PRIMARY_COLOR="#A34EF4"
+ENTERPRISE_BRAND_LOGO_URL=https://cdn.acme.com/logo.svg
+ENTERPRISE_BRAND_FAVICON_URL=https://cdn.acme.com/favicon.ico
+ENTERPRISE_BRAND_OG_IMAGE_URL=https://cdn.acme.com/og-image.png
+ENTERPRISE_BRAND_HELPER_LINKS_JSON={"ledgers":"https://docs.acme.com/ledgers","balances":"https://docs.acme.com/balances"}
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `ENTERPRISE_BRAND_NAME` | Display name used for your deployment in the Cloud Dashboard. |
-| `ENTERPRISE_BRAND_PRIMARY_COLOR` | Primary accent color used by the Cloud Dashboard UI. Use a six-digit hex color value, such as `"#A34EF4"`. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `ENTERPRISE_BRAND_NAME` | — | Display name used for your deployment in the Cloud Dashboard. |
+| `ENTERPRISE_BRAND_PRIMARY_COLOR` | — | Primary accent color used by the Cloud Dashboard UI. Use a six-digit hex color value, such as `"#A34EF4"`. |
+| `ENTERPRISE_BRAND_LOGO_URL` | — | URL for the logo shown in the Cloud Dashboard. |
+| `ENTERPRISE_BRAND_FAVICON_URL` | — | URL for the browser favicon. |
+| `ENTERPRISE_BRAND_OG_IMAGE_URL` | — | URL for the Open Graph preview image. |
+| `ENTERPRISE_BRAND_HELPER_LINKS_JSON` | — | JSON object that overrides learn-more banner and CTA links in Cloud. Supported keys: `ledgers`, `ledgerDetails`, `balances`, `transactions`, `identities`, `reconciliation`, `alerts`. |
 
-</Tab>
-<Tab title="Security & auth">
+---
+
+## Security & authentication
 
 These variables configure browser access, local authentication, and encryption for Plane.
 
@@ -93,14 +136,15 @@ JWT_SECRET=thisisasecret
 BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `CORS_ORIGINS` | Comma-separated list of browser origins allowed to call the Plane API. Do not include spaces. Include `ENTERPRISE_PUBLIC_URL` so the Cloud Dashboard can reach the API. |
-| `JWT_SECRET` | Strong random secret used to sign and verify local authentication tokens. Store this as a secret and keep it stable across restarts. |
-| `BLNK_ENCRYPTION_KEY` | Unique 32-character key used to encrypt sensitive data, including instance connection keys. Do not change it after deployment because existing encrypted data may become unreadable. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `CORS_ORIGINS` | — | Comma-separated list of browser origins allowed to call the Plane API. Do not include spaces. Include `ENTERPRISE_PUBLIC_URL` so the Cloud Dashboard can reach the API. |
+| `JWT_SECRET` | — | Strong random secret used to sign and verify local authentication tokens. Store this as a secret and keep it stable across restarts. |
+| `BLNK_ENCRYPTION_KEY` | — | Unique 32-character key used to encrypt sensitive data, including instance connection keys. Do not change it after deployment because existing encrypted data may become unreadable. |
 
-</Tab>
-<Tab title="Email">
+---
+
+## Email handling
 
 Configure SMTP so Plane can send login alerts, password resets, and other Cloud notifications from your deployment.
 
@@ -120,26 +164,23 @@ SMTP_TLS_MODE=auto
 SMTP_SKIP_TLS_VERIFY=false
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `EMAIL_PROVIDER` | Email transport Plane should use. Set this to `smtp`, or leave it unset so Plane uses SMTP when `SMTP_HOST` is configured. |
-| `SMTP_HOST` | Hostname of the SMTP server that sends mail for your deployment. |
-| `SMTP_PORT` | Port your SMTP server listens on. Use the value required by your provider. |
-| `SMTP_AUTH_USERNAME` | Username used for SMTP authentication. Some providers require a fixed username such as `resend`. |
-| `SMTP_AUTH_PASSWORD` | Password or API key used for SMTP authentication. Store this as a secret. |
-| `SMTP_TLS_MODE` | TLS mode Plane uses for the SMTP connection. Use `auto` for STARTTLS-capable servers unless your provider requires another supported mode. |
-| `SMTP_SKIP_TLS_VERIFY` | Whether to skip TLS certificate verification. Use `false` in production. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `EMAIL_PROVIDER` | — | Email transport Plane should use. Set this to `smtp`, or leave it unset so Plane uses SMTP when `SMTP_HOST` is configured. |
+| `SMTP_HOST` | — | Hostname of the SMTP server that sends mail for your deployment. |
+| `SMTP_PORT` | `587` | Port your SMTP server listens on. Use the value required by your provider. |
+| `SMTP_AUTH_USERNAME` | — | Username used for SMTP authentication. Some providers require a fixed username such as `resend`. |
+| `SMTP_AUTH_PASSWORD` | — | Password or API key used for SMTP authentication. Store this as a secret. |
+| `SMTP_TLS_MODE` | `auto` | TLS mode Plane uses for the SMTP connection. Use `auto` for STARTTLS-capable servers unless your provider requires another supported mode. |
+| `SMTP_SKIP_TLS_VERIFY` | `false` | Whether to skip TLS certificate verification. Use `false` in production. |
 
-</Tab>
-<Tab title="Data management">
+---
 
-Configure how Plane backs up and retains ledger data and instance telemetry outside the control-plane database.
+## Cold storage
 
-Connect an S3-compatible bucket so Lake can archive eligible older transactions, balances, ledgers, and identities into verified Parquet files while hot Postgres stays lean, and so Monitoring can persist traces, metrics, and logs captured from connected instances.
+Configure object-storage archiving for your Lake service.
 
-### Cold storage
-
-Configure object-storage archiving for your Lake service. When enabled, Lake copies eligible older instance data into your configured S3-compatible bucket as verified Parquet files, keeps archive indexes in sync, and leaves hot database rows untouched unless purge is explicitly enabled.
+When enabled, Lake copies eligible older transactions, balances, ledgers, and identities into verified Parquet files while hot Postgres stays lean. Lake keeps archive indexes in sync and leaves hot database rows untouched unless purge is explicitly enabled.
 
 ```dotenv .env wrap
 LAKE_ENABLED=true
@@ -152,37 +193,46 @@ LAKE_S3_REGION=auto
 LAKE_S3_PATH_STYLE=true
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `LAKE_ENABLED` | Turns on the lake feature in Plane. |
-| `LAKE_ARCHIVER_ENABLED` | Starts the background worker that archives eligible old rows. |
-| `LAKE_S3_BUCKET` | Object storage bucket where Parquet archive files and index files are stored. |
-| `LAKE_S3_ENDPOINT` | S3-compatible endpoint (e.g., DigitalOcean Spaces, R2, MinIO, or AWS S3 endpoint). |
-| `LAKE_S3_ACCESS_KEY_ID` | Access key used by Plane to write/read archive objects. |
-| `LAKE_S3_SECRET_ACCESS_KEY` | Secret key used with the access key. Store this as a secret. |
-| `LAKE_S3_REGION` | Region passed to the S3 client. `auto` is useful for S3-compatible providers. |
-| `LAKE_S3_PATH_STYLE` | When set to `true`, uses path-style object URLs (`endpoint/bucket/object-key`) instead of virtual-host style (`bucket.endpoint/object-key`). |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `LAKE_ENABLED` | `false` | Turns on the lake feature in Plane. |
+| `LAKE_ARCHIVER_ENABLED` | `false` | Starts the background worker that archives eligible old rows. |
+| `LAKE_S3_BUCKET` | — | Object storage bucket where Parquet archive files and index files are stored. |
+| `LAKE_S3_ENDPOINT` | — | S3-compatible endpoint (e.g., DigitalOcean Spaces, R2, MinIO, or AWS S3 endpoint). |
+| `LAKE_S3_ACCESS_KEY_ID` | — | Access key used by Plane to write/read archive objects. |
+| `LAKE_S3_SECRET_ACCESS_KEY` | — | Secret key used with the access key. Store this as a secret. |
+| `LAKE_S3_REGION` | `auto` | Region passed to the S3 client. `auto` is useful for S3-compatible providers. |
+| `LAKE_S3_PATH_STYLE` | `true` | When set to `true`, uses path-style object URLs (`endpoint/bucket/object-key`) instead of virtual-host style (`bucket.endpoint/object-key`). |
 
-### Monitoring & observability
+---
 
-Configure object-storage persistence for your Monitoring service. When set, Monitoring stores captured monitoring payloads in your configured S3-compatible bucket so they can be retained and retrieved outside the control-plane database.
+## Monitoring
+
+Configure object-storage persistence for your Monitoring service.
+
+When set, Monitoring stores traces, metrics, and logs captured from connected instances in your configured S3-compatible bucket so they can be retained and retrieved outside the control-plane database.
 
 ```dotenv .env wrap
 MONITORING_STORAGE_S3_BUCKET=
 MONITORING_STORAGE_S3_ENDPOINT=
 MONITORING_STORAGE_S3_ACCESS_KEY_ID=
 MONITORING_STORAGE_S3_SECRET_ACCESS_KEY=
+MONITORING_STORAGE_S3_REGION=auto
+MONITORING_STORAGE_S3_PATH_STYLE=true
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `MONITORING_STORAGE_S3_BUCKET` | Object storage bucket where Monitoring payloads are stored. |
-| `MONITORING_STORAGE_S3_ENDPOINT` | S3-compatible endpoint (e.g., DigitalOcean Spaces, R2, MinIO, or AWS S3 endpoint). |
-| `MONITORING_STORAGE_S3_ACCESS_KEY_ID` | Access key used by Monitoring to write/read stored payloads. |
-| `MONITORING_STORAGE_S3_SECRET_ACCESS_KEY` | Secret key used with the access key. Store this as a secret. |
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `MONITORING_STORAGE_S3_BUCKET` | — | Object storage bucket where Monitoring payloads are stored. |
+| `MONITORING_STORAGE_S3_ENDPOINT` | — | S3-compatible endpoint (e.g., DigitalOcean Spaces, R2, MinIO, or AWS S3 endpoint). |
+| `MONITORING_STORAGE_S3_ACCESS_KEY_ID` | — | Access key used by Monitoring to write/read stored payloads. |
+| `MONITORING_STORAGE_S3_SECRET_ACCESS_KEY` | — | Secret key used with the access key. Store this as a secret. |
+| `MONITORING_STORAGE_S3_REGION` | `auto` | Region passed to the S3 client. |
+| `MONITORING_STORAGE_S3_PATH_STYLE` | `true` | When set to `true`, uses path-style object URLs instead of virtual-host style. |
 
-</Tab>
-<Tab title="Watch">
+---
+
+## Watch
 
 Configure Git-based rule loading for your Watch service. When `WATCH_SCRIPT_GIT_REPO` is set, Watch clones the repository, loads `.ws` rule files from it, and keeps the local copy in sync.
 
@@ -195,17 +245,12 @@ WATCH_SCRIPT_GIT_USERNAME=x-access-token
 WATCH_SCRIPT_GIT_TOKEN=
 ```
 
-| Environment variable | Description |
-| :-- | :-- |
-| `WATCH_SCRIPT_GIT_REPO` | Git repository URL containing Watch rule files. When set, Watch loads rules from this repository instead of relying only on local files. |
-| `WATCH_SCRIPT_GIT_BRANCH` | Git branch Watch tracks when `WATCH_SCRIPT_GIT_REPO` is set. Use the branch that contains the rules for this deployment. |
-| `WATCH_SCRIPT_GIT_USERNAME` | Username used to authenticate when cloning a private rules repository over HTTPS. Defaults to `x-access-token` when unset. |
-| `WATCH_SCRIPT_GIT_TOKEN` | Personal access token or password used with `WATCH_SCRIPT_GIT_USERNAME` for private repository access. Store this as a secret. |
-
-</Tab>
-</Tabs>
-
----
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `WATCH_SCRIPT_GIT_REPO` | — | Git repository URL containing Watch rule files. When set, Watch loads rules from this repository instead of relying only on local files. |
+| `WATCH_SCRIPT_GIT_BRANCH` | `main` | Git branch Watch tracks when `WATCH_SCRIPT_GIT_REPO` is set. Use the branch that contains the rules for this deployment. |
+| `WATCH_SCRIPT_GIT_USERNAME` | `x-access-token` | Username used to authenticate when cloning a private rules repository over HTTPS. |
+| `WATCH_SCRIPT_GIT_TOKEN` | — | Personal access token or password used with `WATCH_SCRIPT_GIT_USERNAME` for private repository access. Store this as a secret. |
 
 <RelatedTopics
   items={[

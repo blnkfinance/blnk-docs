@@ -2,13 +2,15 @@
 title: "Deploy the Blnk Production License"
 sidebarTitle: "Installation"
 icon: "cloud-upload"
-description: "Learn how to configure and deploy the Blnk production license in your environment."
+description: "Deploy the Cloud Dashboard with a Production License, then connect your self-hosted Core."
 ---
 
 import { CtaCallout } from "/snippets/cta-callout.jsx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-The Production License lets you run the full Blnk stack, including Core, Cloud Dashboard, and Watch, in a dedicated environment. You can deploy it in your own infrastructure or run it in a dedicated cloud environment managed by Blnk.
+The Production License lets you run the Cloud Dashboard in your own infrastructure. 
+
+We recommend deploying [Blnk Core](/home/install) separately, then running the dashboard and [connecting your Core](/cloud/instances/create) to it.
 
 Built for teams that need stronger security controls, data residency support, custom tooling, or a closer operational partnership with Blnk.
 
@@ -21,56 +23,34 @@ Built for teams that need stronger security controls, data residency support, cu
   Get a Production License tailored to your deployment needs.
 </CtaCallout>
 
-This doc provides a step-by-step guide for deploying the Production License in your own infrastructure. Let's get started!
-
 ---
 
-## Deployment guide
+## Dashboard deployment guide
 
-Use this guide to deploy Blnk Production License on AWS, GCP, Azure, or any cloud provider.
+Use this guide to deploy the Cloud Dashboard on AWS, GCP, Azure, or any cloud provider.
 
 <Steps>
 <Step title="Get your Production License">
-When you purchase a Production License, you'll receive an email with your license key. 
+When you purchase a Production License, you'll receive an email with your license key.
 
-Use that value as `ENTERPRISE_LICENSE_B64` in step 4.
+Use the base64 value from the email as `ENTERPRISE_LICENSE_B64` in step 4.
 </Step>
-<Step title="Prepare your databases">
-Set up a managed Postgres instance and a managed Redis instance in your cloud provider before continuing.
+<Step title="Prepare your database">
+Create a managed Postgres instance in your environment. Use a recent supported Postgres version and enable TLS for production.
 
-<Tabs>
-<Tab title="Postgres">
-
-Create a managed Postgres instance in your environment, such as Amazon RDS, Google Cloud SQL, or Azure Database for PostgreSQL. Use a recent supported Postgres version and enable TLS for production.
-
-Once the instance is ready, create two databases: one for Blnk Core and one for Blnk Cloud. 
-
-Keeping these databases separate isolates ledger data from Cloud management data.
+Create one database for the Cloud Dashboard:
 
 ```sql
-CREATE DATABASE blnk;
 CREATE DATABASE "blnk-cloud";
 ```
 
-<Tip>Save the connection URL for the instance. You will use it as `ENTERPRISE_POSTGRES_URL` in a later step.</Tip>
-
-</Tab>
-<Tab title="Redis">
-
-Create a managed Redis instance in your environment, such as Amazon ElastiCache, Google Cloud Memorystore, or Azure Cache for Redis. 
-
-Use a version compatible with your provider's managed offering and enable TLS if your provider supports it.
-
-<Tip>Save the connection URL for the instance. You will use it as `ENTERPRISE_REDIS_URL` in a later step.</Tip>
-
-</Tab>
-</Tabs>
+<Tip>Save the connection URL for the instance. You will use it as `ENTERPRISE_POSTGRES_URL` in the next step.</Tip>
 </Step>
 <Step title="Pull the Docker image">
 Pull the enterprise image from GitHub Container Registry:
 
 ```bash Docker
-docker pull ghcr.io/blnkfinance/blnk-enterprise:0.1.10
+docker pull ghcr.io/blnkfinance/blnk-enterprise:0.1.23
 ```
 
 <Note>
@@ -80,20 +60,19 @@ Using a custom image? Use the image name provided in your license email or onboa
 <Step title="Add primary environment variables">
 Create an environment file, such as `.env` or `enterprise.env`.
 
-Add the following variables and replace the placeholder values with your Postgres URL, Redis URL, and license key.
+Add the following variables and replace the placeholder values with your Postgres URL and license key. 
 
 ```dotenv .env wrap
 HOSTNAME=127.0.0.1
 ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
-ENTERPRISE_REDIS_URL=redis://host:6379/0
 ENTERPRISE_LICENSE_B64=your_base64_license_string
+ENTERPRISE_SKIP_CORE=true
 ```
 
 | Environment variable | Description |
 | :-- | :-- |
 | `HOSTNAME` | Use `127.0.0.1` so health checks and internal services communicate through the container loopback interface. |
-| `ENTERPRISE_POSTGRES_URL` | Connection string for your Postgres instance. |
-| `ENTERPRISE_REDIS_URL` | Connection string for your Redis instance. |
+| `ENTERPRISE_POSTGRES_URL` | Connection string for the Postgres instance that hosts the `blnk-cloud` database. |
 | `ENTERPRISE_LICENSE_B64` | Base64-encoded license key from step 1. |
 </Step>
 <Step title="Set up public app config">
@@ -109,7 +88,7 @@ ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
 | `ENTERPRISE_PUBLIC_PORT` | Port exposed by the enterprise launcher for the Cloud Dashboard. |
 | `ENTERPRISE_PUBLIC_URL` | Public URL where users access the Cloud Dashboard, including `https://`. Use this value when configuring `CORS_ORIGINS` in the next step. |
 </Step>
-<Step title="Set up Plane Environment variables">
+<Step title="Set up Plane environment variables">
 Plane powers the Cloud Dashboard and stores its data in the `blnk-cloud` database.
 
 Add these variables to the same environment file you created in the previous step.
@@ -127,14 +106,13 @@ JWT_SECRET=your_long_random_secret_here
 | `JWT_SECRET` | A strong random secret used to sign and verify authentication tokens. |
 </Step>
 <Step title="Run the enterprise image">
-Start the stack with the image you pulled earlier. Map the host port to `ENTERPRISE_PUBLIC_PORT`, e.g. `8080` if you used the value from the public app config step.
+Start the dashboard with the image you pulled earlier. Map the host port to `ENTERPRISE_PUBLIC_PORT`, e.g. `8080` if you used the value from the public app config step.
 
 ```bash Docker
 docker run -d \
   --name blnk-enterprise \
   -p 8080:8080 \
-  --env-file ./enterprise.env \
-  ghcr.io/blnkfinance/blnk-enterprise:0.1.10
+  ghcr.io/blnkfinance/blnk-enterprise:0.1.23
 ```
 
 Confirm that your deployment is live:
@@ -143,49 +121,63 @@ Confirm that your deployment is live:
 docker ps
 ```
 </Step>
-<Step title="Access the Cloud Dashboard">
-You are ready to use Cloud in your environment. Open `ENTERPRISE_PUBLIC_URL` in your browser.
-
-1. Sign up and create your account.
-2. Sign in and set up your workspace.
-3. Start working with the auto-provisioned Core instance, or [connect additional instances](/cloud/instances/create) to manage more environments.
-</Step>
 </Steps>
 
 ---
 
-## What's next
+## Connecting your Core
 
-<CardGroup cols={2}>
-<Card title="License configuration" icon="settings" href="/cloud/start/license/configuration">
-Environment variables for launcher, auth, email, and more.
-</Card>
+Connect your Core instance to your dashboard with the Query Agent.
 
-<Card title="Connect instance" icon="cable" href="/cloud/instances/create">
-Multiple Core instances via Query Agent.
-</Card>
+<Steps>
+<Step title="Deploy Blnk Core">
+Make sure you have a running Core instance. 
 
-<Card title="Working with Blnk Core" icon="book-open" href="/home/install">
-Quick start and first transaction.
-</Card>
+Follow [our Core deployment guide](/home/deploy) for setup, scaling, and production hardening.
+</Step>
+<Step title="Create an instance on the dashboard">
+1. Open `ENTERPRISE_PUBLIC_URL` in your browser, sign up, and create your workspace.
+2. Click **Connect new instance** from the homepage.
+3. Enter your Core URL and secret key, then submit the form.
 
-<Card title="Navigating Cloud" icon="sparkles" href="/cloud/start/guide">
-Dashboard tour and daily operations.
-</Card>
-</CardGroup>
+    <img src="/cloud/img/instances/instance-creation-form.png" alt="Instance creation form with instance name, Core URL, and secret key fields" className="rounded-lg" />
 
----
+4. Copy the **Connection key** from the instance details page.
+    <img src="/cloud/img/instances/connection-key-details.png" alt="Instance details page showing where to find the connection key" className="rounded-lg" />
+</Step>
+<Step title="Run the Query Agent">
+Run the Query Agent where it can reach your Core database, and set the connection URL to the WebSocket version of `ENTERPRISE_PUBLIC_URL` with path `/ws/agent`:
 
-## Need help?
+| `ENTERPRISE_PUBLIC_URL` | `CONNECTION_URL` |
+| :-- | :-- |
+| `https://ledger.yourdomain.com` | `wss://ledger.yourdomain.com/ws/agent` |
+| `http://localhost:8080` | `ws://localhost:8080/ws/agent` |
 
-This guide covers a standard Production License deployment. If you need custom configuration beyond these steps, [send us an email](mailto:support@blnkfinance.com?subject=Want%20custom%20configuration%20for%20my%20Production%20License).
+```bash Run Query Agent wrap
+docker run -d \
+  -e DB_URL="postgres://username:password@host:5432/blnk?sslmode=require" \
+  -e CONNECTION_KEY="sk_live_..." \
+  -e CONNECTION_URL="wss://ledger.yourdomain.com/ws/agent" \
+  blnkfinance/query-agent:latest
+```
 
----
+| Parameter | Description |
+| :-- | :-- |
+| `DB_URL` | Postgres connection string for your Core database. Find it in the `database_url` field in your `blnk.json` file. |
+| `CONNECTION_KEY` | Connection key from the instance details page in the dashboard. |
+| `CONNECTION_URL` | WebSocket URL for your dashboard. |
+</Step>
+<Step title="Verify connection">
+Go to **Settings > Instances** in the dashboard. Your instance should show as **Connected** with a green indicator.
+
+<img src="/cloud/img/instances/instance-connection-status.png" alt="Instance connection status showing Connected with green indicator" className="rounded-lg" />
+</Step>
+</Steps>
 
 <RelatedTopics
   items={[
     { title: "License configuration", href: "/cloud/start/license/configuration" },
-    { title: "Getting started", href: "/cloud/start/guide" },
-    { title: "Create instance", href: "/cloud/instances/create" },
+    { title: "Connect instance", href: "/cloud/instances/create" },
+    { title: "Deploy Core", href: "/home/deploy" },
   ]}
 />
