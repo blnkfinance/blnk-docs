@@ -94,12 +94,13 @@ HttpRequest request = HttpRequest.newBuilder()
     .build();
 
 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-JsonNode data = new ObjectMapper().readTree(response.body());
+ObjectMapper mapper = new ObjectMapper();
+JsonNode data = mapper.readTree(response.body());
 
 // Support both meta_data (0.14.0+) and metadata (pre-0.14.0)
 JsonNode metadata = data.hasNonNull("meta_data")
     ? data.get("meta_data")
-    : (data.hasNonNull("metadata") ? data.get("metadata") : data.objectNode());
+    : (data.hasNonNull("metadata") ? data.get("metadata") : mapper.createObjectNode());
 ```
 
 ```php PHP
