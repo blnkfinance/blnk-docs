@@ -76,7 +76,7 @@ BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK=false
 | :-- | :-- | :-- |
 | `BLNK_TRANSACTION_BATCH_SIZE` | Maximum number of compatible queued transactions Blnk tries to process in one coalesced batch. | `1000` |
 | `BLNK_TRANSACTION_ENABLE_COALESCING` | Enables coalesced execution for normal queued transaction processing. | `true` |
-| `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK` | Disables reference validation across a coalesced batch before commit. When `false`, reference checking stays enabled. | `false` |
+| `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK` | Skips the bulk reference lookup during coalesced batch processing. References are still validated per transaction. When `false`, the bulk check stays enabled. | `false` |
 
 ### `BLNK_TRANSACTION_ENABLE_COALESCING`
 
@@ -90,13 +90,13 @@ This works best when queued traffic arrives in bursts and many transactions over
 
 ### `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK`
 
-This controls whether Blnk validates transaction references across the batch before commit. 
+During coalesced batch processing, Blnk can look up all transaction references in the batch with one bulk query before commit. That prefetch lets validation compare each reference against known usage without a separate lookup per transaction.
 
-Leaving it as `false` (the default) is safer because it helps catch duplicate or conflicting references within the same batch, ensuring that your transactions remain idempotent. 
+Set this to `true` to turn off that bulk lookup. Reference validation does not stop. With no prefetched set, Blnk falls back to validating each transaction individually.
 
-<Warning>
-**Please note:** Disabling reference checks may reduce some overhead, but it also increases the risk of duplicate-reference issues slipping through batched execution.
-</Warning>
+<Note>
+The default (`false`) keeps the bulk check enabled. Set `true` only when you want to trade the bulk lookup for per-transaction reference checks during coalesced execution.
+</Note>
 
 ---
 
