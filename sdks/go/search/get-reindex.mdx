@@ -1,0 +1,73 @@
+---
+mode: "wide"
+title: "Get reindex status"
+sidebarTitle: "Get reindex status"
+api: "GET /search/reindex"
+description: "Poll the progress of a Typesense reindex with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.Search.GetReindexStatus` to check search reindex progress.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Search.GetReindexStatus wrap
+progress, resp, err := client.Search.GetReindexStatus()
+```
+
+This method takes no arguments.
+
+</Step>
+
+<Step title="Track reindex progress">
+
+Poll until `progress.Status` is `completed`. Compare `ProcessedRecords` to `TotalRecords` to estimate remaining work.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "status": "in_progress",
+  "phase": "indexing_transactions",
+  "total_records": 2145709,
+  "processed_records": 2145709,
+  "started_at": "2026-02-12T12:13:10.448612096Z"
+}
+```
+
+#### Go response (`*blnkgo.ReindexProgress`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Status` | `string` | Current state, `in_progress` or `completed`. |
+| `Phase` | `string` | Current phase, for example `indexing_transactions`, or `done` when complete. |
+| `TotalRecords` | `int64` | Total number of records to index. |
+| `ProcessedRecords` | `int64` | Number of records processed so far. |
+| `StartedAt` | `time.Time` | Timestamp when the reindex began. |
+| `CompletedAt` | `*time.Time` | Timestamp when the reindex finished. Only present once `Status` is `completed`. |
+| `Errors` | `[]string` | Array of error messages. Only present when an error occurs. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How reindexing works" icon="rotate" href="/search/typesense/reindex">
+When and why to rebuild the index.
+</Card>
+
+<Card title="Check reindex progress" icon="book-open" href="/reference/get-reindex">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

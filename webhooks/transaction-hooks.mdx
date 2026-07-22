@@ -12,7 +12,7 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 <Info>Available in version 0.8.4 and later.</Info>
 
-Transaction hooks let you plug custom logic into your transaction lifecycle, before or after a transaction is processed, without changing how Blnk records the ledger entry. 
+Transaction hooks let you plug custom logic into your transaction lifecycle, before or after a transaction is processed, without changing how Blnk records the ledger entry.
 
 Register an endpoint for each stage you care about, and Blnk calls it with the transaction context so you can validate, enrich, or trigger side effects at the right moment.
 
@@ -35,64 +35,64 @@ Blnk supports two hook types:
   
   Use it for validation, fraud checks, or enriching transaction data while the transaction is still in an early state, for example `QUEUED`.
 
-  ```json PRE_TRANSACTION payload wrap expandable {3}
-  {
-    "event": "transaction.applied",
-    "hook_type": "PRE_TRANSACTION",
-    "data": {
-      "precise_amount": 20000,
-      "amount": 200,
-      "precision": 100,
-      "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
-      "parent_transaction": "",
-      "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
-      "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
-      "reference": "INV-2025-0008912",
-      "currency": "GBP",
-      "description": "Wallet top-up",
-      "status": "QUEUED",
-      "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
-      "allow_overdraft": true,
-      "inflight": false,
-      "skip_queue": false,
-      "created_at": "2025-02-23T09:43:49.623494+01:00",
-      "scheduled_for": "0001-01-01T00:00:00Z",
-      "inflight_expiry_date": "0001-01-01T00:00:00Z"
-    }
+```json PRE_TRANSACTION payload {3} wrap
+{
+  "event": "transaction.applied",
+  "hook_type": "PRE_TRANSACTION",
+  "data": {
+    "precise_amount": 20000,
+    "amount": 200,
+    "precision": 100,
+    "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
+    "parent_transaction": "",
+    "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+    "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+    "reference": "INV-2025-0008912",
+    "currency": "GBP",
+    "description": "Wallet top-up",
+    "status": "QUEUED",
+    "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+    "allow_overdraft": true,
+    "inflight": false,
+    "skip_queue": false,
+    "created_at": "2025-02-23T09:43:49.623494+01:00",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z"
   }
-  ```
+}
+```
 </Tab>
 <Tab title="Post-transaction">
   `POST_TRANSACTION` runs after a transaction is applied. 
   
   Use it for notifications, workflow updates, or forwarding data to external systems once the transaction has been processed.
 
-  ```json POST_TRANSACTION payload wrap expandable {3}
-  {
-    "event": "transaction.applied",
-    "hook_type": "POST_TRANSACTION",
-    "data": {
-      "precise_amount": 20000,
-      "amount": 200,
-      "precision": 100,
-      "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
-      "parent_transaction": "",
-      "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
-      "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
-      "reference": "INV-2025-0008912",
-      "currency": "GBP",
-      "description": "Wallet top-up",
-      "status": "APPLIED",
-      "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
-      "allow_overdraft": true,
-      "inflight": false,
-      "skip_queue": false,
-      "created_at": "2025-02-23T09:43:49.623494+01:00",
-      "scheduled_for": "0001-01-01T00:00:00Z",
-      "inflight_expiry_date": "0001-01-01T00:00:00Z"
-    }
+```json POST_TRANSACTION payload {3} wrap
+{
+  "event": "transaction.applied",
+  "hook_type": "POST_TRANSACTION",
+  "data": {
+    "precise_amount": 20000,
+    "amount": 200,
+    "precision": 100,
+    "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
+    "parent_transaction": "",
+    "source": "bln_7f91a1ae-6073-4b7a-952c-23abf94a6634",
+    "destination": "bln_59b83b9c-842c-427f-91eb-43cdeaf5c01a",
+    "reference": "INV-2025-0008912",
+    "currency": "GBP",
+    "description": "Wallet top-up",
+    "status": "APPLIED",
+    "hash": "623e05ceb7ca7b02a9318092de7b75d8c668628e2db76c42b621b61055b10b3e",
+    "allow_overdraft": true,
+    "inflight": false,
+    "skip_queue": false,
+    "created_at": "2025-02-23T09:43:49.623494+01:00",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z"
   }
-  ```
+}
+```
 </Tab>
 </Tabs>
 
@@ -109,26 +109,72 @@ Treat `data` as the contract for your integration; fields depend on the transact
 
   Register your webhook URL with the [Hooks API](/reference/create-hooks):
 
-
   <Warning>
-  Only the [master key](/advanced/secure-blnk#master-key) can create, update, view, list, or delete hooks. Regular API keys cannot, even if they include `hooks` scopes. 
+  Only the [master key](/advanced/secure-blnk#master-key) can create, update, view, list, or delete hooks. Regular API keys cannot, even if they include `hooks` scopes.
   </Warning>
 
-  <CodeGroup>
-  ```bash cURL wrap
-  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
-    -H "X-Blnk-Key: YOUR_MASTER_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "name": "Pre-transaction validation",
-      "url": "https://api.example.com/blnk/hooks/pre",
-      "type": "PRE_TRANSACTION",
-      "active": true,
-      "timeout": 30,
-      "retry_count": 3
-    }'
-  ```
-  </CodeGroup>
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/hooks" \
+  -H "X-Blnk-Key: YOUR_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/blnk/hooks/pre",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Hooks.create({
+  name: 'Pre-transaction validation',
+  url: 'https://api.example.com/blnk/hooks/pre',
+  type: 'PRE_TRANSACTION',
+  active: true,
+  timeout: 30,
+  retry_count: 3,
+});
+```
+
+```go Go wrap
+hook, resp, err := client.Hooks.Create(
+    blnkgo.CreateHookRequest{
+        Name: "Pre-transaction validation",
+        URL: "https://api.example.com/blnk/hooks/pre",
+        Type: blnkgo.HookTypePreTransaction,
+        Active: true,
+        Timeout: 30,
+        RetryCount: 3,
+    },
+)
+```
+
+```python Python wrap
+response = blnk.hooks.create({
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/blnk/hooks/pre",
+  "type": "PRE_TRANSACTION",
+  "active": True,
+  "timeout": 30,
+  "retry_count": 3,
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.hooks().create(
+    CreateHookData.create()
+        .name("Pre-transaction validation")
+        .url("https://api.example.com/blnk/hooks/pre")
+        .type(HookType.PRE_TRANSACTION)
+        .active(true)
+        .timeout(30)
+        .retryCount(3)
+);
+```
+</CodeGroup>
 
   | Field | Description |
   | :-- | :-- |
@@ -139,77 +185,91 @@ Treat `data` as the contract for your integration; fields depend on the transact
   | `timeout` | Maximum time in seconds Blnk waits for your endpoint to respond per attempt. |
   | `retry_count` | Maximum additional attempts after a failed delivery. |
 
-  ```json 201 Created wrap
-  {
-    "hook_id": "hoo_2vN9KxQpA1wM4rL6yB8cD0eF",
-    "name": "Pre-transaction validation",
-    "url": "https://api.example.com/blnk/hooks/pre",
-    "type": "PRE_TRANSACTION",
-    "active": true,
-    "timeout": 30,
-    "retry_count": 3
-  }
-  ```
+```json 201 Created wrap
+{
+  "hook_id": "hk_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/blnk/hooks/pre",
+  "type": "PRE_TRANSACTION",
+  "active": true,
+  "timeout": 30,
+  "retry_count": 3
+}
+```
 </Step>
 <Step title="Test the hook">
   Create a transaction with. Blnk calls your hook URL when the transaction reaches the stage you registered, `PRE` or `POST`.
 
   Confirm your endpoint receives an event with the expected payload and returns `2xx`.
 
-  <CodeGroup>
-  ```bash cURL wrap
-  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
-    -H "X-blnk-key: <api-key>" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "amount": 200,
-      "precision": 100,
-      "reference": "INV-2025-0008912",
-      "currency": "GBP",
-      "source": "@Funding",
-      "destination": "@UserWallet",
-      "description": "Wallet top-up"
-    }'
-  ```
-
-  ```typescript TypeScript wrap
-  const response = await blnk.Transactions.create({
-    amount: 200,
-    precision: 100,
-    reference: 'INV-2025-0008912',
-    currency: 'GBP',
-    source: '@Funding',
-    destination: '@UserWallet',
-    description: 'Wallet top-up',
-  });
-  ```
-
-  ```go Go wrap
-  transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-    ParentTransaction: blnkgo.ParentTransaction{
-      Amount:      200,
-      Precision:   100,
-      Reference:   "INV-2025-0008912",
-      Currency:    "GBP",
-      Source:      "@Funding",
-      Destination: "@UserWallet",
-      Description: "Wallet top-up",
-    },
-  })
-  ```
-
-  ```python Python wrap
-  response = blnk.transactions.create({
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
     "amount": 200,
     "precision": 100,
     "reference": "INV-2025-0008912",
     "currency": "GBP",
     "source": "@Funding",
     "destination": "@UserWallet",
-    "description": "Wallet top-up",
-  })
-  ```
-  </CodeGroup>
+    "description": "Wallet top-up"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 200,
+  precision: 100,
+  reference: 'INV-2025-0008912',
+  currency: 'GBP',
+  source: '@Funding',
+  destination: '@UserWallet',
+  description: 'Wallet top-up',
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(
+    blnkgo.CreateTransactionRequest{
+        ParentTransaction: blnkgo.ParentTransaction{
+            Amount: 200,
+            Precision: 100,
+            Reference: "INV-2025-0008912",
+            Currency: "GBP",
+            Source: "@Funding",
+            Destination: "@UserWallet",
+            Description: "Wallet top-up",
+        },
+    },
+)
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "amount": 200,
+  "precision": 100,
+  "reference": "INV-2025-0008912",
+  "currency": "GBP",
+  "source": "@Funding",
+  "destination": "@UserWallet",
+  "description": "Wallet top-up",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .amount(200)
+        .precision(100)
+        .reference("INV-2025-0008912")
+        .currency("GBP")
+        .source("@Funding")
+        .destination("@UserWallet")
+        .description("Wallet top-up"));
+```
+</CodeGroup>
 
   <Check>
   Your hook endpoint should log or persist the delivery. If nothing arrives, confirm the hook is `active` and the URL is reachable from Blnk Core,

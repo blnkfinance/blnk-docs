@@ -34,7 +34,7 @@ BLNK_SERVER_SECURE=true
 BLNK_SERVER_SECRET_KEY=your_strong_secret_key
 ```
 
-```json blnk.json
+```json blnk.json wrap
 {
   "server": {
     "secure": true,
@@ -83,6 +83,35 @@ const response = await blnk.ApiKeys.create({
   expires_at: '2027-06-13T00:00:00Z',
 });
 ```
+
+```go Go wrap
+expiresAt, _ := time.Parse(time.RFC3339, "2027-06-13T00:00:00Z")
+apiKey, resp, err := client.ApiKeys.Create(blnkgo.CreateApiKeyRequest{
+    Name: "Payments Service",
+    Owner: "payments-team",
+    Scopes: []string{"transactions:write", "balances:read"},
+    ExpiresAt: expiresAt,
+})
+```
+
+```python Python wrap
+response = blnk.api_keys.create({
+  "name": "Payments Service",
+  "owner": "payments-team",
+  "scopes": ["transactions:write", "balances:read"],
+  "expires_at": "2027-06-13T00:00:00Z",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.apiKeys().create(
+    CreateApiKeyData.create()
+        .name("Payments Service")
+        .owner("payments-team")
+        .scopes(List.of("transactions:write", "balances:read"))
+        .expiresAt("2027-06-13T00:00:00Z"));
+```
+
 </CodeGroup>
 
 | Parameter | Description |
@@ -164,16 +193,16 @@ scopedKey := os.Getenv("BLNK_SCOPED_API_KEY")
 client := blnkgo.NewClient(baseURL, &scopedKey)
 
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(10000),
-    Reference:   "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-    Currency:    "USD",
-    Precision:   100,
-    Source:      "bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94",
-    Destination: "bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-    Description: "Payment transfer",
-  },
-  AllowOverdraft: true,
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(10000),
+        Reference: "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        Currency: "USD",
+        Precision: 100,
+        Source: "bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94",
+        Destination: "bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        Description: "Payment transfer",
+    },
+    AllowOverdraft: true,
 })
 ```
 
@@ -188,6 +217,19 @@ response = blnk.transactions.create({
   "description": "Payment transfer",
   "allow_overdraft": True,
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .reference("ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+        .currency("USD")
+        .precision(100)
+        .source("bln_a1b2c3d4-6e2d-4f89-a17b-3d5e8f2a1c94")
+        .destination("bln_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+        .description("Payment transfer")
+        .allowOverdraft(true));
 ```
 </CodeGroup>
 

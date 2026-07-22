@@ -87,30 +87,30 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap {9,25}
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(3000000),
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Precision:   100,
-    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
-    Description: "Payment from Sarah",
-    SkipQueue:   false,
-    Destinations: []blnkgo.Source{
-      {
-        Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-        Distribution: "20%",
-      },
-      {
-        Identifier:          "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-        PreciseDistribution: "1000000",
-      },
-      {
-        Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-        Distribution: "left",
-      },
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(3000000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+        Description: "Payment from Sarah",
+        SkipQueue: false,
+        Destinations: []blnkgo.Source{
+            {
+                Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+                Distribution: "20%",
+            },
+            {
+                Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+                PreciseDistribution: "1000000",
+            },
+            {
+                Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+                Distribution: "left",
+            },
+        },
     },
-  },
-  Inflight: true,
+    Inflight: true,
 })
 ```
 
@@ -131,6 +131,30 @@ response = blnk.transactions.create({
   ],
 })
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(3000000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38")
+        .description("Payment from Sarah")
+        .inflight(true)
+        .skipQueue(false)
+        .destinations(List.of(
+            MultipleSourcesT.create()
+            .identifier("bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f")
+            .distribution("20%"),
+            MultipleSourcesT.create()
+            .identifier("bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d")
+            .preciseDistribution("1000000"),
+            MultipleSourcesT.create()
+            .identifier("bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b")
+            .distribution("left")
+        )));
+```
 </CodeGroup>
 
 </Step>
@@ -141,11 +165,11 @@ The response returns immediately with `status: "QUEUED"` for the split request i
 
 The worker then records each split leg as a separate INFLIGHT transaction. Every leg, and any later commit or void child, shares the same `meta_data.QUEUED_PARENT_TRANSACTION`.
 
-```json 201 Queued wrap expandable {4,5}
+```json 201 Queued {4,5} wrap
 {
   "amount": 30000,
   "precision": 100,
-  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
   "status": "QUEUED",
   "skip_queue": false,
   "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
@@ -170,7 +194,7 @@ The worker then records each split leg as a separate INFLIGHT transaction. Every
     }
   ],
   "meta_data": {
-    "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab"
+    "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab"
   }
 }
 ```
@@ -216,10 +240,10 @@ const response = await blnk.Transactions.updateStatus(
 
 ```go Go wrap
 txn, resp, err := client.Transaction.Update(
-  "{queued_parent_transaction_id}",
-  blnkgo.UpdateStatus{
-    Status: "commit",
-  },
+    "{queued_parent_transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: "commit",
+    },
 )
 ```
 
@@ -232,11 +256,19 @@ response = blnk.transactions.update_status(
   },
 )
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{queued_parent_transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .skipQueue(false));
+```
 </CodeGroup>
 
 ```json 200 Queued wrap
 {
-  "transaction_id": "txn_0b59f6e-6c4a-4efa-915c-526f77ef61ab",
+  "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
   "status": "INFLIGHT",
   "queued": true
 }
@@ -318,30 +350,30 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap {9,25}
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(3000000),
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Precision:   100,
-    Source:      "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
-    Description: "Payment from Sarah",
-    SkipQueue:   true,
-    Destinations: []blnkgo.Source{
-      {
-        Identifier:   "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-        Distribution: "20%",
-      },
-      {
-        Identifier:          "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-        PreciseDistribution: "1000000",
-      },
-      {
-        Identifier:   "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-        Distribution: "left",
-      },
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(3000000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+        Description: "Payment from Sarah",
+        SkipQueue: true,
+        Destinations: []blnkgo.Source{
+            {
+                Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+                Distribution: "20%",
+            },
+            {
+                Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+                PreciseDistribution: "1000000",
+            },
+            {
+                Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+                Distribution: "left",
+            },
+        },
     },
-  },
-  Inflight: true,
+    Inflight: true,
 })
 ```
 
@@ -362,6 +394,30 @@ response = blnk.transactions.create({
   ],
 })
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(3000000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38")
+        .description("Payment from Sarah")
+        .inflight(true)
+        .skipQueue(true)
+        .destinations(List.of(
+            MultipleSourcesT.create()
+            .identifier("bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f")
+            .distribution("20%"),
+            MultipleSourcesT.create()
+            .identifier("bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d")
+            .preciseDistribution("1000000"),
+            MultipleSourcesT.create()
+            .identifier("bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b")
+            .distribution("left")
+        )));
+```
 </CodeGroup>
 
 </Step>
@@ -372,7 +428,7 @@ The response returns with `status: "INFLIGHT"` for the split request itself. Bln
 
 Each split leg is written as a separate `INFLIGHT` transaction. Every leg shares the same `parent_transaction`, the root `transaction_id`. 
 
-```json 201 Created wrap expandable {4,5}
+```json 201 Created {4,5} wrap
 {
   "amount": 30000,
   "precision": 100,
@@ -440,6 +496,34 @@ const response = await blnk.Transactions.updateStatus(
     skip_queue: true,
   },
 );
+```
+
+```go Go wrap
+txn, resp, err := client.Transaction.Update(
+    "{transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: "commit",
+        SkipQueue: true,
+    },
+)
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(
+  "{transaction_id}",
+  {
+    "status": "commit",
+    "skip_queue": True,
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .skipQueue(true));
 ```
 
 </CodeGroup>

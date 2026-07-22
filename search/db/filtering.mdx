@@ -61,26 +61,52 @@ curl -X POST "https://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
   }'
 ```
 
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    logical_operator: 'and',
+    filters: [
+      {
+        field: 'status',
+        operator: 'eq',
+        value: 'APPLIED',
+      },
+      {
+        field: 'currency',
+        operator: 'in',
+        values: ['USD', 'EUR'],
+      },
+    ],
+    sort_by: 'created_at',
+    sort_order: 'desc',
+    include_count: true,
+    limit: 20,
+    offset: 0,
+  },
+  'transactions',
+);
+```
+
 ```go Go wrap
 results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
-  LogicalOperator: "and",
-  Filters: []blnkgo.Filter{
-    {
-      Field:    "status",
-      Operator: blnkgo.OpEqual,
-      Value:    "APPLIED",
+    LogicalOperator: "and",
+    Filters: []blnkgo.Filter{
+        {
+            Field: "status",
+            Operator: blnkgo.OpEqual,
+            Value: "APPLIED",
+        },
+        {
+            Field: "currency",
+            Operator: blnkgo.OpIn,
+            Values: []string{"USD", "EUR"},
+        },
     },
-    {
-      Field:    "currency",
-      Operator: blnkgo.OpIn,
-      Values:   []string{"USD", "EUR"},
-    },
-  },
-  SortBy:       "created_at",
-  SortOrder:    "desc",
-  IncludeCount: true,
-  Limit:        20,
-  Offset:       0,
+    SortBy: "created_at",
+    SortOrder: "desc",
+    IncludeCount: true,
+    Limit: 20,
+    Offset: 0,
 })
 ```
 
@@ -109,6 +135,28 @@ response = blnk.search.filter(
   "transactions",
 )
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .logicalOperator("and")
+        .filters(List.of(
+            FilterCondition.create()
+            .field("status")
+            .operator("eq")
+            .value("APPLIED"),
+            FilterCondition.create()
+            .field("currency")
+            .operator("in")
+            .values(List.of("USD", "EUR"))
+        ))
+        .sortBy("created_at")
+        .sortOrder("desc")
+        .includeCount(true)
+        .limit(20)
+        .offset(0),
+    "transactions");
+```
 </CodeGroup>
 
 | Parameter | Type | Required | Description |
@@ -132,12 +180,12 @@ The response format depends on whether `include_count` is enabled.
 {
   "data": [
     {
-      "transaction_id": "txn_abc123",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
       "amount": 15000,
       "currency": "USD",
       "status": "APPLIED",
-      "source": "bln_source123",
-      "destination": "bln_dest456",
+      "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+      "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
       "created_at": "2024-01-15T10:30:00Z"
     }
   ],
@@ -148,12 +196,12 @@ The response format depends on whether `include_count` is enabled.
 ```json include_count: false (default) wrap
 [
   {
-    "transaction_id": "txn_abc123",
+    "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
     "amount": 15000,
     "currency": "USD",
     "status": "APPLIED",
-    "source": "bln_source123",
-    "destination": "bln_dest456",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
     "created_at": "2024-01-15T10:30:00Z"
   }
 ]
@@ -345,13 +393,13 @@ const response = await blnk.Search.filter(
 
 ```go Go wrap
 results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
-  Filters: []blnkgo.Filter{
-    {
-      Field:    "meta_data.customer_type",
-      Operator: blnkgo.OpEqual,
-      Value:    "premium",
+    Filters: []blnkgo.Filter{
+        {
+            Field: "meta_data.customer_type",
+            Operator: blnkgo.OpEqual,
+            Value: "premium",
+        },
     },
-  },
 })
 ```
 
@@ -368,6 +416,18 @@ response = blnk.search.filter(
   },
   "transactions",
 )
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("meta_data.customer_type")
+            .operator("eq")
+            .value("premium")
+        )),
+    "transactions");
 ```
 </CodeGroup>
 

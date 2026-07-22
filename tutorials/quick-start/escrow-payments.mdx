@@ -92,10 +92,14 @@ curl -X POST "http://localhost:5001/transactions" \
   }'
 ```
 
-```typescript TypeScript wrap expandable {13}
-async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, uniqueReference, description) {
-  
-  
+```typescript TypeScript wrap expandable
+async function createEscrowTransaction(
+  buyerWalletId,
+  sellerWalletId,
+  amount,
+  uniqueReference,
+  description,
+) {
   const escrow = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
@@ -119,29 +123,35 @@ async function createEscrowTransaction(buyerWalletId, sellerWalletId, amount, un
 ```
 
 ```go Go wrap expandable
-func createEscrowTransaction(buyerWalletID, sellerWalletID string, amount float64, uniqueReference, description string) (string, error) {
+func createEscrowTransaction(
+    buyerWalletID, sellerWalletID string,
+    amount float64,
+    uniqueReference, description string,
+) (string, error) {
     client := getClient()
     if description == "" {
         description = "Escrow payment"
     }
-    escrow, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: amount * 100,
-            Precision:   100,
-            Reference:   uniqueReference,
-            Description: description,
-            Currency:    "USD",
-            Source:      buyerWalletID,
-            Destination: sellerWalletID,
-            MetaData: blnkgo.MetaData{
-                "transaction_type":     "escrow",
-                "escrow_status":        "pending",
-                "buyer_confirmation":   false,
-                "seller_confirmation":  false,
+    escrow, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: amount * 100,
+                Precision: 100,
+                Reference: uniqueReference,
+                Description: description,
+                Currency: "USD",
+                Source: buyerWalletID,
+                Destination: sellerWalletID,
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "escrow",
+                    "escrow_status": "pending",
+                    "buyer_confirmation": false,
+                    "seller_confirmation": false,
+                },
             },
+            Inflight: true,
         },
-        Inflight: true,
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -170,6 +180,32 @@ escrow = blnk.transactions.create({
 
 print("Escrow transaction created:", escrow.data["transaction_id"])
 ```
+
+```java Java wrap expandable
+if (description == null) {
+  description = "Escrow payment";
+}
+ApiResponse<JsonNode> escrow = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((amount * 100))
+        .precision(100)
+        .reference(unique_reference)
+        .description(description)
+        .currency("USD")
+        .source(buyer_wallet_id)
+        .destination(seller_wallet_id)
+        .inflight(true)
+        .metaData(Map.of(
+            "transaction_type", "escrow",
+            "escrow_status", "pending",
+            "buyer_confirmation", false,
+            "seller_confirmation", false
+        ))
+);
+System.out.println(
+    "Escrow transaction created: " + escrow.data().get("transaction_id").asText()
+);
+```
 </CodeGroup>
 
 <Note>
@@ -194,8 +230,6 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
 
 ```typescript TypeScript wrap expandable
 async function commitInflightTransaction(transactionId) {
-  
-  
   try {
     const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'commit',
@@ -215,9 +249,12 @@ async function commitInflightTransaction(transactionId) {
 ```go Go wrap
 func commitInflightTransaction(transactionID string) (*blnkgo.Transaction, error) {
     client := getClient()
-    committed, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusCommit,
-    })
+    committed, _, err := client.Transaction.Update(
+        transactionID,
+        blnkgo.UpdateStatus{
+            Status: blnkgo.InflightStatusCommit,
+        },
+    )
     if err != nil {
         return nil, err
     }
@@ -232,6 +269,14 @@ response = blnk.transactions.update_status(transaction_id, {
 })
 
 print(f"Transaction {transaction_id} successfully committed")
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transaction_id,
+    UpdateTransactionStatus.create()
+        .status("commit")
+);
 ```
 </CodeGroup>
 
@@ -253,8 +298,6 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
 
 ```typescript TypeScript wrap expandable
 async function voidInflightTransaction(transactionId) {
-  
-  
   try {
     const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'void',
@@ -274,9 +317,12 @@ async function voidInflightTransaction(transactionId) {
 ```go Go wrap
 func voidInflightTransaction(transactionID string) (*blnkgo.Transaction, error) {
     client := getClient()
-    voided, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusVoid,
-    })
+    voided, _, err := client.Transaction.Update(
+        transactionID,
+        blnkgo.UpdateStatus{
+            Status: blnkgo.InflightStatusVoid,
+        },
+    )
     if err != nil {
         return nil, err
     }
@@ -291,6 +337,14 @@ response = blnk.transactions.update_status(transaction_id, {
 })
 
 print(f"Transaction {transaction_id} successfully voided")
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transaction_id,
+    UpdateTransactionStatus.create()
+        .status("void")
+);
 ```
 </CodeGroup>
 
@@ -315,8 +369,6 @@ curl -X PUT "http://localhost:5001/transactions/inflight/<inflight-transaction-i
 
 ```typescript TypeScript wrap expandable
 async function commitPartialInflightTransaction(transactionId, partialAmount) {
-  
-  
   try {
     const response = await blnk.Transactions.updateStatus(transactionId, {
       status: 'commit',
@@ -335,12 +387,18 @@ async function commitPartialInflightTransaction(transactionId, partialAmount) {
 ```
 
 ```go Go wrap
-func commitPartialInflightTransaction(transactionID string, partialAmount float64) (*blnkgo.Transaction, error) {
+func commitPartialInflightTransaction(
+    transactionID string,
+    partialAmount float64,
+) (*blnkgo.Transaction, error) {
     client := getClient()
-    committed, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusCommit,
-        PreciseAmount: partialAmount * 100,
-    })
+    committed, _, err := client.Transaction.Update(
+        transactionID,
+        blnkgo.UpdateStatus{
+            Status: blnkgo.InflightStatusCommit,
+            PreciseAmount: partialAmount * 100,
+        },
+    )
     if err != nil {
         return nil, err
     }
@@ -356,6 +414,15 @@ response = blnk.transactions.update_status(transaction_id, {
 })
 
 print(f"Transaction {transaction_id} successfully committed")
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transaction_id,
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .preciseAmount((partial_amount * 100))
+);
 ```
 </CodeGroup>
 

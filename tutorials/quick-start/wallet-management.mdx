@@ -95,8 +95,6 @@ curl -X POST "http://localhost:5001/ledgers" \
 
 ```typescript TypeScript wrap
 async function createCustomerLedger() {
-  
-  
   const customerLedger = await blnk.Ledgers.create({
     name: "Customer Wallets Ledger",
     meta_data: {
@@ -113,13 +111,15 @@ async function createCustomerLedger() {
 ```go Go wrap
 func createCustomerLedger() (string, error) {
     client := getClient()
-    ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
-        Name: "Customer Wallets Ledger",
-        MetaData: blnkgo.MetaData{
-            "description": "Ledger for managing customer wallets",
-            "application": "Wallet Management System",
+    ledger, _, err := client.Ledger.Create(
+        blnkgo.CreateLedgerRequest{
+            Name: "Customer Wallets Ledger",
+            MetaData: blnkgo.MetaData{
+                "description": "Ledger for managing customer wallets",
+                "application": "Wallet Management System",
+            },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -138,6 +138,20 @@ customer_ledger = blnk.ledgers.create({
 })
 
 print("Customer Ledger created:", customer_ledger.data["ledger_id"])
+```
+
+```java Java wrap
+ApiResponse<JsonNode> customer_ledger = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Wallets Ledger")
+        .metaData(Map.of(
+            "description", "Ledger for managing customer wallets",
+            "application", "Wallet Management System"
+        ))
+);
+System.out.println(
+    "Customer Ledger created: " + customer_ledger.data().get("ledger_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -171,8 +185,6 @@ curl -X POST "http://localhost:5001/identities" \
 
 ```typescript TypeScript wrap expandable
 async function createCustomerIdentity(customerData) {
-  
-  
   const identity = await blnk.Identity.create({
     identity_type: "individual",
     first_name: customerData.firstName,
@@ -193,17 +205,19 @@ async function createCustomerIdentity(customerData) {
 ```go Go wrap expandable
 func createCustomerIdentity(customerData CustomerData) (string, error) {
     client := getClient()
-    identity, _, err := client.Identity.Create(blnkgo.Identity{
-        IdentityType: blnkgo.Individual,
-        FirstName:    customerData.FirstName,
-        LastName:     customerData.LastName,
-        EmailAddress: customerData.Email,
-        PhoneNumber:  customerData.Phone,
-        MetaData: blnkgo.MetaData{
-            "customer_id":       customerData.CustomerID,
-            "registration_date": time.Now().UTC().Format(time.RFC3339),
+    identity, _, err := client.Identity.Create(
+        blnkgo.Identity{
+            IdentityType: blnkgo.Individual,
+            FirstName: customerData.FirstName,
+            LastName: customerData.LastName,
+            EmailAddress: customerData.Email,
+            PhoneNumber: customerData.Phone,
+            MetaData: blnkgo.MetaData{
+                "customer_id": customerData.CustomerID,
+                "registration_date": time.Now().UTC().Format(time.RFC3339),
+            },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -226,6 +240,24 @@ identity = blnk.identity.create({
 })
 
 print("Customer Identity created:", identity.data["identity_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> identity = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("Alice")
+        .lastName("Johnson")
+        .emailAddress("alice@example.com")
+        .phoneNumber("+1234567890")
+        .metaData(Map.of(
+            "customer_id", "CUST-001",
+            "registration_date", "2024-02-25T10:30:00Z"
+        ))
+);
+System.out.println(
+    "Customer Identity created: " + identity.data().get("identity_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -258,8 +290,6 @@ curl -X POST "http://localhost:5001/balances" \
 
 ```typescript TypeScript wrap expandable
 async function createMainWallet(ledgerId, identityId, currency) {
-  
-  
   const mainWallet = await blnk.LedgerBalances.create({
     ledger_id: ledgerId,
     identity_id: identityId,
@@ -279,16 +309,18 @@ async function createMainWallet(ledgerId, identityId, currency) {
 ```go Go wrap expandable
 func createMainWallet(ledgerID, identityID, currency string) (string, error) {
     client := getClient()
-    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-        LedgerID:   ledgerID,
-        IdentityID: identityID,
-        Currency:   currency,
-        MetaData: blnkgo.MetaData{
-            "wallet_type": "main",
-            "purpose":     "general",
-            "status":      "active",
+    balance, _, err := client.LedgerBalance.Create(
+        blnkgo.CreateLedgerBalanceRequest{
+            LedgerID: ledgerID,
+            IdentityID: identityID,
+            Currency: currency,
+            MetaData: blnkgo.MetaData{
+                "wallet_type": "main",
+                "purpose": "general",
+                "status": "active",
+            },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -310,6 +342,23 @@ main_wallet = blnk.ledger_balances.create({
 })
 
 print("Main Wallet created:", main_wallet.data["balance_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> main_wallet = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(ledger_id)
+        .identityId(identity_id)
+        .currency(currency)
+        .metaData(Map.of(
+            "wallet_type", "main",
+            "purpose", "general",
+            "status", "active"
+        ))
+);
+System.out.println(
+    "Main Wallet created: " + main_wallet.data().get("balance_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -348,8 +397,6 @@ curl -X POST "http://localhost:5001/transactions" \
 
 ```typescript TypeScript wrap expandable
 async function depositToWallet(customerBalanceID, amount, uniqueReference, description) {
-  
-  
   const deposit = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
@@ -371,27 +418,33 @@ async function depositToWallet(customerBalanceID, amount, uniqueReference, descr
 ```
 
 ```go Go wrap expandable
-func depositToWallet(customerBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+func depositToWallet(
+    customerBalanceID string,
+    amount float64,
+    uniqueReference, description string,
+) (string, error) {
     client := getClient()
     if description == "" {
         description = "Deposit to wallet"
     }
-    deposit, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: amount * 100,
-            Precision:   100,
-            Reference:   uniqueReference,
-            Description: description,
-            Currency:    "USD",
-            Source:      "@WorldUSD",
-            Destination: customerBalanceID,
-            MetaData: blnkgo.MetaData{
-                "transaction_type": "deposit",
-                "channel":          "bank_transfer",
+    deposit, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: amount * 100,
+                Precision: 100,
+                Reference: uniqueReference,
+                Description: description,
+                Currency: "USD",
+                Source: "@WorldUSD",
+                Destination: customerBalanceID,
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "deposit",
+                    "channel": "bank_transfer",
+                },
             },
+            AllowOverdraft: true,
         },
-        AllowOverdraft: true,
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -417,6 +470,27 @@ deposit = blnk.transactions.create({
 })
 
 print("Deposit transaction created:", deposit.data["transaction_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> deposit = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(100000)
+        .precision(100)
+        .reference("DEP-20250225-103000")
+        .description("Initial deposit")
+        .currency("USD")
+        .source("@WorldUSD")
+        .destination(customer_balance_id)
+        .allowOverdraft(true)
+        .metaData(Map.of(
+            "transaction_type", "deposit",
+            "channel", "bank_transfer"
+        ))
+);
+System.out.println(
+    "Deposit transaction created: " + deposit.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -454,8 +528,6 @@ curl -X POST "http://localhost:5001/transactions" \
 
 ```typescript TypeScript wrap expandable
 async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, description) {
-  
-  
   const withdrawal = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
@@ -476,26 +548,32 @@ async function withdrawFromWallet(customerBalanceID, amount, uniqueReference, de
 ```
 
 ```go Go wrap expandable
-func withdrawFromWallet(customerBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+func withdrawFromWallet(
+    customerBalanceID string,
+    amount float64,
+    uniqueReference, description string,
+) (string, error) {
     client := getClient()
     if description == "" {
         description = "Withdrawal from wallet"
     }
-    withdrawal, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: amount * 100,
-            Precision:   100,
-            Reference:   uniqueReference,
-            Description: description,
-            Currency:    "USD",
-            Source:      customerBalanceID,
-            Destination: "@WorldUSD",
-            MetaData: blnkgo.MetaData{
-                "transaction_type": "withdrawal",
-                "channel":          "bank_transfer",
+    withdrawal, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: amount * 100,
+                Precision: 100,
+                Reference: uniqueReference,
+                Description: description,
+                Currency: "USD",
+                Source: customerBalanceID,
+                Destination: "@WorldUSD",
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "withdrawal",
+                    "channel": "bank_transfer",
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -520,6 +598,26 @@ withdrawal = blnk.transactions.create({
 })
 
 print("Withdrawal transaction created:", withdrawal.data["transaction_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> withdrawal = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .precision(100)
+        .reference("WDR-20250225-104500")
+        .description("Wallet withdrawal")
+        .currency("USD")
+        .source(customer_balance_id)
+        .destination("@WorldUSD")
+        .metaData(Map.of(
+            "transaction_type", "withdrawal",
+            "channel", "bank_transfer"
+        ))
+);
+System.out.println(
+    "Withdrawal transaction created: " + withdrawal.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -553,8 +651,6 @@ curl -X POST "http://localhost:5001/balances" \
 
 ```typescript TypeScript wrap expandable
 async function createCardWallet(ledgerId, identityId, currency) {
-  
-  
   const cardWallet = await blnk.LedgerBalances.create({
     ledger_id: ledgerId,
     identity_id: identityId,
@@ -579,21 +675,23 @@ async function createCardWallet(ledgerId, identityId, currency) {
 ```go Go wrap expandable
 func createCardWallet(ledgerID, identityID, currency string) (string, error) {
     client := getClient()
-    balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-        LedgerID:   ledgerID,
-        IdentityID: identityID,
-        Currency:   currency,
-        MetaData: blnkgo.MetaData{
-            "wallet_type": "card",
-            "purpose":     "card_payments",
-            "status":      "active",
-            "card_details": map[string]interface{}{
-                "masked_number": "xxxx-xxxx-xxxx-1234",
-                "expiry":        "12/25",
-                "type":          "virtual",
+    balance, _, err := client.LedgerBalance.Create(
+        blnkgo.CreateLedgerBalanceRequest{
+            LedgerID: ledgerID,
+            IdentityID: identityID,
+            Currency: currency,
+            MetaData: blnkgo.MetaData{
+                "wallet_type": "card",
+                "purpose": "card_payments",
+                "status": "active",
+                "card_details": map[string]interface{}{
+                    "masked_number": "xxxx-xxxx-xxxx-1234",
+                    "expiry": "12/25",
+                    "type": "virtual",
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -620,6 +718,28 @@ card_wallet = blnk.ledger_balances.create({
 })
 
 print("Card Wallet created:", card_wallet.data["balance_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> card_wallet = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(ledger_id)
+        .identityId(identity_id)
+        .currency(currency)
+        .metaData(Map.ofEntries(
+            Map.entry("wallet_type", "card"),
+            Map.entry("purpose", "card_payments"),
+            Map.entry("status", "active"),
+            Map.entry("card_details", Map.of(
+                "masked_number", "xxxx-xxxx-xxxx-1234",
+                "expiry", "12/25",
+                "type", "virtual"
+            ))
+        ))
+);
+System.out.println(
+    "Card Wallet created: " + card_wallet.data().get("balance_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -650,9 +770,13 @@ curl -X POST "http://localhost:5001/transactions" \
 ```
 
 ```typescript TypeScript wrap expandable
-async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, uniqueReference, description) {
-  
-  
+async function transferToCardWallet(
+  mainBalanceID,
+  cardBalanceID,
+  amount,
+  uniqueReference,
+  description,
+) {
   const transfer = await blnk.Transactions.create({
     precise_amount: amount * 100,
     precision: 100,
@@ -673,26 +797,32 @@ async function transferToCardWallet(mainBalanceID, cardBalanceID, amount, unique
 ```
 
 ```go Go wrap expandable
-func transferToCardWallet(mainBalanceID, cardBalanceID string, amount float64, uniqueReference, description string) (string, error) {
+func transferToCardWallet(
+    mainBalanceID, cardBalanceID string,
+    amount float64,
+    uniqueReference, description string,
+) (string, error) {
     client := getClient()
     if description == "" {
         description = "Transfer to card wallet"
     }
-    transfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: amount * 100,
-            Precision:   100,
-            Reference:   uniqueReference,
-            Description: description,
-            Currency:    "USD",
-            Source:      mainBalanceID,
-            Destination: cardBalanceID,
-            MetaData: blnkgo.MetaData{
-                "transaction_type": "internal_transfer",
-                "purpose":          "fund_card",
+    transfer, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: amount * 100,
+                Precision: 100,
+                Reference: uniqueReference,
+                Description: description,
+                Currency: "USD",
+                Source: mainBalanceID,
+                Destination: cardBalanceID,
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "internal_transfer",
+                    "purpose": "fund_card",
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", err
     }
@@ -717,6 +847,26 @@ transfer = blnk.transactions.create({
 })
 
 print("Transfer transaction created:", transfer.data["transaction_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> transfer = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(20000)
+        .precision(100)
+        .reference("TRF-20250225-110000")
+        .description("Transfer to card wallet")
+        .currency("USD")
+        .source(main_balance_id)
+        .destination(card_balance_id)
+        .metaData(Map.of(
+            "transaction_type", "internal_transfer",
+            "purpose", "fund_card"
+        ))
+);
+System.out.println(
+    "Transfer transaction created: " + transfer.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 

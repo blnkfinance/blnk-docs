@@ -106,8 +106,6 @@ curl -X POST "http://localhost:5001/ledgers" \
 
 ```typescript TypeScript wrap expandable
 async function createLedgers() {
-  
-  
   // Create a ledger for customer main wallets (USD)
   const mainLedger = await blnk.Ledgers.create({
     name: "Customer Main Wallets",
@@ -138,22 +136,26 @@ async function createLedgers() {
 func createLedgers() (mainLedgerID, pointsLedgerID string, err error) {
     client := getClient()
 
-    mainLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
-        Name: "Customer Main Wallets",
-        MetaData: blnkgo.MetaData{
-            "description": "Ledger for customer USD wallets",
+    mainLedger, _, err := client.Ledger.Create(
+        blnkgo.CreateLedgerRequest{
+            Name: "Customer Main Wallets",
+            MetaData: blnkgo.MetaData{
+                "description": "Ledger for customer USD wallets",
+            },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
 
-    pointsLedger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
-        Name: "Customer Points Wallets",
-        MetaData: blnkgo.MetaData{
-            "description": "Ledger for customer loyalty points",
+    pointsLedger, _, err := client.Ledger.Create(
+        blnkgo.CreateLedgerRequest{
+            Name: "Customer Points Wallets",
+            MetaData: blnkgo.MetaData{
+                "description": "Ledger for customer loyalty points",
+            },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
@@ -183,6 +185,32 @@ points_ledger = blnk.ledgers.create({
 
 print("Created main wallet ledger:", main_ledger.data["ledger_id"])
 print("Created points wallet ledger:", points_ledger.data["ledger_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> main_ledger = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Main Wallets")
+        .metaData(Map.of(
+            "description",
+            "Ledger for customer USD wallets"
+        ))
+);
+
+ApiResponse<JsonNode> points_ledger = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Points Wallets")
+        .metaData(Map.of(
+            "description",
+            "Ledger for customer loyalty points"
+        ))
+);
+System.out.println(
+    "Created main wallet ledger: " + main_ledger.data().get("ledger_id").asText()
+);
+System.out.println(
+    "Created points wallet ledger: " + points_ledger.data().get("ledger_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -227,8 +255,6 @@ curl -X POST "http://localhost:5001/balances" \
 
 ```typescript TypeScript wrap expandable
 async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
-  
-  
   // Create main wallet (USD)
   const mainWallet = await blnk.LedgerBalances.create({
     ledger_id: mainLedgerId,
@@ -262,31 +288,37 @@ async function createCustomerWallets(mainLedgerId, pointsLedgerId, identityId) {
 ```
 
 ```go Go wrap expandable
-func createCustomerWallets(mainLedgerID, pointsLedgerID, identityID string) (mainWalletID, pointsWalletID string, err error) {
+func createCustomerWallets(
+    mainLedgerID, pointsLedgerID, identityID string,
+) (mainWalletID, pointsWalletID string, err error) {
     client := getClient()
 
-    mainWallet, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-        LedgerID:   mainLedgerID,
-        IdentityID: identityID,
-        Currency:   "USD",
-        MetaData: blnkgo.MetaData{
-            "wallet_type": "main",
-            "status":      "active",
+    mainWallet, _, err := client.LedgerBalance.Create(
+        blnkgo.CreateLedgerBalanceRequest{
+            LedgerID: mainLedgerID,
+            IdentityID: identityID,
+            Currency: "USD",
+            MetaData: blnkgo.MetaData{
+                "wallet_type": "main",
+                "status": "active",
+            },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
 
-    pointsWallet, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-        LedgerID:   pointsLedgerID,
-        IdentityID: identityID,
-        Currency:   "POINTS",
-        MetaData: blnkgo.MetaData{
-            "wallet_type": "points",
-            "status":      "active",
+    pointsWallet, _, err := client.LedgerBalance.Create(
+        blnkgo.CreateLedgerBalanceRequest{
+            LedgerID: pointsLedgerID,
+            IdentityID: identityID,
+            Currency: "POINTS",
+            MetaData: blnkgo.MetaData{
+                "wallet_type": "points",
+                "status": "active",
+            },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
@@ -322,6 +354,36 @@ points_wallet = blnk.ledger_balances.create({
 
 print("Created main wallet:", main_wallet.data["balance_id"])
 print("Created points wallet:", points_wallet.data["balance_id"])
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> main_wallet = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(main_ledger_id)
+        .identityId(identity_id)
+        .currency("USD")
+        .metaData(Map.of(
+            "wallet_type", "main",
+            "status", "active"
+        ))
+);
+
+ApiResponse<JsonNode> points_wallet = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(points_ledger_id)
+        .identityId(identity_id)
+        .currency("POINTS")
+        .metaData(Map.of(
+            "wallet_type", "points",
+            "status", "active"
+        ))
+);
+System.out.println(
+    "Created main wallet: " + main_wallet.data().get("balance_id").asText()
+);
+System.out.println(
+    "Created points wallet: " + points_wallet.data().get("balance_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -380,9 +442,12 @@ curl -X POST "http://localhost:5001/transactions" \
 ```
 
 ```typescript TypeScript wrap expandable
-async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purchaseAmount, pointsToAward) {
-  
-  
+async function processPurchaseAndAwardPoints(
+  mainWalletId,
+  pointsWalletId,
+  purchaseAmount,
+  pointsToAward,
+) {
   // Generate a unique reference for this purchase
   const purchaseReference = `purchase-${Date.now()}`;
   
@@ -427,44 +492,51 @@ async function processPurchaseAndAwardPoints(mainWalletId, pointsWalletId, purch
 ```
 
 ```go Go wrap expandable
-func processPurchaseAndAwardPoints(mainWalletID, pointsWalletID string, purchaseAmount, pointsToAward float64) (purchaseID, pointsAwardID string, err error) {
+func processPurchaseAndAwardPoints(
+    mainWalletID, pointsWalletID string,
+    purchaseAmount, pointsToAward float64,
+) (purchaseID, pointsAwardID string, err error) {
     client := getClient()
     purchaseReference := fmt.Sprintf("purchase-%d", time.Now().Unix())
 
-    purchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: purchaseAmount * 100,
-            Precision:   100,
-            Reference:   purchaseReference,
-            Currency:    "USD",
-            Source:      mainWalletID,
-            Destination: "@RevenueUSD",
-            Description: "Product purchase",
-            MetaData: blnkgo.MetaData{
-                "transaction_type": "purchase",
+    purchase, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: purchaseAmount * 100,
+                Precision: 100,
+                Reference: purchaseReference,
+                Currency: "USD",
+                Source: mainWalletID,
+                Destination: "@RevenueUSD",
+                Description: "Product purchase",
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "purchase",
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
 
-    pointsAward, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: pointsToAward,
-            Precision:   1,
-            Reference:   "points-" + purchaseReference,
-            Currency:    "POINTS",
-            Source:      "@PointsPool",
-            Destination: pointsWalletID,
-            Description: "Loyalty points award",
-            MetaData: blnkgo.MetaData{
-                "purchase_reference": purchaseReference,
-                "purchase_amount":    purchaseAmount,
+    pointsAward, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: pointsToAward,
+                Precision: 1,
+                Reference: "points-" + purchaseReference,
+                Currency: "POINTS",
+                Source: "@PointsPool",
+                Destination: pointsWalletID,
+                Description: "Loyalty points award",
+                MetaData: blnkgo.MetaData{
+                    "purchase_reference": purchaseReference,
+                    "purchase_amount": purchaseAmount,
+                },
             },
+            AllowOverdraft: true,
         },
-        AllowOverdraft: true,
-    })
+    )
     if err != nil {
         return "", "", err
     }
@@ -513,6 +585,44 @@ points_award = blnk.transactions.create({
 
 print("Purchase processed:", purchase.data["transaction_id"])
 print("Points awarded:", points_award.data["transaction_id"])
+```
+
+```java Java wrap expandable
+String purchase_reference = "purchase-<timestamp>";
+
+ApiResponse<JsonNode> purchase = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((purchase_amount * 100))
+        .precision(100)
+        .reference(purchase_reference)
+        .currency("USD")
+        .source(main_wallet_id)
+        .destination("@RevenueUSD")
+        .description("Product purchase")
+        .metaData(Map.of("transaction_type", "purchase"))
+);
+
+ApiResponse<JsonNode> points_award = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(points_to_award)
+        .precision(1)
+        .reference("points-" + purchase_reference)
+        .currency("POINTS")
+        .source("@PointsPool")
+        .destination(points_wallet_id)
+        .description("Loyalty points award")
+        .allowOverdraft(true)
+        .metaData(Map.of(
+            "purchase_reference", purchase_reference,
+            "purchase_amount", purchase_amount
+        ))
+);
+System.out.println(
+    "Purchase processed: " + purchase.data().get("transaction_id").asText()
+);
+System.out.println(
+    "Points awarded: " + points_award.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -583,9 +693,12 @@ curl -X POST "http://localhost:5001/transactions" \
 ```
 
 ```typescript TypeScript wrap expandable
-async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmount, pointsToRedeem) {
-  
-
+async function redeemPointsForDiscount(
+  mainWalletId,
+  pointsWalletId,
+  purchaseAmount,
+  pointsToRedeem,
+) {
   // Calculate points conversion to dollar: 10 points = 1 dollar
   const convertedAmount = pointsToRedeem / 10;
   
@@ -636,47 +749,54 @@ async function redeemPointsForDiscount(mainWalletId, pointsWalletId, purchaseAmo
 ```
 
 ```go Go wrap expandable
-func redeemPointsForDiscount(mainWalletID, pointsWalletID string, purchaseAmount, pointsToRedeem float64) (redemptionID, purchaseID string, err error) {
+func redeemPointsForDiscount(
+    mainWalletID, pointsWalletID string,
+    purchaseAmount, pointsToRedeem float64,
+) (redemptionID, purchaseID string, err error) {
     client := getClient()
     convertedAmount := pointsToRedeem / 10
     redemptionReference := fmt.Sprintf("redemption-%d", time.Now().Unix())
 
-    pointsRedemption, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: pointsToRedeem,
-            Precision:   1,
-            Reference:   redemptionReference,
-            Currency:    "POINTS",
-            Source:      pointsWalletID,
-            Destination: "@PointsPool",
-            Description: "Points redemption for discount",
-            MetaData: blnkgo.MetaData{
-                "transaction_type": "redemption",
-                "convert_to_usd":   convertedAmount,
+    pointsRedemption, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: pointsToRedeem,
+                Precision: 1,
+                Reference: redemptionReference,
+                Currency: "POINTS",
+                Source: pointsWalletID,
+                Destination: "@PointsPool",
+                Description: "Points redemption for discount",
+                MetaData: blnkgo.MetaData{
+                    "transaction_type": "redemption",
+                    "convert_to_usd": convertedAmount,
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
 
     discountedAmount := purchaseAmount - convertedAmount
-    discountedPurchase, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: discountedAmount * 100,
-            Precision:   100,
-            Reference:   "purchase-" + redemptionReference,
-            Currency:    "USD",
-            Source:      mainWalletID,
-            Destination: "@RevenueUSD",
-            Description: "Discounted purchase with points",
-            MetaData: blnkgo.MetaData{
-                "redemption_reference": redemptionReference,
-                "original_amount":      purchaseAmount,
-                "points_redeemed":      pointsToRedeem,
+    discountedPurchase, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: discountedAmount * 100,
+                Precision: 100,
+                Reference: "purchase-" + redemptionReference,
+                Currency: "USD",
+                Source: mainWalletID,
+                Destination: "@RevenueUSD",
+                Description: "Discounted purchase with points",
+                MetaData: blnkgo.MetaData{
+                    "redemption_reference": redemptionReference,
+                    "original_amount": purchaseAmount,
+                    "points_redeemed": pointsToRedeem,
+                },
             },
         },
-    })
+    )
     if err != nil {
         return "", "", err
     }
@@ -731,6 +851,48 @@ discounted_purchase = blnk.transactions.create({
 
 print("Points redeemed:", points_redemption.data["transaction_id"])
 print("Discounted purchase processed:", discounted_purchase.data["transaction_id"])
+```
+
+```java Java wrap expandable
+var converted_amount = (points_to_redeem / 10);
+String redemption_reference = "redemption-<timestamp>";
+
+ApiResponse<JsonNode> points_redemption = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(points_to_redeem)
+        .precision(1)
+        .reference(redemption_reference)
+        .currency("POINTS")
+        .source(points_wallet_id)
+        .destination("@PointsPool")
+        .description("Points redemption for discount")
+        .metaData(Map.of(
+            "transaction_type", "redemption",
+            "convert_to_usd", converted_amount
+        ))
+);
+
+ApiResponse<JsonNode> discounted_purchase = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((discounted_amount * 100))
+        .precision(100)
+        .reference("purchase-" + redemption_reference)
+        .currency("USD")
+        .source(main_wallet_id)
+        .destination("@RevenueUSD")
+        .description("Discounted purchase with points")
+        .metaData(Map.of(
+            "redemption_reference", redemption_reference,
+            "original_amount", purchase_amount,
+            "points_redeemed", points_to_redeem
+        ))
+);
+System.out.println(
+    "Points redeemed: " + points_redemption.data().get("transaction_id").asText()
+);
+System.out.println(
+    "Discounted purchase processed: " + discounted_purchase.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 

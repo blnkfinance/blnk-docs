@@ -90,7 +90,13 @@ curl -X POST "http://localhost:5001/transactions" \
 ```
 
 ```typescript TypeScript wrap expandable
-async function recordDeposit(sourceId, customerBalanceId, amount, reference, stripePaymentId) {
+async function recordDeposit(
+  sourceId,
+  customerBalanceId,
+  amount,
+  reference,
+  stripePaymentId,
+) {
   
   // Calculate fee (1% capped at $5)
   const feePercentage = 0.01;
@@ -131,7 +137,11 @@ async function recordDeposit(sourceId, customerBalanceId, amount, reference, str
 ```
 
 ```go Go wrap expandable
-func recordDeposit(sourceID, customerBalanceID string, amount float64, reference, stripePaymentID string) (*blnkgo.Transaction, error) {
+func recordDeposit(
+    sourceID, customerBalanceID string,
+    amount float64,
+    reference, stripePaymentID string,
+) (*blnkgo.Transaction, error) {
     client := getClient()
 
     // Calculate fee (1% capped at $5)
@@ -141,31 +151,33 @@ func recordDeposit(sourceID, customerBalanceID string, amount float64, reference
     customerAmount := amount - calculatedFee
 
     // Record the deposit with multiple destinations
-    transaction, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: big.NewInt(int64(amount * 100)),
-            Precision:     100,
-            Reference:     reference,
-            Currency:      "USD",
-            Source:        sourceID,
-            SkipQueue:     true,
-            Destinations: []blnkgo.Source{
-                {
-                    Identifier:   customerBalanceID,
-                    Distribution: fmt.Sprintf("%g", customerAmount),
+    transaction, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: big.NewInt(int64(amount * 100)),
+                Precision: 100,
+                Reference: reference,
+                Currency: "USD",
+                Source: sourceID,
+                SkipQueue: true,
+                Destinations: []blnkgo.Source{
+                    {
+                        Identifier: customerBalanceID,
+                        Distribution: fmt.Sprintf("%g", customerAmount),
+                    },
+                    {
+                        Identifier: "@Fees",
+                        Distribution: fmt.Sprintf("%g", calculatedFee),
+                    },
                 },
-                {
-                    Identifier:   "@Fees",
-                    Distribution: fmt.Sprintf("%g", calculatedFee),
+                MetaData: blnkgo.MetaData{
+                    "fee_amount": calculatedFee,
+                    "stripe_payment_id": stripePaymentID,
                 },
             },
-            MetaData: blnkgo.MetaData{
-                "fee_amount":        calculatedFee,
-                "stripe_payment_id": stripePaymentID,
-            },
+            Inflight: true,
         },
-        Inflight: true,
-    })
+    )
     if err != nil {
         return nil, err
     }
@@ -212,6 +224,42 @@ def record_deposit(source_id, customer_balance_id, amount, reference, stripe_pay
 
     print(f"Deposit recorded with ID: {transaction.data['transaction_id']}")
     return transaction.data
+```
+
+```java Java wrap expandable
+double feePercentage = 0.01;
+double feeCap = 5;
+double calculatedFee = Math.min(amount * feePercentage, feeCap);
+double customerAmount = amount - calculatedFee;
+
+ApiResponse<JsonNode> transaction = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(amount * 100)
+        .precision(100)
+        .reference(reference)
+        .currency("USD")
+        .source(sourceId)
+        .inflight(true)
+        .destinations(List.of(
+            MultipleSourcesT.create()
+                .identifier(customerBalanceId)
+                .distribution(String.valueOf(customerAmount))
+                .narration("Deposit to your account"),
+            MultipleSourcesT.create()
+                .identifier("@Fees")
+                .distribution(String.valueOf(calculatedFee))
+                .narration("Processing fee")
+        ))
+        .metaData(Map.of(
+            "fee_amount", calculatedFee,
+            "stripe_payment_id", stripePaymentId
+        ))
+        .skipQueue(true)
+);
+
+System.out.println(
+    "Deposit recorded with ID: " + transaction.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -316,25 +364,33 @@ func processDepositBasedOnRules(transactionID string) (*blnkgo.Transaction, erro
         customerBalanceID = transaction.Destinations[0].Identifier
     }
 
-    balanceResponse, _, err := client.LedgerBalance.Get(customerBalanceID)
+    balanceResponse, _, err := client.LedgerBalance.Get(
+        customerBalanceID,
+    )
     if err != nil {
         return nil, err
     }
 
     status, _ := balanceResponse.MetaData["status"].(string)
     if status == "frozen" || status == "blocked" {
-        _, _, err = client.Metadata.UpdateMetadata(transactionID, blnkgo.UpdateMetaDataRequest{
-            MetaData: blnkgo.MetaData{
-                "void_reason": fmt.Sprintf("Account %s", status),
+        _, _, err = client.Metadata.UpdateMetadata(
+            transactionID,
+            blnkgo.UpdateMetaDataRequest{
+                MetaData: blnkgo.MetaData{
+                    "void_reason": fmt.Sprintf("Account %s", status),
+                },
             },
-        })
+        )
         if err != nil {
             return nil, err
         }
 
-        voidResult, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-            Status: "void",
-        })
+        voidResult, _, err := client.Transaction.Update(
+            transactionID,
+            blnkgo.UpdateStatus{
+                Status: "void",
+            },
+        )
         if err != nil {
             return nil, err
         }
@@ -375,6 +431,10 @@ def process_deposit_based_on_rules(transaction_id):
         return void_result.data
 
     return process_deposit_by_amount(transaction_id)
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> balanceResponse = blnk.ledgerBalances().get(customerBalanceId);
 ```
 </CodeGroup>
 
@@ -465,9 +525,12 @@ func processDepositByAmount(transactionID string) (interface{}, error) {
     amount, _ := transaction.PreciseAmount.Int64()
 
     if amount < 100000000 {
-        commit, _, err := client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-            Status: "commit",
-        })
+        commit, _, err := client.Transaction.Update(
+            transactionID,
+            blnkgo.UpdateStatus{
+                Status: "commit",
+            },
+        )
         if err != nil {
             return nil, err
         }
@@ -476,13 +539,16 @@ func processDepositByAmount(transactionID string) (interface{}, error) {
         return commit, nil
     }
 
-    flagged, _, err := client.Metadata.UpdateMetadata(transactionID, blnkgo.UpdateMetaDataRequest{
-        MetaData: blnkgo.MetaData{
-            "investigation_required": true,
-            "investigation_reason":   "Large deposit amount",
-            "flagged_at":             time.Now().UTC().Format(time.RFC3339),
+    flagged, _, err := client.Metadata.UpdateMetadata(
+        transactionID,
+        blnkgo.UpdateMetaDataRequest{
+            MetaData: blnkgo.MetaData{
+                "investigation_required": true,
+                "investigation_reason": "Large deposit amount",
+                "flagged_at": time.Now().UTC().Format(time.RFC3339),
+            },
         },
-    })
+    )
     if err != nil {
         return nil, err
     }
@@ -521,6 +587,14 @@ def process_deposit_by_amount(transaction_id):
     trigger_large_deposit_hook(transaction_id, amount)
     print(f"Transaction {transaction_id} flagged for investigation: large amount")
     return flagged
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> commit = blnk.transactions().updateStatus(
+    transactionId,
+    UpdateTransactionStatus.create()
+        .status("commit")
+);
 ```
 </CodeGroup>
 
@@ -576,7 +650,10 @@ async function handleStripeDeposit(stripePaymentId, customerBalanceId, amount) {
 ```
 
 ```go Go wrap expandable
-func handleStripeDeposit(stripePaymentID, customerBalanceID string, amount float64) (map[string]string, error) {
+func handleStripeDeposit(
+    stripePaymentID, customerBalanceID string,
+    amount float64,
+) (map[string]string, error) {
     // Step 1: Record the deposit with fee processing
     reference := fmt.Sprintf("stripe_%s", stripePaymentID)
     depositData, err := recordDeposit(
@@ -620,6 +697,24 @@ def handle_stripe_deposit(stripe_payment_id, customer_balance_id, amount):
     return {
         "message": f"Deposit processed with status: {result['status']}",
     }
+```
+
+```java Java wrap expandable
+String reference = "stripe_" + stripePaymentId;
+JsonNode depositData = recordDeposit(
+    "@Stripe",
+    customerBalanceId,
+    amount,
+    reference,
+    stripePaymentId
+);
+
+JsonNode result = processDepositBasedOnRules(
+    depositData.get("transaction_id").asText()
+);
+System.out.println(
+    "Deposit processed with status: " + result.get("status").asText()
+);
 ```
 </CodeGroup>
 
@@ -679,11 +774,14 @@ func refundDeposit(transactionID, reason string) (*blnkgo.Transaction, error) {
         return nil, err
     }
 
-    _, _, err = client.Metadata.UpdateMetadata(refund.TransactionID, blnkgo.UpdateMetaDataRequest{
-        MetaData: blnkgo.MetaData{
-            "refund_reason": reason,
+    _, _, err = client.Metadata.UpdateMetadata(
+        refund.TransactionID,
+        blnkgo.UpdateMetaDataRequest{
+            MetaData: blnkgo.MetaData{
+                "refund_reason": reason,
+            },
         },
-    })
+    )
     if err != nil {
         return nil, err
     }
@@ -706,6 +804,10 @@ def refund_deposit(transaction_id, reason="Customer requested refund"):
 
     print(f"Deposit refunded: {refund.data['refund_id']}")
     return refund.data
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> refund = blnk.transactions().refund(transactionId);
 ```
 </CodeGroup>
 
@@ -814,7 +916,11 @@ function getExpiryDate(hours) {
 ```
 
 ```go Go wrap expandable
-func initiatePayout(customerBalanceID string, billsAmount float64, reference string) (*blnkgo.Transaction, error) {
+func initiatePayout(
+    customerBalanceID string,
+    billsAmount float64,
+    reference string,
+) (*blnkgo.Transaction, error) {
     client := getClient()
 
     // Calculate fee (0.5% with $1 minimum)
@@ -823,33 +929,35 @@ func initiatePayout(customerBalanceID string, billsAmount float64, reference str
     calculatedFee := math.Max(billsAmount*feePercentage, minFee)
     totalAmount := billsAmount + calculatedFee
 
-    payout, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-        ParentTransaction: blnkgo.ParentTransaction{
-            PreciseAmount: big.NewInt(int64(totalAmount * 100)),
-            Precision:     100,
-            Reference:     reference,
-            Description:   "Payout for bills",
-            Currency:      "USD",
-            Source:        customerBalanceID,
-            SkipQueue:     true,
-            Destinations: []blnkgo.Source{
-                {
-                    Identifier:   "@BillsPayment",
-                    Distribution: fmt.Sprintf("%g", billsAmount),
+    payout, _, err := client.Transaction.Create(
+        blnkgo.CreateTransactionRequest{
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: big.NewInt(int64(totalAmount * 100)),
+                Precision: 100,
+                Reference: reference,
+                Description: "Payout for bills",
+                Currency: "USD",
+                Source: customerBalanceID,
+                SkipQueue: true,
+                Destinations: []blnkgo.Source{
+                    {
+                        Identifier: "@BillsPayment",
+                        Distribution: fmt.Sprintf("%g", billsAmount),
+                    },
+                    {
+                        Identifier: "@Fees",
+                        Distribution: fmt.Sprintf("%g", calculatedFee),
+                    },
                 },
-                {
-                    Identifier:   "@Fees",
-                    Distribution: fmt.Sprintf("%g", calculatedFee),
+                MetaData: blnkgo.MetaData{
+                    "payout_status": "pending",
+                    "fee_amount": calculatedFee,
                 },
             },
-            MetaData: blnkgo.MetaData{
-                "payout_status": "pending",
-                "fee_amount":    calculatedFee,
-            },
+            Inflight: true,
+            InflightExpiryDate: getExpiryDate(24),
         },
-        Inflight:           true,
-        InflightExpiryDate: getExpiryDate(24),
-    })
+    )
     if err != nil {
         return nil, err
     }
@@ -906,6 +1014,44 @@ def initiate_payout(customer_balance_id, bills_amount, reference):
 
 def get_expiry_date(hours):
     return (datetime.utcnow() + timedelta(hours=hours)).isoformat()
+```
+
+```java Java wrap expandable
+double feePercentage = 0.005;
+double minFee = 1;
+double calculatedFee = Math.max(billsAmount * feePercentage, minFee);
+double totalAmount = billsAmount + calculatedFee;
+
+ApiResponse<JsonNode> payout = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(totalAmount * 100)
+        .precision(100)
+        .reference(reference)
+        .description("Payout for bills")
+        .currency("USD")
+        .source(customerBalanceId)
+        .destinations(List.of(
+            MultipleSourcesT.create()
+                .identifier("@BillsPayment")
+                .distribution(String.valueOf(billsAmount))
+                .narration("Payout for bills"),
+            MultipleSourcesT.create()
+                .identifier("@Fees")
+                .distribution(String.valueOf(calculatedFee))
+                .narration("Payout processing fee")
+        ))
+        .inflight(true)
+        .inflightExpiryDate(Instant.now().plus(24, ChronoUnit.HOURS).toString())
+        .metaData(Map.of(
+            "payout_status", "pending",
+            "fee_amount", calculatedFee
+        ))
+        .skipQueue(true)
+);
+
+System.out.println(
+    "Payout initiated: " + payout.data().get("transaction_id").asText()
+);
 ```
 </CodeGroup>
 
@@ -1008,8 +1154,8 @@ func handlePaymentWebhook(webhookBody map[string]interface{}) (map[string]interf
     if eventType == "payment.success" {
         searchResult, _, err := client.Search.SearchDocument(
             blnkgo.SearchParams{
-                Q:        transactionReference,
-                QueryBy:  "reference",
+                Q: transactionReference,
+                QueryBy: "reference",
                 FilterBy: "status:=INFLIGHT",
             },
             blnkgo.Transactions,
@@ -1021,27 +1167,33 @@ func handlePaymentWebhook(webhookBody map[string]interface{}) (map[string]interf
         transaction := searchResult.Hits[0].Document
         transactionID := transaction.ParentTransaction
 
-        _, _, err = client.Metadata.UpdateMetadata(transactionID, blnkgo.UpdateMetaDataRequest{
-            MetaData: blnkgo.MetaData{
-                "payout_status":      "confirmed",
-                "provider_payout_id": payoutID,
-                "confirmation_time":  time.Now().UTC().Format(time.RFC3339),
+        _, _, err = client.Metadata.UpdateMetadata(
+            transactionID,
+            blnkgo.UpdateMetaDataRequest{
+                MetaData: blnkgo.MetaData{
+                    "payout_status": "confirmed",
+                    "provider_payout_id": payoutID,
+                    "confirmation_time": time.Now().UTC().Format(time.RFC3339),
+                },
             },
-        })
+        )
         if err != nil {
             return nil, err
         }
 
-        _, _, err = client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-            Status: "commit",
-        })
+        _, _, err = client.Transaction.Update(
+            transactionID,
+            blnkgo.UpdateStatus{
+                Status: "commit",
+            },
+        )
         if err != nil {
             return nil, err
         }
 
         fmt.Printf("Payout confirmed and committed: %s\n", transactionID)
         return map[string]interface{}{
-            "processed":      true,
+            "processed": true,
             "transaction_id": transactionID,
         }, nil
     }
@@ -1087,6 +1239,15 @@ def handle_payment_webhook(webhook_body):
             "processed": True,
             "transaction_id": transaction_id,
         }
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> searchResult = blnk.search().search(
+    SearchParams.create()
+        .q(transaction_reference)
+        .queryBy("reference")
+        .filterBy("status:=INFLIGHT"),
+    "transactions");
 ```
 </CodeGroup>
 
@@ -1203,8 +1364,8 @@ func handlePaymentWebhook(webhookBody map[string]interface{}) (map[string]interf
     if eventType == "payment.failed" {
         searchResult, _, err := client.Search.SearchDocument(
             blnkgo.SearchParams{
-                Q:        transactionReference,
-                QueryBy:  "reference",
+                Q: transactionReference,
+                QueryBy: "reference",
                 FilterBy: "status:=INFLIGHT",
             },
             blnkgo.Transactions,
@@ -1216,27 +1377,33 @@ func handlePaymentWebhook(webhookBody map[string]interface{}) (map[string]interf
         transaction := searchResult.Hits[0].Document
         transactionID := transaction.ParentTransaction
 
-        _, _, err = client.Metadata.UpdateMetadata(transactionID, blnkgo.UpdateMetaDataRequest{
-            MetaData: blnkgo.MetaData{
-                "payout_status":      "failed",
-                "provider_payout_id": payoutID,
-                "confirmation_time":  time.Now().UTC().Format(time.RFC3339),
+        _, _, err = client.Metadata.UpdateMetadata(
+            transactionID,
+            blnkgo.UpdateMetaDataRequest{
+                MetaData: blnkgo.MetaData{
+                    "payout_status": "failed",
+                    "provider_payout_id": payoutID,
+                    "confirmation_time": time.Now().UTC().Format(time.RFC3339),
+                },
             },
-        })
+        )
         if err != nil {
             return nil, err
         }
 
-        _, _, err = client.Transaction.Update(transactionID, blnkgo.UpdateStatus{
-            Status: "void",
-        })
+        _, _, err = client.Transaction.Update(
+            transactionID,
+            blnkgo.UpdateStatus{
+                Status: "void",
+            },
+        )
         if err != nil {
             return nil, err
         }
 
         fmt.Printf("Payout cancelled: %s\n", transactionID)
         return map[string]interface{}{
-            "processed":      true,
+            "processed": true,
             "transaction_id": transactionID,
         }, nil
     }
@@ -1282,6 +1449,15 @@ def handle_payment_webhook(webhook_body):
             "processed": True,
             "transaction_id": transaction_id,
         }
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> searchResult = blnk.search().search(
+    SearchParams.create()
+        .q(transaction_reference)
+        .queryBy("reference")
+        .filterBy("status:=INFLIGHT"),
+    "transactions");
 ```
 </CodeGroup>
 
@@ -1341,11 +1517,14 @@ func refundPayout(transactionID, reason string) (*blnkgo.Transaction, error) {
         return nil, err
     }
 
-    _, _, err = client.Metadata.UpdateMetadata(refund.TransactionID, blnkgo.UpdateMetaDataRequest{
-        MetaData: blnkgo.MetaData{
-            "refund_reason": reason,
+    _, _, err = client.Metadata.UpdateMetadata(
+        refund.TransactionID,
+        blnkgo.UpdateMetaDataRequest{
+            MetaData: blnkgo.MetaData{
+                "refund_reason": reason,
+            },
         },
-    })
+    )
     if err != nil {
         return nil, err
     }
@@ -1368,6 +1547,10 @@ def refund_payout(transaction_id, reason="Can't complete payout"):
 
     print(f"Payout refunded: {refund.data['refund_id']}")
     return refund.data
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> refund = blnk.transactions().refund(transactionId);
 ```
 </CodeGroup>
 

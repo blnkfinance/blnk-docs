@@ -184,6 +184,37 @@ To verify a webhook:
   if __name__ == "__main__":
       app.run(port=3000)
   ```
+
+  ```java Java
+  import javax.crypto.Mac;
+  import javax.crypto.spec.SecretKeySpec;
+  import java.nio.charset.StandardCharsets;
+  import java.util.HexFormat;
+
+  // Must match server.secret_key
+  byte[] secret = System.getenv("BLNK_SECRET").getBytes(StandardCharsets.UTF_8);
+
+  // Inside your HTTP handler:
+  String sig = request.getHeader("X-Blnk-Signature");
+  String ts = request.getHeader("X-Blnk-Timestamp");
+  if (sig == null || ts == null) {
+    response.setStatus(400);
+    return;
+  }
+
+  byte[] body = request.getInputStream().readAllBytes();
+  Mac mac = Mac.getInstance("HmacSHA256");
+  mac.init(new SecretKeySpec(secret, "HmacSHA256"));
+  mac.update((ts + ".").getBytes(StandardCharsets.UTF_8));
+  mac.update(body);
+  String expected = HexFormat.of().formatHex(mac.doFinal());
+
+  if (!sig.equals(expected)) {
+    response.setStatus(401);
+    return;
+  }
+  response.setStatus(200);
+  ```
   </CodeGroup>
 </Step>
 </Steps>

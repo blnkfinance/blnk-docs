@@ -61,17 +61,46 @@ const response = await blnk.Transactions.updateStatus(
 );
 ```
 
+```go Go wrap {4}
+transaction, resp, err := client.Transaction.Update(
+    "{transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusCommit,
+        SkipQueue: false,
+    },
+)
+```
+
+```python Python wrap {4}
+response = blnk.transactions.update_status(
+  "{transaction_id}",
+  {
+    "status": "commit",
+    "skip_queue": False,
+  },
+)
+```
+
+```java Java wrap {4}
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .skipQueue(false));
+```
+
 </CodeGroup>
 
 <CodeGroup>
-```json 200 Queued {3,4}
+```json 200 Queued {3,4} wrap
 {
   "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
   "status": "INFLIGHT",
   "queued": true
 }
 ```
-```json 200 Skipped queue {3,4}
+
+```json 200 Skipped queue {3,4} wrap
 {
   "transaction_id": "txn_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "status": "APPLIED",
@@ -122,17 +151,49 @@ const response = await blnk.Transactions.updateStatus(
 );
 ```
 
+```go Go wrap {5}
+transaction, resp, err := client.Transaction.Update(
+    "{transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusCommit,
+        PreciseAmount: big.NewInt(4000),
+        SkipQueue: false,
+    },
+)
+```
+
+```python Python wrap {5}
+response = blnk.transactions.update_status(
+  "{transaction_id}",
+  {
+    "status": "commit",
+    "precise_amount": 4000,
+    "skip_queue": False,
+  },
+)
+```
+
+```java Java wrap {4}
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .preciseAmount(4000)
+        .skipQueue(false));
+```
+
 </CodeGroup>
 
 <CodeGroup>
-```json 200 Queued
+```json 200 Queued wrap
 {
   "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
   "status": "INFLIGHT",
   "queued": true
 }
 ```
-```json 200 Skipped queue {4}
+
+```json 200 Skipped queue {4} wrap
 {
   "transaction_id": "txn_b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "status": "APPLIED",
@@ -180,17 +241,46 @@ const response = await blnk.Transactions.updateStatus(
 );
 ```
 
+```go Go wrap {4}
+transaction, resp, err := client.Transaction.Update(
+    "{transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusVoid,
+        SkipQueue: false,
+    },
+)
+```
+
+```python Python wrap {4}
+response = blnk.transactions.update_status(
+  "{transaction_id}",
+  {
+    "status": "void",
+    "skip_queue": False,
+  },
+)
+```
+
+```java Java wrap {4}
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("void")
+        .skipQueue(false));
+```
+
 </CodeGroup>
 
 <CodeGroup>
-```json 200 Queued {3,4}
+```json 200 Queued {3,4} wrap
 {
   "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
   "status": "INFLIGHT",
   "queued": true
 }
 ```
-```json 200 Skipped queue {3,4}
+
+```json 200 Skipped queue {3,4} wrap
 {
   "transaction_id": "txn_c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "VOID",
@@ -227,7 +317,7 @@ You can identify these events by matching the `QUEUED_PARENT_TRANSACTION` field 
 
 If the commit or void skipped the queue, match their `parent_transaction` against the inflight transaction ID directly.
 
-```json transaction.applied expandable {2,4,5,14,19}
+```json transaction.applied {2,4,5,14,19} wrap
 {
   "event": "transaction.applied",
   "data": {
@@ -288,7 +378,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
   }'
 ```
 
-```typescript TypeScript wrap
+```typescript TypeScript wrap {6,7,11,12}
 const response = await blnk.Search.filter(
   {
     filters: [
@@ -308,24 +398,24 @@ const response = await blnk.Search.filter(
 );
 ```
 
-```go Go wrap
+```go Go wrap {5,6,10,11}
 results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
-  Filters: []blnkgo.Filter{
-    {
-      Field:    "meta_data.QUEUED_PARENT_TRANSACTION",
-      Operator: blnkgo.OpEqual,
-      Value:    "<inflight_queued_parent_transaction>",
+    Filters: []blnkgo.Filter{
+        {
+            Field: "meta_data.QUEUED_PARENT_TRANSACTION",
+            Operator: blnkgo.OpEqual,
+            Value: "<inflight_queued_parent_transaction>",
+        },
+        {
+            Field: "status",
+            Operator: blnkgo.OpIn,
+            Values: []string{"APPLIED", "VOID"},
+        },
     },
-    {
-      Field:    "status",
-      Operator: blnkgo.OpIn,
-      Values:   []string{"APPLIED", "VOID"},
-    },
-  },
 })
 ```
 
-```python Python wrap
+```python Python wrap {6,7,11,12}
 response = blnk.search.filter(
   {
     "filters": [
@@ -344,9 +434,25 @@ response = blnk.search.filter(
   "transactions",
 )
 ```
+
+```java Java wrap {6,7,10,11}
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("meta_data.QUEUED_PARENT_TRANSACTION")
+            .operator("eq")
+            .value("<inflight_queued_parent_transaction>"),
+            FilterCondition.create()
+            .field("status")
+            .operator("in")
+            .values(List.of("APPLIED", "VOID"))
+        )),
+    "transactions");
+```
 </CodeGroup>
 
-```json Response wrap expandable {19,39}
+```json Response wrap {19,39}
 {
   "data": [
     {
@@ -397,7 +503,7 @@ response = blnk.search.filter(
 <Tab title="Skipped queue">
 When you skip the queue, Blnk applies commits and voids synchronously. No intermediate queued records are created. 
 
-Both children share the same `parent_transaction`: the inflight transaction ID (txn_6164573b-...). That becomes your filter key and the direct link to the inflight transaction.
+Both children share the same `parent_transaction`: the inflight transaction ID (`txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d`). That becomes your filter key and the direct link to the inflight transaction.
 
 No `QUEUED_PARENT_TRANSACTION` is present. Match outcomes on `parent_transaction` only.
 
@@ -422,7 +528,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
   }'
 ```
 
-```typescript TypeScript wrap
+```typescript TypeScript wrap {6,7,11,12}
 const response = await blnk.Search.filter(
   {
     filters: [
@@ -442,24 +548,24 @@ const response = await blnk.Search.filter(
 );
 ```
 
-```go Go wrap
+```go Go wrap {5,6,10,11}
 results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
-  Filters: []blnkgo.Filter{
-    {
-      Field:    "parent_transaction",
-      Operator: blnkgo.OpEqual,
-      Value:    "<inflight_transaction_id>",
+    Filters: []blnkgo.Filter{
+        {
+            Field: "parent_transaction",
+            Operator: blnkgo.OpEqual,
+            Value: "<inflight_transaction_id>",
+        },
+        {
+            Field: "status",
+            Operator: blnkgo.OpIn,
+            Values: []string{"APPLIED", "VOID"},
+        },
     },
-    {
-      Field:    "status",
-      Operator: blnkgo.OpIn,
-      Values:   []string{"APPLIED", "VOID"},
-    },
-  },
 })
 ```
 
-```python Python wrap
+```python Python wrap {6,7,11,12}
 response = blnk.search.filter(
   {
     "filters": [
@@ -478,9 +584,25 @@ response = blnk.search.filter(
   "transactions",
 )
 ```
+
+```java Java wrap {6,7,10,11}
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("parent_transaction")
+            .operator("eq")
+            .value("<inflight_transaction_id>"),
+            FilterCondition.create()
+            .field("status")
+            .operator("in")
+            .values(List.of("APPLIED", "VOID"))
+        )),
+    "transactions");
+```
 </CodeGroup>
 
-```json Response wrap expandable {5,24}
+```json Response wrap {5,24}
 {
   "data": [
     {
@@ -580,17 +702,17 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap {12}
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(10000),
-    Precision:   100,
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    Description: "For vacation",
-  },
-  Inflight:           true,
-  InflightCommitDate: "2024-12-21T01:36:46+01:00",
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(10000),
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "For vacation",
+    },
+    Inflight: true,
+    InflightCommitDate: "2024-12-21T01:36:46+01:00",
 })
 ```
 
@@ -606,6 +728,20 @@ response = blnk.transactions.create({
   "inflight": True,
   "inflight_commit_date": "2024-12-21T01:36:46+01:00",
 })
+```
+
+```java Java wrap {11}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("For vacation")
+        .inflight(true)
+        .inflightCommitDate("2024-12-21T01:36:46+01:00"));
 ```
 </CodeGroup>
 
@@ -668,17 +804,17 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap {12}
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(10000),
-    Precision:   100,
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    Description: "For vacation",
-  },
-  Inflight:           true,
-  InflightExpiryDate: "2024-12-21T01:36:46+01:00",
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(10000),
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "For vacation",
+    },
+    Inflight: true,
+    InflightExpiryDate: "2024-12-21T01:36:46+01:00",
 })
 ```
 
@@ -694,6 +830,20 @@ response = blnk.transactions.create({
   "inflight": True,
   "inflight_expiry_date": "2024-12-21T01:36:46+01:00",
 })
+```
+
+```java Java wrap {11}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("For vacation")
+        .inflight(true)
+        .inflightExpiryDate("2024-12-21T01:36:46+01:00"));
 ```
 </CodeGroup>
 

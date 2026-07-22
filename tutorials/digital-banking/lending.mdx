@@ -163,6 +163,20 @@ loan_ledger = blnk.ledgers.create({
 
 print("Loan Ledger created:", loan_ledger.data)
 ```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> customer_ledger = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Accounts")
+        .metaData(Map.of("description", "Contains all customer main balances")));
+
+ApiResponse<JsonNode> loan_ledger = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Loan Accounts")
+        .metaData(Map.of("description", "Contains all customer loan balances")));
+System.out.println("Customer Ledger created: " + customer_ledger.data());
+System.out.println("Loan Ledger created: " + loan_ledger.data());
+```
 </CodeGroup>
 
 ---
@@ -215,9 +229,9 @@ func createCustomerMainBalance(customerLedgerID string, customerDetails Customer
         LedgerID: customerLedgerID,
         Currency: "USD",
         MetaData: blnkgo.MetaData{
-            "customer_id":    customerDetails.ID,
-            "customer_name":  customerDetails.Name,
-            "account_type":   "main",
+            "customer_id": customerDetails.ID,
+            "customer_name": customerDetails.Name,
+            "account_type": "main",
             "account_status": "active",
         },
     })
@@ -242,6 +256,20 @@ main_balance = blnk.ledger_balances.create({
 })
 
 print("Customer Main Balance created:", main_balance.data)
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> main_balance = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(customer_ledger_id)
+        .currency("USD")
+        .metaData(Map.of(
+            "customer_id", customer_details.get("id"),
+            "customer_name", customer_details.get("name"),
+            "account_type", "main",
+            "account_status", "active"
+        )));
+System.out.println("Customer Main Balance created: " + main_balance.data());
 ```
 </CodeGroup>
 
@@ -287,7 +315,7 @@ func createLoanBalance(loanLedgerID string, customerDetails CustomerDetails) (st
         LedgerID: loanLedgerID,
         Currency: "USD",
         MetaData: blnkgo.MetaData{
-            "customer_id":   customerDetails.ID,
+            "customer_id": customerDetails.ID,
             "customer_name": customerDetails.Name,
         },
     })
@@ -310,6 +338,18 @@ loan_balance = blnk.ledger_balances.create({
 })
 
 print("Loan Balance created:", loan_balance.data)
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> loan_balance = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(loan_ledger_id)
+        .currency("USD")
+        .metaData(Map.of(
+            "customer_id", customer_details.get("id"),
+            "customer_name", customer_details.get("name")
+        )));
+System.out.println("Loan Balance created: " + loan_balance.data());
 ```
 </CodeGroup>
 
@@ -403,10 +443,10 @@ func disburseLoan(loanBalanceID, customerBalanceID string, loanAmount float64) (
     disbursement, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
             PreciseAmount: loanAmount * 100,
-            Precision:   100,
-            Reference:   reference,
-            Currency:    "USD",
-            Source:      loanBalanceID,
+            Precision: 100,
+            Reference: reference,
+            Currency: "USD",
+            Source: loanBalanceID,
             Destination: customerBalanceID,
             Description: "Loan disbursement",
             MetaData: blnkgo.MetaData{
@@ -460,6 +500,28 @@ blnk.metadata.update(loan_balance_id, {
     "loan_status": "active",
   },
 })
+```
+
+```java Java wrap expandable
+String reference = "LOAN-DISBURSE-<timestamp>";
+
+ApiResponse<JsonNode> disbursement = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((loan_amount * 100))
+        .precision(100)
+        .reference(reference)
+        .currency("USD")
+        .source(loan_balance_id)
+        .destination(customer_balance_id)
+        .description("Loan disbursement")
+        .allowOverdraft(true)
+        .metaData(Map.of("transaction_type", "loan_disbursement")));
+
+ApiResponse<JsonNode> response = blnk.metadata().update(
+    loan_balance_id,
+    UpdateMetadataData.create()
+        .metaData(Map.of("loan_status", "active")));
+System.out.println("Loan disbursed: " + disbursement.data());
 ```
 </CodeGroup>
 
@@ -571,15 +633,15 @@ func calculateAndChargeInterest(loanBalanceID string, interestRate float64) (str
     interestTransaction, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
             PreciseAmount: roundedInterest * 100,
-            Precision:   100,
-            Reference:   reference,
-            Currency:    "USD",
-            Source:      loanBalanceID,
+            Precision: 100,
+            Reference: reference,
+            Currency: "USD",
+            Source: loanBalanceID,
             Destination: "@InterestRevenue",
             Description: "Daily interest charge",
             MetaData: blnkgo.MetaData{
                 "transaction_type": "interest_charge",
-                "interest_rate":    interestRate,
+                "interest_rate": interestRate,
                 "principal_amount": principal / 100,
             },
         },
@@ -631,6 +693,27 @@ interest_transaction = blnk.transactions.create({
 })
 
 print("Interest charged:", interest_transaction.data)
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> loan_balance = blnk.ledgerBalances().get(loan_balance_id);
+
+ApiResponse<JsonNode> interest_transaction = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((rounded_interest * 100))
+        .precision(100)
+        .reference(reference)
+        .currency("USD")
+        .source(loan_balance_id)
+        .destination("@InterestRevenue")
+        .description("Daily interest charge")
+        .allowOverdraft(true)
+        .metaData(Map.of(
+            "transaction_type", "interest_charge",
+            "interest_rate", interest_rate,
+            "principal_amount", (principal / 100)
+        )));
+System.out.println("Interest charged: " + interest_transaction.data());
 ```
 </CodeGroup>
 
@@ -720,15 +803,15 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
     repayment, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
             PreciseAmount: repaymentAmount * 100,
-            Precision:   100,
-            Reference:   reference,
-            Currency:    "USD",
-            Source:      customerBalanceID,
+            Precision: 100,
+            Reference: reference,
+            Currency: "USD",
+            Source: customerBalanceID,
             Destination: loanBalanceID,
             Description: "Loan repayment",
             MetaData: blnkgo.MetaData{
                 "transaction_type": "loan_repayment",
-                "payment_method":     "bank_transfer",
+                "payment_method": "bank_transfer",
             },
         },
     })
@@ -745,7 +828,7 @@ func processLoanRepayment(customerBalanceID, loanBalanceID string, repaymentAmou
     if repaidBalance >= 0 {
         _, _, err = client.Metadata.UpdateMetadata(loanBalanceID, blnkgo.UpdateMetaDataRequest{
             MetaData: blnkgo.MetaData{
-                "loan_status":                "fully_repaid",
+                "loan_status": "fully_repaid",
                 "repayment_completed_date": time.Now().UTC().Format(time.RFC3339),
             },
         })
@@ -796,6 +879,35 @@ if updated_loan_balance.data["balance"] >= 0:
     })
     print("Loan fully repaid!")
 ```
+
+```java Java wrap expandable
+String reference = "LOAN-REPAY-<timestamp>";
+
+ApiResponse<JsonNode> repayment = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount((repayment_amount * 100))
+        .precision(100)
+        .reference(reference)
+        .currency("USD")
+        .source(customer_balance_id)
+        .destination(loan_balance_id)
+        .description("Loan repayment")
+        .metaData(Map.of(
+            "transaction_type", "loan_repayment",
+            "payment_method", "bank_transfer"
+        )));
+
+ApiResponse<JsonNode> updated_loan_balance = blnk.ledgerBalances().get(loan_balance_id);
+
+ApiResponse<JsonNode> response = blnk.metadata().update(
+    loan_balance_id,
+    UpdateMetadataData.create()
+        .metaData(Map.of(
+            "loan_status", "fully_repaid",
+            "repayment_completed_date", datetime.utcnow().isoformat()
+        )));
+System.out.println("Loan repayment processed: " + repayment.data());
+```
 </CodeGroup>
 
 ---
@@ -840,11 +952,11 @@ func checkLoanStatus(loanBalanceID string) (map[string]interface{}, error) {
 
     balanceFloat, _ := loanBalance.Balance.Float64()
     status := map[string]interface{}{
-        "balance_id":      loanBalanceID,
+        "balance_id": loanBalanceID,
         "current_balance": balanceFloat / 100,
         "is_fully_repaid": balanceFloat >= 0,
-        "loan_status":     loanBalance.MetaData["loan_status"],
-        "loan_details":    loanBalance.MetaData,
+        "loan_status": loanBalance.MetaData["loan_status"],
+        "loan_details": loanBalance.MetaData,
     }
 
     fmt.Println("Loan status:", status)
@@ -864,6 +976,10 @@ status = {
 }
 
 print("Loan status:", status)
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> loan_balance = blnk.ledgerBalances().get(loan_balance_id);
 ```
 </CodeGroup>
 

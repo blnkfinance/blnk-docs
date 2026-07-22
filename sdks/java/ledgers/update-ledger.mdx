@@ -1,0 +1,81 @@
+---
+mode: "wide"
+title: "Update ledger name"
+sidebarTitle: "Update ledger name"
+api: "PUT /ledgers/{id}"
+description: "Update the name of an existing ledger with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.ledgers().update` for this operation.
+
+<Note>To update your ledger metadata, use [blnk.metadata().update](/sdks/java/metadata/update-metadata) instead.</Note>
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String ledgerId = "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+
+ApiResponse<JsonNode> response = blnk.ledgers().update(
+    ledgerId,
+    UpdateLedger.create()
+        .name("Renamed ledger")
+        .metaData(Map.of("tier", "gold")));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `String` | Ledger ID to update. |
+| `name` | `String` | New display name for the ledger. |
+
+</Step>
+
+<Step title="Confirm the update">
+
+The `ledger_id` in the response stays the same. Verify `response.data().get("name").asText()` matches the name you passed in the request.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "Updated Customer Savings Ledger",
+  "created_at": "2024-02-20T05:28:03.558281542Z",
+  "meta_data": {
+    "project_owner": "Acme LLC",
+    "description": "For all savings account created & managed by Acme."
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ledger_id` | `String` | Unique ID for the ledger. Unchanged after the update. |
+| `name` | `String` | Updated name you passed in the request. |
+| `created_at` | `String` | Date and time the ledger was created. |
+| `meta_data` | `JsonNode` | Existing metadata on the ledger. Not modified by this method. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="View ledger docs" icon="table-2" href="/ledgers/general-ledger">
+Ledger concepts and setup.
+</Card>
+
+<Card title="Update ledger name" icon="book-open" href="/reference/update-ledger-name">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
