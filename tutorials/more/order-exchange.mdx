@@ -218,6 +218,13 @@ emily_matic_balance = blnk.ledger_balances.create({
   "currency": "MATIC",
 })
 ```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> johnEthBalance = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId(ethLedger.id)
+        .currency("ETH"));
+```
 </CodeGroup>
 
 ### Fund the initial balances
@@ -290,10 +297,10 @@ await blnk.Transactions.create({
 _, _, err = client.Transaction.Create(blnkgo.CreateTransactionRequest{
     ParentTransaction: blnkgo.ParentTransaction{
         PreciseAmount: big.NewInt(100),
-        Precision:   100,
-        Reference:   fmt.Sprintf("ref_%s", uuid.New().String()),
-        Currency:    "ETH",
-        Source:      "@ETH_FundingPool",
+        Precision: 100,
+        Reference: fmt.Sprintf("ref_%s", uuid.New().String()),
+        Currency: "ETH",
+        Source: "@ETH_FundingPool",
         Destination: johnEthBalance.BalanceID,
         Description: "Initial ETH funding",
     },
@@ -307,10 +314,10 @@ if err != nil {
 _, _, err = client.Transaction.Create(blnkgo.CreateTransactionRequest{
     ParentTransaction: blnkgo.ParentTransaction{
         PreciseAmount: big.NewInt(1000),
-        Precision:   100,
-        Reference:   fmt.Sprintf("ref_%s", uuid.New().String()),
-        Currency:    "MATIC",
-        Source:      "@MATIC_FundingPool",
+        Precision: 100,
+        Reference: fmt.Sprintf("ref_%s", uuid.New().String()),
+        Currency: "MATIC",
+        Source: "@MATIC_FundingPool",
         Destination: emilyMaticBalance.BalanceID,
         Description: "Initial MATIC funding",
     },
@@ -347,6 +354,30 @@ blnk.transactions.create({
   "description": "Initial MATIC funding",
   "allow_overdraft": True,
 })
+```
+
+```java Java wrap expandable
+blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(100)
+        .currency("ETH")
+        .reference("ref_" + UUID.randomUUID())
+        .precision(100)
+        .source("@ETH_FundingPool")
+        .destination(johnEthBalanceId)
+        .description("Initial ETH funding")
+        .allowOverdraft(true));
+
+blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(1000)
+        .currency("MATIC")
+        .reference("ref_" + UUID.randomUUID())
+        .precision(100)
+        .source("@MATIC_FundingPool")
+        .destination(emilyMaticBalanceId)
+        .description("Initial MATIC funding")
+        .allowOverdraft(true));
 ```
 </CodeGroup>
 
@@ -546,7 +577,7 @@ func linkMatchedOrders(transaction1ID, transaction2ID string) (string, error) {
     } {
         _, _, err := client.Metadata.UpdateMetadata(pair[0], blnkgo.UpdateMetaDataRequest{
             MetaData: blnkgo.MetaData{
-                "matching_id":     matchingID,
+                "matching_id": matchingID,
                 "matched_with_tx": pair[1],
             },
         })
@@ -589,6 +620,24 @@ matching_id = link_matched_orders(
     john_order["transaction"]["transaction_id"],  # John's inflight transaction ID
     emily_order["transaction"]["transaction_id"],  # Emily's inflight transaction ID
 )
+```
+
+```java Java wrap expandable
+String matchingId = "match_" + UUID.randomUUID();
+
+blnk.metadata().update(
+    transaction1Id,
+    UpdateMetadataData.create()
+        .metaData(Map.of(
+            "matching_id", matchingId,
+            "matched_with_tx", transaction2Id)));
+
+blnk.metadata().update(
+    transaction2Id,
+    UpdateMetadataData.create()
+        .metaData(Map.of(
+            "matching_id", matchingId,
+            "matched_with_tx", transaction1Id)));
 ```
 </CodeGroup>
 
@@ -749,13 +798,13 @@ func settleMatchedOrders(johnTxID, emilyTxID string) (map[string]interface{}, er
     ethTransfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
             PreciseAmount: johnTx.PreciseAmount,
-            Precision:     johnTx.Precision,
-            Currency:      "ETH",
-            Source:        "@ETH_Escrow",
-            Destination:   emilyEthBalance.BalanceID,
-            Reference:     fmt.Sprintf("%s_eth", settlementReference),
+            Precision: johnTx.Precision,
+            Currency: "ETH",
+            Source: "@ETH_Escrow",
+            Destination: emilyEthBalance.BalanceID,
+            Reference: fmt.Sprintf("%s_eth", settlementReference),
             MetaData: blnkgo.MetaData{
-                "matching_id":     matchingID,
+                "matching_id": matchingID,
                 "settlement_type": "exchange",
             },
         },
@@ -768,13 +817,13 @@ func settleMatchedOrders(johnTxID, emilyTxID string) (map[string]interface{}, er
     maticTransfer, _, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
         ParentTransaction: blnkgo.ParentTransaction{
             PreciseAmount: emilyTx.PreciseAmount,
-            Precision:     emilyTx.Precision,
-            Currency:      "MATIC",
-            Source:        "@MATIC_Escrow",
-            Destination:   johnMaticBalance.BalanceID,
-            Reference:     fmt.Sprintf("%s_matic", settlementReference),
+            Precision: emilyTx.Precision,
+            Currency: "MATIC",
+            Source: "@MATIC_Escrow",
+            Destination: johnMaticBalance.BalanceID,
+            Reference: fmt.Sprintf("%s_matic", settlementReference),
             MetaData: blnkgo.MetaData{
-                "matching_id":     matchingID,
+                "matching_id": matchingID,
                 "settlement_type": "exchange",
             },
         },
@@ -784,9 +833,9 @@ func settleMatchedOrders(johnTxID, emilyTxID string) (map[string]interface{}, er
     }
 
     return map[string]interface{}{
-        "success":       true,
-        "matchingId":    matchingID,
-        "ethTransfer":   ethTransfer,
+        "success": true,
+        "matchingId": matchingID,
+        "ethTransfer": ethTransfer,
         "maticTransfer": maticTransfer,
     }, nil
 }
@@ -847,6 +896,13 @@ def settle_matched_orders(john_tx_id, emily_tx_id):
         }
     except Exception as error:
         return {"success": False, "error": str(error)}
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> commit = blnk.transactions().updateStatus(
+    txId,
+    UpdateTransactionStatus.create()
+        .status("commit"));
 ```
 </CodeGroup>
 

@@ -1,0 +1,88 @@
+---
+mode: "wide"
+title: "View list of hooks by type"
+sidebarTitle: "List hooks"
+api: "GET /hooks"
+description: "List hooks by type with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.hooks().list` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.hooks().list(
+    ListHooksOptions.create().type(HookType.PRE_TRANSACTION)
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `options.type` | `String` | Optional filter: `PRE_TRANSACTION` or `POST_TRANSACTION`. Omit to list all hooks. |
+
+</Step>
+
+<Step title="Use the hook list">
+
+When `response.data().isArray()`, iterate by index:
+
+```java wrap
+JsonNode hooks = response.data();
+for (int i = 0; i < hooks.size(); i++) {
+  String hookId = hooks.get(i).get("id").asText();
+}
+```
+
+Save hook IDs you need for updates or deletion.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+[
+  {
+    "id": "hk_890bdbc4-467f-4670-8424-5667e41daf29",
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/validate",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3,
+    "created_at": "2024-11-26T08:36:36.238244338Z",
+    "last_run": "2024-11-26T09:12:00.000000000Z",
+    "last_success": true
+  }
+]
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `response.data()` | `JsonNode` | JSON array of hook objects returned by Core. |
+| `response.data().`<br />`get(i).get("id")` | `String` | Unique hook ID. |
+| `response.data().`<br />`get(i).get("type")` | `String` | Hook timing, such as `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `response.data().`<br />`get(i).get("active")` | `boolean` | Whether the hook is enabled. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How webhooks work" icon="webhook" href="/hooks/overview">
+Hook types, payloads, and execution.
+</Card>
+
+<Card title="View list of hooks by type" icon="book-open" href="/reference/list-hooks-by-type">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

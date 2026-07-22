@@ -53,9 +53,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
     "source": "@FundingPool",
     "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
     "description": "Fund with starting balance amount",
-    "allow_overdraft": true,
-    "skip_queue": false,
-    "meta_data": {}
+    "allow_overdraft": true
   }'
 ```
 
@@ -69,24 +67,21 @@ const response = await blnk.Transactions.create({
   destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
   description: 'Fund with starting balance amount',
   allow_overdraft: true,
-  skip_queue: false,
-  meta_data: {},
 });
 ```
 
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(75000),
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Precision:   100,
-    Source:      "@FundingPool",
-    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    Description: "Fund with starting balance amount",
-    SkipQueue:      false,
-  },
-  AllowOverdraft: true,
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(75000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "@FundingPool",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "Fund with starting balance amount",
+    },
+    AllowOverdraft: true,
 })
 ```
 
@@ -100,9 +95,20 @@ response = blnk.transactions.create({
   "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
   "description": "Fund with starting balance amount",
   "allow_overdraft": True,
-  "skip_queue": False,
-  "meta_data": {},
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(75000)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .precision(100)
+        .source("@FundingPool")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("Fund with starting balance amount")
+        .allowOverdraft(true));
 ```
 
 ```bash Blnk CLI wrap
@@ -110,7 +116,7 @@ blnk transactions create
 ```
 </CodeGroup>
 
-```json Response expandable
+```json Response wrap expandable
 {
     "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
     "source": "@FundingPool",
@@ -265,6 +271,14 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
           "transactions",
         )
         ```
+
+        ```java Java wrap
+        ApiResponse<JsonNode> response = blnk.search().search(
+            SearchParams.create()
+                .q("<transaction-reference>")
+                .queryBy("reference"),
+            "transactions");
+        ```
         </CodeGroup>
 
         ```json Response
@@ -317,6 +331,14 @@ When using the default queue system, every transaction starts as `QUEUED`. To ve
           {"q": "<queued-transaction-id>", "query_by": "parent_transaction"},
           "transactions",
         )
+        ```
+
+        ```java Java wrap
+        ApiResponse<JsonNode> response = blnk.search().search(
+            SearchParams.create()
+                .q("<queued-transaction-id>")
+                .queryBy("parent_transaction"),
+            "transactions");
         ```
         </CodeGroup>
 
@@ -377,17 +399,17 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(75000),
-    Reference:   "ref_001adcfgf",
-    Currency:    "USD",
-    Precision:   100,
-    Source:      "@FundingPool",
-    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    Description: "Fund with starting balance amount",
-    SkipQueue:      true,
-  },
-  AllowOverdraft: true,
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(75000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "@FundingPool",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "Fund with starting balance amount",
+        SkipQueue: true,
+    },
+    AllowOverdraft: true,
 })
 ```
 
@@ -404,9 +426,23 @@ response = blnk.transactions.create({
   "skip_queue": True,
 })
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(75000)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .precision(100)
+        .source("@FundingPool")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("Fund with starting balance amount")
+        .allowOverdraft(true)
+        .skipQueue(true));
+```
 </CodeGroup>
 
-```json Response {11}
+```json Response {11} wrap
 {
   "id": "txn_6164573b-6cc8-45d4-ad2e-7b4ba6a60f7d",
   "source": "@FundingPool",

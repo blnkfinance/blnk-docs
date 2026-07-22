@@ -1,0 +1,74 @@
+---
+mode: "wide"
+title: "Detokenize identity"
+sidebarTitle: "Detokenize identity"
+api: "POST /identities/{identity_id}/detokenize"
+description: "Detokenize multiple identity fields with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.identity().detokenize` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+String identityId = "idt_073f7ffe-9dfd-42ce-aa50-d1dca1788adc";
+
+ApiResponse<JsonNode> response = blnk.identity().detokenize(
+    identityId,
+    DetokenizeIdentityData.create().fields(
+        "EmailAddress"
+    )
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `String` | Identity ID. |
+| `fields` | `List<String>` | PascalCase field names to detokenize. Pass `[]` for all tokenized fields. |
+
+</Step>
+
+<Step title="Use the plaintext values">
+
+Read `response.data().get("fields")` for the original values. Handle these values securely and avoid logging them.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "fields": {
+    "firstName": "Alice",
+    "emailAddress": "alice.smith@example.com"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `fields` | `Map<String, String>` | Original values for the fields you requested. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="PII tokenization" icon="lock" href="/identities/pii-tokenization">
+Setup, access controls, and how detokenization works.
+</Card>
+
+<Card title="Detokenize multiple fields" icon="book-open" href="/reference/detokenize-identity">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

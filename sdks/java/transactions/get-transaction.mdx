@@ -1,0 +1,94 @@
+---
+mode: "wide"
+title: "Get transaction"
+sidebarTitle: "Get transaction"
+api: "GET /transactions/{transaction_id}"
+description: "Retrieve a transaction by its ID with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().get` for this operation.
+
+<Note>
+The Java SDK does not expose a list method for transactions. Use [Search](/sdks/java/search/search-db) or get by reference instead.
+</Note>
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.transactions().get(
+    "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionId` | `String` | Transaction ID to retrieve. |
+
+</Step>
+
+<Step title="Use the transaction details">
+
+Read `response.data()` for status, amounts, source, destination, and metadata. Use the transaction ID for refunds, inflight updates, or lineage queries.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "precise_amount": 300,
+  "amount": 3,
+  "rate": 0,
+  "precision": 100,
+  "transaction_id": "txn_93c3f6dc-9c2c-46b0-89c5-1814cef4d0e4",
+  "parent_transaction": "",
+  "source": "bln_845bbf20-cc0c-41d2-810b-24f104f1cb8b",
+  "destination": "bln_e92a1ba7-92c7-427c-8c8f-bfdca55c875d",
+  "reference": "ref_04551509-d7d3-4eab-a1fd-2eb12809b5a4",
+  "currency": "BTC",
+  "description": "test",
+  "status": "APPLIED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2025-02-08T13:36:42.748594Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "meta_data": {
+    "customer_id": "12345",
+    "payment_method": "card"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `String` | Unique ID for the transaction. |
+| `status` | `String` | Current [status](/transactions/transaction-lifecycle#statuses) of the transaction. |
+| `source` | `String` | Source balance. |
+| `destination` | `String` | Destination balance. |
+| `reference` | `String` | Reference you supplied at create time. |
+| `meta_data` | `JsonNode` | Metadata stored with the transaction. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How transactions work" icon="arrow-left-right" href="/transactions/introduction">
+Money movement, statuses, and the transaction lifecycle.
+</Card>
+
+<Card title="View transaction details" icon="book-open" href="/reference/get-transaction">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

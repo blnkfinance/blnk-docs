@@ -34,7 +34,7 @@ If your code reads the update-metadata response by key, you need to handle this 
 To support Blnk versions before and after 0.14.0, read the metadata from the response using either `meta_data` or `metadata`, with `meta_data` taking precedence when present.
 
 <CodeGroup>
-```typescript TypeScript
+```typescript TypeScript wrap
 const response = await fetch(`${baseUrl}/${resourceId}/metadata`, {
   method: 'POST',
   headers: {
@@ -50,28 +50,28 @@ const data = await response.json();
 const metadata = data.meta_data ?? data.metadata ?? {};
 ```
 
-```go Go
+```go Go wrap
 var result struct {
-  MetaData  map[string]interface{} `json:"meta_data"`
-  Metadata map[string]interface{} `json:"metadata"` // pre-0.14.0
+    MetaData  map[string]interface{} `json:"meta_data"`
+    Metadata map[string]interface{} `json:"metadata"` // pre-0.14.0
 }
 
 if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-  // handle error
+    // handle error
 }
 
 metadata := result.MetaData
 
 if metadata == nil {
-  metadata = result.Metadata
+    metadata = result.Metadata
 }
 
 if metadata == nil {
-  metadata = make(map[string]interface{})
+    metadata = make(map[string]interface{})
 }
 ```
 
-```python Python
+```python Python wrap
 response = requests.post(
     f"{base_url}/{resource_id}/metadata",
     headers={"X-blnk-key": api_key, "Content-Type": "application/json"},
@@ -82,6 +82,25 @@ data = response.json()
 
 # Support both meta_data (0.14.0+) and metadata (pre-0.14.0)
 metadata = data.get("meta_data") or data.get("metadata") or {}
+```
+
+```java Java wrap
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create(baseUrl + "/" + resourceId + "/metadata"))
+    .header("X-blnk-key", apiKey)
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString("{\"meta_data\":{\"key\":\"value\"}}"))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+ObjectMapper mapper = new ObjectMapper();
+JsonNode data = mapper.readTree(response.body());
+
+// Support both meta_data (0.14.0+) and metadata (pre-0.14.0)
+JsonNode metadata = data.hasNonNull("meta_data")
+    ? data.get("meta_data")
+    : (data.hasNonNull("metadata") ? data.get("metadata") : mapper.createObjectNode());
 ```
 
 ```php PHP

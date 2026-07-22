@@ -1,0 +1,117 @@
+---
+mode: "wide"
+title: "Bulk commit inflight"
+sidebarTitle: "Bulk commit inflight"
+api: "POST /transactions/inflight/bulk/commit"
+description: "Commit multiple independently-created inflight transactions with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.transactions().bulkCommitInflight` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+<Tabs>
+<Tab title="Queued commit">
+
+```java wrap
+BulkCommitInflightItem item = BulkCommitInflightItem.create()
+    .transactionId("txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96");
+
+ApiResponse<JsonNode> response = blnk.transactions().bulkCommitInflight(
+    BulkCommitInflightRequest.create()
+        .transactions(List.of(item)));
+```
+
+</Tab>
+
+<Tab title="Synchronous commit">
+
+Pass `skipQueue(true)` to process each commit synchronously instead of queuing.
+
+```java wrap
+BulkCommitInflightItem item = BulkCommitInflightItem.create()
+    .transactionId("txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96");
+
+ApiResponse<JsonNode> response = blnk.transactions().bulkCommitInflight(
+    BulkCommitInflightRequest.create()
+        .skipQueue(true)
+        .transactions(List.of(item)));
+```
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `List<`<br />`BulkCommitInflightItem>` | Up to 100 inflight transactions to commit. |
+| `transactions.`<br />`[].transaction_id` | `String` | Inflight transaction ID to commit. |
+| `transactions.`<br />`[].amount` | `Number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
+| `transactions.`<br />`[].precise_amount` | `Number \| String` | Precision-applied partial commit amount. Takes precedence over amount. |
+| `skip_queue` | `boolean` | When `true`, process synchronously instead of queuing. |
+
+</Step>
+
+<Step title="Review per-item results">
+
+Check `response.data().get("results")` for each transaction's outcome. Failed items include a code and message without stopping the rest of the batch.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "succeeded": 2,
+  "failed": 1,
+  "results": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a6",
+      "status": "succeeded"
+    },
+    {
+      "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef",
+      "status": "failed",
+      "code": "INVALID_AMOUNT",
+      "message": "cannot commit more than inflight amount"
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `succeeded` | `Number` | Number committed successfully. |
+| `failed` | `Number` | Number that failed. |
+| `results` | `JsonNode` | JSON array of per-transaction outcomes in request order. Read with `response.data().`<br />`get("results").get(i)`. |
+| `results[].transaction_id` | `String` | Transaction ID from the request. |
+| `results[].status` | `String` | `succeeded`, `failed`, or `queued` (when `skip_queue` is `false`). |
+| `results[].code` | `String` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
+| `results[].message` | `String` | Human-readable failure message. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Bulk inflight updates" icon="plane" href="/transactions/inflight#bulk-inflight-updates">
+Per-item failure codes and when to use batch updates.
+</Card>
+
+<Card title="Bulk commit inflight" icon="book-open" href="/reference/bulk-commit-inflight">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

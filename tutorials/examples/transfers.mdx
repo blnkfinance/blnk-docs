@@ -56,19 +56,19 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(15000),
-    Precision:   100,
-    Reference:   "ref-0-07",
-    Description: "Payment to ExternalProvider",
-    Currency:    "USD",
-    Source:      "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
-    Destination: "@external-provider",
-    MetaData: blnkgo.MetaData{
-      "provider_reference": "ext-pay-123456",
-      "customer_id":        "1234",
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(15000),
+        Precision: 100,
+        Reference: "ref-0-07",
+        Description: "Payment to ExternalProvider",
+        Currency: "USD",
+        Source: "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+        Destination: "@external-provider",
+        MetaData: blnkgo.MetaData{
+            "provider_reference": "ext-pay-123456",
+            "customer_id": "1234",
+        },
     },
-  },
 })
 ```
 
@@ -87,6 +87,22 @@ response = blnk.transactions.create({
   },
 })
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(15000)
+        .precision(100)
+        .reference("ref-0-07")
+        .description("Payment to ExternalProvider")
+        .currency("USD")
+        .source("bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a")
+        .destination("@external-provider")
+        .metaData(Map.of(
+            "provider_reference", "ext-pay-123456",
+            "customer_id", "1234"
+        )));
+```
 </CodeGroup>
 
 ```json Response
@@ -95,7 +111,7 @@ response = blnk.transactions.create({
     "amount": 150.00,
     "rate": 0,
     "precision": 100,
-    "transaction_id": "txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o",
+    "transaction_id": "txn_7f8a9b1c-2d3e-4a5b-9c0d-1e2f3a4b5c6d",
     "parent_transaction": "",
     "source": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
     "destination": "@external-provider",
@@ -154,7 +170,7 @@ app.post('/payment-webhook', (req, res) => {
 function findTransactionId(providerReference) {
   // In a real-world scenario, you would query your blnk here
   // For this example, we'll return a mock transaction ID
-  return "txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o";
+  return "txn_7f8a9b1c-2d3e-4a5b-9c0d-1e2f3a4b5c6d";
 }
 
 // Function to initiate the refund
@@ -204,7 +220,7 @@ This cURL command simulates a failed payment notification from your provider.
 ```shell 
 Received webhook: Status FAILED for payment ext-pay-123456
 Payment ext-pay-123456 failed. Initiating refund process.
-Refund processed successfully: {"refund_id":"rfd_1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p","transaction_id":"txn_7f8a9b1c-2d3e-4f5g-6h7i-8j9k0l1m2n3o","status":"APPLIED","amount":150.00,"currency":"USD","reason":"Payment verification failed","created_at":"2024-07-05T10:30:15.123456789Z","meta_data":{"failed_verification_code":"VERIF-001","provider_reference":"ext-pay-123456"}}
+Refund processed successfully: {"refund_id":"rfd_1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d","transaction_id":"txn_7f8a9b1c-2d3e-4a5b-9c0d-1e2f3a4b5c6d","status":"APPLIED","amount":150.00,"currency":"USD","reason":"Payment verification failed","created_at":"2024-07-05T10:30:15.123456789Z","meta_data":{"failed_verification_code":"VERIF-001","provider_reference":"ext-pay-123456"}}
 ```
 
 ### Best practices for managing side effects and webhook handling
@@ -277,22 +293,22 @@ const response = await blnk.Transactions.create({
 ```go Go wrap expandable
 expiresAt, _ := time.Parse(time.RFC3339, "2024-02-03T12:38:19Z")
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(75000),
-    Precision:   100,
-    Reference:   "ref_001adcfgf",
-    Description: "Payment to ExternalProvider (Pending Verification)",
-    Currency:    "USD",
-    Source:      "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    MetaData: blnkgo.MetaData{
-      "provider_reference":  "ext-pay-123456",
-      "customer_id":         "1234",
-      "verification_status": "PENDING",
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(75000),
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Description: "Payment to ExternalProvider (Pending Verification)",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        MetaData: blnkgo.MetaData{
+            "provider_reference": "ext-pay-123456",
+            "customer_id": "1234",
+            "verification_status": "PENDING",
+        },
     },
-  },
-  Inflight:           true,
-  InflightExpiryDate: &expiresAt,
+    Inflight: true,
+    InflightExpiryDate: &expiresAt,
 })
 ```
 
@@ -313,6 +329,25 @@ response = blnk.transactions.create({
     "verification_status": "PENDING",
   },
 })
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(75000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .description("Payment to ExternalProvider (Pending Verification)")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .inflight(true)
+        .inflightExpiryDate("2024-02-03T12:38:19Z")
+        .metaData(Map.of(
+            "provider_reference", "ext-pay-123456",
+            "customer_id", "1234",
+            "verification_status", "PENDING"
+        )));
 ```
 
 ```json Expected response
