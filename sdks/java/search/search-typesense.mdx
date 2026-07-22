@@ -1,0 +1,105 @@
+---
+mode: "wide"
+title: "Search via Typesense"
+sidebarTitle: "Search records"
+api: "POST /search/{collection}"
+description: "Run full-text search across your ledger data with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.search().search` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("jane@example.com")
+        .queryBy("email_address")
+        .perPage(10),
+    "identities");
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `q` | `String` | Search query text. Use `*` to return all records. |
+| `query_by` | `String` | Comma-separated list of fields to search in. |
+| `filter_by` | `String` | Filter conditions to refine results. |
+| `sort_by` | `String` | Sort order, for example `created_at:desc`. |
+| `page` | `Number` | Page number, starting at 1. |
+| `per_page` | `Number` | Results per page. Max 250, defaults to 10. |
+| `collection` | `String` | Collection to search: `ledgers`, `transactions`, `balances`, or `identities`. |
+
+</Step>
+
+<Step title="Use the search results">
+
+Read `response.data().get("hits")` for matching documents. Each hit includes a `document` and optional `highlights` and `text_match` score.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap expandable
+{
+  "found": 2,
+  "out_of": 232,
+  "page": 1,
+  "request_params": {
+    "collection_name": "transactions",
+    "per_page": 10,
+    "q": "payment"
+  },
+  "search_time_ms": 2,
+  "facet_counts": [],
+  "search_cutoff": false,
+  "hits": [
+    {
+      "document": {
+        "id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5",
+        "transaction_id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5",
+        "amount": 532,
+        "currency": "USD",
+        "description": "Test transaction",
+        "source": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+        "destination": "bln_20666087-1355-4736-ba04-3ba92a7542b9",
+        "status": "APPLIED",
+        "created_at": 1758116489
+      },
+      "highlights": [],
+      "text_match": 578730123365711993
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `found` | `Number` | Number of records matching the query. |
+| `out_of` | `Number` | Total records in the collection. |
+| `page` | `Number` | Current page number. |
+| `search_time_ms` | `Number` | Time taken to run the search, in milliseconds. |
+| `hits` | `JsonNode` | JSON array of search results. Each element includes a `document` and optional `highlights` and `text_match`. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How search works" icon="magnifying-glass" href="/search/typesense/introduction">
+Query syntax, indexing, and use cases.
+</Card>
+
+<Card title="Search via Typesense" icon="book-open" href="/reference/search-typesense">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

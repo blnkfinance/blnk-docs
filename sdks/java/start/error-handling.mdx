@@ -1,0 +1,169 @@
+---
+title: "Error Handling"
+description: "Check ApiResponse envelopes, read Core error bodies, and handle validation and transport failures with the Java SDK."
+sidebarTitle: "Error handling"
+icon: "triangle-alert"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Every SDK method returns an `ApiResponse`. The SDK does not throw on API failures. Check `status()` before you use `data()`.
+
+On success, `data()` holds the resource. On failure, `status()` and `message()` describe what went wrong. `error()` holds structured Core error details when available. `data()` may hold Core's raw error JSON or be `null`.
+
+<Tip>
+Do not wrap SDK calls in try/catch for API failures. `Blnk.init` throws `IllegalArgumentException` only when `baseUrl` is missing.
+</Tip>
+
+---
+
+## Parse the response
+
+Read the envelope first. Use `status()` to classify the failure, then read the field that carries detail for that type.
+
+```java wrap
+public record BlnkApiErrorDetail(String code, String message, Object details) {}
+
+public record ApiResponse<T>(int status, String message, T data, BlnkApiErrorDetail error) {}
+```
+
+| Property | Contains |
+| :-- | :-- |
+| `status()` | HTTP-style codes: 2xx success, 4xx client error, etc. |
+| `data()` | Success body, or Core error JSON on rejection. May be `null`. |
+| `error()` | Structured error parsed from Core's `error_detail`. Use `error().code()` for logic. |
+| `message()` | Human-readable description. For logs and UI only. Do not use for logic. |
+
+---
+
+## How to handle errors
+
+<Steps>
+<Step title="Check status">
+
+Confirm success before you use `data()`. On every call, check that `status()` is in the 2xx range for the method you called.
+
+```java Error handling wrap
+ApiResponse<JsonNode> response = blnk.transactions().get(
+    "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+);
+
+if (response.status() < 200 || response.status() >= 300) {
+  String errorCode = response.error() != null ? response.error().code() : null;
+
+  if (response.status() == 404) {
+    // Resource not found: check errorCode (e.g. TXN_NOT_FOUND)
+  } else if (response.status() == 401 || response.status() == 403) {
+    // Auth or scope failure: check the API key
+  } else {
+    // Log status, errorCode, and response.message()
+  }
+} else {
+  // Use response.data()
+}
+```
+
+</Step>
+
+<Step title="Read the error detail">
+
+Use the field that matches the failure type:
+
+- **Core rejection** (`status()` is a Core HTTP error and `data()` is set): read `response.error().code()` for the code Core returned.
+- **SDK validation** (`status() == 400` and `data()` is `null`): read `response.message()` and fix the payload before retrying.
+
+Route on `response.status()` when you do not need code-level logic (401, 404, 409, 5xx).
+
+</Step>
+
+<Step title="Configure transport handling">
+
+When the SDK cannot reach Core or the request times out, you get `status()` `408` or `500` and `data()` `null`.
+
+Configure timeout and logging in [your SDK client](/sdks/java/start/using-the-sdk#timeouts-and-retries) to investigate these failures.
+
+</Step>
+</Steps>
+
+---
+
+## Core errors
+
+When Core rejects a request, the SDK wraps the failure in an `ApiResponse`. It sets `status()` to Core's HTTP status, `message()` to the error message, `data()` to Core's JSON error body, and `error()` to structured details parsed from `error_detail`.
+
+On Core 0.15.0 and later, a rejected request looks like this:
+
+```java 404 Not Found wrap
+ApiResponse<JsonNode> response = blnk.transactions().get("txn_missing");
+
+// response:
+// status=404
+// message="transaction not found"
+// data={ "error": "...", "error_detail": { "code": "TXN_NOT_FOUND", ... } }
+// error=BlnkApiErrorDetail(code="TXN_NOT_FOUND", message="transaction not found", details={})
+```
+
+Read the failure from `response.error().code()`. Use `response.status()` to choose a broad response. Treat `response.error().message()` as display text; Core may change wording between releases. On older Core versions, `response.error().code()` may be `UNKNOWN`.
+
+| Status | When it happens | What to do |
+| :-- | :-- | :-- |
+| `404` | Resource ID or path does not exist | Check `response.error().code()` (e.g. `TXN_NOT_FOUND`, `IDT_NOT_FOUND`) |
+| `401` or `403` | API key, scope, or permission failure | Check the key, scopes, and whether the method requires the master key |
+| `409` | Conflict (duplicate reference, lock, or in-progress job) | Retry only if the operation is safe to repeat |
+| `400` | Core rejected the payload | Fix the request body before retrying |
+| `5xx` | Core or upstream failure | Retry later and check Core logs |
+
+<Warning>
+Do not match exact `error` strings in application logic. Message text can change. Prefer `response.error().code()` for routing and `response.error().message()` for user-facing messages only. See the [0.15.0 migration guide](/changelog/v15-migration) and [API error codes](/advanced/error-codes).
+</Warning>
+
+---
+
+## Client-side validation
+
+Some methods validate input before sending a request. When validation fails, Core never receives the call.
+
+| Field | Value |
+| :-- | :-- |
+| `status()` | `400` |
+| `message()` | Validation error string, e.g. `reference field must be a valid string` |
+| `data()` | `null` |
+| `error()` | `null` |
+
+<Tip>
+Each [SDK method page](/sdks/java/ledgers/create-ledger) lists required fields for that call.
+</Tip>
+
+---
+
+## Transport failures
+
+When the SDK cannot reach Core or the request times out, you get `status()` `408` or `500`, `data()` `null`, and a `message()` describing the failure. Configure timeout and logging in [Using the SDK](/sdks/java/start/using-the-sdk#timeouts-and-retries).
+
+When debugging transport failures, log `status()`, `message()`, and the endpoint you called.
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Using the SDK" icon="code" href="/sdks/java/start/using-the-sdk">
+Timeouts, retries, and logging.
+</Card>
+
+<Card title="0.15.0 migration" icon="arrow-right" href="/changelog/v15-migration">
+Error codes, inflight queuing, and reconciliation changes.
+</Card>
+
+<Card title="Quick start" icon="rocket" href="/sdks/java/start/quick-start">
+Install the SDK and create your first transaction.
+</Card>
+
+<Card title="Changelog" icon="scroll-text" href="/changelog/blnk-java">
+Java SDK releases and version history.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

@@ -173,35 +173,35 @@ const response = await blnk.Transactions.createBulk({
 effectiveDate1, _ := time.Parse(time.RFC3339, "2024-09-15T10:30:00Z")
 effectiveDate2, _ := time.Parse(time.RFC3339, "2024-09-18T14:15:00Z")
 result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
-  Atomic:   true,
-  Inflight: false,
-  RunAsync: true,
-  Transactions: []blnkgo.CreateTransactionRequest{
-    {
-      ParentTransaction: blnkgo.ParentTransaction{
-        PreciseAmount: 35890,
-        Precision:     100,
-        Reference:     "migration_2024_001",
-        Description:   "Invoice payment - Client A",
-        Currency:      "NGN",
-        Source:        "@source_account",
-        Destination:   "@destination_account",
-        EffectiveDate: &effectiveDate1,
-      },
+    Atomic: true,
+    Inflight: false,
+    RunAsync: true,
+    Transactions: []blnkgo.CreateTransactionRequest{
+        {
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: 35890,
+                Precision: 100,
+                Reference: "migration_2024_001",
+                Description: "Invoice payment - Client A",
+                Currency: "NGN",
+                Source: "@source_account",
+                Destination: "@destination_account",
+                EffectiveDate: &effectiveDate1,
+            },
+        },
+        {
+            ParentTransaction: blnkgo.ParentTransaction{
+                PreciseAmount: 125000,
+                Precision: 100,
+                Reference: "migration_2024_002",
+                Description: "Supplier payment",
+                Currency: "NGN",
+                Source: "@source_account",
+                Destination: "@vendor_account",
+                EffectiveDate: &effectiveDate2,
+            },
+        },
     },
-    {
-      ParentTransaction: blnkgo.ParentTransaction{
-        PreciseAmount: 125000,
-        Precision:     100,
-        Reference:     "migration_2024_002",
-        Description:   "Supplier payment",
-        Currency:      "NGN",
-        Source:        "@source_account",
-        Destination:   "@vendor_account",
-        EffectiveDate: &effectiveDate2,
-      },
-    },
-  },
 })
 ```
 
@@ -233,6 +233,34 @@ response = blnk.transactions.create_bulk({
     },
   ],
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .atomic(true)
+        .inflight(false)
+        .runAsync(true)
+        .transactions(List.of(
+            CreateTransactions.create()
+            .preciseAmount(35890)
+            .precision(100)
+            .reference("migration_2024_001")
+            .description("Invoice payment - Client A")
+            .currency("NGN")
+            .source("@source_account")
+            .destination("@destination_account")
+            .effectiveDate("2024-09-15T10:30:00Z"),
+            CreateTransactions.create()
+            .preciseAmount(125000)
+            .precision(100)
+            .reference("migration_2024_002")
+            .description("Supplier payment")
+            .currency("NGN")
+            .source("@source_account")
+            .destination("@vendor_account")
+            .effectiveDate("2024-09-18T14:15:00Z")
+        )));
 ```
 </CodeGroup>
 
@@ -284,6 +312,16 @@ Learn more: [Bulk Transactions Webhooks →](/transactions/bulk-transactions#web
       -H "X-blnk-key: <api-key>"
     ```
 
+    ```typescript TypeScript wrap
+    const response = await blnk.LedgerBalances.getAt(
+      '{balance_id}',
+      {
+        timestamp: '2024-12-31T23:59:59Z',
+        from_source: false,
+      },
+    );
+    ```
+
     ```go Go wrap
     at, _ := time.Parse(time.RFC3339, "2024-12-31T23:59:59Z")
     balance, resp, err := client.LedgerBalance.GetHistorical("{balance_id}", at, false)
@@ -297,6 +335,14 @@ Learn more: [Bulk Transactions Webhooks →](/transactions/bulk-transactions#web
         "from_source": False,
       },
     )
+    ```
+
+    ```java Java wrap
+    ApiResponse<JsonNode> response = blnk.ledgerBalances().getAt(
+        "{balance_id}",
+        GetBalanceAtRequest.create()
+            .timestamp("2024-12-31T23:59:59Z")
+            .fromSource(false));
     ```
     </CodeGroup>
 

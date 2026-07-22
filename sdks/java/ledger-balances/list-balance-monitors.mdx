@@ -1,0 +1,83 @@
+---
+mode: "wide"
+title: "List balance monitors"
+sidebarTitle: "List balance monitors"
+api: "GET /balance-monitors"
+description: "List balance monitors with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `blnk.balanceMonitor().list` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.balanceMonitor().list();
+```
+
+This method takes no arguments.
+
+</Step>
+
+<Step title="Use the monitor list">
+
+When `response.data().isArray()`, iterate by index:
+
+```java wrap
+JsonNode monitors = response.data();
+for (int i = 0; i < monitors.size(); i++) {
+  String monitorId = monitors.get(i).get("monitor_id").asText();
+}
+```
+
+Save IDs you need for updates or lookups.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+[
+  {
+    "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "condition": {
+      "field": "credit_balance",
+      "operator": ">",
+      "value": 1000,
+      "precision": 100
+    },
+    "call_back_url": "https://api.example.com/balance-monitor",
+    "description": "Low balance alert",
+    "created_at": "2024-02-20T05:56:58.257315054Z"
+  }
+]
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `response.data()` | `JsonNode` | JSON array of balance monitor objects. |
+| `response.data().`<br />`get(i).get("monitor_id")` | `String` | Unique monitor ID. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="Balance monitoring" icon="bell" href="/balances/balance-monitoring">
+Conditions and webhook behavior.
+</Card>
+
+<Card title="View balance monitor details" icon="book-open" href="/reference/get-balance-monitor">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />

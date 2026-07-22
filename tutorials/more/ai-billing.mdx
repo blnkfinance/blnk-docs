@@ -68,7 +68,7 @@ const response = await blnk.Ledgers.create({
 
 ```go Go wrap
 ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
-  Name: "Customers Ledger",
+    Name: "Customers Ledger",
 })
 ```
 
@@ -76,6 +76,12 @@ ledger, resp, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
 response = blnk.ledgers.create({
   "name": "Customers Ledger",
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customers Ledger"));
 ```
 
 ```bash Blnk CLI wrap
@@ -114,8 +120,8 @@ const response = await blnk.Identity.create({
 
 ```go Go wrap
 identity, resp, err := client.Identity.Create(blnkgo.Identity{
-  FirstName: "Xavier",
-  LastName:  "Woods",
+    FirstName: "Xavier",
+    LastName: "Woods",
 })
 ```
 
@@ -124,6 +130,13 @@ response = blnk.identity.create({
   "first_name": "Xavier",
   "last_name": "Woods",
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .firstName("Xavier")
+        .lastName("Woods"));
 ```
 
 ```bash Blnk CLI wrap
@@ -164,12 +177,12 @@ const response = await blnk.LedgerBalances.create({
 
 ```go Go wrap
 balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-  LedgerID:   "<ledger-id>",
-  IdentityID: "<identity-id>",
-  Currency:   "USD",
-  MetaData: blnkgo.MetaData{
-    "name": "Xavier Woods",
-  },
+    LedgerID: "<ledger-id>",
+    IdentityID: "<identity-id>",
+    Currency: "USD",
+    MetaData: blnkgo.MetaData{
+        "name": "Xavier Woods",
+    },
 })
 ```
 
@@ -180,6 +193,15 @@ response = blnk.ledger_balances.create({
   "currency": "USD",
   "meta_data": { "name": "Xavier Woods" },
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("<ledger-id>")
+        .identityId("<identity-id>")
+        .currency("USD")
+        .metaData(Map.of("name", "Xavier Woods")));
 ```
 
 ```bash Blnk CLI wrap
@@ -249,16 +271,16 @@ const response = await blnk.Transactions.create({
 
 ```go Go wrap
 transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-  ParentTransaction: blnkgo.ParentTransaction{
-    PreciseAmount: big.NewInt(12000),
-    Precision:   100,
-    Currency:    "USD",
-    Reference:   "ai-billing_ref-001",
-    Source:      "@World-USD",
-    Destination: "<customer-balance-id>",
-    Description: "Wallet funding",
-  },
-  AllowOverdraft: true,
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(12000),
+        Precision: 100,
+        Currency: "USD",
+        Reference: "ai-billing_ref-001",
+        Source: "@World-USD",
+        Destination: "<customer-balance-id>",
+        Description: "Wallet funding",
+    },
+    AllowOverdraft: true,
 })
 ```
 
@@ -273,6 +295,19 @@ response = blnk.transactions.create({
   "description": "Wallet funding",
   "allow_overdraft": True,
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(12000)
+        .precision(100)
+        .currency("USD")
+        .reference("ai-billing_ref-001")
+        .source("@World-USD")
+        .destination("<customer-balance-id>")
+        .description("Wallet funding")
+        .allowOverdraft(true));
 ```
 
 ```bash Blnk CLI wrap
@@ -469,6 +504,33 @@ response = blnk.transactions.create_bulk({
     },
   ],
 })
+```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .atomic(true)
+        .runAsync(false)
+        .transactions(List.of(
+            CreateTransactions.create()
+            .preciseAmount(2290)
+            .precision(1)
+            .currency("TOKENS")
+            .reference("ref_ai-billing_001_tokens")
+            .source("@Token-Wallet")
+            .destination("@System-Tokens")
+            .description("Token leg")
+            .allowOverdraft(true),
+            CreateTransactions.create()
+            .preciseAmount(602500)
+            .precision(100)
+            .currency("USD")
+            .reference("ref_ai-billing_001_usd")
+            .source("<customer-balance-id>")
+            .destination("@Revenue")
+            .description("USD leg")
+            .allowOverdraft(false)
+        )));
 ```
 
 ```bash Blnk CLI wrap

@@ -21,14 +21,14 @@ Use `blnk.transactions.bulk_commit_inflight` to commit multiple inflight transac
 response = blnk.transactions.bulk_commit_inflight({
   "transactions": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96",
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a6",
       "amount": 40,
     },
     {
-      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef",
       "precise_amount": 125034,
     },
   ],
@@ -46,10 +46,10 @@ response = blnk.transactions.bulk_commit_inflight({
   "skip_queue": True,
   "transactions": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96",
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a6",
       "amount": 40,
     },
   ],
@@ -62,9 +62,9 @@ response = blnk.transactions.bulk_commit_inflight({
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `transactions` | `list[dict]` | Up to 100 inflight transactions to commit. |
-| `transactions[].transaction_id` | `str` | Inflight transaction ID to commit. |
-| `transactions[].amount` | `number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
-| `transactions[].precise_amount` | `number` | Precision-applied partial commit amount. Takes precedence over amount. |
+| `transactions.`<br />`[].transaction_id` | `str` | Inflight transaction ID to commit. |
+| `transactions.`<br />`[].amount` | `number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
+| `transactions.`<br />`[].precise_amount` | `number \| str` | Precision-applied partial commit amount. Takes precedence over amount. |
 | `skip_queue` | `bool` | When `True`, process synchronously instead of queuing. |
 
 </Step>
@@ -83,15 +83,15 @@ Check `response.data["results"]` for each transaction's outcome. Failed items in
   "failed": 1,
   "results": [
     {
-      "transaction_id": "txn_11111111-1111-4111-8111-111111111111",
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b96",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_22222222-2222-4222-8222-222222222222",
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a6",
       "status": "succeeded"
     },
     {
-      "transaction_id": "txn_33333333-3333-4333-8333-333333333333",
+      "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef",
       "status": "failed",
       "code": "INVALID_AMOUNT",
       "message": "cannot commit more than inflight amount"
@@ -105,7 +105,8 @@ Check `response.data["results"]` for each transaction's outcome. Failed items in
 | `succeeded` | `number` | Number committed successfully. |
 | `failed` | `number` | Number that failed. |
 | `results` | `list[dict]` | Per-transaction outcome in request order. |
-| `results[].status` | `str` | `succeeded` or `failed`. |
+| `results[].transaction_id` | `str` | Transaction ID from the request. |
+| `results[].status` | `str` | `succeeded`, `failed`, or `queued` (when `skip_queue` is `False`). |
 | `results[].code` | `str` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
 | `results[].message` | `str` | Human-readable failure message. |
 

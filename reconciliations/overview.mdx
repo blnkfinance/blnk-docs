@@ -69,7 +69,7 @@ curl -X POST "http://YOUR_BLNK_INSTANCE_URL/reconciliation/start" \
     "grouping_criteria": "reference",
     "matching_rule_ids": [
       "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-      "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+      "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890"
     ]
   }'
 ```
@@ -82,21 +82,21 @@ const response = await blnk.Reconciliation.run({
   grouping_criteria: 'reference',
   matching_rule_ids: [
     'rule_890bdbc4-467f-4670-8424-5667e41daf29',
-    'rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv',
+    'rule_a1b2c3d4-5678-90ef-abcd-ef1234567890',
   ],
 });
 ```
 
 ```go Go wrap
 result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
-  UploadID:         "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
-  Strategy:         blnkgo.ReconciliationStrategyOneToMany,
-  DryRun:           false,
-  GroupingCriteria: "reference",
-  MatchingRuleIDs: []string{
-    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv",
-  },
+    UploadID: "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+    Strategy: blnkgo.ReconciliationStrategyOneToMany,
+    DryRun: false,
+    GroupingCriteria: "reference",
+    MatchingRuleIDs: []string{
+        "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+        "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890",
+    },
 })
 ```
 
@@ -108,15 +108,29 @@ response = blnk.reconciliation.run({
   "grouping_criteria": "reference",
   "matching_rule_ids": [
     "rule_890bdbc4-467f-4670-8424-5667e41daf29",
-    "rule_a1b2c3d4-5678-90ef-ghij-klmnopqrstuv",
+    "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890",
   ],
 })
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().run(
+    RunReconData.create()
+        .uploadId("upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3")
+        .strategy("one_to_many")
+        .dryRun(false)
+        .groupingCriteria("reference")
+        .matchingRuleIds(List.of(
+            "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+            "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890"
+        ))
+);
 ```
 </CodeGroup>
 
 ```json Response wrap
 {
-  "reconciliation_id": "recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3"
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
 }
 ```
 
@@ -211,21 +225,21 @@ const response = await blnk.Reconciliation.run({
 
 ```go Go wrap expandable
 result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
-  ExternalTransactions: []blnkgo.ExternalTransaction{
-    {
-      ID:          "txn1a2b3c4d5e6f7g8h9i0",
-      Amount:      5.49,
-      Reference:   "INV-2023-002",
-      Currency:    "GBP",
-      Description: "Card payment",
-      Date:        "2024-11-15T14:25:30Z",
-      Source:      "bank-api",
+    ExternalTransactions: []blnkgo.ExternalTransaction{
+        {
+            ID: "txn1a2b3c4d5e6f7g8h9i0",
+            Amount: 5.49,
+            Reference: "INV-2023-002",
+            Currency: "GBP",
+            Description: "Card payment",
+            Date: "2024-11-15T14:25:30Z",
+            Source: "bank-api",
+        },
     },
-  },
-  Strategy: blnkgo.ReconciliationStrategyOneToOne,
-  MatchingRuleIDs: []string{
-    "rule_04c4a59e-08a1-423b-bfae-48feebe16473",
-  },
+    Strategy: blnkgo.ReconciliationStrategyOneToOne,
+    MatchingRuleIDs: []string{
+        "rule_04c4a59e-08a1-423b-bfae-48feebe16473",
+    },
 })
 ```
 
@@ -248,11 +262,31 @@ response = blnk.reconciliation.run_instant({
   ],
 })
 ```
+
+```java Java wrap expandable
+ApiResponse<JsonNode> response = blnk.reconciliation().runInstant(
+    RunInstantReconData.create()
+        .externalTransactions(List.of(
+            ExternalTransaction.create()
+                .id("txn1a2b3c4d5e6f7g8h9i0")
+                .amount(5.49)
+                .reference("INV-2023-002")
+                .currency("GBP")
+                .description("Card payment")
+                .date("2024-11-15T14:25:30Z")
+                .source("bank-api")
+        ))
+        .strategy("one_to_one")
+        .matchingRuleIds(List.of(
+            "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
+        ))
+);
+```
 </CodeGroup>
 
 ```json Response wrap
 {
-  "reconciliation_id": "recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3"
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
 }
 ```
 
@@ -272,20 +306,39 @@ Call `GET /reconciliation/{reconciliation_id}` until `status` is `completed` or 
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X GET "http://YOUR_BLNK_INSTANCE_URL/reconciliation/recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3" \
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/reconciliation/recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c" \
   -H "X-blnk-key: <api-key>"
 ```
 
 ```typescript TypeScript wrap
 const response = await blnk.Reconciliation.get(
-  'recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3',
+  'recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c',
 );
 ```
+
+```go Go wrap
+recon, resp, err := client.Reconciliation.Get(
+    "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
+)
+```
+
+```python Python wrap
+response = blnk.reconciliation.get(
+  "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().get(
+    "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+);
+```
+
 </CodeGroup>
 
 ```json Response wrap
 {
-  "reconciliation_id": "recon_6e6feddd-930b-4e3-8ba-1a3eee659bb3",
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
   "status": "completed",
   "matched_transactions": 3,
   "unmatched_transactions": 0,
@@ -324,11 +377,17 @@ txn, resp, err := client.Transaction.Get("{transaction_id}")
 ```python Python wrap
 response = blnk.transactions.get("{transaction_id}")
 ```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().get(
+    "{transaction_id}"
+);
+```
 </CodeGroup>
 
 You'll find the reconciliation results in the `meta_data` object as shown below:
 
-```json Response {5}
+```json Response {5} wrap
 {
   ...
   "meta_data": {
@@ -336,7 +395,7 @@ You'll find the reconciliation results in the `meta_data` object as shown below:
     "reconciled": true,
     "reconciled_at": "2025-03-15T18:11:52.61+00",
     "reconciliation_amount": 12.75,
-    "reconciliation_id": "recon_9134cb8-a3f6-47e9-b566-4fb93fa051"
+    "reconciliation_id": "recon_9134cb8a-a3f6-47e9-b566-4fb93fa051e7"
   }
 }
 ```
