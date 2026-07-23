@@ -37,7 +37,7 @@ Here's how they differ:
 
 | | Global webhooks | Transaction hooks |
 | :-- | :-- | :-- |
-| **Configuration** | In [notification configuration](/advanced/configuration/notifications) | With the [Hooks API](/webhooks/transaction-hooks) |
+| **Configuration** | In [webhook configuration](/advanced/configuration/webhooks) | With the [Hooks API](/webhooks/transaction-hooks) |
 | **When they fire** | On all named lifecycle events | Only on transaction events |
 | **Management** | Edit Blnk configuration | Update, list, delete via Hooks API |
 | **Typical use** | Global notifications, reconciliation results, system errors | Related to transaction workflows (validation, enrichment, pipeline side effects) |
@@ -61,6 +61,8 @@ Both **global webhooks** and **transaction hooks** use the same signing scheme.
 | `X-Hook-ID` | The hook identifier (transaction hooks only). |
 | `X-Hook-Type` | `PRE_TRANSACTION` or `POST_TRANSACTION` (transaction hooks only). |
 
+Blnk also sends any custom headers you configure in [webhook configuration](/advanced/configuration/webhooks). Set `BLNK_WEBHOOK_HEADERS` to a **JSON string** in environment variables, or set `notification.webhook.headers` to a **JSON object** in `blnk.json`. Use these headers for bearer tokens, API keys, or other values your endpoint expects on every delivery.
+
 To verify a webhook:
 
 <Steps>
@@ -68,7 +70,7 @@ To verify a webhook:
   Read `X-Blnk-Signature` and `X-Blnk-Timestamp` from the request. Reject requests missing either header.
 
   <Warning>
-  Preserve the **exact raw bytes** of the request body before JSON parsing. Do not use a parsed or re-serialized body-any whitespace or encoding changes will cause verification to fail.
+  Preserve the **exact raw bytes** of the request body before JSON parsing. Do not use a parsed or re-serialized body. Any whitespace or encoding changes will cause verification to fail.
   </Warning>
 </Step>
 <Step title="Build signed payload">
@@ -228,6 +230,6 @@ To verify a webhook:
     { title: "Global webhooks", href: "/webhooks/global-webhooks" },
     { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
     { title: "Supported events", href: "/webhooks/events" },
-    { title: "Notification configuration", href: "/advanced/configuration/notifications" },
+    { title: "Webhook configuration", href: "/advanced/configuration/webhooks" },
   ]}
 />
