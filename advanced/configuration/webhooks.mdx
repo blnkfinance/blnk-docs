@@ -19,10 +19,10 @@ This page covers the settings that control how Blnk sends outbound notifications
 Use the `notification` object to configure Slack incoming webhooks and a generic application webhook. You can set either integration alone, or both at the same time.
 
 <CodeGroup>
-```bash blnk.env
+```bash blnk.env wrap
 BLNK_SLACK_WEBHOOK_URL=
 BLNK_WEBHOOK_URL=
-BLNK_WEBHOOK_HEADERS={}
+BLNK_WEBHOOK_HEADERS={"Authorization":"Bearer <token>","Content-Type":"application/json"}
 ```
 
 ```json blnk.json
@@ -33,7 +33,10 @@ BLNK_WEBHOOK_HEADERS={}
     },
     "webhook": {
       "url": "",
-      "headers": {}
+      "headers": {
+        "Authorization": "Bearer <token>",
+        "Content-Type": "application/json"
+      }
     }
   }
 }
@@ -45,6 +48,10 @@ BLNK_WEBHOOK_HEADERS={}
 | `BLNK_SLACK_WEBHOOK_URL` | Slack incoming webhook URL used for team alerts. | None |
 | `BLNK_WEBHOOK_URL` | HTTPS endpoint that receives Blnk event notifications. | None |
 | `BLNK_WEBHOOK_HEADERS` | Extra HTTP headers sent with webhook requests (for example authentication). | `{}` |
+
+<Note>
+If using `.env`, set `BLNK_WEBHOOK_HEADERS` to a JSON-encoded object. For `blnk.json`, set `notification.webhook.headers` to a JSON object.
+</Note>
 
 ### `BLNK_SLACK_WEBHOOK_URL`
 
@@ -63,27 +70,6 @@ When set, Blnk delivers notifications to your application at this URL. Use this 
 ### `BLNK_WEBHOOK_HEADERS`
 
 Optional extra HTTP headers Blnk sends with each global webhook request. Use this for authentication tokens, custom `Content-Type` values, or other gateway requirements.
-
-In environment variables, set `BLNK_WEBHOOK_HEADERS` to a **JSON string**:
-
-```bash blnk.env
-BLNK_WEBHOOK_HEADERS={"Authorization":"Bearer <token>","Content-Type":"application/json"}
-```
-
-In `blnk.json`, set `notification.webhook.headers` to a **JSON object**:
-
-```json blnk.json
-{
-  "notification": {
-    "webhook": {
-      "headers": {
-        "Authorization": "Bearer <token>",
-        "Content-Type": "application/json"
-      }
-    }
-  }
-}
-```
 
 These headers are separate from Blnk's signing headers (`X-Blnk-Signature` and `X-Blnk-Timestamp`). See [Webhook security](/webhooks/overview#webhook-security) for signature verification.
 
