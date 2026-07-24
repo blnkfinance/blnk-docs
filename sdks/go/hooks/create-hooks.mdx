@@ -1,0 +1,97 @@
+---
+mode: "wide"
+title: "Register new hooks"
+sidebarTitle: "Create hooks"
+api: "POST /hooks"
+description: "Register a new hook with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+Use `client.Hooks.Create` to register a [webhook](/webhooks/overview) that Blnk calls before or after a transaction.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Hooks.Create wrap
+hook, resp, err := client.Hooks.Create(
+	blnkgo.CreateHookRequest{
+		Name:       "Pre-transaction validation",
+		URL:        "https://api.example.com/validate",
+		Type:       blnkgo.HookTypePreTransaction,
+		Active:     true,
+		Timeout:    30,
+		RetryCount: 3,
+	},
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Name` | `string` | Descriptive name for the hook. |
+| `URL` | `string` | Endpoint URL Blnk calls when the hook runs. |
+| `Type` | `blnkgo.HookType` | `blnkgo.HookTypePreTransaction` or `blnkgo.HookTypePostTransaction`. |
+| `Active` | `bool` | Whether the hook is enabled. |
+| `Timeout` | `int` | Maximum time in seconds allowed for the hook to execute. |
+| `RetryCount` | `int` | Maximum number of retry attempts if the hook fails. |
+
+</Step>
+
+<Step title="Save the hook ID">
+
+Use `hook.ID` to view, update, or delete the hook later. Hook management requires the master key.
+
+</Step>
+
+<Step title="Response">
+
+```json 201 Created wrap
+{
+  "id": "hk_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/validate",
+  "type": "PRE_TRANSACTION",
+  "active": true,
+  "timeout": 30,
+  "retry_count": 3,
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "last_run": "0001-01-01T00:00:00Z",
+  "last_success": false
+}
+```
+
+#### Go response (`*blnkgo.HookResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ID` | `string` | Unique ID for the hook. Use it to view, update, or delete the hook. |
+| `Name` | `string` | Name you passed in the request. |
+| `URL` | `string` | Endpoint URL Blnk calls when the hook runs. |
+| `Type` | `blnkgo.HookType` | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `Active` | `bool` | Whether the hook is enabled. |
+| `Timeout` | `int` | Maximum time in seconds allowed for the hook to execute. |
+| `RetryCount` | `int` | Maximum number of retry attempts if the hook fails. |
+| `CreatedAt` | `string` | Date and time the hook was created. |
+| `LastRun` | `string` | Date and time the hook last executed. |
+| `LastSuccess` | `bool` | Whether the most recent execution succeeded. |
+
+</Step>
+</Steps>
+
+---
+
+## Related docs
+
+<CardGroup cols={2}>
+<Card title="How webhooks work" icon="webhook" href="/webhooks/overview">
+Hook types, payloads, and execution.
+</Card>
+
+<Card title="Register new hooks" icon="book-open" href="/reference/create-hooks">
+HTTP request and response schema.
+</Card>
+</CardGroup>
+
+---
+
+<NeedHelp />
