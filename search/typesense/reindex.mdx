@@ -100,6 +100,25 @@ ApiResponse<JsonNode> response = blnk.search().getReindexStatus();
     "completed_at": "2026-02-12T12:18:42.018420264Z"
 }
 ```
+
+When Typesense hits memory limits during a reindex, Blnk pauses indexing and retries automatically instead of failing the operation. Poll this endpoint while that happens. When paused, the response includes `paused: true`, `pause_reason: "typesense_out_of_memory"`, and `paused_at`. Reindex resumes when Typesense memory pressure clears.
+
+```json Response (paused) wrap
+{
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 3240705,
+    "processed_records": 1200000,
+    "started_at": "2026-02-12T12:13:10.448612096Z",
+    "paused": true,
+    "pause_reason": "typesense_out_of_memory",
+    "paused_at": "2026-02-12T12:15:30.448612096Z"
+}
+```
+
+<Note>
+Available in Blnk Core 0.15.2 and later. Tune retry timing with `backpressure_retry_interval` and cap Typesense memory with `TYPESENSE_MEMORY_USED_MAX_PERCENTAGE` on your Typesense container. See [Data store configuration](/advanced/configuration/data-stores).
+</Note>
 </Step>
 
 <Step title="Verify completeness">

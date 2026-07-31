@@ -106,6 +106,51 @@ Leave this disabled when an insufficient-funds result should be treated as final
 
 ---
 
+## Backpressure settings
+
+When Redis memory or pending task count exceeds configured limits, Blnk rejects new queue enqueues and returns `503 Service Unavailable` with `QUEUE_BACKPRESSURE`. See [API error codes](/advanced/error-codes).
+
+Backpressure is enabled by default.
+
+<Note>
+In `blnk.json`, `backpressure_check_interval` is a duration in **nanoseconds** (for example `500000000` for 500ms). The environment variable accepts Go duration format (for example `500ms`). Omit the field to use the default.
+</Note>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_QUEUE_ENABLE_BACKPRESSURE=true
+BLNK_QUEUE_BACKPRESSURE_MEMORY_PERCENT=85
+BLNK_QUEUE_BACKPRESSURE_MAX_PENDING_TASKS=0
+BLNK_QUEUE_BACKPRESSURE_CHECK_INTERVAL=500ms
+```
+
+```json blnk.json
+{
+  "queue": {
+    "enable_backpressure": true,
+    "backpressure_memory_percent": 85,
+    "backpressure_max_pending_tasks": 0,
+    "backpressure_check_interval": 500000000
+  }
+}
+```
+</CodeGroup>
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BLNK_QUEUE_ENABLE_BACKPRESSURE` | `true` | Rejects new enqueues when backpressure limits are exceeded. |
+| `BLNK_QUEUE_BACKPRESSURE_MEMORY_PERCENT` | `85` | Rejects enqueues when Redis `used_memory` reaches this percentage of `maxmemory`. Applies only when Redis `maxmemory` is set. |
+| `BLNK_QUEUE_BACKPRESSURE_MAX_PENDING_TASKS` | `0` | Rejects enqueues when total pending transaction queue tasks reach this count. `0` disables the pending-task check. |
+| `BLNK_QUEUE_BACKPRESSURE_CHECK_INTERVAL` | `500ms` | Minimum time between backpressure checks during enqueue. |
+
+<Note>
+Redis `maxmemory` is a server setting, not a Blnk option. Set it in `redis.conf`, your container startup command (for example `redis-server --maxmemory 256mb`), or through your managed Redis provider. 
+
+If `maxmemory` is unset, Blnk skips the memory check and only pending-task backpressure applies when configured.
+</Note>
+
+---
+
 ## Hot-lane routing settings
 
 Use these settings to isolate repeatedly contended balance pairs into a dedicated queue.

@@ -121,16 +121,22 @@ Only set to `true` when you are working in a controlled environment and understa
 
 Use these settings to enable Blnk search and indexing via Typesense.
 
+<Note>
+In `blnk.json`, `backpressure_retry_interval` is a duration in **nanoseconds** (for example `5000000000` for 5s). The environment variable accepts Go duration format (for example `5s`). Omit the field to use the default.
+</Note>
+
 <CodeGroup>
 ```bash blnk.env
 BLNK_TYPESENSE_DNS=http://typesense:8108
 BLNK_TYPESENSE_KEY=blnk-api-key
+BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL=5s
 ```
 
 ```json blnk.json
 {
   "typesense": {
-    "dns": "http://typesense:8108"
+    "dns": "http://typesense:8108",
+    "backpressure_retry_interval": 5000000000
   },
   "type_sense_key": "blnk-api-key"
 }
@@ -141,6 +147,14 @@ BLNK_TYPESENSE_KEY=blnk-api-key
 | :-- | :-- | :-- |
 | `BLNK_TYPESENSE_DNS` | TypeSense server address. If unset, Blnk disables search and indexing features via Typesense. | Disabled when unset |
 | `BLNK_TYPESENSE_KEY` | API key used to connect to TypeSense. | `blnk-api-key` |
+| `BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL` | How long Blnk waits before retrying indexing or reindex work after Typesense reports a memory limit error. | `5s` |
+| `TYPESENSE_MEMORY_USED_MAX_PERCENTAGE` | Typesense container setting. Caps Typesense memory usage as a percentage of available memory before it rejects writes. | `85` |
+
+Set Typesense memory limits on the Typesense service itself, not in Blnk:
+
+```bash typesense.env
+TYPESENSE_MEMORY_USED_MAX_PERCENTAGE=85
+```
 
 ### When to use Typesense
 

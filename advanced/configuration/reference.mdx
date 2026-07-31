@@ -15,7 +15,11 @@ This page is a **broad** reference for common Blnk settings and typical defaults
 Fields with no defaults are left blank in the examples.
 
 <Note>
-**Note:** In `blnk.json`, duration settings are integer seconds. In environment variables, duration settings use Go duration format (e.g. `5s`, `30m`) where documented.
+In `blnk.json`, most duration fields use integer **seconds** (`lock_duration`, `lock_wait_timeout`, `hot_pair_ttl`). Blnk multiplies them by `time.Second` on load.
+</Note>
+
+<Note>
+`queue.backpressure_check_interval` and `typesense.backpressure_retry_interval` use **nanoseconds** in JSON (for example `500000000` for 500ms). Environment variables for all duration fields use Go duration format (for example `500ms`, `5s`).
 </Note>
 
 <CodeGroup>
@@ -51,6 +55,7 @@ BLNK_REDIS_SKIP_TLS_VERIFY=false
 # Docker default shown for the Typesense endpoint. The API key defaults to "blnk-api-key".
 BLNK_TYPESENSE_DNS=http://typesense:8108
 BLNK_TYPESENSE_KEY=blnk-api-key
+BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL=5s
 
 # Transactions
 # LOCK_DURATION and LOCK_WAIT_TIMEOUT are integer seconds.
@@ -85,6 +90,10 @@ BLNK_QUEUE_HOT_PAIR_TTL=300
 BLNK_QUEUE_HOT_PAIR_LOCK_CONTENTION_THRESHOLD=3
 BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY=false
 BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=4
+BLNK_QUEUE_ENABLE_BACKPRESSURE=true
+BLNK_QUEUE_BACKPRESSURE_MEMORY_PERCENT=85
+BLNK_QUEUE_BACKPRESSURE_MAX_PENDING_TASKS=0
+BLNK_QUEUE_BACKPRESSURE_CHECK_INTERVAL=500ms
 
 # Rate limiting
 # These are the runtime defaults used when rate limiting is not configured. Values are integer seconds.
@@ -151,7 +160,8 @@ BLNK_S3_REGION=
     "min_idle_conns": 20
   },
   "typesense": {
-    "dns": "http://typesense:8108"
+    "dns": "http://typesense:8108",
+    "backpressure_retry_interval": 5000000000
   },
   "type_sense_key": "blnk-api-key",
   "transaction": {
@@ -182,7 +192,11 @@ BLNK_S3_REGION=
     "hot_pair_ttl": 300,
     "hot_pair_lock_contention_threshold": 3,
     "reject_lock_contention_immediately": false,
-    "transaction_worker_concurrency": 4
+    "transaction_worker_concurrency": 4,
+    "enable_backpressure": true,
+    "backpressure_memory_percent": 85,
+    "backpressure_max_pending_tasks": 0,
+    "backpressure_check_interval": 500000000
   },
   "rate_limit": {
     "requests_per_second": 5000000,
