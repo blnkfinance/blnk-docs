@@ -1,0 +1,242 @@
+---
+title: "0.10.5 Migration Guide"
+sidebarTitle: "0.10.5"
+icon: "arrow-right"
+description: "Migration guide for upgrading to Blnk v0.10.5, covering bulk transactions defaulting to the queue."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+This migration guide covers the breaking change introduced in Blnk v0.10.5 for [bulk transactions](/transactions/bulk-transactions). Bulk create now uses the queue by default instead of processing every item synchronously in the request.
+
+If you are upgrading from **v0.10.4 or earlier** and your app expects balances or final statuses to update before the bulk create response returns, review this guide before you upgrade.
+
+<Warning>
+Do not treat a successful bulk create response as proof that every child is already applied. On the default queued path, the response means the batch was **accepted for processing**. If your app calls an external provider or releases funds based on that response alone, you can open a race where money moves before the ledger finishes.
+</Warning>
+
+---
+
+## Recommended upgrade
+
+If you run **0.10.5 or later** on the queued bulk path, upgrade to **Blnk Core 0.15.0 or later**.
+
+From 0.15.0, Core migrations add expression indexes on `meta_data->>'QUEUED_PARENT_TRANSACTION'` and related queue hot paths. Without those indexes, commit, refund, and parent lookups can fall back to sequential scans and drain the queue slowly under load.
+
+Prefer upgrading over staying on 0.10.5–0.14.x with a hand-applied index.
+
+If you cannot upgrade yet, create the index manually on your Postgres database:
+
+```sql
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_queued_parent
+ON blnk.transactions ((meta_data->>'QUEUED_PARENT_TRANSACTION'));
+```
+
+<Note>
+`CREATE INDEX CONCURRENTLY` cannot run inside a transaction block. Run it as a standalone statement. On large tables it can take time, but it avoids locking writes while the index builds.
+</Note>
+
+Core 0.15.0 applies an equivalent index as `idx_txn_meta_queued_parent` (partial, where the key is present) plus related queue indexes. After you upgrade, you do not need to keep a separate hand-created index unless your operator process requires it.
+
+---
+
+## Breaking changes summary
+
+- **From:** Bulk create always processed items synchronously (`skip_queue` effectively `true`).
+- **To:** Bulk create defaults to `skip_queue: false` and enqueues each item.
+- **Impact:** A successful bulk response no longer guarantees that every child transaction is already `APPLIED` or `INFLIGHT` on balances. Parent linking and duplicate-reference behaviour also follow the queued path unless you opt out.
+
+---
+
+## What changed
+
+1. **Default queueing:** Bulk create now respects `skip_queue` and defaults it to `false`. Before 0.10.5, Blnk forced synchronous processing inside the batch.
+2. **Response meaning:** On the default path, `status: "applied"` means the batch was **successfully submitted**, not that every child has already moved balances.
+3. **Parent linking:** With `skip_queue: false`, children store `batch_id` in `meta_data.QUEUED_PARENT_TRANSACTION`. With `skip_queue: true`, children set `parent_transaction` to `batch_id`.
+4. **Duplicate references:** On the queued path, duplicate references are deduplicated silently and the batch can still return `201`. On `skip_queue: true`, duplicates fail the batch with `409`.
+
+See [Bulk transactions](/transactions/bulk-transactions) for current behaviour.
+
+---
+
+## Who is affected?
+
+Review this change if your integration:
+
+- Reads balances or child transaction statuses immediately after bulk create
+- Treats bulk `status: "applied"` as proof that every item is final
+- Looks up batch children only by `parent_transaction`
+- Relies on synchronous `409` failures for duplicate references inside a bulk request
+
+If none of these apply, you can upgrade without changing your bulk requests.
+
+---
+
+## Migration options
+
+Choose one path based on what your next step needs.
+
+| Need | What to do |
+| :-- | :-- |
+| Keep pre-0.10.5 synchronous behaviour | Send `"skip_queue": true` on every bulk create |
+| Adopt the new default queue path | Omit `skip_queue` or set `"skip_queue": false`, then confirm child outcomes asynchronously |
+
+### Option 1: Keep synchronous processing
+
+Add `"skip_queue": true` to restore the previous inline behaviour.
+
+Use this when the next step in your app needs the ledger outcome before the HTTP call returns (for example, show an updated balance, fail the request with the batch, or chain another post that depends on these balances).
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "atomic": true,
+    "inflight": false,
+    "run_async": false,
+    "skip_queue": true,
+    "transactions": [
+      {
+        "amount": 1000,
+        "precision": 100,
+        "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        "currency": "USD",
+        "source": "@World",
+        "destination": "bln_ebcd1a29-8673-4d31-b410-010add942bec",
+        "description": "Payroll credit",
+        "allow_overdraft": true
+      },
+      {
+        "amount": 500,
+        "precision": 100,
+        "reference": "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+        "currency": "USD",
+        "source": "bln_ebcd1a29-8673-4d31-b410-010add942bec",
+        "destination": "bln_7b8a2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+        "description": "Payroll split"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {5}
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  inflight: false,
+  run_async: false,
+  skip_queue: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      reference: 'ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+      currency: 'USD',
+      source: '@World',
+      destination: 'bln_ebcd1a29-8673-4d31-b410-010add942bec',
+      description: 'Payroll credit',
+      allow_overdraft: true,
+    },
+    {
+      amount: 500,
+      precision: 100,
+      reference: 'ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+      currency: 'USD',
+      source: 'bln_ebcd1a29-8673-4d31-b410-010add942bec',
+      destination: 'bln_7b8a2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d',
+      description: 'Payroll split',
+    },
+  ],
+});
+```
+
+```go Go wrap {5}
+result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+    Atomic: true,
+    Inflight: false,
+    RunAsync: false,
+    SkipQueue: true,
+    Transactions: []blnkgo.CreateTransactionRequest{
+        {
+            Amount: 1000,
+            Precision: 100,
+            Reference: "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+            Currency: "USD",
+            Source: "@World",
+            Destination: "bln_ebcd1a29-8673-4d31-b410-010add942bec",
+            Description: "Payroll credit",
+            AllowOverdraft: true,
+        },
+        {
+            Amount: 500,
+            Precision: 100,
+            Reference: "ref_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+            Currency: "USD",
+            Source: "bln_ebcd1a29-8673-4d31-b410-010add942bec",
+            Destination: "bln_7b8a2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+            Description: "Payroll split",
+        },
+    },
+})
+```
+</CodeGroup>
+
+With `skip_queue: true`:
+
+- Child statuses and balances update in the same request when `run_async` is `false`.
+- Look up children with `parent_transaction = batch_id`.
+- Duplicate references fail the batch with `409`.
+
+### Option 2: Adopt the queued default
+
+Omit `skip_queue` or set `"skip_queue": false`. Then update your confirmation path:
+
+1. Save `batch_id` from the create response.
+2. Do not treat `status: "applied"` as final ledger success for every child.
+3. Confirm child outcomes by filtering on `meta_data.QUEUED_PARENT_TRANSACTION`, or wait for `bulk_transaction.applied`, `bulk_transaction.inflight`, or `bulk_transaction.failed` when you use `run_async: true`.
+
+```json Response wrap
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 2
+}
+```
+
+<Warning>
+On the queued path, `transaction_count` reflects items in the request, not necessarily rows created. Duplicate references can be deduplicated without a `REJECTED` row or error response.
+</Warning>
+
+---
+
+## Migration checklist
+
+- Prefer upgrading to **0.15.0 or later** so queue parent indexes are applied by migration.
+- If you must stay below 0.15.0 for now, create `idx_transactions_queued_parent` manually (see [Recommended upgrade](#recommended-upgrade)).
+- Decide per bulk call whether you need sync (`skip_queue: true`) or queue (`skip_queue: false`).
+- Update any code that assumes balances change, or that an external payout is safe, before the bulk create response returns.
+- Confirm child outcomes with webhooks or by filtering on `meta_data.QUEUED_PARENT_TRANSACTION` before you call external providers or release funds.
+- Update batch child lookups to use `meta_data.QUEUED_PARENT_TRANSACTION` on the default path, or `parent_transaction` when you set `skip_queue: true`.
+- Revisit duplicate-reference handling if you previously relied on synchronous `409` failures.
+- For large batches, prefer `run_async: true` and handle bulk webhooks.
+
+---
+
+<Note>
+This migration guide covers the bulk queueing change in Blnk v0.10.5 and the follow-on queue index fix in v0.15.0. For other features and fixes, see the [release notes](/changelog/blnk-core).
+</Note>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Handling concurrency", href: "/guides/concurrency" },
+    { title: "v15 migration", href: "/changelog/v15-migration" },
+    { title: "Install", href: "/home/install" },
+  ]}
+/>
