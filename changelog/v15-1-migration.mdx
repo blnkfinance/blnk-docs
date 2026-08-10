@@ -1,0 +1,155 @@
+---
+title: "0.15.1 Migration Guide"
+sidebarTitle: "0.15.1"
+icon: "arrow-right"
+description: "Migration guide for the transaction lock duration overflow fixed in Blnk v0.15.1."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+This guide covers the `BLNK_TRANSACTION_LOCK_DURATION` overflow fixed in Blnk Core **0.15.1**.
+
+If you run **0.10.3 through 0.15.0** and set this value manually (especially as a Go duration such as `1m`), upgrade before you rely on that config.
+
+---
+
+## Summary
+
+| | |
+| :-- | :-- |
+| **Affected versions** | 0.10.3 through 0.15.0 |
+| **Fixed in** | 0.15.1 and later |
+| **Symptom** | Redis balance locks can live for about **147 years** after a crash or abandoned run |
+| **Action** | Upgrade to **0.15.1+**, confirm your lock duration config, then clean up any orphaned locks |
+
+---
+
+## Who is affected?
+
+You are affected if both are true:
+
+1. You run Blnk Core **0.10.3 through 0.15.0**
+2. You set `BLNK_TRANSACTION_LOCK_DURATION` (or `transaction.lock_duration`) yourself
+
+You are most at risk if the env value uses Go duration format at or above one second, for example:
+
+```bash
+BLNK_TRANSACTION_LOCK_DURATION=1m
+BLNK_TRANSACTION_LOCK_DURATION=60s
+BLNK_TRANSACTION_LOCK_DURATION=5m
+```
+
+If you never override lock duration, the built-in default is not subject to this overflow path. Still upgrade to stay on a fixed release.
+
+---
+
+## What happened?
+
+On affected versions, Blnk could multiply an already-parsed duration by `time.Second` again during config load.
+
+Example with `BLNK_TRANSACTION_LOCK_DURATION=1m`:
+
+1. `1m` parses to 60 seconds in nanoseconds
+2. Config load multiplies by `time.Second` again
+3. The value overflows a signed `int64` into a positive duration of about **147 years**
+4. Redis receives that value as the lock TTL (`SET NX`)
+
+Locks are keyed by balance ID. If a process crashes before unlock, that balance can stay locked until the TTL expires or you delete the key.
+
+0.15.1 only multiplies by `time.Second` when the loaded value is greater than zero and less than one second (so JSON integer seconds still work). Parsed Go durations such as `1m` are left unchanged.
+
+---
+
+## Migration steps
+
+<Steps>
+<Step title="Upgrade to 0.15.1 or later">
+  Upgrade Blnk Core to **0.15.1+** on every server and worker that shares your Redis instance. Do this before you set or keep a manual lock duration.
+
+  See [Install](/home/install) or [Deploy](/home/deploy).
+</Step>
+
+<Step title="Confirm your lock duration config">
+  After upgrade, Go duration env values apply as written:
+
+  ```bash
+  BLNK_TRANSACTION_LOCK_DURATION=1m
+  ```
+
+  In `blnk.json`, `lock_duration` remains integer **seconds**:
+
+  ```json
+  {
+    "transaction": {
+      "lock_duration": 60
+    }
+  }
+  ```
+
+  See [Lock settings](/advanced/configuration/transactions#lock-settings).
+</Step>
+
+<Step title="Clean up orphaned Redis locks">
+  After upgrade, check balances that stay unavailable or keep failing with lock errors.
+
+  Redis lock keys are the balance IDs themselves (for example `bln_…`). Inspect TTL, then delete only when you are sure no live transaction owns the lock:
+
+  ```bash
+  redis-cli TTL bln_<balance_id>
+  redis-cli DEL bln_<balance_id>
+  ```
+
+  A healthy lock TTL is on the order of your configured lock duration (seconds or minutes). A TTL on the order of years is a leftover from the overflow.
+
+  <Warning>
+  Only delete a key after you confirm no live server or worker still holds that lock. Deleting an active lock can allow concurrent writes to the same balance.
+  </Warning>
+</Step>
+</Steps>
+
+---
+
+## Temporary workaround (not recommended)
+
+If you cannot upgrade yet and must set the duration on **0.10.3 through 0.15.0**, a value below one second is multiplied into seconds by the buggy path. For example, `60ms` becomes 60 seconds after the extra multiply.
+
+```bash
+BLNK_TRANSACTION_LOCK_DURATION=60ms
+```
+
+<Warning>
+Remove this workaround when you upgrade to 0.15.1+. On fixed versions, `60ms` is a 60-millisecond lock, which is far too short for production.
+</Warning>
+
+Prefer upgrading over relying on this behavior.
+
+---
+
+## Migration checklist
+
+- Upgrade every Core server and worker to **0.15.1 or later**
+- Keep or set `BLNK_TRANSACTION_LOCK_DURATION` with a real Go duration (for example `1m`) only after upgrade
+- Remove any sub-second workaround values such as `60ms`
+- Find stuck balances and inspect Redis `TTL` on their balance ID keys
+- Delete orphaned locks only after confirming no live owner
+- Re-test a transaction against each cleaned balance
+
+---
+
+<Note>
+This migration guide covers the lock duration overflow fixed in Blnk v0.15.1. For other fixes in that release, see the [release notes](/changelog/blnk-core).
+</Note>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Lock settings", href: "/advanced/configuration/transactions#lock-settings" },
+    { title: "Handling concurrency", href: "/guides/concurrency" },
+    { title: "0.15.0 migration", href: "/changelog/v15-migration" },
+    { title: "Install", href: "/home/install" },
+  ]}
+/>
