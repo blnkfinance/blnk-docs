@@ -2,7 +2,7 @@
 title: "0.15.0 Migration Guide"
 sidebarTitle: "0.15.0"
 icon: "arrow-right"
-description: "Migration guide for upgrading to v0.15.0, covering error codes, HTTP statuses, and bulk inflight commit/void."
+description: "Migration guide for upgrading to v0.15.0, covering error codes, HTTP statuses, removed response fields, and bulk inflight commit/void."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
@@ -14,6 +14,8 @@ Most integrations can upgrade without major changes. Review this guide carefully
 
 - Branches on HTTP status codes
 - Parses error message text
+- Reads `rate`, `currency_multiplier`, or `modification_ref` from API responses
+- Sends `rate` on create-transaction requests for cross-currency FX
 - Expects inflight commit or void requests to return `APPLIED` or `VOID` immediately
 - Reads reconciliation status directly from the start response
 
@@ -26,6 +28,7 @@ Most integrations can upgrade without major changes. Review this guide carefully
 | Structured `error_detail` added | Most integrations are not affected | Error responses now include `error_detail.code`, `error_detail.message`, and `error_detail.details`. The existing `error` field is still returned. |
 | HTTP status codes corrected | Integrations that branch on old HTTP statuses | Some errors now return more specific statuses, such as `404`, `409`, `423`, and `500`. |
 | `NOT_FOUND:` message prefix removed | Integrations that parse error message text | Error messages no longer include the `NOT_FOUND:` prefix. |
+| `rate`, `currency_multiplier`, and `modification_ref` removed | Integrations that read these fields or use request `rate` for FX | Response fields are gone. Request `rate` no longer applies an exchange rate. Destination credit equals source debit. |
 | Inflight commit and void are queued by default | Integrations that expect immediate `APPLIED` or `VOID` responses | Commit and void requests now return a queued response by default. |
 | Reconciliation start response changed | Integrations that read reconciliation status from the start response | Start endpoints return only `reconciliation_id`. Handle `reconciliation.completed` and `reconciliation.failed` webhooks for results. |
 | Per-endpoint item limits | Integrations that send large bulk or reconciliation requests | Bulk create and instant reconciliation: max **10,000** items per request. Bulk commit and void: max **100** transactions. |
@@ -107,6 +110,22 @@ if (body.error_detail?.code === "TXN_NOT_FOUND") {
 </CodeGroup>
 
 This is safer because `error_detail.code` is stable. Message text is meant for display and may change between releases.
+
+---
+
+## `rate`, `currency_multiplier`, and `modification_ref` removed
+
+Blnk no longer stores or returns these fields:
+
+| Field | Where it appeared | What to do |
+| --- | --- | --- |
+| `rate` | Transaction request and response | Stop sending `rate`. Stop reading it from responses. |
+| `currency_multiplier` | Balance responses | Stop reading it from responses. |
+| `modification_ref` | Balance responses | Stop reading it from responses. |
+
+Request `rate` no longer converts amounts between currencies. The destination is credited the same precise amount as the source debit.
+
+If you need multi-currency movement, model FX explicitly with separate balances and legs. See [Currency exchange](/tutorials/digital-banking/currency-exchange).
 
 ---
 
@@ -211,6 +230,7 @@ Before upgrading to v0.15.0:
 
 - Replace message-text parsing with `error_detail.code`.
 - Review any logic that depends on HTTP status codes.
+- Remove reads of `rate`, `currency_multiplier`, and `modification_ref`. Stop using request `rate` for FX; use [currency exchange](/tutorials/digital-banking/currency-exchange) instead.
 - Update inflight commit and void flows to handle queued responses or use `skip_queue: true` to keep existing synchronous behavior.
 - Update reconciliation flows to handle `reconciliation.completed` and `reconciliation.failed` webhooks instead of reading status from the start response.
 
@@ -220,9 +240,10 @@ Before upgrading to v0.15.0:
 
 <RelatedTopics
   items={[
+    { title: "Upgrade Core", href: "/changelog/upgrade" },
     { title: "0.15.1 migration", href: "/changelog/v15-1-migration" },
-    { title: "API keys overview", href: "/api-keys/overview" },
+    { title: "0.14.3 migration", href: "/changelog/v14-3-migration" },
+    { title: "Currency exchange", href: "/tutorials/digital-banking/currency-exchange" },
     { title: "Error codes", href: "/advanced/error-codes" },
-    { title: "Install", href: "/home/install" },
   ]}
 />

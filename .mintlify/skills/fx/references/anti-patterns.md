@@ -1,6 +1,6 @@
 # FX anti-patterns
 
-- Using deprecated single-transaction `rate` for new products ([rates](https://docs.blnkfinance.com/transactions/rates))
+- Using removed single-transaction `rate` for new products ([0.15.0 migration](https://docs.blnkfinance.com/changelog/v15-migration#rate-currency_multiplier-and-modification_ref-removed); use [currency exchange](https://docs.blnkfinance.com/tutorials/digital-banking/currency-exchange))
 - One leg that “just works” across currencies without nostro accounting
 - Mutating balances outside transactions
 - Mixing precisions across currencies without a documented strategy

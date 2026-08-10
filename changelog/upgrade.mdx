@@ -1,0 +1,113 @@
+---
+title: "Upgrade Blnk Core"
+sidebarTitle: "Upgrade Core"
+icon: "arrow-up"
+description: "How to upgrade Blnk Core safely in production, from any version to a later one."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+This guide shows how to upgrade a Core instance you operate yourself, including production, without surprising your app.
+
+This page is about **Core version upgrades**. For importing historical ledger data into Blnk, see [Data migration](/guides/migration).
+
+<Info>
+If Blnk Cloud runs Core for you (managed Core), Blnk handles the upgrade. Use this guide when you deploy and operate Core yourself.
+</Info>
+
+---
+
+## Goal
+
+Upgrading should not surprise your app. If a release changes how something works, follow that release's migration guide and update your app or config so behaviour stays what you expect, or so you knowingly adopt the new behaviour.
+
+---
+
+## How to go from any version to any later version
+
+1. Write down your **current** Core version and the version you want, preferably the latest version.
+2. From the [migration guide index](#migration-guide-index), open every migration guide for a version **after** your current version and **up to** your target. Read them oldest first.
+3. For each guide: check if it affects you, then do the steps so your app keeps working the way you need.
+4. Only then deploy the new Core version.
+
+**Example:** upgrading from `0.10.4` to `0.15.2` means reading 0.10.5, 0.11.0, 0.12.0, 0.13.2, 0.14.0, 0.15.0, then 0.15.1 before you deploy.
+
+---
+
+## Migration guide index
+
+Use this table to see which guides apply to your upgrade. Open every guide for a version newer than your current Core and not newer than your target.
+
+| Version | Applies if you are below | What to review | Guide |
+| :-- | :-- | :-- | :-- |
+| 0.10.5 | 0.10.5 | Bulk transfers may finish in the background instead of before the API responds. Check anything that assumes balances are already updated. | [0.10.5](/changelog/v10-5-migration) |
+| 0.11.0 | 0.11.0 | Search needs a newer Typesense version. Update that service with Core or search can break. | [0.11.0](/changelog/v11-migration) |
+| 0.12.0 | 0.12.0 | Existing API keys stop working. Plan to create new keys and update every client that stores them. | [0.12.0](/changelog/v12-migration) |
+| 0.13.2 | 0.13.2 | Duplicate transaction references can block the upgrade. Clean them up before you deploy. | [0.13.2](/changelog/v13-2-migration) |
+| 0.14.0 | 0.14.0 | Metadata update responses use a different field name. Fix any code that reads the old name. | [0.14.0](/changelog/v14-migration) |
+| 0.14.3 | 0.14.3 | Hook management requires the master key. Scoped keys can only manage API keys for their own owner and cannot escalate scopes. | [0.14.3](/changelog/v14-3-migration) |
+| 0.15.0 | 0.15.0 | Some errors return different HTTP statuses; `rate`, `currency_multiplier`, and `modification_ref` are removed; commit and void may finish in the background; reconciliation start responses include less detail. | [0.15.0](/changelog/v15-migration) |
+| 0.15.1 | 0.15.1 | If you set a custom lock duration, confirm it still means what you expect, and clear any stuck balance locks after upgrade. | [0.15.1](/changelog/v15-1-migration) |
+
+When new migration guides ship, they appear here and in the sidebar. The upgrade process stays the same.
+
+For features and fixes that are not breaking changes, see the [Blnk Core changelog](/changelog/blnk-core).
+
+---
+
+## Production upgrade checklist
+
+<Steps>
+<Step title="Note what you run today">
+Record your current Core version, Typesense version if you use search, SDK versions, and the flows you care about (bulk transfers, inflight commit or void, API keys, hooks, metadata, search, custom lock settings).
+</Step>
+
+<Step title="List the guides you must read">
+From the [migration guide index](#migration-guide-index), take every version newer than your current Core and not newer than your target. Open those guides oldest first.
+
+**Example:** on `0.12.1` going to `0.15.2`, read 0.13.2, then 0.14.0, then 0.15.0, then 0.15.1. Skip guides at or below your current version.
+</Step>
+
+<Step title="Update your app where needed">
+Follow each guide. If a guide shows how to keep old behaviour, use that unless you mean to switch. Prefer setting the behaviour you want in requests or config instead of relying on a changed default.
+</Step>
+
+<Step title="Try the upgrade on staging first">
+Use a copy of production data if you can. Run the upgrade, then exercise your critical flows and check that responses and webhooks still match what you expect.
+</Step>
+
+<Step title="Back up before production">
+Back up Postgres before you upgrade production. If you rely on work still in the queue, note Redis and queue state as well.
+
+See [Backup to disk](/advanced/backup-disk) and [Backup to S3](/advanced/backup-s3).
+</Step>
+
+<Step title="Deploy">
+Use the same approach as [Deploy](/home/deploy): move server and worker to the same new version, let startup run database migrations, and keep shared Postgres and Redis config aligned.
+</Step>
+
+<Step title="Check after deploy">
+Confirm the service is healthy, post a few test ledger transactions, confirm queued work is processing, and confirm auth still works. Finish any post-upgrade steps from the guides you followed (for example new API keys after 0.12.0, or stuck lock cleanup after 0.15.1).
+</Step>
+
+<Step title="Know how rollback works">
+<Warning>
+Database migrations do not undo cleanly. If you must roll back, restore the database from backup and run the previous Core version. Do not rely on reversing migrations.
+</Warning>
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "Blnk Core changelog", href: "/changelog/blnk-core" },
+    { title: "0.15.1 migration", href: "/changelog/v15-1-migration" },
+    { title: "Configuration overview", href: "/advanced/configuration/overview" },
+    { title: "Data migration", href: "/guides/migration" },
+  ]}
+/>

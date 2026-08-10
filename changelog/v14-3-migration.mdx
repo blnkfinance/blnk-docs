@@ -1,0 +1,81 @@
+---
+title: "0.14.3 Migration Guide"
+sidebarTitle: "0.14.3"
+icon: "arrow-right"
+description: "Migration guide for upgrading to Blnk v0.14.3, covering master-key-only hook management and owner-scoped API key limits."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+This guide covers the auth contract changes introduced in Blnk v0.14.3.
+
+Review this guide if your app:
+
+- Manages [transaction hooks](/webhooks/transaction-hooks) with a scoped API key
+- Uses a scoped API key to create, list, or revoke keys for another `owner`
+- Grants scopes that the calling key does not already have
+
+---
+
+## Breaking changes summary
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| Hook management requires the master key | Apps that create, update, view, list, or delete hooks with a scoped API key | Those requests return `403 Forbidden`. Use the [master key](/advanced/secure-blnk#master-key). |
+| Scoped keys stay within their `owner_id` | Apps that manage API keys across owners with a scoped key | A scoped key can only create, list, and revoke keys for its own `owner_id`. |
+| Scope inheritance | Apps that create keys with scopes the caller does not have | A scoped key can only grant scopes it already has. |
+
+The master key still has full access to manage hooks and API keys for any owner.
+
+---
+
+## Hook management requires the master key
+
+From 0.14.3, only the master key can create, update, view, list, or delete hooks.
+
+Scoped API keys return `403 Forbidden` for hook endpoints, even if they include `hooks` scopes.
+
+**What to do:**
+
+1. Use the master key for all hook management requests.
+2. Keep scoped keys for ledger operations that do not manage hooks.
+3. See [Transaction hooks](/webhooks/transaction-hooks#getting-started).
+
+---
+
+## Owner-scoped API key management
+
+When you manage API keys with a scoped key:
+
+1. Blnk uses the caller's stored `owner_id`. A different `owner` in the request body is ignored.
+2. The key can only create, list, and revoke keys for that same owner.
+3. The key can only grant scopes it already has.
+
+**What to do:**
+
+1. Create one admin scoped key per owner if teams need delegated key management.
+2. Use the master key when you must manage keys across owners.
+3. See [API key owner context](/api-keys/owner-context).
+
+---
+
+## Migration checklist
+
+- Switch hook create, update, get, list, and delete calls to the master key
+- Confirm scoped key admin flows only target the caller's own `owner_id`
+- Confirm create-key requests do not grant scopes the caller lacks
+- Re-test hook registration and API key create/list/revoke after upgrade
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "0.14.0 migration", href: "/changelog/v14-migration" },
+    { title: "Owner context", href: "/api-keys/owner-context" },
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+  ]}
+/>
