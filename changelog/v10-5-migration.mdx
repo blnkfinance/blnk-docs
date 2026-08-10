@@ -26,7 +26,7 @@ If you run **0.10.5 or later** on the queued bulk path, upgrade to **Blnk Core 0
 
 From 0.15.0, Core migrations add expression indexes on `meta_data->>'QUEUED_PARENT_TRANSACTION'` and related queue hot paths. Without those indexes, commit, refund, and parent lookups can fall back to sequential scans and drain the queue slowly under load.
 
-Prefer upgrading over staying on 0.10.5–0.14.x with a hand-applied index.
+Prefer upgrading over staying on 0.10.5 – 0.14.x with a hand-applied index.
 
 If you cannot upgrade yet, create the index manually on your Postgres database:
 
@@ -39,7 +39,9 @@ ON blnk.transactions ((meta_data->>'QUEUED_PARENT_TRANSACTION'));
 `CREATE INDEX CONCURRENTLY` cannot run inside a transaction block. Run it as a standalone statement. On large tables it can take time, but it avoids locking writes while the index builds.
 </Note>
 
-Core 0.15.0 applies an equivalent index as `idx_txn_meta_queued_parent` (partial, where the key is present) plus related queue indexes. After you upgrade, you do not need to keep a separate hand-created index unless your operator process requires it.
+**Core 0.15.0** applies an equivalent index as `idx_txn_meta_queued_parent` (partial, where the key is present) plus related queue indexes. 
+
+After you upgrade, you do not need to keep a separate hand-created index unless your operator process requires it.
 
 ---
 
@@ -197,7 +199,7 @@ Omit `skip_queue` or set `"skip_queue": false`. Then update your confirmation pa
 
 1. Save `batch_id` from the create response.
 2. Do not treat `status: "applied"` as final ledger success for every child.
-3. Confirm child outcomes by filtering on `meta_data.QUEUED_PARENT_TRANSACTION`, or wait for `bulk_transaction.applied`, `bulk_transaction.inflight`, or `bulk_transaction.failed` when you use `run_async: true`.
+3. Confirm child outcomes by filtering on `meta_data.QUEUED_PARENT_TRANSACTION`, or wait for webhook events.
 
 ```json Response wrap
 {
