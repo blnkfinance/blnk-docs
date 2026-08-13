@@ -31,8 +31,8 @@ For self-hosted instances, Blnk uses a Query Agent to establish a connection bet
 Using the Query Agent, you get:
 
 * **Enhanced security:** No need to expose database credentials or configure complex firewall rules.
-* `Read-only access:` Agent only requires SELECT permissions, ensuring data integrity.
-* **Simplified setup:** Eliminates network configuration complexity.
+* **Read-only access:** Agent only requires SELECT permissions, ensuring data integrity.
+* **Simplified setup:** No need to configure network settings or firewall rules.
 * **Reliable connection:** Automatic reconnection and health monitoring.
 
 ---
@@ -87,13 +87,10 @@ Using the Query Agent, you get:
     </Info>
   </Step>
   <Step title="Verify connection">
-    Return to your Blnk Cloud workspace:
+    When the Query Agent is running, your instance shows **Connected**. Click the instance from your homepage, or go to **Settings → Instances** and click it, to open the details panel.
 
-    1. **Check connection status:** Navigate back to **Settings → Instances**;
-    2. **Verify agent status:** Your instance should show as "Connected" with a green indicator.
-
-    <Frame caption="Your instance shows Connected when the Query Agent is running">
-    <img src="/cloud/img/instances/query-agent-setup-details.gif" alt="Query Agent setup guide showing Connected status with a green indicator" className="rounded-lg" />
+    <Frame caption="Click an instance from the homepage or Settings → Instances to open its details panel">
+    <img src="/cloud/img/instances/instance-details-view.gif" alt="Instance details panel showing instance details" className="rounded-lg" />
     </Frame>
   </Step>
 </Steps>
@@ -135,62 +132,109 @@ To connect to your database running inside your Docker container:
 
 ---
 
+## Edit your instance
+
+Go to **Settings → Instances**, open the instance actions list, and click **Edit instance**. You can change the name, Core URL, or Core secret key.
+
+<Steps>
+  <Step title="Core URL">
+    Make sure the Core URL is publicly accessible on the internet. If locally hosted, use a tunnel service like ngrok: `ngrok http 5001` to create a public URL.
+
+    <Frame caption="Open the actions list, click Edit instance, and update the Core URL or secret key">
+    <img src="/cloud/img/instances/edit-instance-form.gif" alt="Edit instance form showing Core URL and secret key fields" className="rounded-lg" />
+    </Frame>
+
+    If hosted on a private network, [whitelist Cloud IPs](/cloud/instances/whitelist) so Cloud can reach your ledger.
+  </Step>
+  <Step title="Core secret key">
+    The Core secret key is created and set by you in your Blnk configuration. Provide the secret key used in your config. If not set, leave empty.
+  </Step>
+</Steps>
+
+---
+
 ## Managing your query agent
 
-### Monitor connection health
-To see how your connection is doing:
+<Steps>
+  <Step title="View the setup guide">
+    Open the instance actions list or the instance details panel and click **View setup details**. You'll see your connection details, agent connection key, and connection status.
 
-```bash bash
-# Health check endpoint (returns 200 OK when live)
-curl -X GET http://localhost:9090/live
-```
+    <Frame caption="Open View setup details to see your connection key, setup steps, and connection status">
+    <img src="/cloud/img/instances/query-agent-setup-details.gif" alt="Query Agent setup guide page showing connection details, agent key, and Connected status" className="rounded-lg" />
+    </Frame>
+  </Step>
+  <Step title="Monitor connection health">
+    To see how your connection is doing:
 
-The agent listens on port 9090 by default. To change the internal HTTP port, set the `HTTP_PORT` environment variable.
+    ```bash bash
+    # Health check endpoint (returns 200 OK when live)
+    curl -X GET http://localhost:9090/live
+    ```
 
-```bash
-docker run -d \
-  -e HTTP_PORT=9090 \
-  -e DB_URL="postgres://username:password@host:port/database_name?sslmode=disable" \
-  -e CONNECTION_KEY="sk_live_..." \
-  blnkfinance/query-agent:latest
-```
+    The agent listens on port 9090 by default. To change the internal HTTP port, set the `HTTP_PORT` environment variable.
 
-### View logs and resource usage
-```bash bash
-# View real-time logs
-docker logs -f <container-name>
-
-# Check container resource usage
-docker stats <container-name>
-```
-
-### Update the Query Agent
-To upgrade the Query Agent to the latest version:
-```bash bash
-# Pull latest version
-docker pull blnkfinance/query-agent:latest
-
-# Stop current container
-docker stop <container-name>
-
-# Restart with updated image (use your original configuration)
-docker run -d \
-      --name <container-name> \
+    ```bash
+    docker run -d \
+      -e HTTP_PORT=9090 \
       -e DB_URL="postgres://username:password@host:port/database_name?sslmode=disable" \
       -e CONNECTION_KEY="sk_live_..." \
       blnkfinance/query-agent:latest
-```
+    ```
+  </Step>
+  <Step title="View logs and resource usage">
+    ```bash bash
+    # View real-time logs
+    docker logs -f <container-name>
 
-<Info>
-If you previously customized the agent's HTTP port, remember to include `-e HTTP_PORT=<port>` and publish the same container port with `-p <host-port>:<port>` when restarting.
-</Info>
+    # Check container resource usage
+    docker stats <container-name>
+    ```
+  </Step>
+  <Step title="Update the Query Agent">
+    To upgrade the Query Agent to the latest version:
 
-### Stop the Query Agent
-To terminate your Query Agent:
-```bash bash
-# Stop the container
-docker stop <container-name>
-```
+    ```bash bash
+    # Pull latest version
+    docker pull blnkfinance/query-agent:latest
+
+    # Stop current container
+    docker stop <container-name>
+
+    # Restart with updated image (use your original configuration)
+    docker run -d \
+          --name <container-name> \
+          -e DB_URL="postgres://username:password@host:port/database_name?sslmode=disable" \
+          -e CONNECTION_KEY="sk_live_..." \
+          blnkfinance/query-agent:latest
+    ```
+
+    <Info>
+    If you previously customized the agent's HTTP port, remember to include `-e HTTP_PORT=<port>` and publish the same container port with `-p <host-port>:<port>` when restarting.
+    </Info>
+  </Step>
+  <Step title="Stop the Query Agent">
+    To terminate your Query Agent:
+
+    ```bash bash
+    # Stop the container
+    docker stop <container-name>
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Delete an instance
+
+Open the actions list and click **Delete instance**. Follow the instructions in the modal to complete the action.
+
+<Warning>
+This action is irreversible.
+</Warning>
+
+<Frame caption="Open the actions list and click Delete instance">
+<img src="/cloud/img/instances/remove-instance.gif" alt="Deleting a self-hosted instance from the actions menu with the confirmation modal" className="rounded-lg" />
+</Frame>
 
 ---
 
@@ -324,7 +368,6 @@ If you're on later versions, these indexes are automatically included and you do
 
 <RelatedTopics
   items={[
-    { title: "Instances overview", href: "/cloud/instances/overview" },
     { title: "Managed instances", href: "/cloud/instances/deploy" },
     { title: "Whitelist", href: "/cloud/instances/whitelist" },
   ]}
