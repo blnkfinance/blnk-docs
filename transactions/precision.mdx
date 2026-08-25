@@ -142,8 +142,8 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `precise_amount` | Integer | The transaction value in its smallest unit (e.g. 75023 cents for USD 750.23). |
-| `precision` | Number | The precision value (e.g. 100 converts USD to cents) |
+| `precise_amount` | Integer | The transaction value in its smallest unit (e.g. 75023 cents for USD 750.23). Cannot be negative. |
+| `precision` | Number | The precision value (e.g. 100 converts USD to cents). Cannot be negative. `0` means not supplied. |
 
 ```json Response {6,8}
 {
@@ -262,8 +262,8 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `amount` | Float | The transaction value as is. |
-| `precision` | Number | The precision value (e.g. 100 converts USD to cents) |
+| `amount` | Float | The transaction value as is. Cannot be negative. |
+| `precision` | Number | The precision value (e.g. 100 converts USD to cents). Cannot be negative. `0` means not supplied. |
 
 The resulting `precise_amount` is stored and used to compute your ledger balances.
 
@@ -281,7 +281,9 @@ The resulting `precise_amount` is stored and used to compute your ledger balance
 
 4. Balance fields are integers in minor units. Core does not return `precision` on balances. To display an amount, divide by the precision you use for that currency (`100000 / 100` = $1,000.00).
 
-5. Regularly review and audit your ledger to ensure that precision is applied consistently and correctly.
+5. `amount`, `precise_amount`, and `precision` cannot be negative. Blnk returns `400` before the request is queued. `precision: 0` still means not supplied and is treated as `1`.
+
+6. Regularly review and audit your ledger to ensure that precision is applied consistently and correctly.
 
 ---
 
@@ -291,9 +293,25 @@ The resulting `precise_amount` is stored and used to compute your ledger balance
 Structured errors are available from Blnk Core 0.15.0 and later.
 </Info>
 
-[Create transaction](/reference/create-transaction) returns `400 TXN_VALIDATION_ERROR` when the amount fields in your request fail validation.
+[Create transaction](/reference/create-transaction) returns `400 TXN_VALIDATION_ERROR` when the amount fields in your request fail validation. Negative `amount`, `precise_amount`, or `precision` are rejected before the request is queued.
 
 <Tabs>
+<Tab title="Negative values">
+
+`amount`, `precise_amount`, or `precision` is negative:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount cannot be negative"
+  },
+  "errors": "amount: amount cannot be negative"
+}
+```
+
+</Tab>
+
 <Tab title="Missing amount fields">
 
 Neither `amount` nor `precise_amount` is set:
@@ -352,5 +370,6 @@ Both `amount` and `precise_amount` are sent in the same request:
     { title: "Record a transaction", href: "/transactions/introduction" },
     { title: "Overdrafts", href: "/transactions/overdrafts" },
     { title: "Create transaction", href: "/reference/create-transaction" },
+    { title: "API error codes", href: "/advanced/error-codes" },
   ]}
 />

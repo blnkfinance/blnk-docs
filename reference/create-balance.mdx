@@ -15,13 +15,15 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 ### Body
 <ParamField body="ledger_id" type="string" required>
-  Unique id of the ledger the balance is created in.
+  Unique id of the ledger the balance is created in. Use `general_ledger_id` for an [internal balance](/balances/internal-balances).
 </ParamField>
 <ParamField body="currency" type="string" required>
   The currency/asset class of this balance. See the following: [Currencies](/guides/currencies)
 </ParamField>
 <ParamField body="indicator" type="string">
-  General Ledger indicator for an [internal balance](/balances/internal-balances). Must start with `@` and contain no whitespace. Only allowed when `ledger_id` is `general_ledger_id`. Available in version 0.15.3 and later. See [Create internal balance](/reference/create-internal-balance).
+  General Ledger indicator for an [internal balance](/balances/internal-balances). Must start with `@` and contain no whitespace. Only allowed when `ledger_id` is `general_ledger_id`. 
+  
+  Available in version 0.15.3 and later. The same indicator and currency pair can only exist once.
 </ParamField>
 <ParamField body="identity_id" type="string">
   Unique id of identity (if any) to be linked to the balance. Can be left out from the request body if there's no identity to be linked.
@@ -102,6 +104,7 @@ curl -X POST "http://localhost:5001/balances" \
     "allocation_strategy": "FIFO"
   }'
 ```
+
 </RequestExample>
 
 <ResponseExample>
@@ -116,9 +119,28 @@ curl -X POST "http://localhost:5001/balances" \
     "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
     "identity_id": "",
     "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "indicator": "",
     "currency": "USD",
     "created_at": "2024-11-26T08:36:36.238244338Z",
     "meta_data": null
+}
+```
+
+```json 201 Internal
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "general_ledger_id",
+  "indicator": "@Revenue",
+  "identity_id": "",
+  "balance_id": "bln_a7c3e91f-2d48-4b1a-9e6c-5f8d2a1b4c70",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
 }
 ```
 
@@ -149,7 +171,6 @@ curl -X POST "http://localhost:5001/balances" \
   items={[
     { title: "Balances overview", href: "/balances/introduction" },
     { title: "Internal balances", href: "/balances/internal-balances" },
-    { title: "Create internal balance", href: "/reference/create-internal-balance" },
     { title: "Handling hot balances", href: "/guides/hot-balances" },
     { title: "Create transaction", href: "/reference/create-transaction" },
   ]}

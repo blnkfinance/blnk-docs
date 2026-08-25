@@ -16,20 +16,20 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 ### Body
 
 <ParamField body="precise_amount" type="integer">  
-  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. See [Precision](/transactions/precision).
+  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. Cannot be negative. See [Precision](/transactions/precision).
 
   <Warning>
   Either `precise_amount` or `amount` should be provided, not both.
   </Warning>
 </ParamField>
 <ParamField body="amount" type="float">  
-  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`. The `amount` field supports up to 15 digits; use `precise_amount` for larger values. See also: [Precision](/transactions/precision).
+  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`. Cannot be negative. The `amount` field supports up to 15 digits; use `precise_amount` for larger values. See also: [Precision](/transactions/precision).
 </ParamField>
 <ParamField body="currency" type="string" required>
   The currency of the transaction amount is in.
 </ParamField>
 <ParamField body="precision" type="integer" default="1" required>
-  Precision for the transaction's currency. See also: [Precision](/transactions/precision).
+  Precision for the transaction's currency. Cannot be negative. `0` means not supplied and is treated as `1`. See also: [Precision](/transactions/precision).
 </ParamField>
 <ParamField body="reference" type="string" required>
   The unique transaction reference number for the transaction.
@@ -281,6 +281,16 @@ curl -X POST "http://localhost:5001/transactions" \
   "error_detail": {
     "code": "TXN_VALIDATION_ERROR",
     "message": "amount: either amount or precise_amount is required."
+  }
+}
+```
+
+```json 400
+{
+  "errors": "amount: amount cannot be negative",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount cannot be negative"
   }
 }
 ```
