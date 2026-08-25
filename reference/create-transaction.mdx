@@ -70,6 +70,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 <ParamField body="skip_queue" type="boolean">
   When `true`, it bypasses the default transaction queuing system and processes transactions directly. See also: [Skip transaction queue](/transactions/introduction#skip-transaction-queue).
 </ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects the transaction without writing anything and returns a preview. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
 <ParamField body="atomic" type="boolean" default="false">
   Controls how Blnk processes split transactions when you use `sources` or `destinations`. When `false` (default), Blnk applies each leg that can succeed and rejects legs that fail. When `true`, every leg succeeds together or the entire split fails with no partial application. See [Multiple sources](/transactions/multiple-sources#atomic-split-processing) and [Multiple destinations](/transactions/multiple-destinations#atomic-split-processing).
 </ParamField>
@@ -128,6 +131,22 @@ curl -X POST "http://localhost:5001/transactions" \
     "meta_data": {}
   }'
 ```
+
+```bash Dry run
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "precise_amount": 12000,
+    "precision": 100,
+    "reference": "ref_card_settle_4821",
+    "currency": "USD",
+    "source": "bln_source-bal-001",
+    "destination": "bln_dest-bal-001",
+    "description": "Card settlement"
+  }'
+```
 </RequestExample>
 
 <ResponseExample>
@@ -151,6 +170,108 @@ curl -X POST "http://localhost:5001/transactions" \
     "scheduled_for": "0001-01-01T00:00:00Z",
     "inflight_expiry_date": "0001-01-01T00:00:00Z",
     "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 200 Dry Run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 200 Dry Run Not Applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "current_available": "5000",
+      "current_credit_balance": "5000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
 }
 ```
 
@@ -200,8 +321,8 @@ curl -X POST "http://localhost:5001/transactions" \
 
 <RelatedTopics
   items={[
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
     { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
     { title: "Overdrafts", href: "/transactions/overdrafts" },
     { title: "Precision", href: "/transactions/precision" },
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },

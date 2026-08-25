@@ -1,0 +1,345 @@
+---
+title: "Dry-run a transaction"
+description: "Preview a transaction without writing it to the ledger."
+api: "POST /transactions"
+noindex: true
+"og:title": "Dry-run a Transaction • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+<Key />
+
+<Info>Available in version 0.15.3 and later.</Info>
+
+Send the same body as [Record a transaction](/reference/create-transaction) and set `dry_run` to `true`. Blnk returns a projection instead of a recorded transaction.
+
+The preview always answers synchronously with HTTP `200`. `dry_run` takes precedence over `skip_queue`. A projected rejection is `200` with `would_apply: false`, not an HTTP error.
+
+`dry_run` also works on [bulk create](/reference/bulk-transactions), [refund](/reference/refund-transaction), and [update inflight](/reference/update-inflight). See [Dry-run transactions](/transactions/dry-run).
+
+### Body
+
+<ParamField body="dry_run" type="boolean" required>
+  Set `true` to project the transaction without writing anything. No transaction row, balance change, queue entry, webhook, or hook is created, and the `reference` is not consumed.
+</ParamField>
+<ParamField body="precise_amount" type="integer">
+  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. See [Precision](/transactions/precision).
+
+  <Warning>
+  Either `precise_amount` or `amount` should be provided, not both.
+  </Warning>
+</ParamField>
+<ParamField body="amount" type="float">
+  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`.
+</ParamField>
+<ParamField body="currency" type="string" required>
+  The currency of the transaction amount.
+</ParamField>
+<ParamField body="precision" type="integer" default="1" required>
+  Precision for the transaction's currency. See [Precision](/transactions/precision).
+</ParamField>
+<ParamField body="reference" type="string" required>
+  Unique transaction reference. A dry run does not consume it.
+</ParamField>
+<ParamField body="source" type="string" required>
+  Balance sending the amount. `@` prefix indicates an [internal balance](/balances/internal-balances).
+</ParamField>
+<ParamField body="destination" type="string" required>
+  Balance receiving the amount. `@` prefix indicates an [internal balance](/balances/internal-balances).
+</ParamField>
+<ParamField body="description" type="string">
+  Narration of the transaction.
+</ParamField>
+<ParamField body="allow_overdraft" type="boolean" default="false">
+  Whether the source can go negative. See [Overdrafts](/transactions/overdrafts).
+</ParamField>
+<ParamField body="inflight" type="boolean" default="false">
+  When `true`, the preview uses `INFLIGHT` status and projects inflight balances. See [Create inflight](/transactions/inflight/creating-inflight).
+</ParamField>
+<ParamField body="skip_queue" type="boolean" default="false">
+  Ignored for a single-transaction dry run. The preview always answers now. For [bulk](/reference/bulk-transactions) and splits, this flag selects cumulative vs independent projection. See [Bulk and split transactions](/transactions/dry-run#bulk-and-split-transactions).
+</ParamField>
+<ParamField body="sources" type="array">
+  Multiple sources instead of `source`. See [Multiple sources](/reference/multiple-sources).
+</ParamField>
+<ParamField body="destinations" type="array">
+  Multiple destinations instead of `destination`. See [Multiple destinations](/reference/multiple-destinations).
+</ParamField>
+
+### Response
+
+<ResponseField name="dry_run" type="boolean" required>
+  Always `true`. This is a preview, not a recorded transaction.
+</ResponseField>
+<ResponseField name="would_apply" type="boolean" required>
+  Whether a real post of this payload would be accepted against balances as they stand now.
+</ResponseField>
+<ResponseField name="rejection" type="object">
+  Present when `would_apply` is `false`. `code` is the same catalog code a real post would return.
+
+  <Expandable title="Rejection properties">
+    <ResponseField name="code" type="string">
+      Stable error code, such as `TXN_INSUFFICIENT_FUNDS` or `TXN_DUPLICATE_REFERENCE`. See [API error codes](/advanced/error-codes).
+    </ResponseField>
+    <ResponseField name="reason" type="string">
+      Short category for the rejection.
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      Human-readable rejection message.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="status" type="string">
+  Status the real transaction would carry (`APPLIED`, or `INFLIGHT` if you sent `inflight: true`). Omitted when `would_apply` is `false`.
+</ResponseField>
+<ResponseField name="reference" type="string">
+  The reference you sent. It is still unused after a dry run.
+</ResponseField>
+<ResponseField name="currency" type="string">
+  Currency of the projected movement.
+</ResponseField>
+<ResponseField name="amount" type="float">
+  Display amount of the projected movement.
+</ResponseField>
+<ResponseField name="precise_amount" type="string">
+  Movement in minor units, returned as a string so nothing is rounded.
+</ResponseField>
+<ResponseField name="precision" type="float">
+  Precision used to convert `precise_amount`.
+</ResponseField>
+<ResponseField name="operation" type="string">
+  Present on inflight previews only: `commit` or `void`.
+</ResponseField>
+<ResponseField name="balances" type="array" required>
+  Before and after state for each participating balance. Amounts are minor-unit strings.
+
+  <Expandable title="Balance projection">
+    <ResponseField name="balance_id" type="string">
+      Balance ID, or the `@indicator` when the balance is virtual.
+    </ResponseField>
+    <ResponseField name="role" type="string">
+      `source` or `destination`.
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Currency of the balance.
+    </ResponseField>
+    <ResponseField name="virtual" type="boolean">
+      `true` when the `@indicator` does not exist yet. The preview uses a zeroed stand-in and does not create the balance.
+    </ResponseField>
+    <ResponseField name="current_balance" type="string">
+      Net balance before the projected movement.
+    </ResponseField>
+    <ResponseField name="current_available" type="string">
+      Spendable funds before the movement (`balance` minus inflight and queued debits).
+    </ResponseField>
+    <ResponseField name="current_credit_balance" type="string">
+      Credit balance before the movement.
+    </ResponseField>
+    <ResponseField name="current_debit_balance" type="string">
+      Debit balance before the movement.
+    </ResponseField>
+    <ResponseField name="current_inflight_debit_balance" type="string">
+      Inflight debit before the movement.
+    </ResponseField>
+    <ResponseField name="current_inflight_credit_balance" type="string">
+      Inflight credit before the movement.
+    </ResponseField>
+    <ResponseField name="resulting_balance" type="string">
+      Net balance after the projected movement. Matches `current_balance` when `would_apply` is `false`.
+    </ResponseField>
+    <ResponseField name="resulting_available" type="string">
+      Spendable funds after the movement.
+    </ResponseField>
+    <ResponseField name="resulting_credit_balance" type="string">
+      Credit balance after the movement.
+    </ResponseField>
+    <ResponseField name="resulting_debit_balance" type="string">
+      Debit balance after the movement.
+    </ResponseField>
+    <ResponseField name="resulting_inflight_debit_balance" type="string">
+      Inflight debit after the movement.
+    </ResponseField>
+    <ResponseField name="resulting_inflight_credit_balance" type="string">
+      Inflight credit after the movement.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="legs" type="array">
+  One entry per split that would apply on a multiple-source or multiple-destination transaction.
+
+  <Expandable title="Leg projection">
+    <ResponseField name="identifier" type="string">
+      Source or destination balance for this leg.
+    </ResponseField>
+    <ResponseField name="role" type="string">
+      `source` or `destination`.
+    </ResponseField>
+    <ResponseField name="precise_amount" type="string">
+      Leg amount in minor units.
+    </ResponseField>
+    <ResponseField name="amount" type="float">
+      Display amount for the leg.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="notes" type="array">
+  Advisory messages that are not rejections, such as a currency mismatch or a `scheduled_for` date being ignored.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "precise_amount": 12000,
+    "precision": 100,
+    "reference": "ref_card_settle_4821",
+    "currency": "USD",
+    "source": "bln_source-bal-001",
+    "destination": "bln_dest-bal-001",
+    "description": "Card settlement"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Dry Run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 200 Dry Run Not Applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "current_available": "5000",
+      "current_credit_balance": "5000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 400
+{
+  "errors": "amount: either amount or precise_amount is required.",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount is required."
+  }
+}
+```
+
+```json 404
+{
+  "error": "Balance with ID 'bln_00000000-0000-0000-0000-000000000000' not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "Balance with ID 'bln_00000000-0000-0000-0000-000000000000' not found",
+    "details": {}
+  }
+}
+```
+</ResponseExample>
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Dry-run transactions", href: "/transactions/dry-run" },
+    { title: "Record a transaction", href: "/reference/create-transaction" },
+    { title: "Bulk transactions", href: "/reference/bulk-transactions" },
+    { title: "API error codes", href: "/advanced/error-codes" },
+  ]}
+/>

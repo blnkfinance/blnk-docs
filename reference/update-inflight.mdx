@@ -36,6 +36,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 <ParamField body="skip_queue" type="boolean" default="false">
   When `false` (default), the commit or void is enqueued for asynchronous processing and the response includes `queued: true`. When `true`, Blnk processes the action synchronously and returns an immediate `APPLIED` or `VOID` child. See [Commit & void inflight](/transactions/inflight/updating-inflight).
 </ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects the commit or void without settling anything. The hold stays in place. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
 
 <Tip>
   To commit or void multiple independently-created inflight transactions in one request, use [Bulk commit inflight](/reference/bulk-commit-inflight) or [Bulk void inflight](/reference/bulk-void-inflight).
@@ -54,9 +57,123 @@ curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
     "status": "commit"
   }'
 ```
+
+```bash Dry run
+curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit",
+    "dry_run": true
+  }'
+```
 </RequestExample>
 
 <ResponseExample>
+```json 200 Dry Run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "operation": "commit",
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "38000",
+      "current_available": "38000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "12000",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "12000",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 200 Dry Run Not Applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "operation": "commit",
+  "rejection": {
+    "code": "TXN_COMMIT_AMOUNT_EXCEEDED",
+    "reason": "commit_amount_exceeded",
+    "message": "cannot commit more than the original transaction amount. Original: USD120.00, Requested: USD999999.00"
+  },
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 999999,
+  "precise_amount": "99999900",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "38000",
+      "current_available": "38000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "12000",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "12000",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "12000",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "12000"
+    }
+  ]
+}
+```
+
 ```json 200 Queued (default)
 {
   "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
@@ -145,6 +262,7 @@ curl -X PUT "http://localhost:5001/transactions/inflight/{transaction_id}" \
 <RelatedTopics
   items={[
     { title: "Commit & void inflight", href: "/transactions/inflight/updating-inflight" },
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
     { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
     { title: "Bulk commit inflight", href: "/reference/bulk-commit-inflight" },
     { title: "Handling hot balances", href: "/guides/hot-balances" },

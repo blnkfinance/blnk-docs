@@ -81,6 +81,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
   
   See [Atomic split processing](/transactions/multiple-destinations#atomic-split-processing).
 </ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects the split without writing anything. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
 <ParamField body="meta_data" type="object">
   Additional metadata of the transaction.
 </ParamField>
@@ -140,6 +143,30 @@ curl -X POST "http://localhost:5001/transactions" \
     "meta_data": {}
   }'
 ```
+
+```bash Dry run
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "precise_amount": 20000,
+    "precision": 100,
+    "reference": "ref_split_dest_001",
+    "currency": "USD",
+    "source": "bln_source-bal-001",
+    "destinations": [
+      {
+        "identifier": "bln_dest-bal-001",
+        "distribution": "50%"
+      },
+      {
+        "identifier": "blnk_dest-bal-002",
+        "distribution": "left"
+      }
+    ]
+  }'
+```
 </RequestExample>
 
 <ResponseExample>
@@ -179,6 +206,125 @@ curl -X POST "http://localhost:5001/transactions" \
 }
 ```
 
+```json 200 Dry Run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_split_dest_001",
+  "currency": "USD",
+  "amount": 200,
+  "precise_amount": "20000",
+  "precision": 100,
+  "legs": [
+    {
+      "identifier": "bln_dest-bal-001",
+      "role": "destination",
+      "precise_amount": "10000",
+      "amount": 100
+    },
+    {
+      "identifier": "blnk_dest-bal-002",
+      "role": "destination",
+      "precise_amount": "10000",
+      "amount": 100
+    }
+  ],
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "40000",
+      "resulting_available": "40000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "10000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "10000",
+      "resulting_available": "10000",
+      "resulting_credit_balance": "10000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ],
+  "notes": [
+    "skip_queue is false: legs are queued for independent async processing with no ordering guarantee, so each is projected on its own rather than cumulatively"
+  ]
+}
+```
+
+```json 200 Dry Run Not Applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "ref_split_dest_001",
+  "currency": "USD",
+  "amount": 200,
+  "precise_amount": "20000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "current_available": "5000",
+      "current_credit_balance": "5000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
 ```json 404
 {
   "error": "Balance with ID 'bln_00000000-0000-0000-0000-000000000000' not found",
@@ -196,6 +342,7 @@ curl -X POST "http://localhost:5001/transactions" \
 <RelatedTopics
   items={[
     { title: "Multiple destinations", href: "/transactions/multiple-destinations" },
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
     { title: "Inflight for multiple sources & destinations", href: "/transactions/inflight/split-inflight" },
     { title: "Multiple sources", href: "/transactions/multiple-sources" },
   ]}

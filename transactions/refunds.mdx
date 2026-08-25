@@ -39,6 +39,8 @@ For inflight or split transactions, the ID you pass matters. Use the table below
 
 Use the [Refund transaction API](/reference/refund-transaction) and pass the `transaction_id` of the transaction you want to refund.
 
+You can optionally set `description` and `meta_data` on the refund. [Learn more](#description-and-metadata).
+
 <Tabs>
 <Tab title="Using the queue">
 
@@ -168,6 +170,43 @@ ApiResponse<JsonNode> response = blnk.transactions().refund(
 
 </Step>
 </Steps>
+
+---
+
+## Description and metadata
+
+<Info>Available in version 0.15.3 and later.</Info>
+
+By default, a refund copies the original transaction's `description` and `meta_data`. You can set these on the refund itself.
+
+- `description` replaces the inherited narration. An empty string is ignored.
+- `meta_data` is merged onto the inherited metadata. Keys you send replace matching keys; other keys stay on the refund.
+- The original transaction is not modified.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Refund for ticket #4821",
+    "meta_data": {
+      "type": "refund",
+      "reason": "goodwill"
+    }
+  }'
+```
+</CodeGroup>
+
+If the original transaction has `{"type": "deposit", "channel": "card"}` and you send `{"type": "refund", "reason": "goodwill"}`, the refund stores:
+
+```json wrap
+{
+  "type": "refund",
+  "channel": "card",
+  "reason": "goodwill"
+}
+```
 
 ---
 

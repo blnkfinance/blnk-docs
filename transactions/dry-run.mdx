@@ -1,0 +1,462 @@
+---
+title: "Dry-run transactions"
+sidebarTitle: "Dry run"
+icon: "flask-conical"
+description: "Preview a transaction's effect on balances without writing anything to the ledger."
+"og:title": "Dry-run Transactions • Blnk Developer Documentation"
+"og:description": "Preview a transaction's effect on balances without writing anything to the ledger."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+<Info>Available in version 0.15.3 and later.</Info>
+
+A dry run answers whether a transaction would apply and what the source and destination balances would become. Nothing is written: no transaction, no queue entry, no webhook, and no new `@` balance. You can reuse the same `reference` on a real post afterwards.
+
+Send the same request you would use to record the transaction, and set `dry_run` to `true`. Blnk runs the same balance arithmetic a real post uses, then returns a projection.
+
+Use a dry run to check funds, overdraft rules, or split math before you post. It is a snapshot of balances as they stand now. Another transaction can move those balances before you post for real. If you need the funds reserved, use [inflight](/transactions/inflight/creating-inflight).
+
+---
+
+## Dry-run a transaction
+
+Call [Dry-run a transaction](/reference/dry-run) with the same body as [Record a transaction](/reference/create-transaction), plus `"dry_run": true`.
+
+<Tip>
+The same `dry_run` flag works on [bulk create](/reference/bulk-transactions), [refund](/reference/refund-transaction), and [commit or void inflight](/reference/update-inflight).
+</Tip>
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "precise_amount": 12000,
+    "precision": 100,
+    "reference": "ref_card_settle_4821",
+    "currency": "USD",
+    "source": "bln_source-bal-001",
+    "destination": "bln_dest-bal-001",
+    "description": "Card settlement"
+  }'
+```
+</CodeGroup>
+
+The response is always HTTP `200` when the preview itself succeeds. A projected rejection is not an HTTP error.
+
+```json 200 OK wrap expandable
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+Things to note:
+
+- There is no `transaction_id`. Nothing was written, so the `reference` is still free to use on a real post.
+- `dry_run` takes precedence over `skip_queue`. The preview always answers synchronously.
+
+---
+
+## Read the response
+
+| Field | What it tells you |
+| :-- | :-- |
+| `dry_run` | Always `true`. This is a preview, not a recorded transaction. |
+| `would_apply` | A real post of this payload would be accepted against balances as they stand now. |
+| `status` | Status the real transaction would carry (`APPLIED`, or `INFLIGHT` if you sent `inflight: true`). Omitted when `would_apply` is `false`. |
+| `precise_amount` | Movement in minor units, returned as a string so nothing is rounded. |
+| `balances` | Before (`current_*`) and after (`resulting_*`) for each participating balance. |
+
+Amounts on the preview are minor-unit strings. Convert with the same `precision` you sent: `display_amount = precise_amount / precision`.
+
+An `@indicator` that does not exist yet is projected against a zeroed stand-in and marked `virtual: true`. A real post would create that General Ledger balance. The dry run does not.
+
+`notes` carries warnings that are not rejections, such as a currency mismatch or a `scheduled_for` date (the preview applies as if now).
+
+---
+
+## When the transaction would fail
+
+If the transaction would be rejected, you still get HTTP `200`. Read `would_apply` and `rejection`, not the status code.
+
+```json 200 Would not apply wrap
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "resulting_balance": "5000"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "resulting_balance": "0"
+    }
+  ]
+}
+```
+
+`rejection.code` is the same catalog code a real post would return, so existing handling for codes like `TXN_INSUFFICIENT_FUNDS` still works.
+
+On rejection, `resulting_*` matches `current_*`. The failed apply is not shown as a partial movement, and `status` is omitted.
+
+Some failures never become a preview. Request validation and a missing balance ID return the same HTTP error a real post returns (`400`, `404`). Those run before the dry-run branch.
+
+---
+
+## Bulk and split transactions
+
+[Bulk create](/transactions/bulk-transactions) and [multiple sources or destinations](/transactions/multiple-sources) use the same dry-run pattern. `skip_queue` changes how the preview treats items in the batch:
+
+- `true`: the result is **cumulative**. Items are processed in order. Later items see the balance after earlier items.
+- `false`: the result is **independent**. Each item is processed on its own. Balance changes from other items in the same request are not applied.
+
+In this example `bln_source-bal-001` has 500.00 available. The batch sends 450.00 to `bln_dest-bal-001`, then 100.00 to `blnk_dest-bal-002`.
+
+<Tabs>
+<Tab title="Cumulative">
+
+Set `skip_queue` to `true`. The first item leaves 50.00. The second item needs 100.00, so `would_apply` is `false`.
+
+<CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "skip_queue": true,
+    "transactions": [
+      {
+        "precise_amount": 45000,
+        "precision": 100,
+        "reference": "ref_payout_450",
+        "currency": "USD",
+        "source": "bln_source-bal-001",
+        "destination": "bln_dest-bal-001",
+        "description": "First payout"
+      },
+      {
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "ref_payout_100",
+        "currency": "USD",
+        "source": "bln_source-bal-001",
+        "destination": "blnk_dest-bal-002",
+        "description": "Second payout"
+      }
+    ]
+  }'
+```
+</CodeGroup>
+
+```json 200 OK wrap expandable
+{
+  "dry_run": true,
+  "would_apply": false,
+  "cumulative": true,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100
+    },
+    {
+      "dry_run": true,
+      "would_apply": false,
+      "rejection": {
+        "code": "TXN_INSUFFICIENT_FUNDS",
+        "reason": "insufficient_funds",
+        "message": "insufficient funds in source balance"
+      },
+      "reference": "ref_payout_100",
+      "currency": "USD",
+      "amount": 100,
+      "precise_amount": "10000",
+      "precision": 100
+    }
+  ],
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "45000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "45000",
+      "resulting_available": "45000",
+      "resulting_credit_balance": "45000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "blnk_dest-bal-002",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+</Tab>
+<Tab title="Independent">
+
+Set `skip_queue` to `false`. Each item is checked against the current 500.00 on its own, so both pass.
+
+<CodeGroup>
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "skip_queue": false,
+    "transactions": [
+      {
+        "precise_amount": 45000,
+        "precision": 100,
+        "reference": "ref_payout_450",
+        "currency": "USD",
+        "source": "bln_source-bal-001",
+        "destination": "bln_dest-bal-001",
+        "description": "First payout"
+      },
+      {
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "ref_payout_100",
+        "currency": "USD",
+        "source": "bln_source-bal-001",
+        "destination": "blnk_dest-bal-002",
+        "description": "Second payout"
+      }
+    ]
+  }'
+```
+</CodeGroup>
+
+```json 200 OK wrap expandable
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100,
+      "balances": [
+        {
+          "balance_id": "bln_source-bal-001",
+          "role": "source",
+          "currency": "USD",
+          "current_balance": "50000",
+          "current_available": "50000",
+          "current_credit_balance": "50000",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "5000",
+          "resulting_available": "5000",
+          "resulting_credit_balance": "50000",
+          "resulting_debit_balance": "45000",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        },
+        {
+          "balance_id": "bln_dest-bal-001",
+          "role": "destination",
+          "currency": "USD",
+          "current_balance": "0",
+          "current_available": "0",
+          "current_credit_balance": "0",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "45000",
+          "resulting_available": "45000",
+          "resulting_credit_balance": "45000",
+          "resulting_debit_balance": "0",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        }
+      ]
+    },
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_100",
+      "currency": "USD",
+      "amount": 100,
+      "precise_amount": "10000",
+      "precision": 100,
+      "balances": [
+        {
+          "balance_id": "bln_source-bal-001",
+          "role": "source",
+          "currency": "USD",
+          "current_balance": "50000",
+          "current_available": "50000",
+          "current_credit_balance": "50000",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "40000",
+          "resulting_available": "40000",
+          "resulting_credit_balance": "50000",
+          "resulting_debit_balance": "10000",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        },
+        {
+          "balance_id": "blnk_dest-bal-002",
+          "role": "destination",
+          "currency": "USD",
+          "current_balance": "0",
+          "current_available": "0",
+          "current_credit_balance": "0",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "10000",
+          "resulting_available": "10000",
+          "resulting_credit_balance": "10000",
+          "resulting_debit_balance": "0",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "items are dispatched concurrently unless skip_queue is set, so each item is projected independently against current balances and real execution order is not guaranteed"
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
+    { title: "Transactions overview", href: "/transactions/introduction" },
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Multiple sources", href: "/transactions/multiple-sources" },
+    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
+  ]}
+/>

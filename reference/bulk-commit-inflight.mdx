@@ -37,6 +37,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 <ParamField body="skip_queue" type="boolean" default="false">
   When `false` (default), each item is enqueued for asynchronous processing. Per-item results return `status: "queued"` with code `QUEUED` or `ALREADY_QUEUED`, and both codes count toward `succeeded`. When `true`, Blnk processes each item synchronously and returns `status: "succeeded"` or `"failed"`. See [Commit & void inflight](/transactions/inflight/updating-inflight).
 </ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects every commit without settling anything. Items are projected independently. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
 
 ### Response
 
@@ -90,9 +93,168 @@ curl -X POST "http://localhost:5001/transactions/inflight/bulk/commit" \
     ]
   }'
 ```
+
+```bash Dry run
+curl -X POST "http://localhost:5001/transactions/inflight/bulk/commit" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "transactions": [
+      {
+        "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+      },
+      {
+        "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+      }
+    ]
+  }'
+```
 </RequestExample>
 
 <ResponseExample>
+```json 200 Dry Run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "operation": "commit",
+      "status": "APPLIED",
+      "reference": "ref_hold_001",
+      "currency": "USD",
+      "amount": 120,
+      "precise_amount": "12000",
+      "precision": 100,
+      "balances": [
+        {
+          "balance_id": "bln_source-bal-001",
+          "role": "source",
+          "currency": "USD",
+          "current_balance": "38000",
+          "current_available": "38000",
+          "current_credit_balance": "50000",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "12000",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "38000",
+          "resulting_available": "38000",
+          "resulting_credit_balance": "50000",
+          "resulting_debit_balance": "12000",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        },
+        {
+          "balance_id": "bln_dest-bal-001",
+          "role": "destination",
+          "currency": "USD",
+          "current_balance": "0",
+          "current_available": "0",
+          "current_credit_balance": "0",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "12000",
+          "resulting_balance": "12000",
+          "resulting_available": "12000",
+          "resulting_credit_balance": "12000",
+          "resulting_debit_balance": "0",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        }
+      ]
+    },
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "operation": "commit",
+      "status": "APPLIED",
+      "reference": "ref_hold_002",
+      "currency": "USD",
+      "amount": 40,
+      "precise_amount": "4000",
+      "precision": 100,
+      "balances": [
+        {
+          "balance_id": "bln_source-bal-001",
+          "role": "source",
+          "currency": "USD",
+          "current_balance": "38000",
+          "current_available": "38000",
+          "current_credit_balance": "50000",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "4000",
+          "current_inflight_credit_balance": "0",
+          "resulting_balance": "38000",
+          "resulting_available": "38000",
+          "resulting_credit_balance": "50000",
+          "resulting_debit_balance": "4000",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        },
+        {
+          "balance_id": "blnk_dest-bal-002",
+          "role": "destination",
+          "currency": "USD",
+          "current_balance": "0",
+          "current_available": "0",
+          "current_credit_balance": "0",
+          "current_debit_balance": "0",
+          "current_inflight_debit_balance": "0",
+          "current_inflight_credit_balance": "4000",
+          "resulting_balance": "4000",
+          "resulting_available": "4000",
+          "resulting_credit_balance": "4000",
+          "resulting_debit_balance": "0",
+          "resulting_inflight_debit_balance": "0",
+          "resulting_inflight_credit_balance": "0"
+        }
+      ]
+    }
+  ]
+}
+```
+
+```json 200 Dry Run Not Applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "operation": "commit",
+      "status": "APPLIED",
+      "reference": "ref_hold_001",
+      "currency": "USD",
+      "amount": 120,
+      "precise_amount": "12000",
+      "precision": 100
+    },
+    {
+      "dry_run": true,
+      "would_apply": false,
+      "operation": "commit",
+      "rejection": {
+        "code": "TXN_COMMIT_AMOUNT_EXCEEDED",
+        "reason": "commit_amount_exceeded",
+        "message": "cannot commit more than the original transaction amount. Original: USD40.00, Requested: USD999999.00"
+      },
+      "reference": "ref_hold_002",
+      "currency": "USD",
+      "amount": 999999,
+      "precise_amount": "99999900",
+      "precision": 100
+    }
+  ]
+}
+```
+
 ```json 200 Queued (default)
 {
   "succeeded": 2,
@@ -162,6 +324,7 @@ curl -X POST "http://localhost:5001/transactions/inflight/bulk/commit" \
 <RelatedTopics
   items={[
     { title: "Bulk commit & void", href: "/transactions/inflight/bulk-update-inflight" },
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
     { title: "Commit & void inflight", href: "/transactions/inflight/updating-inflight" },
     { title: "Bulk void inflight", href: "/reference/bulk-void-inflight" },
     { title: "Handling hot balances", href: "/guides/hot-balances" },
