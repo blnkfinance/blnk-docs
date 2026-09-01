@@ -1,0 +1,52 @@
+---
+description: How to write Blnk Mintlify skills. Teach expertise; do not copy docs or force opinions.
+alwaysApply: true
+---
+
+# Writing Blnk skills
+
+Skills teach how a good Blnk engineer thinks. They are not a second docs site. The Blnk Docs MCP is the source of truth for facts.
+
+Write the judgment an agent cannot get by fetching a page: when to look, what to ask the page, how to decide, and how to talk to the user.
+
+## What goes where
+
+| Put in the skill | Fetch with MCP | Do not hard-code as a rule |
+| :-- | :-- | :-- |
+| How to decide if a movement is finished | Inflight and create-transaction pages | A required authorize-capture template |
+| How to decide sync vs async for this step | Queue and lifecycle pages | "Auth is always sync" |
+| How to keep amounts consistent | Precision page | "Enums only, never env" |
+| How to name so reconciliation still works | Naming conventions page | One required `@` grammar for every product |
+| How to stop inventing when the map is unclear | Architecture and map guides | "Email Support instead of reasoning" |
+| Invariants that do not change | Endpoint paths, field lists, status names | Hosting or Watch deployment defaults |
+
+## Hard rules only for invariants
+
+Always true, regardless of product: unique `reference` on retry; `QUEUED` is not `APPLIED`; do not guess endpoints; do not invent money movement; do not put secrets in git.
+
+Taste is not a hard rule. Cloud vs self-host, naming grammar, enums vs env, and a `.blnk_context/` pack are options when they fit. Do not require `.blnk_context/` unless the user asked for a decision log.
+
+## Shape
+
+- Description is a trigger: what it does, then "Use when …".
+- Philosophy in a few sentences. Then a loop, not a docs sitemap.
+- Questions and tradeoffs, not answers. Name the failure modes agents actually make.
+- Keep `SKILL.md` short. Split a reference only for expertise that does not belong on a docs page.
+- Never paste the skill's checklist at the user. Ask in plain language. Prefer the codebase, then assume-and-confirm.
+- Do not add a skill per docs section. Do not copy request fields, event lists, env vars, or JSON schemas the MCP can `cat`.
+- House taste (no em dashes, scoped keys) stays in tiny separate skills or rules.
+
+```text
+# Good
+You are deciding whether this movement is finished.
+Ask: is there work outside the ledger that must succeed or fail first?
+If yes, hold, then commit or void. If no, post an applied transfer.
+Fetch the current inflight and create-transaction pages before you write a call.
+
+# Bad
+## Docs
+- Create inflight
+- Commit and void
+Prefer Cloud. Use @<Purpose><Currency>_<Source>.
+Write .blnk_context/01_money-movement-map.md before coding.
+```
