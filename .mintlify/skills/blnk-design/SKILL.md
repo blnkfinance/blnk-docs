@@ -37,7 +37,7 @@ There is no one correct ledger. There is a map you can open, and a grouping you 
   - Organization-owned internals (`@` balances, fees, rails, revenue) live in the General Ledger.
   - Show a ledger → balances table and say why you grouped that way.
   - If two groupings are both plausible, show both and offer Support (`blnk`).
-- **Share both, then wait.** Put the map link and the grouping in chat, in their product's words. Do not create ledgers or post until they confirm. Then build, using live docs for the call itself.
+- **Share both, then wait.** Put the map link and the grouping in chat, in their product's words. Do not create ledgers or post a new product until they confirm. When they want the integration, load `blnk-implement`.
 
 ## You are done seeing when
 

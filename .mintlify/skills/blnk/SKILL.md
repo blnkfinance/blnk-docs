@@ -11,14 +11,15 @@ metadata:
 How to work. Not a product tour.
 
 - Look it up. Do not invent.
-- Map and architecture first. Load `blnk-design` before you create or post.
+- See the money when the movement is still unclear. Load `blnk-design`.
+- Integrate the task they asked for. Load `blnk-implement`.
 
 ## Best practices
 
-- **See the money before you build.** Start from the map (how money moves) and the architecture (how those balances are grouped). A Core you can reach is not a design.
-- **If they ask you to build** and there is no map and architecture yet, stop. Do not scaffold ledgers, balances, or a first transfer. Load `blnk-design`. Explain the map and the grouping in their product's words. Wait until they confirm. Then build.
+- **See the money before you invent a ledger.** If they are standing up a product and there is no map or architecture yet, load `blnk-design`. Explain the map and the grouping in their product's words. Wait until they confirm.
+- **If they have a concrete task** (post this deposit, make this commit sync, wire this webhook), load `blnk-implement`. A map helps when one exists. If there is none, implement from the repo and the ask. Ask for the context that task still needs.
 - If a map and grouping already exist (repo, prior chat, a map link), use those. Do not invent a new one to look complete.
-- When you build, each post is an edge on the map. If a flow is missing, go back to design. Do not invent a movement to keep coding.
+- Do not invent a movement to keep coding. If the flow itself is missing or contradictory, go back to design.
 
 ## Quick start
 
