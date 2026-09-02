@@ -46,7 +46,7 @@ These are different shapes. Do not use bulk to fake a split, or a split to post 
 | One economic event, money splits (principal + fee, merchant + platform) | Multiple destinations or sources on **one** create. | [Multiple destinations](https://docs.blnkfinance.com/transactions/multiple-destinations), [Multiple sources](https://docs.blnkfinance.com/transactions/multiple-sources) |
 | Many independent movements (payroll, migration, many P2Ps) | Bulk. Each item has its own `reference`. | [Bulk transactions](https://docs.blnkfinance.com/transactions/bulk-transactions) |
 | One source, one destination | Simple create. | [Create transaction](https://docs.blnkfinance.com/reference/create-transaction) |
-| Two currencies | Two posts through an FX balance, not one balance that changes currency. | [Create transaction](https://docs.blnkfinance.com/reference/create-transaction) |
+| Two currencies | Two or more posts through an FX balance, not one balance that changes currency. | [Create transaction](https://docs.blnkfinance.com/reference/create-transaction) |
 
 Splits default to `atomic: false` (partial legs can apply). Set `atomic: true` when all legs must succeed together.
 
