@@ -1,22 +1,28 @@
 ---
 title: "Enable HTTPs for Blnk Server"
 sidebarTitle: "Enable HTTPs"
-description: "Update your configuration, ensure domain setup, and verify secure connections for a safer financial application."
+description: "Turn on server.ssl, point your domain at Core, and verify HTTPS before you put traffic on it."
 "og:title": "Enable HTTPs • Blnk Developer Documentation"
-"og:description": "Update your configuration, ensure domain setup, and verify secure connections for a safer financial application."
+"og:description": "Turn on server.ssl, point your domain at Core, and verify HTTPS before you put traffic on it."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Deploy your Blnk server with HTTPs and protect your data and ensure the privacy and integrity of information exchanged between your server and its clients. Blnk supports HTTPs out of the box and simplifies how you secure your financial application. 
+Deploy your Blnk server with HTTPS so traffic between clients and Core is encrypted. Blnk issues a Let's Encrypt certificate when you set `server.ssl` to `true` and point a domain at the server.
 
-This guide helps you set up HTTPs for your Blnk server. You need a basic understanding of Docker, Compose and domain management to implement this guide.
+<Info>
+Honoured again from Blnk Core 0.15.4. Through 0.12.x the flag worked. From 0.13.0 through 0.15.3, `server.ssl` was ignored and the server always served plaintext HTTP. See the [0.15.4 migration guide](/changelog/v15-4-migration#serverssl-starts-https).
+</Info>
+
+This guide helps you set up HTTPS for a Core instance you operate yourself. You need a basic understanding of Docker, Compose, and domain management.
 
 <Note>
      **Prerequisites:**
      - Docker 20.10.11 or later
      - Compose 1.29.2 or later
      - A valid domain name pointed to your server
+     - Blnk Core **0.15.4 or later**
 </Note>
 
 ---
@@ -24,59 +30,90 @@ This guide helps you set up HTTPs for your Blnk server. You need a basic underst
 ## Before you start
 
 Make sure that the Blnk server has been successfully deployed and is running on your machine.
-<Card title="Deploy Blnk" icon="sparkles" href="../home/install">
+
+<Card title="Deploy Blnk" icon="sparkles" href="/home/install">
 Local install or Blnk Cloud.
 </Card>
 
 <Steps>
 	<Step title="Update your configuration file">
-		Modify your `blnk.json` configuration file to enable HTTPs. Update the SSL flag to `"ssl": true` and provide your domain and email for SSL certificate notifications. 
-		
+		Set `server.ssl` to `true` and provide the domain, notification email, and certificate storage path.
+
+		<CodeGroup>
+		```bash blnk.env
+		BLNK_SERVER_SSL=true
+		BLNK_SERVER_SSL_DOMAIN=yourdomain.com
+		BLNK_SERVER_SSL_EMAIL=your-email@example.com
+		BLNK_CERT_STORAGE_PATH=/var/lib/blnk/certs
+		BLNK_SERVER_PORT=5001
+		```
+
 		```json blnk.json
 		{
 		  "server": {
-		    "domain": "yourdomain.com",
 		    "ssl": true,
+		    "domain": "yourdomain.com",
 		    "ssl_email": "your-email@example.com",
+		    "cert_storage_path": "/var/lib/blnk/certs",
 		    "port": "5001"
 		  }
 		}
 		```
+		</CodeGroup>
+
+		When `ssl` is `true`, Blnk starts an HTTPS listener on `server.port`, obtains a certificate for `server.domain`, and stores it in `cert_storage_path`. If a certificate cannot be issued, the server fails to start. It does not fall back to HTTP.
+
+		See [HTTPS (`server.ssl`)](/advanced/configuration/server-security#https-serverssl) for every field and default.
 	</Step>
 	<Step title="Ensure your domain points to your server">
-		Before you continue, confirm that the DNS settings for your domain are correctly configured to point to the IP address of your server. 
-		
-		This is required for the automated process to successfully verify your domain and issue an SSL certificate.
+		Confirm that the DNS settings for your domain point to the IP address of your server.
+
+		This is required for Let's Encrypt to verify the domain and issue a certificate. If `domain` is empty, Blnk defaults to `localhost`, which cannot receive a public certificate.
 	</Step>
 	<Step title="Start your Blnk server">
 		With your configuration file updated, start your Blnk server using Docker Compose.
-		
-		```bash bash
+
+		```bash
 		docker compose up
 		```
-		
-		Your Blnk server will be initiated (including the automated process of obtaining an SSL certificate for your domain). The process involves validating your domain's ownership and issuing a certificate, which is then automatically configured for use by your Blnk server.
+
+		The process validates domain ownership, issues a certificate, and starts the HTTPS listener. Startup logs include the scheme (`https`) so you can confirm TLS is on.
 	</Step>
 	<Step title="Verifying your HTTPs set-up">
-		Once your Blnk server is running, you can verify the HTTPs setup by accessing your Blnk server through a web browser or using a tool like `curl`:
-		
-		```bash bash
+		Once your Blnk server is running, verify the HTTPS setup with `curl`:
+
+		```bash
 		curl https://yourdomain.com:5001 -I
 		```
-		
-		You should see a response indicating that the HTTPS connection is successful, along with other response headers.
+
+		You should see a successful HTTPS response. An HTTP client against the same port will fail the TLS handshake.
 	</Step>
 </Steps>
 
+<Warning>
+Do not leave `"ssl": true` in config while your clients still use `http://`. After 0.15.4 those clients will fail. Set `ssl` to `false` if you intend to keep HTTP.
+</Warning>
 
 ---
 
 ## Next steps
 
-With HTTPs enabled, your Blnk server is now more secure, encrypting data in transit and providing a safer environment for your financial applications. Consider the following as you continue:
+With HTTPS enabled, traffic to your Blnk server is encrypted. Consider the following as you continue:
 
-1. **Monitor and renew certificates:** While Blnk automates the initial certificate setup, make sure to monitor your domain and certificates for expiration and renew them as necessary.
+1. **Monitor and renew certificates:** Blnk automates issuance. Monitor your domain and certificates for expiry and keep `cert_storage_path` writable so renewals can be stored.
 
-2. **Security best practices:** Continue to follow security best practices for your Blnk server, including keeping software up to date, managing access controls, and monitoring for unauthorized access.
+2. **Security best practices:** Keep software up to date, manage access controls, and monitor for unauthorized access. Enable [secure mode](/advanced/secure-blnk) for API authentication.
+
+---
 
 <NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "HTTPS (server.ssl)", href: "/advanced/configuration/server-security#https-serverssl" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "0.15.4 migration", href: "/changelog/v15-4-migration" },
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "Configuration reference", href: "/advanced/configuration/reference" },
+  ]}
+/>

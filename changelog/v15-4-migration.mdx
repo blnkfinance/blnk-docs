@@ -1,0 +1,154 @@
+---
+title: "0.15.4 Migration Guide"
+sidebarTitle: "Migration to 0.15.4"
+icon: "arrow-right"
+description: "Migration guide for upgrading to Blnk v0.15.4, covering error codes, split validation, refunds, and server.ssl."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+This guide covers the corrections you need to review when upgrading to Blnk v0.15.4.
+
+Most integrations can upgrade without code changes. Review this guide if your app branches on `error_detail.code` for missing balances or refunds
+
+---
+
+## At a glance
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| Missing balance on a transaction route | Clients that treat a missing source or destination as `TXN_NOT_FOUND` | A missing balance now returns `404 BAL_NOT_FOUND`. |
+| Already-refunded transaction | Clients that branch on `GEN_CONFLICT` for a second refund | A second refund of the same transaction now returns `409 TXN_ALREADY_REFUNDED`. |
+| Mixed refund batch errors | Clients that refund a parent with several legs and treat every `409` as already refunded | When some legs fail for other reasons, the batch returns `409 GEN_CONFLICT`. |
+
+These are corrections to documented behaviour, not new product rules. [API error codes](/advanced/error-codes) still apply: branch on `error_detail.code`, not on message text.
+
+---
+
+## Missing balance returns `BAL_NOT_FOUND`
+
+On a create, dry-run, or other transaction route, a source or destination balance that does not exist used to return `404 TXN_NOT_FOUND` with a message that named the balance.
+
+From 0.15.4 the code is `BAL_NOT_FOUND`, which the catalog already defined as “Balance does not exist.”
+
+A missing transaction still returns `TXN_NOT_FOUND`. Balance endpoints such as `GET /balances/:id` were already on `BAL_NOT_FOUND` and do not change.
+
+```json 404 Not Found wrap
+{
+  "error": "Balance with ID 'bln_c8e4f1a2-3b5d-4e7a-9c1f-2d6a8b0e4f73' not found",
+  "error_detail": {
+    "code": "BAL_NOT_FOUND",
+    "message": "Balance with ID 'bln_c8e4f1a2-3b5d-4e7a-9c1f-2d6a8b0e4f73' not found"
+  }
+}
+```
+
+**What to do:** If you retry or alert on `TXN_NOT_FOUND` for create-transaction failures, also handle `BAL_NOT_FOUND`. Do not treat a missing balance as a missing transaction.
+
+---
+
+## Already-refunded returns `TXN_ALREADY_REFUNDED`
+
+A second refund of the same transaction used to return `409 GEN_CONFLICT`.
+
+From 0.15.4 it returns `409 TXN_ALREADY_REFUNDED`, matching `TXN_ALREADY_COMMITTED` and `TXN_ALREADY_VOIDED`.
+
+```json 409 Conflict wrap
+{
+  "error": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded",
+  "error_detail": {
+    "code": "TXN_ALREADY_REFUNDED",
+    "message": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded"
+  }
+}
+```
+
+A second refund does not move balances. Treat `TXN_ALREADY_REFUNDED` as a completed refund, not as a retryable conflict.
+
+**What to do:** Branch on `TXN_ALREADY_REFUNDED` for an already-refunded original. Keep `GEN_CONFLICT` for mixed refund batches (see below).
+
+See [Refunds](/transactions/refunds#error-handling).
+
+---
+
+## Mixed refund batch errors return `GEN_CONFLICT`
+
+When you refund a parent and some child legs are already refunded while others fail for a different reason, 0.15.4 returns `409 GEN_CONFLICT`.
+
+Do not treat that response as “every leg was already refunded.” Inspect the message for the legs that still need attention, then retry only those that are safe to refund.
+
+A clean “already refunded” on a single transaction remains `TXN_ALREADY_REFUNDED`.
+
+---
+
+## Both `sources[]` and `destinations[]` are rejected
+
+A transaction cannot fan in and fan out in the same request. The docs already required one destination with `sources[]`, or one source with `destinations[]`.
+
+Before 0.15.4, a payload with both arrays was accepted, then failed with `404 TXN_NOT_FOUND` (“Balance with ID '' not found”). Retry-on-404 logic would retry a request that can never succeed.
+
+From 0.15.4 the request is rejected while the shape is still visible:
+
+```json 400 Bad Request wrap
+{
+  "error": "source: a transaction can split either sources or destinations, not both",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "source: a transaction can split either sources or destinations, not both"
+  }
+}
+```
+
+Dry-run and the live create path now return the same code and message.
+
+**What to do:** Send either `sources` plus one `destination`, or `source` plus `destinations`. Do not retry this `400` as if a balance were missing.
+
+See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+---
+
+## `server.ssl` starts HTTPS
+
+Through 0.12.x the flag was honoured. From 0.13.0 through 0.15.3 it was ignored and the API always served plaintext HTTP.
+
+From 0.15.4 the flag is honoured:
+
+- `ssl: true` starts an HTTPS listener on `server.port`, obtains a certificate for `server.domain`, and stores it in `cert_storage_path`.
+- If a certificate cannot be issued, the server **fails to start**. It does not fall back to HTTP.
+- Startup logs include the scheme (`http` or `https`).
+
+If you left `"ssl": true` in `blnk.json` while your clients still use `http://`, those clients will fail the TLS handshake after upgrade.
+
+**What to do:**
+
+1. If you want HTTP, set `ssl` to `false` (or unset `BLNK_SERVER_SSL`) before you deploy 0.15.4.
+2. If you want HTTPS, point `server.domain` at the server, set `ssl_email`, and follow [Enable HTTPS](/advanced/enable-https).
+
+See [HTTPS (`server.ssl`)](/advanced/configuration/server-security#https-serverssl).
+
+---
+
+## Recommended upgrade checklist
+
+Before you deploy 0.15.4:
+
+- Handle `BAL_NOT_FOUND` when a source or destination balance is missing
+- Handle `TXN_ALREADY_REFUNDED` on a second refund; keep `GEN_CONFLICT` for mixed refund batches
+- Stop sending both `sources[]` and `destinations[]` on one request
+- Confirm `server.ssl` matches how your clients connect (HTTP vs HTTPS)
+- Re-test create, dry-run, refund, and a split payload after upgrade
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Upgrade Core", href: "/changelog/upgrade" },
+    { title: "Blnk Core changelog", href: "/changelog/blnk-core" },
+    { title: "API error codes", href: "/advanced/error-codes" },
+    { title: "HTTPS (server.ssl)", href: "/advanced/configuration/server-security#https-serverssl" },
+    { title: "Refunds", href: "/transactions/refunds" },
+  ]}
+/>

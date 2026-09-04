@@ -12,7 +12,7 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 In general, when you refund a transaction, Blnk reverses the money movement from the original - funds return from the destination balance to the source balance. 
 
-Blnk records the reversal as a new transaction; the original record is not modified. You can refund each original transaction only once. A second attempt is rejected.
+Blnk records the reversal as a new transaction; the original record is not modified. You can refund each original transaction only once. A second attempt returns `409 TXN_ALREADY_REFUNDED` and does not move balances.
 
 ---
 
@@ -392,13 +392,52 @@ Blnk refunds every `APPLIED` child from its destination back to its source. The 
 
 ---
 
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+Refunds that cannot be applied return `404 Not Found` or `409 Conflict`.
+
+From 0.15.4, a second refund of the same transaction returns `TXN_ALREADY_REFUNDED` instead of `GEN_CONFLICT`, and does not reverse the original refund. When you refund a parent and some legs fail for mixed reasons, Blnk returns `GEN_CONFLICT`.
+
+| Code | When it happens |
+| :-- | :-- |
+| `TXN_NOT_FOUND` | No refundable transaction exists for the ID you sent. |
+| `TXN_ALREADY_REFUNDED` | The original transaction was already refunded. |
+| `GEN_CONFLICT` | A parent refund had mixed outcomes (some legs already refunded, others failed for a different reason). |
+
+```json 409 Conflict wrap
+{
+  "error": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded",
+  "error_detail": {
+    "code": "TXN_ALREADY_REFUNDED",
+    "message": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `TXN_NOT_FOUND` | Confirm the ID is the original `APPLIED` or queued parent, not a `VOID` child. |
+| `TXN_ALREADY_REFUNDED` | Treat the refund as complete. Do not retry. |
+| `GEN_CONFLICT` | Inspect the failed legs. Retry only legs that are still refundable. |
+
+See [API error codes](/advanced/error-codes) for the full catalogue. If you upgrade from 0.15.3 or earlier, review the [0.15.4 migration guide](/changelog/v15-4-migration).
+
+---
+
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
     { title: "Parent transactions", href: "/transactions/parent-transactions" },
-    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
     { title: "Refund transaction", href: "/reference/refund-transaction" },
+    { title: "API error codes", href: "/advanced/error-codes" },
+    { title: "0.15.4 migration", href: "/changelog/v15-4-migration" },
   ]}
 />

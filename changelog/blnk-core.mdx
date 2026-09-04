@@ -9,6 +9,33 @@ description: "Latest features, releases, and improvements."
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 
+<Update label="0.15.4" description="Sep 4, 2026">
+  ## HTTPS (`server.ssl`)
+
+  `server.ssl` is honoured again. Through 0.12.x the flag worked. From 0.13.0 through 0.15.3 it was ignored and Core always served HTTP.
+
+  `ssl: true` now starts HTTPS on `server.port`. If a certificate cannot be issued, the server fails to start.
+
+  <Warning>
+    If you left `ssl: true` while talking HTTP, set it to `false` before you upgrade, or follow [Enable HTTPS](/advanced/enable-https).
+  </Warning>
+
+  [0.15.4 migration guide →](/changelog/v15-4-migration#serverssl-starts-https)
+
+  ## Fixes & improvements
+
+  1. **Split validation:** A transaction that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR` instead of a misleading `404`. [0.15.4 migration guide →](/changelog/v15-4-migration)
+  2. **Missing balance on a transaction route:** A source or destination that does not exist now returns `404 BAL_NOT_FOUND` instead of `TXN_NOT_FOUND`.
+  3. **Already-refunded:** A second refund of the same transaction returns `409 TXN_ALREADY_REFUNDED` instead of `GEN_CONFLICT`, and no longer reverses the original refund.
+  4. **Mixed refund batches:** When some legs of a parent refund fail for reasons other than already-refunded, the batch returns `409 GEN_CONFLICT`.
+  5. **Split attribution:** Multi-source and multi-destination legs keep a stable `transaction_id` and reference suffix that match the order you sent.
+  6. **Database connect:** Blnk retries the initial Postgres connection instead of exiting on the first failure.
+  7. **Balance snapshots:** The snapshot bound and the caller's cutoff now use the same clock as the columns they bound.
+  8. **Queue recovery:** Zero-amount transactions stuck in `QUEUED` can be recovered.
+  9. **Error messages:** Not-found errors name the resource that was missing. Request decode errors no longer leak Go type names.
+  10. General bug fixes and improvements.
+</Update>
+
 <Update label="0.15.3" description="Aug 25, 2026">
   ## Docker image update
 
@@ -988,6 +1015,7 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
   items={[
     { title: "Install", href: "/home/install" },
     { title: "Upgrade Core", href: "/changelog/upgrade" },
+    { title: "0.15.4 migration", href: "/changelog/v15-4-migration" },
     { title: "Configuration overview", href: "/advanced/configuration/overview" },
   ]}
 />

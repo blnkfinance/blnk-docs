@@ -42,7 +42,7 @@ BLNK_METRICS_BEARER_TOKEN=
 | :-- | :-- | :-- |
 | `BLNK_SERVER_SECURE` | Enables additional secure-mode protections for the server. | `false` |
 | `BLNK_SERVER_SECRET_KEY` | Secret used for signing and other cryptographic operations. | None |
-| `BLNK_SERVER_PORT` | The port Blnk listens on for incoming HTTP requests. | `5001` |
+| `BLNK_SERVER_PORT` | The port Blnk listens on for incoming HTTP or HTTPS requests. | `5001` |
 | `BLNK_METRICS_BEARER_TOKEN` | Bearer token required to access `/metrics` when set. See [Metrics endpoint](#metrics-endpoint). | None |
 
 ### `BLNK_SERVER_SECURE`
@@ -93,6 +93,66 @@ When [monitoring export](/advanced/monitoring) is enabled, Blnk serves Prometheu
 | `true` | no | Blocked |
 
 The same rules apply on the worker monitoring port. Auth failures return structured JSON - see [API error codes](/advanced/error-codes).
+
+---
+
+## HTTPS (`server.ssl`)
+
+Use these settings to serve the API over HTTPS. TLS is off by default.
+
+<Info>
+Honoured again from Blnk Core 0.15.4. Through 0.12.x the flag worked. From 0.13.0 through 0.15.3 it was ignored and the server always served plaintext HTTP. See the [0.15.4 migration guide](/changelog/v15-4-migration#serverssl-starts-https).
+</Info>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_SERVER_SSL=false
+BLNK_SERVER_SSL_DOMAIN=
+BLNK_SERVER_SSL_EMAIL=
+BLNK_CERT_STORAGE_PATH=/var/lib/blnk/certs
+```
+
+```json blnk.json
+{
+  "server": {
+    "ssl": false,
+    "domain": "",
+    "ssl_email": "",
+    "cert_storage_path": "/var/lib/blnk/certs",
+    "port": "5001"
+  }
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_SERVER_SSL` | When `true`, Blnk starts an HTTPS listener on `server.port` and obtains a certificate for `server.domain`. When `false`, Blnk serves plaintext HTTP. | `false` |
+| `BLNK_SERVER_SSL_DOMAIN` | Domain used to issue the certificate. Point this hostname at the server before you enable SSL. When empty, Blnk defaults to `localhost`. | `localhost` |
+| `BLNK_SERVER_SSL_EMAIL` | Email Let's Encrypt uses for certificate expiry notices. | None |
+| `BLNK_CERT_STORAGE_PATH` | Directory where issued certificates are stored. The process must be able to write here. | `/var/lib/blnk/certs` |
+
+### How `server.ssl` works
+
+When `ssl` is `false`, Blnk serves plaintext HTTP on `server.port`.
+
+When `ssl` is `true`, Blnk:
+
+1. Starts an HTTPS listener on the same `server.port` (not a separate TLS port).
+2. Obtains a certificate for `server.domain` with Let's Encrypt (certmagic).
+3. Writes certificates to `cert_storage_path`.
+4. Logs the scheme (`https`) on startup so you can confirm TLS is on.
+5. Uses the same graceful shutdown path as the HTTP listener.
+
+If a certificate cannot be issued, the server **fails to start**. It does not fall back to plaintext HTTP. A certificate failure names the domains in the error instead of exiting from a background goroutine.
+
+<Warning>
+If you left `"ssl": true` in `blnk.json` (or `BLNK_SERVER_SSL=true`) while your clients still use `http://`, those clients will fail the TLS handshake after you upgrade to 0.15.4. Set `ssl` to `false` to keep HTTP, or finish the HTTPS setup before you deploy.
+</Warning>
+
+<Card title="Enable HTTPS" icon="lock" href="/advanced/enable-https">
+  Domain, certificate, and verification steps.
+</Card>
 
 ---
 
@@ -217,8 +277,9 @@ If you set only one of those two values, Blnk derives the other automatically:
 
 <RelatedTopics
   items={[
+    { title: "Enable HTTPS", href: "/advanced/enable-https" },
     { title: "Secure Blnk", href: "/advanced/secure-blnk" },
     { title: "API keys overview", href: "/api-keys/overview" },
-    { title: "Configuration overview", href: "/advanced/configuration/overview" },
+    { title: "0.15.4 migration", href: "/changelog/v15-4-migration" },
   ]}
 />
