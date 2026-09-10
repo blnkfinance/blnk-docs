@@ -1,0 +1,128 @@
+---
+title: "Data lake API"
+api: "POST /data/lake/query"
+description: "Run read-only DuckDB SQL against an instance data lake through Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Query archived ledger data (Parquet in the instance data lake) through Cloud. This is not the hot Data API, which reads the live instance database.
+
+Use this for reporting and audits over a date range. For live lists and filters, use the [Data API](/cloud/reference/data-api).
+
+<Note>
+Requires the `data:read` scope. Production managed instances include a built-in data lake. See [Managed instances](/cloud/instances/deploy#deployment-types).
+</Note>
+
+For SQL tables, casts, and templates, see [Insights](/cloud/insights/overview).
+
+---
+
+### Request structure
+
+<RequestExample>
+```bash cURL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/query' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "instance_id": "YOUR_INSTANCE_ID",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-31",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
+  }'
+```
+</RequestExample>
+
+<ParamField header="Authorization" type="string" required>
+Bearer token for an API key or OAuth access token with `data:read`.
+</ParamField>
+
+<ParamField body="instance_id" type="string" required>
+Core instance whose lake you want to query.
+</ParamField>
+
+<ParamField body="start_date" type="string">
+Archive range start. Required if `end_date` is empty. ISO date or datetime.
+</ParamField>
+
+<ParamField body="end_date" type="string">
+Archive range end. Required if `start_date` is empty.
+</ParamField>
+
+<ParamField body="sql" type="string">
+One read-only DuckDB `SELECT` or `WITH` statement. Tables are inferred from the SQL. Do not send `resource`, `resources`, or `org_id`.
+</ParamField>
+
+<ParamField body="saved_query_id" type="string">
+Run a query saved in Insights instead of sending `sql`.
+</ParamField>
+
+---
+
+### SQL response
+
+<ResponseExample>
+```json Success
+{
+  "data": {
+    "run_id": "lqr_...",
+    "rows": [
+      { "currency": "USD", "txn_count": 1280 }
+    ],
+    "total": 1
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="data.rows" type="array">
+Result rows. Column names match the SQL aliases.
+</ResponseField>
+
+<ResponseField name="data.total" type="integer">
+Number of rows returned in this run.
+</ResponseField>
+
+---
+
+### List without SQL
+
+If you omit `sql` and `saved_query_id`, send a resource list instead. `resource` must be one of `transactions`, `balances`, `ledgers`, `identity`. Include `start_date` or `end_date`.
+
+| Body field | Use |
+| :-- | :-- |
+| `resource` | Lake table to list |
+| `filters` | `{ "field", "op", "value" }` with `op` one of `eq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike` |
+| `sort_field` / `sort_dir` | `asc` or `desc` |
+| `limit` / `offset` | Pagination. Must not be negative |
+
+---
+
+### Saved queries
+
+Saved lake queries live under `/data/lake/queries`.
+
+| Method | Path | Purpose |
+| :-- | :-- | :-- |
+| GET | `/data/lake/queries?instance_id=` | List saved queries |
+| POST | `/data/lake/queries` | Create a saved query |
+| PATCH | `/data/lake/queries/{id}` | Update a saved query |
+| DELETE | `/data/lake/queries/{id}` | Delete a saved query |
+| GET | `/data/lake/schema?instance_id=` | Column schema per resource |
+| GET | `/data/lake/query-runs?instance_id=` | Recent runs |
+
+Create body includes `instance_id`, `name`, `description`, `sql`, `range_mode` (`fixed` or `rolling`), plus either `start_date` / `end_date` or `rolling_days`.
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Insights", href: "/cloud/insights/overview" },
+    { title: "Data API", href: "/cloud/reference/data-api" },
+    { title: "API keys", href: "/cloud/auth/api-keys" },
+  ]}
+/>
