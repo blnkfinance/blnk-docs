@@ -1,0 +1,137 @@
+---
+title: "Fund lineage"
+sidebarTitle: "Fund lineage"
+icon: "git-branch"
+description: "Tag incoming funds by provider and see how they are spent in Blnk Cloud."
+og:title: "Fund lineage | Blnk Cloud Guide"
+og:description: "Enable fund lineage on a balance, tag credits by provider, and review allocation on debits in Blnk Cloud"
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+<Warning>
+  This feature is experimental.
+</Warning>
+
+Fund lineage lets you tag money as it enters a balance, then see which providers still have funds available when you spend.
+
+Use it when you need to know not only the balance total, but the mix of sources inside it (for example Stripe vs PayPal).
+
+For how Core tags funds, allocates debits, and stores lineage, read [Fund lineage tracking](/transactions/lineage).
+
+---
+
+## Enable lineage on a balance
+
+Turn lineage on when you create the balance. You cannot add it later to a balance that already exists.
+
+<Steps>
+  <Step title="Open create balance">
+    Go to **Balances** and click **Create balance**, or press `⌥ + B` (`Alt + B` on Windows).
+  </Step>
+  <Step title="Turn on lineage">
+    Under **Advanced options**, enable **Enable lineage tracking**.
+
+    Pick an allocation strategy for later debits:
+
+    - **FIFO:** spend the oldest tagged funds first
+    - **LIFO:** spend the newest tagged funds first
+    - **PROPORTIONAL:** spread the debit across tagged funds
+
+    Cloud also turns on **Assign an owner**. Lineage requires an identity on the balance.
+
+    <Frame>
+      <img src="/cloud/img/balances/create-balance-lineage.png" alt="Create balance form with lineage tracking and allocation strategy" className="rounded-lg" />
+    </Frame>
+  </Step>
+  <Step title="Create the balance">
+    Choose the identity, then click **Create balance**.
+  </Step>
+</Steps>
+
+---
+
+## Tag a credit
+
+Set the lineage-enabled balance as the destination first. Cloud only shows **Lineage tag** after that. If the destination does not have lineage, the control stays hidden.
+
+<Steps>
+  <Step title="Create a credit">
+    Go to **Transactions** and click **Create transaction**. Set the lineage-enabled balance as the **destination**.
+  </Step>
+  <Step title="Add a provider tag">
+    Under **Advanced options**, turn on **Lineage tag** and enter a provider name (for example `stripe` or `paypal`). Cloud sets `BLNK_LINEAGE_PROVIDER` in metadata.
+
+    <Frame>
+      <img
+        src="/cloud/img/transactions/lineage-tag-credit.png"
+        alt="Create transaction form with Lineage tag on and Provider set to Stripe"
+        className="rounded-lg"
+      />
+    </Frame>
+  </Step>
+  <Step title="Create the transaction">
+    Complete the amount and source as usual, then click **Create transaction**.
+  </Step>
+</Steps>
+
+If you omit the tag, the credit still posts. It does not join lineage tracking.
+
+---
+
+## Spend from a lineage balance
+
+When you spend from that balance, create a normal debit. Leave **Lineage tag** off. Cloud applies the allocation strategy you chose on the balance (FIFO, LIFO, or PROPORTIONAL).
+
+To see how that spend was split, open the debit. Use **Fund lineage** for the amount from each provider, and **Shadow transactions** for the internal rows Core created to track it.
+
+---
+
+## Where to read the breakdown
+
+The **Fund lineage** section appears only when lineage is enabled on that balance or debit. Other balances and transactions stay unchanged.
+
+To see totals, available, and spent per provider, open the lineage-enabled balance. The details page also shows the allocation strategy (for example FIFO).
+
+<Frame>
+  <img
+    src="/cloud/img/balances/fund-lineage-table.png"
+    alt="Balance details Fund lineage table with provider, total in, available, and spent"
+    className="rounded-lg"
+  />
+</Frame>
+
+To see how a spend was split, open that debit. Use **Fund lineage** for the amount from each provider, and **Shadow transactions** for the internal rows Core created to track it.
+
+<Frame>
+  <img
+    src="/cloud/img/transactions/fund-lineage-debit.png"
+    alt="Debit transaction with Fund lineage allocation and shadow transactions"
+    className="rounded-lg"
+  />
+</Frame>
+
+---
+
+## Filter lineage balances
+
+On the **Balances** table, add filters for:
+
+- **Track fund lineage** to list balances with lineage on or off
+- **Allocation strategy** to list `FIFO`, `LIFO`, or `PROPORTIONAL`
+
+See [Add filters](/cloud/filters/add-filters).
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create a balance", href: "/cloud/balances/overview" },
+    { title: "Balance details", href: "/cloud/balances/details" },
+    { title: "Create a transaction", href: "/cloud/transactions/overview" },
+    { title: "Fund lineage (Core)", href: "/transactions/lineage" },
+  ]}
+/>

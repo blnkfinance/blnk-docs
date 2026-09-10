@@ -1,0 +1,300 @@
+---
+title: "Templates"
+sidebarTitle: "Templates"
+icon: "layout-template"
+description: "Learn Insights SQL templates grouped by the job you are doing."
+og:title: "Templates | Blnk Cloud Guide"
+og:description: "Learn Insights SQL templates grouped by the job you are doing."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Templates are ready-made SQL queries for common Insights reports. Set the toolbar date range, then run the query.
+
+In Cloud, open the **Templates** tab and pick a starter: **Volume by currency**, **Daily volume by status**, or **Identity growth**.
+
+You can also copy a query from here, paste it into the editor, set the date range, and run it.
+
+## Reporting volume
+
+### Daily applied volume by currency
+
+Use this when you need the posted money total for each currency by day. It is the headline volume number for finance and ops reviews, for example Monday morning for last week.
+
+```sql
+SELECT
+  DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS day,
+  currency,
+  COUNT(*) AS txn_count,
+  SUM(
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+  ) AS volume
+FROM transactions
+WHERE status = 'APPLIED'
+GROUP BY 1, 2
+ORDER BY 1 DESC, 2
+LIMIT 1000
+```
+
+### Daily volume by status
+
+Use this when you want the same daily volume broken out by status. It helps you spot rejection spikes or open holds growing day over day.
+
+```sql
+SELECT
+  DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS day,
+  status,
+  currency,
+  COUNT(*) AS txn_count,
+  SUM(
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+  ) AS volume
+FROM transactions
+GROUP BY 1, 2, 3
+ORDER BY 1 DESC, txn_count DESC
+LIMIT 1000
+```
+
+## Catching problems
+
+### Status mix
+
+Use this when you want a quick count of transactions by status and currency. It is useful when any status other than `APPLIED` is growing as a share of traffic.
+
+```sql
+SELECT
+  status,
+  currency,
+  COUNT(*) AS txn_count
+FROM transactions
+GROUP BY status, currency
+ORDER BY txn_count DESC
+LIMIT 1000
+```
+
+### Rejected transactions
+
+Use this when you need a list of failed payments. Match support tickets by `reference` to see why money did not go through.
+
+```sql
+SELECT
+  transaction_id,
+  reference,
+  currency,
+  status,
+  source,
+  destination,
+  created_at
+FROM transactions
+WHERE status = 'REJECTED'
+ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
+LIMIT 1000
+```
+
+### Open inflight holds
+
+Use this when you need money that is still on hold. A parent can stay `INFLIGHT` after commit or void creates child rows, so do not treat every `INFLIGHT` row as open.
+
+**Date range:** set the toolbar range wide enough to cover both the parent hold and its commit or void days. Outcomes outside the range are invisible, so a finished hold can look open, and an older open hold can disappear. Prefer a long window such as the last 30 or 90 days for this report.
+
+Match outcomes with `parent_transaction`, including one queued hop, then keep rows with no `VOID` child and committed amount still below the parent amount. Partial commits leave the remainder on hold. See [Commit and void inflight](/transactions/inflight/updating-inflight) and [How the lake works](/cloud/insights/lake).
+
+```sql
+WITH outcomes AS (
+  SELECT
+    CASE
+      WHEN p.status = 'QUEUED' THEN p.parent_transaction
+      ELSE c.parent_transaction
+    END AS inflight_id,
+    c.status,
+    TRY_CAST(c.precise_amount AS DECIMAL(38, 8)) AS precise_amount
+  FROM transactions c
+  LEFT JOIN transactions p ON c.parent_transaction = p.transaction_id
+  WHERE c.status IN ('APPLIED', 'VOID')
+)
+SELECT
+  t.transaction_id,
+  t.reference,
+  t.currency,
+  t.source,
+  t.destination,
+  t.created_at,
+  TRY_CAST(t.precise_amount AS DECIMAL(38, 8)) AS held_precise_amount,
+  COALESCE(SUM(CASE WHEN o.status = 'APPLIED' THEN o.precise_amount END), 0) AS committed_precise_amount
+FROM transactions t
+LEFT JOIN outcomes o ON o.inflight_id = t.transaction_id
+WHERE t.status = 'INFLIGHT'
+GROUP BY
+  t.transaction_id,
+  t.reference,
+  t.currency,
+  t.source,
+  t.destination,
+  t.created_at,
+  t.precise_amount
+HAVING
+  COUNT(CASE WHEN o.status = 'VOID' THEN 1 END) = 0
+  AND COALESCE(SUM(CASE WHEN o.status = 'APPLIED' THEN o.precise_amount END), 0)
+    < TRY_CAST(t.precise_amount AS DECIMAL(38, 8))
+ORDER BY TRY_CAST(t.created_at AS TIMESTAMP) DESC
+LIMIT 1000
+```
+
+## Following the money
+
+### Top destination balances by inflow
+
+Use this when you want to see which wallets receive the most posted money. It ranks receiving wallets by inflow and transaction count.
+
+```sql
+SELECT
+  destination AS balance_id,
+  currency,
+  COUNT(*) AS credit_count,
+  SUM(
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+  ) AS inflow
+FROM transactions
+WHERE status = 'APPLIED'
+GROUP BY destination, currency
+ORDER BY inflow DESC
+LIMIT 100
+```
+
+### Top source balances by outflow
+
+Use this when you want to see which wallets send the most posted money. Compare it with inflow to spot one-way flows.
+
+```sql
+SELECT
+  source AS balance_id,
+  currency,
+  COUNT(*) AS debit_count,
+  SUM(
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+  ) AS outflow
+FROM transactions
+WHERE status = 'APPLIED'
+GROUP BY source, currency
+ORDER BY outflow DESC
+LIMIT 100
+```
+
+## Portfolio health
+
+### Wallet counts by currency
+
+Use this when you need how many distinct wallets appear in the selected date range, by currency. This is not a live portfolio total. `created_at` on balances is wallet creation time, so you cannot safely pick a latest balance snapshot from the lake. For current holdings, use the [Data API](/cloud/reference/data-api). See [How the lake works](/cloud/insights/lake).
+
+```sql
+SELECT
+  currency,
+  COUNT(*) AS balance_count
+FROM (
+  SELECT
+    balance_id,
+    ANY_VALUE(currency) AS currency
+  FROM balances
+  GROUP BY balance_id
+) wallets
+GROUP BY currency
+ORDER BY balance_count DESC
+LIMIT 1000
+```
+
+### Balances with no identity
+
+Use this when you are checking wallet linkage in the selected date range. It lists wallets that never show an `identity_id` or `indicator` in any day file inside the range. If a later day outside the range linked the wallet, widen the range or confirm on the live ledger. Run it monthly.
+
+```sql
+SELECT
+  balance_id,
+  ANY_VALUE(currency) AS currency,
+  ANY_VALUE(ledger_id) AS ledger_id,
+  ANY_VALUE(indicator) AS indicator,
+  MIN(TRY_CAST(created_at AS TIMESTAMP)) AS created_at
+FROM balances
+GROUP BY balance_id
+HAVING
+  BOOL_AND(identity_id IS NULL)
+  AND BOOL_AND(indicator IS NULL OR indicator = '')
+ORDER BY created_at DESC
+LIMIT 1000
+```
+
+## Growth
+
+### New identities per day
+
+Use this when you want onboarding velocity. It shows how many distinct people or organizations were created each day.
+
+```sql
+SELECT
+  DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS day,
+  COUNT(DISTINCT identity_id) AS identities
+FROM identity
+GROUP BY 1
+ORDER BY 1 DESC
+LIMIT 1000
+```
+
+### Customer wallets with recent applied activity
+
+Use this when you need active funded wallets with the owner's name and email. Collapse `balances` and `identity` to one row per ID before joining so multi-day copies do not inflate `applied_txns`. See [How the lake works](/cloud/insights/lake).
+
+```sql
+WITH balances_one AS (
+  SELECT
+    balance_id,
+    ANY_VALUE(currency) AS currency,
+    ANY_VALUE(identity_id) AS identity_id
+  FROM balances
+  GROUP BY balance_id
+),
+identity_one AS (
+  SELECT
+    identity_id,
+    ANY_VALUE(first_name) AS first_name,
+    ANY_VALUE(last_name) AS last_name,
+    ANY_VALUE(email_address) AS email_address
+  FROM identity
+  GROUP BY identity_id
+)
+SELECT
+  b.balance_id,
+  b.currency,
+  i.first_name,
+  i.last_name,
+  i.email_address,
+  COUNT(*) AS applied_txns
+FROM transactions t
+JOIN balances_one b ON t.destination = b.balance_id
+JOIN identity_one i ON b.identity_id = i.identity_id
+WHERE t.status = 'APPLIED'
+GROUP BY
+  b.balance_id,
+  b.currency,
+  i.first_name,
+  i.last_name,
+  i.email_address
+ORDER BY applied_txns DESC
+LIMIT 100
+```
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Insights overview", href: "/cloud/insights/overview" },
+    { title: "Schema", href: "/cloud/insights/schema" },
+    { title: "Queries", href: "/cloud/insights/queries" },
+    { title: "Precision", href: "/transactions/precision" },
+  ]}
+/>

@@ -1,0 +1,273 @@
+---
+title: "Queries"
+sidebarTitle: "Queries"
+icon: "list"
+description: "Learn how to write SELECT queries in Insights, save and schedule them, sum amounts correctly, and fix empty or slow results."
+og:title: "Queries | Blnk Cloud Guide"
+og:description: "Learn how to write SELECT queries in Insights, save and schedule them, sum amounts correctly, and fix empty or slow results."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Saved and scheduled queries help you answer questions like:
+
+- How much volume moved in each currency last week?
+- How many transactions are still `INFLIGHT`?
+- Which identities gained new wallets this month?
+
+The **Queries** tab is where you find work you have already done: **Saved**, **Scheduled**, and **History**.
+
+---
+
+## Write a query
+
+Click `New query` to open a blank editor. Insights runs SQL against a **data lake**: a stored copy of your ledgers, balances, transactions, and identities built for reports. If you want a starter, open a [template](/cloud/insights/templates) and change the filters for the report you need.
+
+### Write your first SELECT
+
+SQL is how you ask Insights for rows from a table. Build a query in this order. Each step adds one part of the same report: how many applied transactions there are for each currency and status.
+
+<Steps>
+  <Step title="SELECT the columns">
+    Use **`SELECT`** to choose which columns to show, or to count rows or add up a total.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    ```
+
+    This chooses the columns to return: currency, status, and a count of rows named `txn_count`.
+  </Step>
+  <Step title="FROM a table">
+    Use **`FROM`** to pick the table to read: `transactions`, `balances`, `ledgers`, or `identity`. Open [Schema](/cloud/insights/schema) to see what each table stores and which columns you can select.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    FROM transactions
+    ```
+
+    This reads those columns from the `transactions` table.
+  </Step>
+  <Step title="WHERE to filter rows">
+    Use **`WHERE`** when you only want some rows. For example, `status = 'APPLIED'` keeps applied transactions and drops the rest.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    FROM transactions
+    WHERE status = 'APPLIED'
+    ```
+
+    This keeps only applied transactions and drops every other status.
+  </Step>
+  <Step title="GROUP BY to summarize">
+    Use **`GROUP BY`** when you want one result row per group, for example one row per currency and status.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    FROM transactions
+    WHERE status = 'APPLIED'
+    GROUP BY currency, status
+    ```
+
+    This makes one result row for each currency and status pair, with the count for that pair.
+  </Step>
+  <Step title="ORDER BY to sort">
+    Use **`ORDER BY`** when you want the results sorted.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    FROM transactions
+    WHERE status = 'APPLIED'
+    GROUP BY currency, status
+    ORDER BY txn_count DESC
+    ```
+
+    This sorts the rows so the highest counts appear first.
+  </Step>
+  <Step title="LIMIT the rows">
+    Use **`LIMIT`** to cap how many rows come back. Use `1000` for listings, and stay at or under `5000`.
+
+    ```sql
+    SELECT
+      currency,
+      status,
+      COUNT(*) AS txn_count
+    FROM transactions
+    WHERE status = 'APPLIED'
+    GROUP BY currency, status
+    ORDER BY txn_count DESC
+    LIMIT 1000
+    ```
+
+    This returns at most 1000 rows so the workbench stays responsive.
+  </Step>
+</Steps>
+
+That full query only counts rows. It does not add up money. To add up money, see [Sum amounts correctly](/cloud/insights/queries#sum-amounts-correctly). To look at one currency only, add `AND currency = 'USD'` to the `WHERE` line.
+
+Set the toolbar date range for the period you care about before you run. See [How the lake works](/cloud/insights/lake).
+
+### Use TRY_CAST on dates and amounts
+
+When you query across many days of history, wrap dates and amounts in `TRY_CAST` so a type mismatch does not fail the whole query.
+
+```sql
+TRY_CAST(created_at AS TIMESTAMP)
+TRY_CAST(precise_amount AS DECIMAL(38, 8))
+  / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+```
+
+`TRY_CAST` returns `NULL` when a value cannot be converted to that type, instead of failing the whole query. `NULLIF(..., 0)` stops a divide by zero.
+
+### Sum amounts correctly
+
+When you want to add up money, not just count rows, divide `precise_amount` by `precision` for each row, then add those results together. Every transaction stores that value three ways. See [Precision](/transactions/precision) for how Core stores these fields.
+
+- **`precise_amount`:** the integer in the currency's smallest unit (cents, satoshi).
+- **`precision`:** how many of those units make one whole unit (100 for USD, 100000000 for BTC).
+- **`amount`:** the human-readable value Blnk derives.
+
+| What you posted | `precise_amount` | `precision` | `amount` |
+| :-- | :-- | :-- | :-- |
+| USD 7.25 | `725` | `100` | **7.25** |
+| BTC 0.00041 | `41000` | `100000000` | **0.00041** |
+
+Follow these steps to total `APPLIED` transaction amounts by currency.
+
+<Steps>
+  <Step title="Divide each row into a money value">
+    Use `precise_amount / precision` (with `TRY_CAST`) so each row becomes a real amount like `7.25`, not `725`. Use this instead of `SUM(amount)` when your date range covers many days of history. Do not sum `precise_amount` on its own: cents and satoshis are different units.
+
+    ```sql
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+    ```
+
+    `DECIMAL(38, 8)` means up to 38 digits in total, with up to 8 after the decimal point. That gives the division enough room to stay accurate. `NULLIF(..., 0)` stops a divide by zero.
+  </Step>
+  <Step title="Add those values with SUM">
+    Wrap that expression in `SUM(...)` and name it `volume`.
+
+    ```sql
+    SUM(
+      TRY_CAST(precise_amount AS DECIMAL(38, 8))
+      / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+    ) AS volume
+    ```
+
+    This adds the money values across rows and returns one total called `volume`.
+  </Step>
+  <Step title="Group by currency">
+    A total only makes sense inside one currency. Add `currency` to `SELECT` and `GROUP BY currency`, or filter to one currency in `WHERE` first.
+  </Step>
+  <Step title="Put it together">
+    Full query for `APPLIED` transaction amounts by currency:
+
+    ```sql
+    SELECT
+      currency,
+      SUM(
+        TRY_CAST(precise_amount AS DECIMAL(38, 8))
+        / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+      ) AS volume
+    FROM transactions
+    WHERE status = 'APPLIED'
+    GROUP BY currency
+    ORDER BY volume DESC
+    LIMIT 1000
+    ```
+
+    This returns one row per currency with the total `APPLIED` amount for that currency.
+  </Step>
+</Steps>
+
+---
+
+## Save a query
+
+After you run a query you want to keep, click **Save**. Until you save, the draft is named Untitled lake query.
+
+Saved queries live on this instance. Open one from **Saved** to put that SQL back in the editor.
+
+<img src="/cloud/img/insights/run-and-save.gif" alt="Set the date range, run a query, then save it from Actions" className="rounded-lg" />
+
+## Schedule a query
+
+**Schedule query** appears in **Actions** once the query is saved with no unsaved edits.
+
+1. Open **Actions** → **Schedule query**.
+2. Pick a **Preset** (Hourly, Daily at 09:00, Weekly on Monday, or Monthly on the 1st). The **Cron expression** field fills from the preset. You can leave it as is unless you need a custom schedule.
+3. Confirm **Timezone**, then click **Save schedule**.
+
+Scheduled runs use the saved query and keep a result preview in run history. They do not send external notifications.
+
+- Schedules always run the **last saved version**. Editor changes do not run until you save again.
+- A scheduled report is the same SQL you run by hand. If a run returns empty, check the date range first.
+
+The query appears under **Scheduled**.
+
+<img src="/cloud/img/insights/schedule-query.gif" alt="Open Actions, choose Schedule query, pick a preset and timezone, then save the schedule" className="rounded-lg" />
+
+## Reopen a past run
+
+**History** is past runs from this instance. Open a row to reopen a query you already executed.
+
+History is not the same list as **Saved**. Saved stores the query. History stores the run.
+
+<img src="/cloud/img/insights/queries-history.gif" alt="Open History on the Queries tab to reopen a past run" className="rounded-lg" />
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="My totals do not match the dashboard">
+    Check two things first. You summed `precise_amount` without dividing by `precision`, or you summed across currencies. See [Sum amounts correctly](/cloud/insights/queries#sum-amounts-correctly). Do not sum `balances.balance` across days for a live portfolio total. That column is a per-day copy, and current holdings belong on the [Data API](/cloud/reference/data-api).
+  </Accordion>
+  <Accordion title="Transaction counts look inflated after a join">
+    `balances`, `ledgers`, and `identity` can repeat across days in your date range. Collapse each entity to one row per ID before you join, as in [How to join them](/cloud/insights/schema#how-to-join-them). Do not order by `created_at` to pick a latest wallet snapshot.
+  </Accordion>
+  <Accordion title="Open inflight holds look wrong">
+    Set a date range wide enough to include both the parent hold and its commit or void days. Then use the parent-child template in [Open inflight holds](/cloud/insights/templates#open-inflight-holds). A bare `WHERE status = 'INFLIGHT'` includes resolved parents.
+  </Accordion>
+  <Accordion title="Query returns no rows">
+    Check the toolbar date range first. It selects which days of history are scanned. An empty range means an empty result, even if your `WHERE` clause looks right.
+  </Accordion>
+  <Accordion title="Query fails with a type error">
+    A column is typed differently across days of history. Wrap comparisons and aggregates in `TRY_CAST` as shown in [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
+  </Accordion>
+  <Accordion title="Query rejected: statement not allowed">
+    Use a `SELECT` or `WITH` statement. Post new ledger records with the [Ledger API](/reference/create-transaction).
+  </Accordion>
+  <Accordion title="Query is slow or times out">
+    Shrink the toolbar date range, filter to fewer currencies, select named columns instead of `*`, and keep a `LIMIT`.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Insights overview", href: "/cloud/insights/overview" },
+    { title: "How the lake works", href: "/cloud/insights/lake" },
+    { title: "Schema", href: "/cloud/insights/schema" },
+    { title: "Templates", href: "/cloud/insights/templates" },
+  ]}
+/>

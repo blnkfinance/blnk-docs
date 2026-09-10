@@ -1,0 +1,80 @@
+---
+title: "How the lake works"
+sidebarTitle: "How the lake works"
+icon: "database"
+description: "Learn how the Insights data lake copies your ledger for SQL reports."
+og:title: "How the lake works | Blnk Cloud Guide"
+og:description: "Learn how the Insights data lake copies your ledger for SQL reports."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+The **data lake** is a stored copy of your ledger built for reports. Insights runs your SQL against that copy.
+
+Your ledger is the system of record. Every write lands there first: a posted transaction, a new balance, a new identity. A lake builder then copies those records into **daily history**, one day at a time.
+
+When you run a query, Insights scans **only the days inside the date range you pick in the toolbar**. That range decides how much history the engine opens. A `WHERE` filter on `created_at` can drop rows inside those days. It does not choose which days to open.
+
+<Frame caption="From a ledger write to a query result">
+  <div className="lake-flow" role="img" aria-label="Ledger writes to the lake builder, which stores daily history. DuckDB scans those days for Insights and the Data lake API.">
+    <div className="lake-flow__row">
+      <div className="lake-flow__card">
+        <p className="lake-flow__title">Your ledger</p>
+        <p className="lake-flow__sub">System of record</p>
+        <span className="lake-flow__pill">transactions</span>
+        <span className="lake-flow__pill">balances</span>
+        <span className="lake-flow__pill">ledgers</span>
+        <span className="lake-flow__pill">identity</span>
+      </div>
+      <div className="lake-flow__arrow">writes</div>
+      <div className="lake-flow__card">
+        <p className="lake-flow__title">Lake builder</p>
+        <p className="lake-flow__sub">Continuous copy</p>
+        <p className="lake-flow__note">Every posted record is appended to daily history</p>
+        <span className="lake-flow__pill">partitioned by date</span>
+        <p className="lake-flow__note">Copy with a lag</p>
+      </div>
+      <div className="lake-flow__arrow">stores</div>
+      <div className="lake-flow__card">
+        <p className="lake-flow__title">Daily history</p>
+        <p className="lake-flow__sub">Read-only, immutable</p>
+        <span className="lake-flow__pill">2026-09-01.parquet</span>
+        <span className="lake-flow__pill">2026-09-02.parquet</span>
+        <span className="lake-flow__pill">2026-09-03.parquet</span>
+        <p className="lake-flow__note">Never updated in place. History is append-only.</p>
+      </div>
+      <div className="lake-flow__arrow">scans</div>
+      <div className="lake-flow__card">
+        <p className="lake-flow__title">DuckDB</p>
+        <p className="lake-flow__sub">Query engine</p>
+        <p className="lake-flow__note">Reads only the days in your date range</p>
+        <span className="lake-flow__pill">Insights / API</span>
+      </div>
+    </div>
+  </div>
+</Frame>
+
+Keep these lake contracts in mind when you write SQL:
+
+1. **Daily history is append-only.** Insights opens every day file in your toolbar date range. Files are never updated in place.
+2. **Transactions are lifecycle rows.** Core stores each status change as its own row (`QUEUED`, `INFLIGHT`, `APPLIED`, and so on). Filter by `status`, and use `parent_transaction` when you need commit or void outcomes. See [Transaction lifecycle](/transactions/transaction-lifecycle).
+3. **Balances, ledgers, and identities can repeat across days.** The same ID may appear in more than one day file. Before you join them to transactions, collapse to one row per ID (for example `GROUP BY balance_id` with `ANY_VALUE(...)`). Do not order by `created_at` to pick a "latest" wallet snapshot: `created_at` is when the wallet was created, so daily copies can tie and DuckDB can pick any copy.
+4. **Current wallet holdings belong on the live ledger.** The lake is for history and reports. For live balance amounts, use the [Data API](/cloud/reference/data-api) or [Ledger API](/reference/get-balance).
+5. **Parent and child rows can fall on different days.** Inflight commits and voids create new rows. Set a date range wide enough to include both the parent and its outcomes, or the report can miss a resolution.
+6. **Use `TRY_CAST` on dates and amounts.** See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
+
+To call the same lake SQL from your backend, use the [Data lake API](/cloud/reference/data-lake-api).
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Insights overview", href: "/cloud/insights/overview" },
+    { title: "Schema", href: "/cloud/insights/schema" },
+    { title: "Queries", href: "/cloud/insights/queries" },
+    { title: "Templates", href: "/cloud/insights/templates" },
+  ]}
+/>

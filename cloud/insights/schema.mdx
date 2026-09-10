@@ -1,0 +1,279 @@
+---
+title: "Schema"
+sidebarTitle: "Schema"
+icon: "table"
+description: "Learn the Schema tab, the four lake tables, and which transaction statuses count as money moved."
+og:title: "Schema | Blnk Cloud Guide"
+og:description: "Learn the Schema tab, the four lake tables, and which transaction statuses count as money moved."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+The **Schema** tab in Insights lists the tables and columns you can query. Insights reads a **data lake**: a stored copy of your ledger with four tables.
+
+<Frame caption="Balances belong to a ledger and optionally an identity. Each lake transaction row has a source wallet and a destination wallet.">
+  <div className="lake-erd" role="img" aria-label="Lake schema. Ledgers and identities both connect to balances. Transactions connect to balances as source and destination.">
+    <div className="lake-erd__parents">
+      <div className="lake-erd__card">
+        <p className="lake-erd__head">ledgers</p>
+        <div className="lake-erd__body">
+          <p className="lake-erd__key">ledger_id PK</p>
+          <p className="lake-erd__field">name</p>
+          <p className="lake-erd__field">created_at, meta_data</p>
+          <p className="lake-erd__note">A group of balances</p>
+        </div>
+      </div>
+      <div className="lake-erd__card">
+        <p className="lake-erd__head">identity</p>
+        <div className="lake-erd__body">
+          <p className="lake-erd__key">identity_id PK</p>
+          <p className="lake-erd__field">identity_type, category</p>
+          <p className="lake-erd__field">name, email, phone</p>
+          <p className="lake-erd__field">address fields</p>
+          <p className="lake-erd__note">People and organizations</p>
+        </div>
+      </div>
+    </div>
+    <div className="lake-erd__fork">
+      <span className="lake-erd__fork-label">1:N ledger_id</span>
+      <span className="lake-erd__fork-label">1:N identity_id</span>
+    </div>
+    <div className="lake-erd__hub">
+      <div className="lake-erd__card">
+        <p className="lake-erd__head">balances</p>
+        <div className="lake-erd__body">
+          <p className="lake-erd__key">balance_id PK</p>
+          <p className="lake-erd__key">ledger_id → ledgers</p>
+          <p className="lake-erd__key">identity_id → identity</p>
+          <p className="lake-erd__field">balance, credit, debit</p>
+          <p className="lake-erd__field">currency, indicator, inflight</p>
+          <p className="lake-erd__note">Stores of value. The wallets.</p>
+        </div>
+      </div>
+    </div>
+    <div className="lake-erd__arrow lake-erd__arrow--down">source / dest</div>
+    <div className="lake-erd__hub">
+      <div className="lake-erd__card">
+        <p className="lake-erd__head">transactions</p>
+        <div className="lake-erd__body">
+          <p className="lake-erd__key">transaction_id PK</p>
+          <p className="lake-erd__key">source → balances</p>
+          <p className="lake-erd__key">destination → balances</p>
+          <p className="lake-erd__field">amount, precise_amount, precision</p>
+          <p className="lake-erd__field">currency, status, reference</p>
+          <p className="lake-erd__note">Source is money out. Destination is money in.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</Frame>
+
+| Table | What it is | Primary key |
+| :-- | :-- | :-- |
+| `transactions` | Money movements between wallets | `transaction_id` |
+| `balances` | Stores of value | `balance_id` |
+| `ledgers` | Balance groups | `ledger_id` |
+| `identity` | People and orgs | `identity_id` |
+
+## How to join them
+
+When a report needs columns from more than one table, join those tables on a shared ID. For example, a payment stores wallet IDs, but the owner's name is on `identity`. A join brings them into one result.
+
+Every lake transaction row stores one **source** wallet and one **destination** wallet. **Source** is where money leaves. **Destination** is where money arrives. For payments that split across many wallets, see [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+Follow these steps to show each applied payment with the destination wallet and the owner's name. Collapse `balances` and `identity` to one row per ID before you join, so multi-day copies do not multiply payment rows. See [How the lake works](/cloud/insights/lake).
+
+<Steps>
+  <Step title="Start from payments">
+    Read from `transactions` and pick the payment fields you need.
+
+    ```sql
+    SELECT
+      t.reference,
+      t.currency
+    FROM transactions t
+    WHERE t.status = 'APPLIED'
+    ```
+  </Step>
+  <Step title="Collapse wallets and owners">
+    Build one row per `balance_id` and one row per `identity_id`. Use `ANY_VALUE` for display fields. Do not order by `created_at` to pick a latest snapshot.
+
+    ```sql
+    WITH balances_one AS (
+      SELECT
+        balance_id,
+        ANY_VALUE(currency) AS currency,
+        ANY_VALUE(identity_id) AS identity_id
+      FROM balances
+      GROUP BY balance_id
+    ),
+    identity_one AS (
+      SELECT
+        identity_id,
+        ANY_VALUE(first_name) AS first_name,
+        ANY_VALUE(last_name) AS last_name
+      FROM identity
+      GROUP BY identity_id
+    )
+    ```
+  </Step>
+  <Step title="Join destination wallet and owner">
+    Connect `destination` to the collapsed wallet, then the wallet to the collapsed owner.
+
+    ```sql
+    FROM transactions t
+    JOIN balances_one b ON t.destination = b.balance_id
+    JOIN identity_one i ON b.identity_id = i.identity_id
+    ```
+  </Step>
+  <Step title="Put it together">
+    Full query:
+
+    ```sql
+    WITH balances_one AS (
+      SELECT
+        balance_id,
+        ANY_VALUE(currency) AS currency,
+        ANY_VALUE(identity_id) AS identity_id
+      FROM balances
+      GROUP BY balance_id
+    ),
+    identity_one AS (
+      SELECT
+        identity_id,
+        ANY_VALUE(first_name) AS first_name,
+        ANY_VALUE(last_name) AS last_name
+      FROM identity
+      GROUP BY identity_id
+    )
+    SELECT
+      t.reference,
+      t.currency,
+      b.balance_id,
+      i.first_name,
+      i.last_name
+    FROM transactions t
+    JOIN balances_one b ON t.destination = b.balance_id
+    JOIN identity_one i ON b.identity_id = i.identity_id
+    WHERE t.status = 'APPLIED'
+    LIMIT 100
+    ```
+
+    This returns each applied payment with the destination wallet and the owner's name, without duplicating payments across daily copies.
+  </Step>
+</Steps>
+
+Use these connections when you need more than an ID:
+
+- Use a join from `transactions.source` to a one-row-per-id `balances` set to see the wallet a payment left.
+- Use a join from `transactions.destination` to a one-row-per-id `balances` set to see the wallet a payment entered.
+- Use a join from `balances.ledger_id` to a one-row-per-id `ledgers` set to see which ledger a wallet belongs to.
+- Use a join from `balances.identity_id` to a one-row-per-id `identity` set to see the owner of a wallet.
+
+## Columns you can select
+
+Use the tabs below to see what each table stores and when to select each column. Each tab is one lake table.
+
+When a report needs columns from more than one table, join on a shared ID. Collapse repeating entity tables to one row per ID first. For example, join `transactions.destination` to a one-row-per-id `balances` set, then to a one-row-per-id `identity` set, to show a payment with the receiving wallet and owner.
+
+<Tabs>
+  <Tab title="transactions">
+    | Column | What it is | When you need it |
+    | :-- | :-- | :-- |
+    | `transaction_id` | Unique ID for the payment row | Look up one payment, or join related rows |
+    | `reference` | Your external or idempotency ID | Match a payment to your own system |
+    | `status` | Lifecycle state (`APPLIED`, `INFLIGHT`, and others) | Filter money that posted vs still held |
+    | `source` | Wallet ID money left | Join to the sending wallet |
+    | `destination` | Wallet ID money entered | Join to the receiving wallet |
+    | `precise_amount` | Amount in the smallest unit (cents, satoshi) | Build money totals with `precision` |
+    | `precision` | How many smallest units make one whole unit | Divide `precise_amount` into a real amount |
+    | `amount` | Human-readable amount Blnk derives | Display a single row; prefer `precise_amount / precision` for totals |
+    | `currency` | Currency code | Group or filter by currency |
+    | `description` | Optional note on the payment | Search or show context in a listing |
+    | `parent_transaction` | ID of a related parent payment | Trace refunds, inflight commit/void children, or child legs |
+    | `scheduled_for` | When a scheduled payment should run | Report on scheduled payments |
+    | `created_at` | When the row was created | Date filters and daily reports |
+    | `meta_data` | Custom JSON you attached | Filter or show your own labels |
+  </Tab>
+  <Tab title="balances">
+    | Column | What it is | When you need it |
+    | :-- | :-- | :-- |
+    | `balance_id` | Unique wallet ID | Join from `source` or `destination`, or look up one wallet |
+    | `ledger_id` | Ledger this wallet belongs to | Join to `ledgers` for the ledger name |
+    | `identity_id` | Owner of this wallet | Join to `identity` for the person's or org's name |
+    | `balance` | Balance amount in smallest units as copied that day (no `precision` column on balances) | Inspect a single day copy. Not a live holding. Do not `SUM` across days or currencies. For current amounts, use the [Data API](/cloud/reference/data-api). |
+    | `credit_balance` | Credits in smallest units as copied that day | Same caveat as `balance` |
+    | `debit_balance` | Debits in smallest units as copied that day | Same caveat as `balance` |
+    | `inflight_balance` | Inflight amount in smallest units as copied that day | Same caveat as `balance`. For open holds across days, prefer the inflight template on `transactions`. |
+    | `inflight_credit_balance` | Inflight credits in smallest units as copied that day | Same caveat as `balance` |
+    | `inflight_debit_balance` | Inflight debits in smallest units as copied that day | Same caveat as `balance` |
+    | `currency` | Wallet currency | Group or filter wallets by currency |
+    | `indicator` | Wallet indicator / alias when set | Find a wallet by indicator |
+    | `created_at` | When the wallet was created | Growth and age reports. Not a lake snapshot or freshness timestamp. |
+    | `meta_data` | Custom JSON you attached | Filter or show your own labels |
+  </Tab>
+  <Tab title="ledgers">
+    | Column | What it is | When you need it |
+    | :-- | :-- | :-- |
+    | `ledger_id` | Unique ledger ID | Join from `balances.ledger_id` |
+    | `name` | Ledger display name | Show which ledger a wallet belongs to |
+    | `created_at` | When the ledger was created | Ledger inventory reports |
+    | `meta_data` | Custom JSON you attached | Filter or show your own labels |
+  </Tab>
+  <Tab title="identity">
+    | Column | What it is | When you need it |
+    | :-- | :-- | :-- |
+    | `identity_id` | Unique person or org ID | Join from `balances.identity_id` |
+    | `identity_type` | Person or organization | Split people vs orgs in a report |
+    | `first_name` / `last_name` / `other_names` | Person name fields | Show who owns a wallet |
+    | `organization_name` | Org display name | Show which organization owns a wallet |
+    | `email_address` / `phone_number` | Contact fields | Support and ops lookups |
+    | `category` | Your category label | Segment identities |
+    | `street` / `city` / `state` / `country` / `post_code` | Address fields | Location reports |
+    | `gender` / `dob` / `nationality` | Profile fields | Compliance or profile reports when you store them |
+    | `created_at` | When the identity was created | Identity growth reports |
+    | `meta_data` | Custom JSON you attached | Filter or show your own labels |
+  </Tab>
+</Tabs>
+
+<Note>
+  In the Schema tab (or in a `SELECT *` result), you may see columns that start with `_blnk_` or `__lake_`. Those are internal lake fields and can change. Select the named columns in the tabs above instead.
+</Note>
+
+---
+
+## Transaction status
+
+Most reports filter on `status`. Core stores each state as its own row. See [Transaction lifecycle](/transactions/transaction-lifecycle).
+
+From `QUEUED`, a transaction can become `INFLIGHT`, `APPLIED`, or `REJECTED`. From `INFLIGHT`, it can become `APPLIED` or `VOID`. `APPLIED`, `VOID`, and `REJECTED` are terminal. An applied transaction does not later become void or rejected.
+
+<Frame caption="APPLIED, VOID, and REJECTED are terminal. Only INFLIGHT is money still on hold.">
+  <img
+    src="/images/blnk-transaction-lifecycle.png"
+    alt="Transaction lifecycle: QUEUED can become INFLIGHT, APPLIED, or REJECTED. INFLIGHT can become APPLIED or VOID."
+    className="rounded-lg"
+  />
+</Frame>
+
+| Status | Meaning | Count it as money moved? |
+| :-- | :-- | :-- |
+| `QUEUED` | Accepted, not yet applied | No |
+| `INFLIGHT` | Funds held, waiting for commit or void | No. Watch open holds. |
+| `APPLIED` | Final. Balances updated. | **Yes** |
+| `VOID` | Inflight was cancelled. Balances reset. | No |
+| `REJECTED` | Failed validation or processing | No |
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "How the lake works", href: "/cloud/insights/lake" },
+    { title: "Queries", href: "/cloud/insights/queries" },
+    { title: "Templates", href: "/cloud/insights/templates" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+  ]}
+/>
