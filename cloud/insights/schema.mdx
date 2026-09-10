@@ -12,8 +12,8 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 The **Schema** tab in Insights lists the tables and columns you can query. Insights reads a **data lake**: a stored copy of your ledger with four tables.
 
-<Frame caption="Every transaction points at exactly two balances. Balances belong to one ledger and optionally one identity.">
-  <div className="lake-erd" role="img" aria-label="Lake schema. Ledgers and identities join to balances. Each transaction joins two balances as source and destination.">
+<Frame caption="Each lake transaction row has a source wallet and a destination wallet. Balances belong to one ledger and optionally one identity.">
+  <div className="lake-erd" role="img" aria-label="Lake schema. Ledgers and identities join to balances. Each transaction row joins a source balance and a destination balance.">
     <div className="lake-erd__row">
       <div className="lake-erd__card">
         <p className="lake-erd__head">ledgers</p>
@@ -74,7 +74,7 @@ The **Schema** tab in Insights lists the tables and columns you can query. Insig
 
 When a report needs columns from more than one table, join those tables on a shared ID. For example, a payment stores wallet IDs, but the owner's name is on `identity`. A join brings them into one result.
 
-Every transaction moves money between two wallets. **Source** is where money leaves. **Destination** is where money arrives.
+Every lake transaction row stores one **source** wallet and one **destination** wallet. **Source** is where money leaves. **Destination** is where money arrives. For payments that split across many wallets, see [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
 
 Follow these steps to show each applied payment with the destination wallet and the owner's name.
 
@@ -163,12 +163,12 @@ When a report needs columns from more than one table, join on a shared ID. For e
     | `balance_id` | Unique wallet ID | Join from `source` or `destination`, or look up one wallet |
     | `ledger_id` | Ledger this wallet belongs to | Join to `ledgers` for the ledger name |
     | `identity_id` | Owner of this wallet | Join to `identity` for the person's or org's name |
-    | `balance` | Current balance in smallest units | Wallet holdings reports |
-    | `credit_balance` | Total credits in smallest units | Credit-side totals |
-    | `debit_balance` | Total debits in smallest units | Debit-side totals |
-    | `inflight_balance` | Amount still held on this wallet | Open-hold monitoring |
-    | `inflight_credit_balance` | Inflight credits | Detail on open holds |
-    | `inflight_debit_balance` | Inflight debits | Detail on open holds |
+    | `balance` | Current balance in smallest units (no `precision` column on balances) | Wallet holdings in minor units |
+    | `credit_balance` | Total credits in smallest units | Credit-side totals in minor units |
+    | `debit_balance` | Total debits in smallest units | Debit-side totals in minor units |
+    | `inflight_balance` | Amount still held on this wallet, in smallest units | Open-hold monitoring |
+    | `inflight_credit_balance` | Inflight credits in smallest units | Detail on open holds |
+    | `inflight_debit_balance` | Inflight debits in smallest units | Detail on open holds |
     | `currency` | Wallet currency | Group or filter wallets by currency |
     | `indicator` | Wallet indicator / alias when set | Find a wallet by indicator |
     | `created_at` | When the wallet was created | Growth and age reports |
@@ -208,35 +208,14 @@ When a report needs columns from more than one table, join on a shared ID. For e
 
 Most reports filter on `status`. Core stores each state as its own row. See [Transaction lifecycle](/transactions/transaction-lifecycle).
 
+From `QUEUED`, a transaction can become `INFLIGHT`, `APPLIED`, or `REJECTED`. From `INFLIGHT`, it can become `APPLIED` or `VOID`. `APPLIED`, `VOID`, and `REJECTED` are terminal. An applied transaction does not later become void or rejected.
+
 <Frame caption="APPLIED, VOID, and REJECTED are terminal. Only INFLIGHT is money still on hold.">
-  <div className="lake-status" role="img" aria-label="Transaction status lifecycle from QUEUED to INFLIGHT, then APPLIED, VOID, or REJECTED.">
-    <div className="lake-status__row">
-      <div className="lake-status__pill">
-        <p className="lake-status__name">QUEUED</p>
-        <p className="lake-status__hint">Accepted, not yet applied</p>
-      </div>
-      <div className="lake-status__arrow">queued applies</div>
-      <div className="lake-status__pill">
-        <p className="lake-status__name">INFLIGHT</p>
-        <p className="lake-status__hint">Funds held, awaiting commit</p>
-      </div>
-      <div className="lake-status__arrow">commit</div>
-      <div className="lake-status__pill">
-        <p className="lake-status__name">APPLIED</p>
-        <p className="lake-status__hint">Final. Balances updated.</p>
-      </div>
-      <div className="lake-status__arrow">void</div>
-      <div className="lake-status__pill">
-        <p className="lake-status__name">VOID</p>
-        <p className="lake-status__hint">Inflight cancelled</p>
-      </div>
-      <div className="lake-status__arrow">reject</div>
-      <div className="lake-status__pill">
-        <p className="lake-status__name">REJECTED</p>
-        <p className="lake-status__hint">Failed. Holds released.</p>
-      </div>
-    </div>
-  </div>
+  <img
+    src="/images/blnk-transaction-lifecycle.png"
+    alt="Transaction lifecycle: QUEUED can become INFLIGHT, APPLIED, or REJECTED. INFLIGHT can become APPLIED or VOID."
+    className="rounded-lg"
+  />
 </Frame>
 
 | Status | Meaning | Count it as money moved? |
