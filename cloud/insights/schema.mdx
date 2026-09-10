@@ -12,9 +12,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 The **Schema** tab in Insights lists the tables and columns you can query. Insights reads a **data lake**: a stored copy of your ledger with four tables.
 
-<Frame caption="Each lake transaction row has a source wallet and a destination wallet. Balances belong to one ledger and optionally one identity.">
-  <div className="lake-erd" role="img" aria-label="Lake schema. Ledgers and identities join to balances. Each transaction row joins a source balance and a destination balance.">
-    <div className="lake-erd__row">
+<Frame caption="Balances belong to a ledger and optionally an identity. Each lake transaction row has a source wallet and a destination wallet.">
+  <div className="lake-erd" role="img" aria-label="Lake schema. Ledgers and identities both connect to balances. Transactions connect to balances as source and destination.">
+    <div className="lake-erd__parents">
       <div className="lake-erd__card">
         <p className="lake-erd__head">ledgers</p>
         <div className="lake-erd__body">
@@ -24,7 +24,6 @@ The **Schema** tab in Insights lists the tables and columns you can query. Insig
           <p className="lake-erd__note">A group of balances</p>
         </div>
       </div>
-      <div className="lake-erd__arrow">1:N</div>
       <div className="lake-erd__card">
         <p className="lake-erd__head">identity</p>
         <div className="lake-erd__body">
@@ -35,7 +34,12 @@ The **Schema** tab in Insights lists the tables and columns you can query. Insig
           <p className="lake-erd__note">People and organizations</p>
         </div>
       </div>
-      <div className="lake-erd__arrow">1:N</div>
+    </div>
+    <div className="lake-erd__fork">
+      <span className="lake-erd__fork-label">1:N ledger_id</span>
+      <span className="lake-erd__fork-label">1:N identity_id</span>
+    </div>
+    <div className="lake-erd__hub">
       <div className="lake-erd__card">
         <p className="lake-erd__head">balances</p>
         <div className="lake-erd__body">
@@ -47,7 +51,9 @@ The **Schema** tab in Insights lists the tables and columns you can query. Insig
           <p className="lake-erd__note">Stores of value. The wallets.</p>
         </div>
       </div>
-      <div className="lake-erd__arrow">source / dest</div>
+    </div>
+    <div className="lake-erd__arrow lake-erd__arrow--down">source / dest</div>
+    <div className="lake-erd__hub">
       <div className="lake-erd__card">
         <p className="lake-erd__head">transactions</p>
         <div className="lake-erd__body">
@@ -152,7 +158,7 @@ When a report needs columns from more than one table, join on a shared ID. For e
     | `amount` | Human-readable amount Blnk derives | Display a single row; prefer `precise_amount / precision` for totals |
     | `currency` | Currency code | Group or filter by currency |
     | `description` | Optional note on the payment | Search or show context in a listing |
-    | `parent_transaction` | ID of a related parent payment | Trace refunds, commits, or child legs |
+    | `parent_transaction` | ID of a related parent payment | Trace refunds, inflight commit/void children, or child legs |
     | `scheduled_for` | When a scheduled payment should run | Report on scheduled payments |
     | `created_at` | When the row was created | Date filters and daily reports |
     | `meta_data` | Custom JSON you attached | Filter or show your own labels |

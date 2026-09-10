@@ -55,11 +55,13 @@ When you run a query, Insights scans **only the days inside the date range you p
   </div>
 </Frame>
 
-Keep three things in mind:
+Keep these lake contracts in mind when you write SQL:
 
-1. **Use the lake for reporting and historical data.** Records become available in the lake moments after they are written to the ledger.
-2. **Use the Ledger API to move money.** Post transactions, create wallets, and add people or organizations with the [Ledger API](/reference/create-transaction). Use Insights to report on volume, status, wallets, and identities.
-3. **Use `TRY_CAST` on dates and amounts** when you write SQL. See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
+1. **Daily history is append-only.** Insights opens every day file in your toolbar date range. Files are never updated in place.
+2. **Transactions are lifecycle rows.** Core stores each status change as its own row (`QUEUED`, `INFLIGHT`, `APPLIED`, and so on). Filter by `status`, and use `parent_transaction` when you need commit or void outcomes. See [Transaction lifecycle](/transactions/transaction-lifecycle).
+3. **The same balance, ledger, or identity ID can appear on more than one day** if it was copied into multiple day files. For one row per entity, use `COUNT(DISTINCT ...)` or a latest-row window. Do not assume a simple `COUNT(*)` or `SUM(balance)` across a wide date range is unique.
+4. **Use the lake for reporting.** Records become available moments after they are written to the ledger. Use the [Ledger API](/reference/create-transaction) to move money.
+5. **Use `TRY_CAST` on dates and amounts.** See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
 
 To call the same lake SQL from your backend, use the [Data lake API](/cloud/reference/data-lake-api).
 

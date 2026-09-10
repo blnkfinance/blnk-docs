@@ -96,19 +96,46 @@ LIMIT 1000
 
 ### Open inflight holds
 
-Use this when you need to find money still on hold. Schedule it daily, and look at anything older than your product's expected commit window.
+Use this when you need money that is still on hold. A parent can stay `INFLIGHT` after commit or void creates child rows, so do not treat every `INFLIGHT` row as open. Match outcomes with `parent_transaction`, including one queued hop, then keep rows with no `VOID` child and committed amount still below the parent amount. Partial commits leave the remainder on hold. See [Commit and void inflight](/transactions/inflight/updating-inflight).
 
 ```sql
+WITH outcomes AS (
+  SELECT
+    CASE
+      WHEN p.status = 'QUEUED' THEN p.parent_transaction
+      ELSE c.parent_transaction
+    END AS inflight_id,
+    c.status,
+    TRY_CAST(c.precise_amount AS DECIMAL(38, 8)) AS precise_amount
+  FROM transactions c
+  LEFT JOIN transactions p ON c.parent_transaction = p.transaction_id
+  WHERE c.status IN ('APPLIED', 'VOID')
+)
 SELECT
-  transaction_id,
-  reference,
-  currency,
-  source,
-  destination,
-  created_at
-FROM transactions
-WHERE status = 'INFLIGHT'
-ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
+  t.transaction_id,
+  t.reference,
+  t.currency,
+  t.source,
+  t.destination,
+  t.created_at,
+  TRY_CAST(t.precise_amount AS DECIMAL(38, 8)) AS held_precise_amount,
+  COALESCE(SUM(CASE WHEN o.status = 'APPLIED' THEN o.precise_amount END), 0) AS committed_precise_amount
+FROM transactions t
+LEFT JOIN outcomes o ON o.inflight_id = t.transaction_id
+WHERE t.status = 'INFLIGHT'
+GROUP BY
+  t.transaction_id,
+  t.reference,
+  t.currency,
+  t.source,
+  t.destination,
+  t.created_at,
+  t.precise_amount
+HAVING
+  COUNT(CASE WHEN o.status = 'VOID' THEN 1 END) = 0
+  AND COALESCE(SUM(CASE WHEN o.status = 'APPLIED' THEN o.precise_amount END), 0)
+    < TRY_CAST(t.precise_amount AS DECIMAL(38, 8))
+ORDER BY TRY_CAST(t.created_at AS TIMESTAMP) DESC
 LIMIT 1000
 ```
 
@@ -158,14 +185,24 @@ LIMIT 100
 
 ### Wallet counts by currency
 
-Use this when you need a count of wallets per currency, plus total balance in minor units. Balance fields are integers (cents, satoshi), and the balances table does not include `precision`. See [Precision](/transactions/precision). It helps you see how your portfolio is split across currencies.
+Use this when you need a count of wallets per currency, plus total balance in minor units. Balance fields are integers (cents, satoshi), and the balances table does not include `precision`. Because the same `balance_id` can appear across days in your date range, keep the latest row per wallet before you count or sum. See [How the lake works](/cloud/insights/lake) and [Precision](/transactions/precision).
 
 ```sql
+WITH latest_balances AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY balance_id
+      ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
+    ) AS rn
+  FROM balances
+)
 SELECT
   currency,
   COUNT(*) AS balance_count,
   SUM(TRY_CAST(balance AS DECIMAL(38, 8))) AS total_balance_minor
-FROM balances
+FROM latest_balances
+WHERE rn = 1
 GROUP BY currency
 ORDER BY balance_count DESC
 LIMIT 1000
@@ -173,17 +210,27 @@ LIMIT 1000
 
 ### Balances with no identity
 
-Use this when you are checking wallet linkage. It lists wallets missing both an `identity_id` and an `indicator`. Run it monthly.
+Use this when you are checking wallet linkage. It lists wallets missing both an `identity_id` and an `indicator`. Keep the latest row per wallet so multi-day history does not duplicate IDs. Run it monthly.
 
 ```sql
+WITH latest_balances AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY balance_id
+      ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
+    ) AS rn
+  FROM balances
+)
 SELECT
   balance_id,
   currency,
   ledger_id,
   indicator,
   created_at
-FROM balances
-WHERE identity_id IS NULL
+FROM latest_balances
+WHERE rn = 1
+  AND identity_id IS NULL
   AND (indicator IS NULL OR indicator = '')
 ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
 LIMIT 1000
@@ -193,12 +240,12 @@ LIMIT 1000
 
 ### New identities per day
 
-Use this when you want onboarding velocity. It shows how many new people or organizations were created each day.
+Use this when you want onboarding velocity. It shows how many distinct people or organizations were created each day.
 
 ```sql
 SELECT
   DATE_TRUNC('day', TRY_CAST(created_at AS TIMESTAMP)) AS day,
-  COUNT(*) AS identities
+  COUNT(DISTINCT identity_id) AS identities
 FROM identity
 GROUP BY 1
 ORDER BY 1 DESC
