@@ -237,7 +237,13 @@ History is not the same list as **Saved**. Saved stores the query. History store
 
 <AccordionGroup>
   <Accordion title="My totals do not match the dashboard">
-    Check two things first. You summed `precise_amount` without dividing by `precision`, or you summed across currencies. See [Sum amounts correctly](/cloud/insights/queries#sum-amounts-correctly).
+    Check two things first. You summed `precise_amount` without dividing by `precision`, or you summed across currencies. See [Sum amounts correctly](/cloud/insights/queries#sum-amounts-correctly). Do not sum `balances.balance` across days for a live portfolio total. That column is a per-day copy, and current holdings belong on the [Data API](/cloud/reference/data-api).
+  </Accordion>
+  <Accordion title="Transaction counts look inflated after a join">
+    `balances`, `ledgers`, and `identity` can repeat across days in your date range. Collapse each entity to one row per ID before you join, as in [How to join them](/cloud/insights/schema#how-to-join-them). Do not order by `created_at` to pick a latest wallet snapshot.
+  </Accordion>
+  <Accordion title="Open inflight holds look wrong">
+    Set a date range wide enough to include both the parent hold and its commit or void days. Then use the parent-child template in [Open inflight holds](/cloud/insights/templates#open-inflight-holds). A bare `WHERE status = 'INFLIGHT'` includes resolved parents.
   </Accordion>
   <Accordion title="Query returns no rows">
     Check the toolbar date range first. It selects which days of history are scanned. An empty range means an empty result, even if your `WHERE` clause looks right.

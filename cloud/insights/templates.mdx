@@ -96,7 +96,11 @@ LIMIT 1000
 
 ### Open inflight holds
 
-Use this when you need money that is still on hold. A parent can stay `INFLIGHT` after commit or void creates child rows, so do not treat every `INFLIGHT` row as open. Match outcomes with `parent_transaction`, including one queued hop, then keep rows with no `VOID` child and committed amount still below the parent amount. Partial commits leave the remainder on hold. See [Commit and void inflight](/transactions/inflight/updating-inflight).
+Use this when you need money that is still on hold. A parent can stay `INFLIGHT` after commit or void creates child rows, so do not treat every `INFLIGHT` row as open.
+
+**Date range:** set the toolbar range wide enough to cover both the parent hold and its commit or void days. Outcomes outside the range are invisible, so a finished hold can look open, and an older open hold can disappear. Prefer a long window such as the last 30 or 90 days for this report.
+
+Match outcomes with `parent_transaction`, including one queued hop, then keep rows with no `VOID` child and committed amount still below the parent amount. Partial commits leave the remainder on hold. See [Commit and void inflight](/transactions/inflight/updating-inflight) and [How the lake works](/cloud/insights/lake).
 
 ```sql
 WITH outcomes AS (
@@ -185,24 +189,19 @@ LIMIT 100
 
 ### Wallet counts by currency
 
-Use this when you need a count of wallets per currency, plus total balance in minor units. Balance fields are integers (cents, satoshi), and the balances table does not include `precision`. Because the same `balance_id` can appear across days in your date range, keep the latest row per wallet before you count or sum. See [How the lake works](/cloud/insights/lake) and [Precision](/transactions/precision).
+Use this when you need how many distinct wallets appear in the selected date range, by currency. This is not a live portfolio total. `created_at` on balances is wallet creation time, so you cannot safely pick a latest balance snapshot from the lake. For current holdings, use the [Data API](/cloud/reference/data-api). See [How the lake works](/cloud/insights/lake).
 
 ```sql
-WITH latest_balances AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER (
-      PARTITION BY balance_id
-      ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
-    ) AS rn
-  FROM balances
-)
 SELECT
   currency,
-  COUNT(*) AS balance_count,
-  SUM(TRY_CAST(balance AS DECIMAL(38, 8))) AS total_balance_minor
-FROM latest_balances
-WHERE rn = 1
+  COUNT(*) AS balance_count
+FROM (
+  SELECT
+    balance_id,
+    ANY_VALUE(currency) AS currency
+  FROM balances
+  GROUP BY balance_id
+) wallets
 GROUP BY currency
 ORDER BY balance_count DESC
 LIMIT 1000
@@ -210,29 +209,21 @@ LIMIT 1000
 
 ### Balances with no identity
 
-Use this when you are checking wallet linkage. It lists wallets missing both an `identity_id` and an `indicator`. Keep the latest row per wallet so multi-day history does not duplicate IDs. Run it monthly.
+Use this when you are checking wallet linkage in the selected date range. It lists wallets that never show an `identity_id` or `indicator` in any day file inside the range. If a later day outside the range linked the wallet, widen the range or confirm on the live ledger. Run it monthly.
 
 ```sql
-WITH latest_balances AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER (
-      PARTITION BY balance_id
-      ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
-    ) AS rn
-  FROM balances
-)
 SELECT
   balance_id,
-  currency,
-  ledger_id,
-  indicator,
-  created_at
-FROM latest_balances
-WHERE rn = 1
-  AND identity_id IS NULL
-  AND (indicator IS NULL OR indicator = '')
-ORDER BY TRY_CAST(created_at AS TIMESTAMP) DESC
+  ANY_VALUE(currency) AS currency,
+  ANY_VALUE(ledger_id) AS ledger_id,
+  ANY_VALUE(indicator) AS indicator,
+  MIN(TRY_CAST(created_at AS TIMESTAMP)) AS created_at
+FROM balances
+GROUP BY balance_id
+HAVING
+  BOOL_AND(identity_id IS NULL)
+  AND BOOL_AND(indicator IS NULL OR indicator = '')
+ORDER BY created_at DESC
 LIMIT 1000
 ```
 
@@ -254,9 +245,26 @@ LIMIT 1000
 
 ### Customer wallets with recent applied activity
 
-Use this when you need active funded wallets with the owner's name and email. It joins applied destination activity to `identity` for support and ops follow-up.
+Use this when you need active funded wallets with the owner's name and email. Collapse `balances` and `identity` to one row per ID before joining so multi-day copies do not inflate `applied_txns`. See [How the lake works](/cloud/insights/lake).
 
 ```sql
+WITH balances_one AS (
+  SELECT
+    balance_id,
+    ANY_VALUE(currency) AS currency,
+    ANY_VALUE(identity_id) AS identity_id
+  FROM balances
+  GROUP BY balance_id
+),
+identity_one AS (
+  SELECT
+    identity_id,
+    ANY_VALUE(first_name) AS first_name,
+    ANY_VALUE(last_name) AS last_name,
+    ANY_VALUE(email_address) AS email_address
+  FROM identity
+  GROUP BY identity_id
+)
 SELECT
   b.balance_id,
   b.currency,
@@ -265,8 +273,8 @@ SELECT
   i.email_address,
   COUNT(*) AS applied_txns
 FROM transactions t
-JOIN balances b ON t.destination = b.balance_id
-JOIN identity i ON b.identity_id = i.identity_id
+JOIN balances_one b ON t.destination = b.balance_id
+JOIN identity_one i ON b.identity_id = i.identity_id
 WHERE t.status = 'APPLIED'
 GROUP BY
   b.balance_id,

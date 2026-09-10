@@ -59,9 +59,10 @@ Keep these lake contracts in mind when you write SQL:
 
 1. **Daily history is append-only.** Insights opens every day file in your toolbar date range. Files are never updated in place.
 2. **Transactions are lifecycle rows.** Core stores each status change as its own row (`QUEUED`, `INFLIGHT`, `APPLIED`, and so on). Filter by `status`, and use `parent_transaction` when you need commit or void outcomes. See [Transaction lifecycle](/transactions/transaction-lifecycle).
-3. **The same balance, ledger, or identity ID can appear on more than one day** if it was copied into multiple day files. For one row per entity, use `COUNT(DISTINCT ...)` or a latest-row window. Do not assume a simple `COUNT(*)` or `SUM(balance)` across a wide date range is unique.
-4. **Use the lake for reporting.** Records become available moments after they are written to the ledger. Use the [Ledger API](/reference/create-transaction) to move money.
-5. **Use `TRY_CAST` on dates and amounts.** See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
+3. **Balances, ledgers, and identities can repeat across days.** The same ID may appear in more than one day file. Before you join them to transactions, collapse to one row per ID (for example `GROUP BY balance_id` with `ANY_VALUE(...)`). Do not order by `created_at` to pick a "latest" wallet snapshot: `created_at` is when the wallet was created, so daily copies can tie and DuckDB can pick any copy.
+4. **Current wallet holdings belong on the live ledger.** The lake is for history and reports. For live balance amounts, use the [Data API](/cloud/reference/data-api) or [Ledger API](/reference/get-balance).
+5. **Parent and child rows can fall on different days.** Inflight commits and voids create new rows. Set a date range wide enough to include both the parent and its outcomes, or the report can miss a resolution.
+6. **Use `TRY_CAST` on dates and amounts.** See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
 
 To call the same lake SQL from your backend, use the [Data lake API](/cloud/reference/data-lake-api).
 

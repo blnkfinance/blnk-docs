@@ -82,7 +82,7 @@ When a report needs columns from more than one table, join those tables on a sha
 
 Every lake transaction row stores one **source** wallet and one **destination** wallet. **Source** is where money leaves. **Destination** is where money arrives. For payments that split across many wallets, see [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
 
-Follow these steps to show each applied payment with the destination wallet and the owner's name.
+Follow these steps to show each applied payment with the destination wallet and the owner's name. Collapse `balances` and `identity` to one row per ID before you join, so multi-day copies do not multiply payment rows. See [How the lake works](/cloud/insights/lake).
 
 <Steps>
   <Step title="Start from payments">
@@ -96,24 +96,57 @@ Follow these steps to show each applied payment with the destination wallet and 
     WHERE t.status = 'APPLIED'
     ```
   </Step>
-  <Step title="Join the destination wallet">
-    Connect `destination` to `balances` so each payment gets its receiving wallet.
+  <Step title="Collapse wallets and owners">
+    Build one row per `balance_id` and one row per `identity_id`. Use `ANY_VALUE` for display fields. Do not order by `created_at` to pick a latest snapshot.
 
     ```sql
-    JOIN balances b ON t.destination = b.balance_id
+    WITH balances_one AS (
+      SELECT
+        balance_id,
+        ANY_VALUE(currency) AS currency,
+        ANY_VALUE(identity_id) AS identity_id
+      FROM balances
+      GROUP BY balance_id
+    ),
+    identity_one AS (
+      SELECT
+        identity_id,
+        ANY_VALUE(first_name) AS first_name,
+        ANY_VALUE(last_name) AS last_name
+      FROM identity
+      GROUP BY identity_id
+    )
     ```
   </Step>
-  <Step title="Join the owner">
-    Connect that wallet's `identity_id` to `identity` to get the owner's name.
+  <Step title="Join destination wallet and owner">
+    Connect `destination` to the collapsed wallet, then the wallet to the collapsed owner.
 
     ```sql
-    JOIN identity i ON b.identity_id = i.identity_id
+    FROM transactions t
+    JOIN balances_one b ON t.destination = b.balance_id
+    JOIN identity_one i ON b.identity_id = i.identity_id
     ```
   </Step>
   <Step title="Put it together">
     Full query:
 
     ```sql
+    WITH balances_one AS (
+      SELECT
+        balance_id,
+        ANY_VALUE(currency) AS currency,
+        ANY_VALUE(identity_id) AS identity_id
+      FROM balances
+      GROUP BY balance_id
+    ),
+    identity_one AS (
+      SELECT
+        identity_id,
+        ANY_VALUE(first_name) AS first_name,
+        ANY_VALUE(last_name) AS last_name
+      FROM identity
+      GROUP BY identity_id
+    )
     SELECT
       t.reference,
       t.currency,
@@ -121,28 +154,28 @@ Follow these steps to show each applied payment with the destination wallet and 
       i.first_name,
       i.last_name
     FROM transactions t
-    JOIN balances b ON t.destination = b.balance_id
-    JOIN identity i ON b.identity_id = i.identity_id
+    JOIN balances_one b ON t.destination = b.balance_id
+    JOIN identity_one i ON b.identity_id = i.identity_id
     WHERE t.status = 'APPLIED'
     LIMIT 100
     ```
 
-    This returns each applied payment with the destination wallet and the owner's name.
+    This returns each applied payment with the destination wallet and the owner's name, without duplicating payments across daily copies.
   </Step>
 </Steps>
 
 Use these connections when you need more than an ID:
 
-- Use a join from `transactions.source` to `balances.balance_id` to see the wallet a payment left.
-- Use a join from `transactions.destination` to `balances.balance_id` to see the wallet a payment entered.
-- Use a join from `balances.ledger_id` to `ledgers.ledger_id` to see which ledger a wallet belongs to.
-- Use a join from `balances.identity_id` to `identity.identity_id` to see the owner of a wallet.
+- Use a join from `transactions.source` to a one-row-per-id `balances` set to see the wallet a payment left.
+- Use a join from `transactions.destination` to a one-row-per-id `balances` set to see the wallet a payment entered.
+- Use a join from `balances.ledger_id` to a one-row-per-id `ledgers` set to see which ledger a wallet belongs to.
+- Use a join from `balances.identity_id` to a one-row-per-id `identity` set to see the owner of a wallet.
 
 ## Columns you can select
 
 Use the tabs below to see what each table stores and when to select each column. Each tab is one lake table.
 
-When a report needs columns from more than one table, join on a shared ID. For example, join `transactions.destination` to `balances.balance_id`, then `balances.identity_id` to `identity.identity_id`, to show a payment with the receiving wallet and owner.
+When a report needs columns from more than one table, join on a shared ID. Collapse repeating entity tables to one row per ID first. For example, join `transactions.destination` to a one-row-per-id `balances` set, then to a one-row-per-id `identity` set, to show a payment with the receiving wallet and owner.
 
 <Tabs>
   <Tab title="transactions">
@@ -169,15 +202,15 @@ When a report needs columns from more than one table, join on a shared ID. For e
     | `balance_id` | Unique wallet ID | Join from `source` or `destination`, or look up one wallet |
     | `ledger_id` | Ledger this wallet belongs to | Join to `ledgers` for the ledger name |
     | `identity_id` | Owner of this wallet | Join to `identity` for the person's or org's name |
-    | `balance` | Current balance in smallest units (no `precision` column on balances) | Wallet holdings in minor units |
-    | `credit_balance` | Total credits in smallest units | Credit-side totals in minor units |
-    | `debit_balance` | Total debits in smallest units | Debit-side totals in minor units |
-    | `inflight_balance` | Amount still held on this wallet, in smallest units | Open-hold monitoring |
-    | `inflight_credit_balance` | Inflight credits in smallest units | Detail on open holds |
-    | `inflight_debit_balance` | Inflight debits in smallest units | Detail on open holds |
+    | `balance` | Balance amount in smallest units as copied that day (no `precision` column on balances) | Inspect a single day copy. Not a live holding. Do not `SUM` across days or currencies. For current amounts, use the [Data API](/cloud/reference/data-api). |
+    | `credit_balance` | Credits in smallest units as copied that day | Same caveat as `balance` |
+    | `debit_balance` | Debits in smallest units as copied that day | Same caveat as `balance` |
+    | `inflight_balance` | Inflight amount in smallest units as copied that day | Same caveat as `balance`. For open holds across days, prefer the inflight template on `transactions`. |
+    | `inflight_credit_balance` | Inflight credits in smallest units as copied that day | Same caveat as `balance` |
+    | `inflight_debit_balance` | Inflight debits in smallest units as copied that day | Same caveat as `balance` |
     | `currency` | Wallet currency | Group or filter wallets by currency |
     | `indicator` | Wallet indicator / alias when set | Find a wallet by indicator |
-    | `created_at` | When the wallet was created | Growth and age reports |
+    | `created_at` | When the wallet was created | Growth and age reports. Not a lake snapshot or freshness timestamp. |
     | `meta_data` | Custom JSON you attached | Filter or show your own labels |
   </Tab>
   <Tab title="ledgers">
