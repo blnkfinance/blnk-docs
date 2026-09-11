@@ -1,0 +1,155 @@
+---
+title: "Get deployment"
+api: "GET /deployments/{id}"
+description: "Retrieve a managed Core instance by deployment ID."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Retrieve a deployment by ID.
+
+---
+
+### Path
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+<ParamField path="id" type="string" required>
+Unique identifier of the deployment to retrieve.
+</ParamField>
+
+---
+
+### Response
+
+<ResponseExample>
+```json 200
+{
+  "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "my-sandbox",
+  "ingress_mode": "shared",
+  "dedicated": false,
+  "tier": "B1.Micro",
+  "type": "sandbox",
+  "region": "nyc3",
+  "status": "ACTIVE",
+  "domain": "my-sandbox-sharespaces.deployment.blnkfinance.com",
+  "url": "https://my-sandbox-sharespaces.deployment.blnkfinance.com",
+  "has_db_access": false,
+  "watch_enabled": false,
+  "usage_billing_enabled": true,
+  "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
+  "record_creates_blocked": false,
+  "created_at": "2026-09-11T09:19:05.954015Z",
+  "updated_at": "2026-09-11T09:20:39.861066Z"
+}
+```
+
+```json 404
+{
+  "error": "Deployment not found"
+}
+```
+</ResponseExample>
+
+<ResponseField name="deployment_id" type="string" required>
+Unique identifier for the deployment.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Instance name.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+`sandbox` or `production`.
+</ResponseField>
+
+<ResponseField name="tier" type="string" required>
+Capacity tier, such as `B1.Micro` or `B1.Standard`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+`PENDING`, `ACTIVE`, `DESTROYING`, `DESTROYED`, or `FAILED`.
+</ResponseField>
+
+<ResponseField name="region" type="string">
+Datacenter code for the instance.
+</ResponseField>
+
+<ResponseField name="dedicated" type="boolean">
+`true` for dedicated (Production) infrastructure.
+</ResponseField>
+
+<ResponseField name="ingress_mode" type="string">
+How Cloud routes traffic to the instance. Live values include `shared` and `legacy`.
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+Hostname once the instance is reachable. Omitted while `PENDING`.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+HTTPS Core URL once the instance is reachable. Omitted while `PENDING`.
+</ResponseField>
+
+<ResponseField name="has_db_access" type="boolean">
+Whether database access is enabled on this deployment.
+</ResponseField>
+
+<ResponseField name="watch_enabled" type="boolean">
+Whether Watch is enabled. When `true`, Watch fields such as `watch_status` and `watch_git_repo` may also be present.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled" type="boolean">
+Whether usage-based billing is on for the workspace.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled_at" type="timestamp">
+When usage-based billing was enabled.
+</ResponseField>
+
+<ResponseField name="record_creates_blocked" type="boolean">
+`true` when the instance cannot create new records.
+</ResponseField>
+
+<ResponseField name="limit_reached_at" type="timestamp">
+When the instance last hit its included record allowance. Present only in that case.
+</ResponseField>
+
+<ResponseField name="whitelisted_ips" type="array">
+Inbound IP allow list, when configured.
+</ResponseField>
+
+<ResponseField name="error_message" type="string">
+Present on some `FAILED` or `DESTROYED` rows.
+</ResponseField>
+
+<ResponseField name="destroyed_at" type="timestamp">
+Set when destroy starts.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp" required>
+When the deployment was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp" required>
+When the deployment was last updated.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "List deployments", href: "/cloud/reference/list-deployments" },
+    { title: "Create deployment", href: "/cloud/reference/create-deployment" },
+    { title: "Destroy deployment", href: "/cloud/reference/destroy-deployment" },
+  ]}
+/>
