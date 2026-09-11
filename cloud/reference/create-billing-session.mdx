@@ -1,0 +1,65 @@
+---
+title: "Create billing session"
+api: "POST /billing/create-session"
+description: "Create a Stripe checkout session for a Blnk Cloud plan."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Create a Stripe checkout session. Open `session_url` in a browser to complete payment. Cloud only returns the URL.
+
+Send either `plan` or `pro_plan`. A verified `plan` value is `PRODUCTION_MONTHLY`.
+
+### Body
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.cloud.blnkfinance.com/billing/create-session' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "plan": "PRODUCTION_MONTHLY"
+  }'
+```
+</RequestExample>
+
+<ParamField body="plan" type="string">
+Plan to check out. Required if `pro_plan` is omitted. Verified value: `PRODUCTION_MONTHLY`.
+</ParamField>
+
+<ParamField body="pro_plan" type="string">
+Pro support plan. Required if `plan` is omitted.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200
+{
+  "session_url": "https://checkout.stripe.com/c/pay/YOUR_CHECKOUT_SESSION"
+}
+```
+
+```json 400
+{
+  "error": "Either plan or pro_plan must be provided"
+}
+```
+</ResponseExample>
+
+<ResponseField name="session_url" type="string" required>
+Stripe Checkout URL. Open it in a browser to finish the purchase.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get billing portal", href: "/cloud/reference/get-billing-portal" },
+    { title: "Get billing overview", href: "/cloud/reference/get-billing-overview" },
+    { title: "Billing", href: "/cloud/organization/billing" },
+  ]}
+/>

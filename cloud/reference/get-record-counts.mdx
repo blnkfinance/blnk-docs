@@ -1,0 +1,169 @@
+---
+title: "Get record counts"
+api: "GET /data/record-counts"
+description: "Retrieve record usage and overage for a Core instance."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Retrieve record counts and overage for one instance. Use this for usage and overage context.
+
+<Note>
+`instance_id` is the Cloud instance id (`instance_...`), not a `deployment_id`.
+</Note>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/data/record-counts?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+### Query
+
+<ParamField query="instance_id" type="string" required>
+Cloud instance id. Required. A `deploy_...` id does not work.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200
+{
+  "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "record_counts": {
+    "balances": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "identities": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "ledgers": {
+      "count": 1,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "reconciliations": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "exact"
+    },
+    "transactions": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    }
+  },
+  "total_records": 1,
+  "deployment_type": "sandbox",
+  "records_included": 100000,
+  "overage_records": 0,
+  "overage_unit_price": 0.00135,
+  "overage_amount": 0,
+  "usage_billing_enabled": true,
+  "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
+  "record_creates_blocked": false
+}
+```
+
+```json 400
+{
+  "error": "Instance ID is required"
+}
+```
+
+```json 403
+{
+  "error": "Instance does not belong to this organization"
+}
+```
+</ResponseExample>
+
+<ResponseField name="instance_id" type="string" required>
+Instance that was counted.
+</ResponseField>
+
+<ResponseField name="record_counts" type="object" required>
+Counts by resource.
+<Expandable>
+  <ResponseField name="balances" type="object">
+  Balance records.
+  <Expandable>
+    <ResponseField name="count" type="integer">
+    Number of records.
+    </ResponseField>
+    <ResponseField name="total_is_estimate" type="boolean">
+    Whether `count` is an estimate.
+    </ResponseField>
+    <ResponseField name="total_source" type="string">
+    Where the count came from, such as `lake_catalog` or `exact`.
+    </ResponseField>
+  </Expandable>
+  </ResponseField>
+  <ResponseField name="identities" type="object">
+  Identity records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="ledgers" type="object">
+  Ledger records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="reconciliations" type="object">
+  Reconciliation records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="transactions" type="object">
+  Transaction records. Same shape as `balances`.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="total_records" type="integer" required>
+Sum of all record counts.
+</ResponseField>
+
+<ResponseField name="deployment_type" type="string">
+`sandbox` or `production`.
+</ResponseField>
+
+<ResponseField name="records_included" type="integer">
+Records included in the plan allowance.
+</ResponseField>
+
+<ResponseField name="overage_records" type="integer">
+Records above the included allowance.
+</ResponseField>
+
+<ResponseField name="overage_unit_price" type="number">
+Price per extra record.
+</ResponseField>
+
+<ResponseField name="overage_amount" type="number">
+Overage charge for the current count.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled" type="boolean">
+Whether usage-based billing is on for this instance.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled_at" type="timestamp">
+When usage-based billing was enabled.
+</ResponseField>
+
+<ResponseField name="record_creates_blocked" type="boolean">
+`true` when the instance cannot create new records.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get usage billing", href: "/cloud/reference/get-usage-billing" },
+    { title: "Enable instance usage billing", href: "/cloud/reference/enable-instance-usage-billing" },
+    { title: "Billing", href: "/cloud/organization/billing" },
+  ]}
+/>

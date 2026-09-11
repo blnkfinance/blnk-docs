@@ -1,0 +1,217 @@
+---
+title: "Get billing overview"
+api: "GET /billing/overview"
+description: "Retrieve subscription, payment method, and spend summary from Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Retrieve the billing overview for your organization, including the payment method, upcoming charge, and subscriptions.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/billing/overview' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json 200
+{
+  "email": "billing@example.com",
+  "name": "Acme LLC",
+  "address": {
+    "line1": "100 Main Street",
+    "city": "Wilmington",
+    "state": "DE",
+    "postal_code": "19801",
+    "country": "US"
+  },
+  "card": {
+    "brand": "visa",
+    "last4": "4242",
+    "exp_month": 12,
+    "exp_year": 2028
+  },
+  "next_billing_date": 1791710347,
+  "next_billing_amount": 5000,
+  "currency": "usd",
+  "total_monthly_spend": 5000,
+  "active_plans": 1,
+  "active_deployments": 1,
+  "has_payment_method": true,
+  "available_credit": 0,
+  "outstanding_balance": 0,
+  "subscriptions": [
+    {
+      "id": "sub_1ABC123",
+      "status": "active",
+      "plan": "DEPLOY_DEV",
+      "plan_name": "Sandbox Deployment",
+      "type": "deployment",
+      "quantity": 1,
+      "unit_amount": 5000,
+      "currency": "usd",
+      "interval": "month",
+      "current_period_start": 1789118347,
+      "current_period_end": 1791710347,
+      "cancel_at_period_end": false
+    },
+    {
+      "id": "sub_1DEF456",
+      "status": "active",
+      "plan": "PRODUCTION_MONTHLY",
+      "plan_name": "Production (Monthly)",
+      "type": "plan",
+      "quantity": 1,
+      "unit_amount": 5000,
+      "currency": "usd",
+      "interval": "month",
+      "current_period_start": 1789118347,
+      "current_period_end": 1791710347,
+      "cancel_at_period_end": false
+    }
+  ]
+}
+```
+</ResponseExample>
+
+<ResponseField name="email" type="string" required>
+Billing email.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Organization or account name.
+</ResponseField>
+
+<ResponseField name="address" type="object">
+Billing address.
+<Expandable>
+  <ResponseField name="line1" type="string">
+  Street address.
+  </ResponseField>
+  <ResponseField name="city" type="string">
+  City.
+  </ResponseField>
+  <ResponseField name="state" type="string">
+  State or region.
+  </ResponseField>
+  <ResponseField name="postal_code" type="string">
+  Postal code.
+  </ResponseField>
+  <ResponseField name="country" type="string">
+  Country code, such as `US`.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="card" type="object">
+Payment method summary. `brand` can be a card network or a wallet such as `Link`. Some methods return empty `last4` and `0` expiry.
+<Expandable>
+  <ResponseField name="brand" type="string">
+  Payment method brand, such as `visa` or `Link`.
+  </ResponseField>
+  <ResponseField name="last4" type="string">
+  Last four digits of the card. Can be empty.
+  </ResponseField>
+  <ResponseField name="exp_month" type="integer">
+  Expiration month. Can be `0`.
+  </ResponseField>
+  <ResponseField name="exp_year" type="integer">
+  Expiration year. Can be `0`.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="next_billing_date" type="integer">
+Unix timestamp for the next charge.
+</ResponseField>
+
+<ResponseField name="next_billing_amount" type="integer">
+Upcoming charge in the smallest currency unit (for example, cents).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+ISO currency code, such as `usd`.
+</ResponseField>
+
+<ResponseField name="total_monthly_spend" type="integer">
+Current monthly spend in the smallest currency unit.
+</ResponseField>
+
+<ResponseField name="active_plans" type="integer">
+Number of active plan subscriptions.
+</ResponseField>
+
+<ResponseField name="active_deployments" type="integer">
+Number of active deployment subscriptions.
+</ResponseField>
+
+<ResponseField name="has_payment_method" type="boolean">
+Whether a payment method is on file.
+</ResponseField>
+
+<ResponseField name="available_credit" type="integer">
+Available credit in the smallest currency unit.
+</ResponseField>
+
+<ResponseField name="outstanding_balance" type="integer">
+Outstanding balance in the smallest currency unit.
+</ResponseField>
+
+<ResponseField name="subscriptions" type="array">
+Active subscriptions.
+<Expandable>
+  <ResponseField name="id" type="string">
+  Stripe subscription id.
+  </ResponseField>
+  <ResponseField name="status" type="string">
+  Subscription status, such as `active`.
+  </ResponseField>
+  <ResponseField name="plan" type="string">
+  Plan code, such as `DEPLOY_DEV` or `PRODUCTION_MONTHLY`.
+  </ResponseField>
+  <ResponseField name="plan_name" type="string">
+  Display name, such as `Sandbox Deployment` or `Production (Monthly)`.
+  </ResponseField>
+  <ResponseField name="type" type="string">
+  `plan` or `deployment`.
+  </ResponseField>
+  <ResponseField name="quantity" type="integer">
+  Number of units on the subscription.
+  </ResponseField>
+  <ResponseField name="unit_amount" type="integer">
+  Price per unit in the smallest currency unit.
+  </ResponseField>
+  <ResponseField name="currency" type="string">
+  ISO currency code, such as `usd`.
+  </ResponseField>
+  <ResponseField name="interval" type="string">
+  Billing interval, such as `month`.
+  </ResponseField>
+  <ResponseField name="current_period_start" type="integer">
+  Unix timestamp for the start of the current period.
+  </ResponseField>
+  <ResponseField name="current_period_end" type="integer">
+  Unix timestamp for the end of the current period.
+  </ResponseField>
+  <ResponseField name="cancel_at_period_end" type="boolean">
+  Whether the subscription cancels at the end of the period.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get billing org", href: "/cloud/reference/get-billing-org" },
+    { title: "List invoices", href: "/cloud/reference/list-invoices" },
+    { title: "Billing", href: "/cloud/organization/billing" },
+  ]}
+/>
