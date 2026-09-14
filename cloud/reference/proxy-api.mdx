@@ -43,7 +43,7 @@ Create credentials with Cloud proxy scopes in [API keys](/cloud/auth/api-keys) o
 </ParamField>
 
 <ParamField query="instance_id" type="string" required>
-Unique identifier of the Blnk Core instance to target. Required on every Proxy API request.
+Unique identifier of the Blnk Core instance to target. Required on every Proxy API request. Get it from [list instances](/cloud/reference/list-instances) (`instance_...`), not from `deployment_id`.
 </ParamField>
 
 <ParamField header="Content-Type" type="string">
@@ -114,14 +114,24 @@ When creating a transaction, Blnk Cloud automatically adds `precision: 100` and 
 
 ### Response
 
-Proxy responses pass through the Core instance response unchanged. Status codes and body shapes match the corresponding Core endpoint.
+When Cloud can reach Core, Proxy responses pass through unchanged. Status codes and body shapes match the corresponding Core endpoint.
+
+Cloud itself returns an error if `instance_id` is missing. `GET /proxy/ledgers/:id` is not a registered Proxy route and returns `404 page not found` as plain text.
+
+<ResponseExample>
+```json 400
+{
+  "error": "instance_id is required"
+}
+```
+</ResponseExample>
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Proxy API guide", href: "/cloud/proxy/proxy-api" },
+    { title: "List instances", href: "/cloud/reference/list-instances" },
     { title: "Data API", href: "/cloud/reference/data-api" },
-    { title: "Filters API", href: "/cloud/reference/filters-api" },
   ]}
 />

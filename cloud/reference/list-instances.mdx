@@ -1,0 +1,108 @@
+---
+title: "List instances"
+api: "GET /instances"
+description: "List Core instances in your Blnk Cloud workspace and read each instance_id."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+List connected Core instances. Use `instance_id` (`instance_...`) on Proxy, Data, Filters, record counts, and lake requests.
+
+<Note>
+Proxy and Data need `instance_id` (`instance_...`). [List deployments](/cloud/reference/list-deployments) and [get deployment](/cloud/reference/get-deployment) return `deployment_id`, not `instance_id`.
+</Note>
+
+<Warning>
+The live payload can include `agent_api_key`. Treat it as a secret. Do not commit it or paste it into tickets.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/instances' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</RequestExample>
+
+### Response
+
+<ResponseExample>
+```json 200
+[
+  {
+    "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "ledger_instance_id": "",
+    "name": "my-sandbox",
+    "sync_status": "connected",
+    "ledger_version": "",
+    "connection_type": "agent",
+    "instance_url": "https://my-sandbox-sharespaces.deployment.blnkfinance.com",
+    "type": "cloud",
+    "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "created_at": "2026-09-14T11:32:14.112322Z",
+    "monitoring_enabled": true,
+    "deployment": {
+      "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "name": "my-sandbox",
+      "ingress_mode": "shared",
+      "dedicated": false,
+      "tier": "B1.Micro",
+      "type": "sandbox",
+      "region": "nyc3",
+      "status": "ACTIVE",
+      "domain": "my-sandbox-sharespaces.deployment.blnkfinance.com",
+      "has_db_access": false,
+      "watch_enabled": false,
+      "current_step": "FINALIZED",
+      "operation_type": "deploy",
+      "created_at": "2026-09-14T11:32:11.971709Z",
+      "updated_at": "2026-09-14T11:33:44.636516Z"
+    }
+  }
+]
+```
+</ResponseExample>
+
+The response is a JSON array of instance objects.
+
+<ResponseField name="instance_id" type="string" required>
+Cloud instance id (`instance_...`). Pass this as `instance_id` on Proxy, Data, Filters, and lake calls.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Instance display name.
+</ResponseField>
+
+<ResponseField name="deployment_id" type="string">
+Matching managed deployment id (`deploy_...`), when this instance is a Cloud deployment.
+</ResponseField>
+
+<ResponseField name="sync_status" type="string">
+Connection state. Live values include `connected`.
+</ResponseField>
+
+<ResponseField name="connection_type" type="string">
+How Cloud reaches Core. Live values include `agent`.
+</ResponseField>
+
+<ResponseField name="instance_url" type="string">
+HTTPS Core URL for the instance.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+Instance type. Live values include `cloud`.
+</ResponseField>
+
+<ResponseField name="deployment" type="object">
+Nested deployment summary when the instance is managed. Shape overlaps [get deployment](/cloud/reference/get-deployment). It still does not replace `instance_id` at the top level.
+</ResponseField>
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "List deployments", href: "/cloud/reference/list-deployments" },
+    { title: "Get deployment", href: "/cloud/reference/get-deployment" },
+    { title: "Proxy API", href: "/cloud/reference/proxy-api" },
+  ]}
+/>
