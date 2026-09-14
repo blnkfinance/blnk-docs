@@ -22,12 +22,26 @@ You can manage your API keys in [Settings > API Keys](https://cloud.blnkfinance.
 
 ## How API keys work
 
-When you make an API call, include your API key in the request headers to verify your identity and authorize the operation on your Cloud workspace.
+When you make an API call, send the key in one of these headers:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+```bash
+X-API-Key: YOUR_API_KEY
+```
+
+```bash
+X-blnk-key: YOUR_API_KEY
+```
+
+The base URL is `https://api.cloud.blnkfinance.com`. Self-hosted Cloud under the Production License uses `https://ENTERPRISE_PUBLIC_URL`.
 
 Each API key has:
 - **Name:** A user-friendly identifier to help you organize and identify keys
 - **Key prefix:** A partial identifier visible in the API keys list (e.g., `blnk_fdb796a5...`)
-- **Scopes:** Permissions that define what the key can access (e.g., `*` for all permissions, or specific scopes like `mcp:read, mcp:write`)
+- **Scopes:** Permissions that define what the key can access, for example `*` or `mcp:read`, `mcp:write`
 - **Expiration:** Optional expiration date, or `Never` for keys that don't expire
 
 ---
@@ -144,12 +158,47 @@ If you need to disable an API key without deleting it permanently, you can revok
 
 ---
 
+## Scopes
+
+Pick the smallest set of scopes the key needs. `read` covers GET. `write` covers create, update, and delete.
+
+| Scope | Path |
+| :-- | :-- |
+| `deployments:read` / `deployments:write` | `/deployments` |
+| `data:read` / `data:write` | `/data`, `/proxy`, filter POSTs |
+| `proxy:read` / `proxy:write` | `/proxy` |
+| `alerts:read` / `alerts:write` | `/alerts` |
+| `billing:read` / `billing:write` | `/billing` |
+| `audit:read` | `/audit` |
+| `mcp:read` / `mcp:write` | `/mcp` |
+| `apps:read` / `apps:write` | `/apps` |
+| `*` | All Cloud scopes above |
+
+`POST /data/lake/query` accepts `data:read` or `data:write`. App install and portal still use a dashboard session.
+
+To run the Cloud APIs in this reference from one key, use:
+
+```text
+deployments:read, deployments:write,
+data:read, data:write,
+proxy:read, proxy:write,
+alerts:read, alerts:write,
+billing:read, billing:write,
+audit:read
+```
+
+<Warning>
+Avoid `*` unless you need every Cloud scope. Create a scoped key for each integration.
+</Warning>
+
+---
+
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "OAuth", href: "/cloud/auth/oauth" },
+    { title: "Cloud API overview", href: "/cloud/reference/overview" },
     { title: "Core API keys", href: "/api-keys/overview" },
-    { title: "Get access token", href: "/cloud/reference/get-access-token" },
   ]}
 />

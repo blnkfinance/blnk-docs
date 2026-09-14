@@ -13,9 +13,7 @@ The Proxy API forwards HTTP requests to your Blnk Core instance through Blnk Clo
 Blnk Cloud authenticates your request, routes it to the target instance using `instance_id`, and returns the Core response unchanged. For a step-by-step walkthrough, see [Making requests via the Cloud Proxy](/cloud/proxy/proxy-api).
 </Note>
 
----
-
-### Request structure
+### Body
 
 <RequestExample>
 ```bash cURL wrap
@@ -32,14 +30,16 @@ curl -X POST 'https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_I
 </RequestExample>
 
 <ParamField header="Authorization" type="string" required>
-Bearer token for an API key or OAuth access token. Format: `Bearer YOUR_API_KEY` or `Bearer YOUR_ACCESS_TOKEN`. Credentials must include the appropriate proxy scope:
+Bearer token for an API key or OAuth access token. Format: `Bearer YOUR_API_KEY` or `Bearer YOUR_ACCESS_TOKEN`. You can send `X-API-Key` or `X-blnk-key` instead.
+
+These are Cloud scopes (`proxy:read` / `proxy:write` or `data:read` / `data:write`), not Core scopes such as `ledgers:read`.
 
 | Scope | Access |
 | --- | --- |
 | `proxy:write` | Create and update resources (POST, PUT, DELETE) |
 | `proxy:read` | Read resources (GET routes) |
 
-Create credentials with proxy scopes in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
+Create credentials with Cloud proxy scopes in [API keys](/cloud/auth/api-keys) or [OAuth clients](/cloud/auth/oauth).
 </ParamField>
 
 <ParamField query="instance_id" type="string" required>
@@ -112,13 +112,9 @@ All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?in
 When creating a transaction, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
 </Info>
 
----
-
-### Response structure
+### Response
 
 Proxy responses pass through the Core instance response unchanged. Status codes and body shapes match the corresponding Core endpoint.
-
----
 
 <NeedHelp />
 
