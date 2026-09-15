@@ -2,12 +2,13 @@
 title: "Cloud API reference"
 sidebarTitle: "Overview"
 icon: "book-open"
-description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data, Data lake, Filters, Alerts, and MCP integrations."
+description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data lake, Filters, Alerts, and MCP integrations."
 og:title: "Cloud API Reference Overview | Blnk Cloud Guide"
-og:description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data, Data lake, Filters, Alerts, and MCP integrations."
+og:description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data lake, Filters, Alerts, and MCP integrations."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 Cloud APIs let you interact with your Blnk Core instances through Blnk Cloud. 
@@ -26,6 +27,8 @@ You can use Cloud APIs to:
 8. **Read billing and usage** without using the dashboard
 9. **Query the data lake** with read-only SQL
 10. **Read audit logs** without using the dashboard
+
+<Authorization />
 
 ### How Cloud APIs work
 
@@ -48,20 +51,18 @@ When you make a request:
     - It's forwarded to the correct Core instance using `instance_id`.
     - The Core instance processes the request and returns the response.
     - Blnk Cloud returns the response to your app.
-5. If it's a **data request** (`/data/*`):
-    - Blnk Cloud queries the instance database directly and returns the results.
+5. If it's a **filter request** (`POST /{resource}/filter`):
+    - Blnk Cloud queries the instance database directly using the JSON filter body and returns the results.
 6. If it's a **data lake request** (`/data/lake/*`):
     - Blnk Cloud runs read-only SQL against the instance data lake and returns the rows.
-7. If it's a **filter request** (`POST /{resource}/filter`):
-    - Blnk Cloud queries the instance database directly using the JSON filter body and returns the results.
-8. If it's a **deployments request** (`/deployments/*`):
+7. If it's a **deployments request** (`/deployments/*`):
     - Blnk Cloud creates or manages a managed Core instance in your workspace and returns the deployment object.
-    - `GET /instances` lists connected instances and is the source of `instance_id` for Proxy and Data.
-9. If it's a **billing request** (`/billing/*`):
-    - Blnk Cloud returns plan, invoice, usage, or a Stripe checkout or portal URL for your workspace.
-10. If it's an **audit request** (`/audit/*`):
+    - `GET /instances/{instance_id}` returns full details for a connected instance. Use that `instance_id` on Proxy, Filters, and Data Lake.
+8. If it's a **billing request** (`/billing/*`):
+    - Blnk Cloud returns plan, invoice, or usage for your workspace.
+9. If it's an **audit request** (`/audit/*`):
     - Blnk Cloud returns activity rows for your workspace.
-11. For other direct requests (alerts, MCP), Blnk Cloud processes the request and returns the response to your app.
+10. For other direct requests (alerts, MCP), Blnk Cloud processes the request and returns the response to your app.
 
 ---
 
@@ -72,16 +73,13 @@ When you make a request:
     Create and manage managed Core instances.
   </Card>
   <Card title="Billing API" icon="credit-card" href="/cloud/reference/get-billing-status">
-    Read plans, invoices, usage, and Stripe checkout or portal URLs.
+    Read plans, invoices, and usage.
   </Card>
   <Card title="Audit API" icon="scroll" href="/cloud/reference/list-audit-logs">
     Read workspace activity, including actions performed by API keys.
   </Card>
   <Card title="Proxy API" icon="arrow-left-right" href="/cloud/reference/proxy-api">
     Create and update Core resources.
-  </Card>
-  <Card title="Data API" icon="database" href="/cloud/reference/data-api">
-    Read instance data via GET filters.
   </Card>
   <Card title="Data lake API" icon="water" href="/cloud/reference/data-lake-api">
     Run read-only SQL against an instance data lake.

@@ -1,13 +1,17 @@
 ---
-title: "Get deployment"
+title: "Get deployment details"
+sidebarTitle: "Get deployment details"
 api: "GET /deployments/{id}"
 description: "Retrieve a managed Core instance by deployment ID."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve a deployment by ID. This object has `deployment_id`, `url`, and `domain`. It does not include `instance_id`. For Proxy and Data calls, use [list instances](/cloud/reference/list-instances).
+Retrieve a deployment by ID. The response includes `deployment_id`, `instance_id`, `url`, and `domain`. Use `instance_id` on Proxy, Filters, and Data Lake calls.
+
+<Authorization />
 
 ### Path
 
@@ -28,6 +32,7 @@ Unique identifier of the deployment to retrieve.
 ```json 200
 {
   "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
   "name": "my-sandbox",
   "ingress_mode": "shared",
   "dedicated": false,
@@ -37,7 +42,6 @@ Unique identifier of the deployment to retrieve.
   "status": "ACTIVE",
   "domain": "my-sandbox-sharespaces.deployment.blnkfinance.com",
   "url": "https://my-sandbox-sharespaces.deployment.blnkfinance.com",
-  "has_db_access": false,
   "watch_enabled": false,
   "usage_billing_enabled": true,
   "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
@@ -56,6 +60,10 @@ Unique identifier of the deployment to retrieve.
 
 <ResponseField name="deployment_id" type="string" required>
 Unique identifier for the deployment.
+</ResponseField>
+
+<ResponseField name="instance_id" type="string">
+Cloud instance id (`instance_...`). Use this on Proxy, Filters, and lake calls. Empty while the deployment is still being provisioned. Call this endpoint again until the value is set.
 </ResponseField>
 
 <ResponseField name="name" type="string" required>
@@ -92,10 +100,6 @@ Hostname once the instance is reachable. Omitted while `PENDING`.
 
 <ResponseField name="url" type="string">
 HTTPS Core URL once the instance is reachable. Omitted while `PENDING`.
-</ResponseField>
-
-<ResponseField name="has_db_access" type="boolean">
-Whether database access is enabled on this deployment.
 </ResponseField>
 
 <ResponseField name="watch_enabled" type="boolean">
@@ -143,7 +147,7 @@ When the deployment was last updated.
 <RelatedTopics
   items={[
     { title: "List deployments", href: "/cloud/reference/list-deployments" },
-    { title: "List instances", href: "/cloud/reference/list-instances" },
+    { title: "Get instance details", href: "/cloud/reference/get-instance" },
     { title: "Create deployment", href: "/cloud/reference/create-deployment" },
   ]}
 />

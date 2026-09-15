@@ -24,11 +24,12 @@ Your backend should use those values to decide which instance to call, what key 
 
 ## Choose the right Cloud API
 
-Custom Apps usually use three classes of Cloud APIs.
+Custom Apps usually use these Cloud APIs.
 
 | API | When to use it |
-| --- | --- |
-| Data API | Read and filter ledger data through Cloud. |
+| :-- | :-- |
+| Filters API | Filter live ledger data through Cloud. |
+| Data Lake API | Query historical ledger data with SQL. |
 | Proxy API | Perform Core actions through Cloud. |
 | Other Cloud features | Use Cloud features that are not Core endpoints, such as alerts. |
 
@@ -44,11 +45,13 @@ The installed app API key goes in the `Authorization` header:
 Authorization: Bearer <api_key>
 ```
 
-For Proxy and Data API requests, include the selected `instance_id` in the URL:
+For Proxy and Filters API requests, include the selected `instance_id` in the URL:
 
 ```bash
 ?instance_id=<instance_id>
 ```
+
+For Data Lake API requests, send `instance_id` in the JSON body.
 
 ---
 
@@ -98,39 +101,64 @@ For Proxy and Data API requests, include the selected `instance_id` in the URL:
     Proxy endpoints and request shapes.
   </Card>
 </Tab>
-<Tab title="Using the Data API">
-  Use the Data API when your app needs to read or filter ledger data through Cloud.
+<Tab title="Using the Filters API">
+  Use the Filters API when your app needs to read live ledger data through Cloud.
 
   The format is:
 
   ```bash wrap
-  https://api.cloud.blnkfinance.com/data/<resource>?instance_id=<instance_id>
+  https://api.cloud.blnkfinance.com/<resource>/filter?instance_id=<instance_id>
   ```
 
-  For example, to read transactions:
+  For example, to filter transactions:
 
   ```bash wrap
-  curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=inst_..." \
+  curl -X POST "https://api.cloud.blnkfinance.com/transactions/filter?instance_id=inst_..." \
     -H "Authorization: Bearer blnk_..." \
-    -H "Content-Type: application/json"
+    -H "Content-Type: application/json" \
+    -d '{
+      "filters": [
+        { "field": "status", "operator": "eq", "value": "APPLIED" },
+        { "field": "currency", "operator": "eq", "value": "USD" }
+      ]
+    }'
   ```
 
-  You can also add filters to the query string:
+  <Card title="Using the Filters API" icon="list-filter" href="/cloud/proxy/filters-api">
+    Filter endpoints and JSON filter bodies.
+  </Card>
+</Tab>
+<Tab title="Using the Data Lake API">
+  Use the Data Lake API when your app needs historical reporting over a date range.
+
+  The format is:
 
   ```bash wrap
-  curl -X GET "https://api.cloud.blnkfinance.com/data/transactions?instance_id=inst_...&status_eq=APPLIED&currency_eq=USD" \
-    -H "Authorization: Bearer blnk_..." \
-    -H "Content-Type: application/json"
+  https://api.cloud.blnkfinance.com/data/lake/query
   ```
 
-  <Card title="Using the data API" icon="database" href="/cloud/proxy/data-api">
-    Data API operations and read patterns.
+  Send `instance_id` in the JSON body with your SQL:
+
+  ```bash wrap
+  curl -X POST "https://api.cloud.blnkfinance.com/data/lake/query" \
+    -H "Authorization: Bearer blnk_..." \
+    -H "Content-Type: application/json" \
+    -d '{
+      "instance_id": "inst_...",
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-31",
+      "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
+    }'
+  ```
+
+  <Card title="Using the Data Lake API" icon="water" href="/cloud/reference/data-lake-api">
+    Read-only SQL against an instance data lake.
   </Card>
 </Tab>
 <Tab title="Other Cloud features">
   Use other Cloud endpoints for features that belong to Cloud itself.
 
-  Alerts are a good example. You do not call alerts through `/proxy` or `/data`. You call the Alerts API directly.
+  Alerts are a good example. You do not call alerts through `/proxy`, Filters, or the data lake. You call the Alerts API directly.
 
   ```bash wrap
   https://api.cloud.blnkfinance.com/alerts/flag/<resource_id>
