@@ -1,31 +1,46 @@
 ---
 title: "Proxy API"
 api: "POST /proxy/{path}"
-description: "Send write and search requests to a Blnk Core instance through Blnk Cloud."
+description: "Forward registered Core write and specialized-read requests to a Blnk instance through Cloud."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-The Proxy API forwards HTTP requests to your Blnk Core instance through Blnk Cloud. Use it to create ledgers, balances, transactions, identities, and other Core resources without connecting to Core directly.
+The Proxy API forwards a **registered** set of Core HTTP routes through Blnk Cloud. Use it to create and update ledgers, balances, transactions, identities, and reconciliation objects without connecting to Core directly.
 
 <Note>
-Blnk Cloud authenticates your request, routes it to the target instance using `instance_id`, and returns the Core response unchanged. For a step-by-step walkthrough, see [Making requests via the Cloud Proxy](/cloud/proxy/proxy-api).
+To list or fetch ledgers, balances, transactions, or identities, we recommend using the [Filters API](/cloud/reference/filters-api) instead. For reporting and audits, use the [Data Lake API](/cloud/reference/data-lake-api) instead.
 </Note>
+
+### How it works
+
+1. Your app sends the request to `https://api.cloud.blnkfinance.com/proxy/...`.
+2. Cloud authenticates it with your Cloud API key or OAuth access token.
+3. Cloud uses `instance_id` to pick the target Core instance.
+4. Cloud forwards the request only when the method and path are registered.
+5. Cloud returns the Core response unchanged.
+
+Request and response bodies match the corresponding [Core API](/reference/create-ledger). Use the Core docs for field shapes, then send the same payload to the Cloud Proxy URL with Cloud auth and `instance_id`.
+
+```bash Base URLs wrap
+Core:   POST http://CORE_INSTANCE_URL/ledgers
+Proxy:  POST https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID
+```
 
 ---
 
 <Authorization />
 
-These are Cloud scopes (`proxy:read` / `proxy:write` or `data:read` / `data:write`), not Core scopes such as `ledgers:read`.
+{/* These are Cloud scopes (`proxy:read` / `proxy:write` or `data:read` / `data:write`), not Core scopes such as `ledgers:read`.
 
 | Scope | Access |
 | :-- | :-- |
 | `proxy:write` | Create and update resources (POST, PUT, DELETE) |
-| `proxy:read` | Read resources (GET routes) |
+| `proxy:read` | The specialized GET routes listed below | */}
 
-### Body
+### URL format and headers
 
 <RequestExample>
 ```bash cURL wrap
@@ -41,6 +56,10 @@ curl -X POST 'https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_I
 ```
 </RequestExample>
 
+<ParamField path="path" type="string" required>
+Registered Core path after `/proxy`. See [Supported endpoints](#supported-endpoints). Unregistered paths return `404 page not found` as plain text.
+</ParamField>
+
 <ParamField query="instance_id" type="string" required>
 Unique identifier of the Blnk Core instance to target. Required on every Proxy API request. Get it from [get instance details](/cloud/reference/get-instance) (`instance_...`), not from `deployment_id`.
 </ParamField>
@@ -51,7 +70,7 @@ Required for requests with a body. Set to `application/json`. Use `multipart/for
 
 ---
 
-### Available endpoints
+### Supported endpoints
 
 All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
 
@@ -59,7 +78,7 @@ All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?in
 <Tab title="Writes">
 
 | Method | Path | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | POST | `/ledgers` | Create a ledger |
 | POST | `/balances` | Create a balance |
 | POST | `/transactions` | Create a transaction |
@@ -72,21 +91,33 @@ All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?in
 | POST | `/:id/metadata` | Update metadata on a ledger, balance, transaction, or identity |
 
 </Tab>
-<Tab title="Reads">
+<Tab title="Search">
 
 | Method | Path | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
+| POST | `/search/:entity` | Typesense search for `ledgers`, `balances`, `transactions`, or `identities` |
+
+For filter-style reads against instance Postgres, use the [Filters API](/cloud/reference/filters-api) instead. For the Typesense request body, see [Search via Typesense](/reference/search-typesense).
+
+</Tab>
+<Tab title="Specialized reads">
+
+These are the only GET routes the proxy registers. They do not replace listing or fetching a resource by ID.
+
+| Method | Path | Description |
+| :-- | :-- | :-- |
 | GET | `/balances/:id/at` | Get balance at a timestamp (`timestamp` query required) |
 | GET | `/balances/:id/lineage` | Get balance lineage |
 | GET | `/transactions/:id/lineage` | Get transaction lineage |
 | GET | `/identities/:identity_id/tokenized-fields` | List tokenized fields |
 | GET | `/identities/:identity_id/detokenize/:field` | Detokenize a single field |
+| GET | `/reconciliation/:reconciliation_id` | Get reconciliation details |
 
 </Tab>
 <Tab title="Tokenization">
 
 | Method | Path | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | POST | `/identities/:identity_id/tokenize/:field` | Tokenize a single field |
 | POST | `/identities/:identity_id/tokenize` | Tokenize multiple fields |
 | POST | `/identities/:identity_id/detokenize` | Detokenize multiple fields |
@@ -95,7 +126,7 @@ All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?in
 <Tab title="Reconciliation">
 
 | Method | Path | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | POST | `/reconciliation/start` | Start a reconciliation |
 | POST | `/reconciliation/upload` | Upload reconciliation data |
 | POST | `/reconciliation/matching-rules` | Create matching rules |
@@ -108,16 +139,27 @@ All paths are relative to `https://api.cloud.blnkfinance.com/proxy`. Append `?in
 </Tabs>
 
 <Info>
-When creating a transaction, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
+**When creating a transaction**, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
 </Info>
 
 ### Response
 
 When Cloud can reach Core, Proxy responses pass through unchanged. Status codes and body shapes match the corresponding Core endpoint.
 
-Cloud itself returns an error if `instance_id` is missing. `GET /proxy/ledgers/:id` is not a registered Proxy route and returns `404 page not found` as plain text.
+Cloud itself returns a JSON error if `instance_id` is missing. An unregistered method and path returns `404 page not found` as plain text.
 
 <ResponseExample>
+```json 201 Created wrap
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "My Integration Ledger",
+  "created_at": "2024-02-20T05:28:03.558281542Z",
+  "meta_data": {
+    "description": "Ledger for integration test"
+  }
+}
+```
+
 ```json 400
 {
   "error": "instance_id is required"
@@ -131,8 +173,8 @@ Cloud itself returns an error if `instance_id` is missing. `GET /proxy/ledgers/:
 
 <RelatedTopics
   items={[
-    { title: "Proxy API guide", href: "/cloud/proxy/proxy-api" },
-    { title: "Get instance details", href: "/cloud/reference/get-instance" },
     { title: "Filters API", href: "/cloud/reference/filters-api" },
+    { title: "Get instance details", href: "/cloud/reference/get-instance" },
+    { title: "Data lake API", href: "/cloud/reference/data-lake-api" },
   ]}
 />

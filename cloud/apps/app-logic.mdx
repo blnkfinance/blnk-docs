@@ -59,46 +59,46 @@ For Data Lake API requests, send `instance_id` in the JSON body.
 
 <Tabs>
 <Tab title="Using the Proxy API">
-  Use the proxy when your app wants to call Blnk Core through Cloud. The format is:
+  Use the proxy when your app wants to create or update Core resources through Cloud. The format is:
 
   ```bash wrap
-  https://api.cloud.blnkfinance.com/proxy/<core-endpoint>?instance_id=<instance_id>
+  https://api.cloud.blnkfinance.com/proxy/<registered-path>?instance_id=<instance_id>
   ```
 
-  The `<core-endpoint>` is the same endpoint you would normally call on Core, but with `/proxy` in front of it. 
+  The path must be a registered Proxy route. Cloud does not forward every Core endpoint. You cannot list ledgers or fetch a balance, transaction, or identity by ID through the proxy. Use the Filters API for those reads.
 
-  For example, on Core, the request would look like this:
+  For example, creating a transaction on Core:
 
-  <CodeGroup>
-  ```bash List ledgers
-  GET http://localhost:5001/ledgers
-  ```
-  ```bash Create transactions
+  ```bash wrap
   POST http://localhost:5001/transactions
   ```
-  </CodeGroup>
 
-  With the Cloud Proxy, it becomes:
+  becomes:
 
-  <CodeGroup>
-  ```bash List ledgers wrap
-  GET https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=inst_...
-  ```
-  ```bash Create transactions wrap
+  ```bash wrap
   POST https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_...
   ```
-  </CodeGroup>
 
-  A complete request via the Cloud Proxy would look like:
+  A complete request via the Cloud Proxy looks like:
 
-  ```bash bash wrap
-  curl -X GET "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=inst_..." \
+  ```bash wrap
+  curl -X POST "https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_..." \
     -H "Authorization: Bearer CLOUD_API_KEY" \
-    -H "Content-Type: application/json"
+    -H "Content-Type: application/json" \
+    -d '{
+      "amount": 100.50,
+      "currency": "USD",
+      "precision": 100,
+      "reference": "ref_app-transfer-001",
+      "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "destination": "bln_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "description": "Transfer from Balance A to Balance B",
+      "allow_overdraft": true
+    }'
   ```
 
-  <Card title="Using the proxy" icon="send" href="/cloud/proxy/proxy-api">
-    Proxy endpoints and request shapes.
+  <Card title="Using the proxy" icon="send" href="/cloud/reference/proxy-api">
+    Registered routes and request shapes.
   </Card>
 </Tab>
 <Tab title="Using the Filters API">
@@ -109,6 +109,8 @@ For Data Lake API requests, send `instance_id` in the JSON body.
   ```bash wrap
   https://api.cloud.blnkfinance.com/<resource>/filter?instance_id=<instance_id>
   ```
+
+  `<resource>` is `ledger`, `balances`, `transactions`, `identities`, or `reconciliation`. Ledgers use the singular path `/ledger/filter`.
 
   For example, to filter transactions:
 
@@ -124,7 +126,7 @@ For Data Lake API requests, send `instance_id` in the JSON body.
     }'
   ```
 
-  <Card title="Using the Filters API" icon="list-filter" href="/cloud/proxy/filters-api">
+  <Card title="Using the Filters API" icon="list-filter" href="/cloud/reference/filters-api">
     Filter endpoints and JSON filter bodies.
   </Card>
 </Tab>

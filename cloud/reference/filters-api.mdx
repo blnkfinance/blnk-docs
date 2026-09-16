@@ -8,11 +8,24 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-The Filters API lets you retrieve filtered records from a Blnk Core instance through Blnk Cloud. Send a POST request with a JSON filter body to query instance Postgres directly.
+The Filters API reads live ledger data from a Blnk Core instance through Blnk Cloud. 
 
-<Note>
-Filter endpoints are registered at the Cloud API root (for example, `/transactions/filter`), not under `/data/` or `/proxy/`. For a step-by-step guide, see [Filtering data](/cloud/proxy/filters-api).
-</Note>
+Use this API to list or fetch ledgers, balances, transactions, identities, and reconciliations. Use the [Proxy API](/cloud/reference/proxy-api) to create or update those records, and the [Data Lake API](/cloud/reference/data-lake-api) for historical SQL.
+
+### How it works
+
+1. Your app sends the request to `https://api.cloud.blnkfinance.com/{resource}/filter`.
+2. Cloud authenticates it with your Cloud API key or OAuth access token (`data:read`).
+3. Cloud uses `instance_id` to pick the target Core instance.
+4. Cloud applies the JSON `filters` array against instance Postgres.
+5. Cloud returns the matching page of records.
+
+```bash Base URLs wrap
+Core:     POST http://CORE_INSTANCE_URL/transactions/filter
+Filters:  POST https://api.cloud.blnkfinance.com/transactions/filter?instance_id=YOUR_INSTANCE_ID
+```
+
+The request shape for Filters is Cloud-specific. It is not the same as the self-hosted Core Filter API in [Search via DB](/reference/search-db).
 
 ---
 
@@ -20,7 +33,7 @@ Filter endpoints are registered at the Cloud API root (for example, `/transactio
 
 This endpoint requires the Cloud `data:read` scope, not a Core scope such as `ledgers:read`.
 
-### Body
+### URL format and query parameters
 
 <RequestExample>
 ```bash cURL wrap
@@ -36,6 +49,10 @@ curl -X POST 'https://api.cloud.blnkfinance.com/transactions/filter?instance_id=
 ```
 </RequestExample>
 
+<ParamField path="resource" type="string" required>
+Resource collection to filter. One of `ledger`, `balances`, `transactions`, `identities`, or `reconciliation`.
+</ParamField>
+
 <ParamField query="instance_id" type="string" required>
 Unique identifier of the Blnk Core instance to query. Required on every Filters API request. Get it from [get instance details](/cloud/reference/get-instance) (`instance_...`), not from `deployment_id`.
 </ParamField>
@@ -45,44 +62,88 @@ Page number for paginated results.
 </ParamField>
 
 <ParamField query="pageSize" type="integer">
-Number of records per page. Defaults vary by resource (see endpoints table below).
+Number of records per page. Defaults vary by resource. See [Supported endpoints](#supported-endpoints).
 </ParamField>
 
-<ParamField body="filters" type="array" required>
-Array of filter objects. Each object requires `field` and `operator`, and optionally `value` or `values`.
+<ParamField query="strict_total" type="boolean">
+Transactions only. Set to `true` for an exact total count. Must be a boolean.
+</ParamField>
+
+### Body
+
+<ParamField body="filters" type="array">
+Array of filter objects. Omit it or send `[]` to list records with no conditions. Each object requires `field` and `operator`, plus `value` or `values` when the operator needs them.
+
+| Field | Type | Required | Description |
+| :-- | :-- | :-- | :-- |
+| `field` | string | Yes | Field to filter on. See [Filterable fields](#filterable-fields). |
+| `operator` | string | Yes | Comparison operator. See [Supported operators](#supported-operators). |
+| `value` | any | No | Single value for most operators. |
+| `values` | array | No | Multiple values for `in` and `between`. |
 
 Examples:
-- `[{"field": "status", "operator": "eq", "value": "APPLIED"}]` - exact match
-- `[{"field": "currency", "operator": "in", "values": ["USD", "EUR"]}]` - multiple values
+- `[{"field": "status", "operator": "eq", "value": "APPLIED"}]`
+- `[{"field": "currency", "operator": "in", "values": ["USD", "EUR"]}]`
 - `[{"field": "created_at", "operator": "between", "values": ["2025-01-01T00:00:00Z", "2025-01-31T23:59:59Z"]}]`
 </ParamField>
 
 ---
 
-### Endpoints
+### Supported endpoints
 
-All paths are relative to `https://api.cloud.blnkfinance.com`.
+All paths are relative to `https://api.cloud.blnkfinance.com`. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
 
 | Method | Path | Default pageSize |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | POST | `/ledger/filter` | 30 |
 | POST | `/balances/filter` | 20 |
 | POST | `/transactions/filter` | 20 |
 | POST | `/identities/filter` | 20 |
 | POST | `/reconciliation/filter` | 20 |
 
-<Warning>
-The ledgers endpoint uses `/ledger/filter` (singular), not `/ledgers/filter`.
-</Warning>
+### Supported operators
 
-<Tip>
-For supported operators and filterable fields, see [Filtering data](/cloud/proxy/filters-api).
-</Tip>
+Use these operators in each filter object's `operator` field.
+
+| Operator | Meaning | Example |
+| :-- | :-- | :-- |
+| `eq` | Equals | `{ "field": "status", "operator": "eq", "value": "APPLIED" }` |
+| `ne` | Not equals | `{ "field": "status", "operator": "ne", "value": "PENDING" }` |
+| `gt` | Greater than | `{ "field": "amount", "operator": "gt", "value": 100 }` |
+| `gte` | Greater than or equal | `{ "field": "amount", "operator": "gte", "value": 50 }` |
+| `lt` | Less than | `{ "field": "amount", "operator": "lt", "value": 500 }` |
+| `lte` | Less than or equal | `{ "field": "amount", "operator": "lte", "value": 500 }` |
+| `in` | In list | `{ "field": "currency", "operator": "in", "values": ["USD", "EUR"] }` |
+| `between` | Between two values | `{ "field": "created_at", "operator": "between", "values": ["2025-01-01T00:00:00Z", "2025-01-31T23:59:59Z"] }` |
+| `like` | Pattern match | `{ "field": "reference", "operator": "like", "value": "ref_%" }` |
+| `ilike` | Case-insensitive pattern | `{ "field": "description", "operator": "ilike", "value": "%fee%" }` |
+| `isnull` | Is null | `{ "field": "identity_id", "operator": "isnull" }` |
+| `isnotnull` | Is not null | `{ "field": "identity_id", "operator": "isnotnull" }` |
+| `exists` | JSON key exists (metadata only) | `{ "field": "meta_data.channel", "operator": "exists" }` |
+| `notexists` | JSON key absent (metadata only) | `{ "field": "meta_data.channel", "operator": "notexists" }` |
+
+### Filterable fields
+
+Each resource accepts only the fields listed below. Unknown fields return a 400 error.
+
+| Resource | Fields |
+| :-- | :-- |
+| Ledgers | `ledger_id`, `name`, `created_at`, `meta_data`, `meta_data.<key>` |
+| Balances | `balance_id`, `ledger_id`, `identity_id`, `indicator`, `currency`, `balance`, `credit_balance`, `debit_balance`, `inflight_balance`, `inflight_credit_balance`, `inflight_debit_balance`, `track_fund_lineage`, `allocation_strategy`, `created_at`, `meta_data`, `meta_data.<key>` |
+| Transactions | `transaction_id`, `parent_transaction`, `has_child`, `amount`, `currency`, `source`, `destination`, `balance_id`, `reference`, `status`, `created_at`, `effective_date`, `scheduled_for`, `source_identity`, `destination_identity`, `indicator`, `description`, `precision`, `meta_data`, `meta_data.<key>` |
+| Identities | `identity_id`, `first_name`, `last_name`, `other_names`, `gender`, `dob`, `email_address`, `phone_number`, `nationality`, `street`, `country`, `state`, `organization_name`, `category`, `identity_type`, `post_code`, `city`, `created_at`, `meta_data`, `meta_data.<key>` |
+| Reconciliations | `reconciliation_id`, `upload_id`, `status`, `matched_transactions`, `unmatched_transactions`, `started_at`, `completed_at` |
+
+<Note>
+**Metadata filters use a single key** after `meta_data.`, for example `meta_data.channel`. Nested paths such as `meta_data.myApp.channel` are rejected.
+</Note>
+
+---
 
 ### Response
 
 <ResponseExample>
-```json 200
+```json 200 wrap
 {
   "data": [
     {
@@ -120,18 +181,12 @@ Aggregate statistics for the filtered result set. Present on balances, transacti
 </ResponseField>
 
 <ResponseField name="total_is_estimate" type="boolean">
-Transactions only. When `true`, the `total` value is an estimate rather than an exact count.
+Present on ledger, balance, transaction, and identity responses. When `true`, the `total` value is an estimate rather than an exact count.
 </ResponseField>
 
 <ResponseField name="total_source" type="string">
-Transactions only. Indicates how the total was computed (for example, `"exact"` or `"estimate"`).
+Present on ledger, balance, transaction, and identity responses. Indicates how the total was computed (for example, `"exact"` or `"estimate"`).
 </ResponseField>
-
-<Info>
-The Cloud Filters API accepts `{ "filters": [...] }` in the body with pagination via query parameters. 
-
-This differs from the self-hosted Core Filter API documented in [Search via DB](/reference/search-db), which uses `limit`, `offset`, `sort_by`, and `include_count` in the body and returns `total_count`.
-</Info>
 
 ---
 
@@ -139,8 +194,9 @@ This differs from the self-hosted Core Filter API documented in [Search via DB](
 
 <RelatedTopics
   items={[
-    { title: "Filters API guide", href: "/cloud/proxy/filters-api" },
-    { title: "Add filters", href: "/cloud/filters/add-filters" },
     { title: "Proxy API", href: "/cloud/reference/proxy-api" },
+    { title: "Data lake API", href: "/cloud/reference/data-lake-api" },
+    { title: "Add filters", href: "/cloud/filters/add-filters" },
+    { title: "Get instance details", href: "/cloud/reference/get-instance" },
   ]}
 />
