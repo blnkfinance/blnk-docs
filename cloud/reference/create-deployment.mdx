@@ -8,21 +8,38 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Create a managed Core instance programmatically.
+A deployment is a managed Core instance that Blnk hosts and automatically connects to your Cloud workspace. Use this endpoint to create one programmatically. See [Managed instances](/cloud/instances/deploy) to learn more.
+
+<Note>
+This endpoint creates managed instances only. For a connected (self-hosted) instance, [connect it from the dashboard](/cloud/instances/create) first.
+</Note>
+
+---
 
 <Authorization />
 
 ### Body
 
 <RequestExample>
-```bash cURL
+```bash Sandbox wrap
 curl -X POST 'https://api.cloud.blnkfinance.com/deployments' \
-  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "my-sandbox",
-    "tier": "B1.Micro",
     "type": "sandbox"
+  }'
+```
+
+```bash Production wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/deployments' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "my-prod",
+    "type": "production",
+    "region": "nyc3",
+    "dedicated": true
   }'
 ```
 </RequestExample>
@@ -31,16 +48,12 @@ curl -X POST 'https://api.cloud.blnkfinance.com/deployments' \
 Display name for the instance.
 </ParamField>
 
-<ParamField body="tier" type="string" required>
-Capacity tier. Sandbox uses `B1.Micro`. Production typically uses `B1.Standard`.
-</ParamField>
-
-<ParamField body="type" type="string">
-Deployment type: `sandbox` or `production`.
+<ParamField body="type" type="string" required>
+Deployment type: `sandbox` or `production`. Cloud assigns capacity from this value.
 </ParamField>
 
 <ParamField body="region" type="string">
-Production only. Choose a datacenter closest to your app. Do not send this for sandbox. Cloud assigns the sandbox region.
+**Production only**. Choose a datacenter closest to your app. Do not send this for sandbox. Cloud assigns the sandbox region.
 </ParamField>
 
 ### Response
@@ -56,7 +69,6 @@ Production only. Choose a datacenter closest to your app. Do not send this for s
   "type": "sandbox",
   "region": "nyc3",
   "status": "PENDING",
-  "has_db_access": false,
   "watch_enabled": false,
   "usage_billing_enabled": true,
   "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
@@ -73,40 +85,36 @@ Production only. Choose a datacenter closest to your app. Do not send this for s
 ```
 </ResponseExample>
 
-<ResponseField name="deployment_id" type="string" required>
-Unique identifier for the deployment.
+<ResponseField name="deployment_id" type="string">
+Unique id for this managed deployment (`deploy_...`). Use it with Deployments APIs. Do not pass it as `instance_id` when routing Cloud APIs.
 </ResponseField>
 
-<ResponseField name="name" type="string" required>
-Instance name.
+<ResponseField name="name" type="string">
+Display name of the instance in your workspace.
 </ResponseField>
 
-<ResponseField name="type" type="string" required>
-`sandbox` or `production`.
+<ResponseField name="type" type="string">
+Deployment type: `sandbox` or `production`. Cloud assigns capacity from this value.
 </ResponseField>
 
-<ResponseField name="tier" type="string" required>
-Capacity tier, such as `B1.Micro` or `B1.Standard`.
+<ResponseField name="tier" type="string">
+Capacity Cloud assigned for this deployment, such as `B1.Micro` or `B1.Standard`. You do not choose this when you create the deployment.
 </ResponseField>
 
-<ResponseField name="status" type="string" required>
+<ResponseField name="status" type="string">
 `PENDING` until the instance is ready, then `ACTIVE`. Sandbox typically takes 7 - 10 minutes. Production can take 10 - 30 minutes.
 </ResponseField>
 
 <ResponseField name="region" type="string">
-Datacenter code for the instance.
+Datacenter code for the instance. Cloud assigns this for sandbox. You choose it for production.
 </ResponseField>
 
 <ResponseField name="dedicated" type="boolean">
-`true` for dedicated (Production) infrastructure.
+`true` when the instance runs on dedicated Production infrastructure. Sandbox is always `false`.
 </ResponseField>
 
 <ResponseField name="ingress_mode" type="string">
 How Cloud routes traffic to the instance. Live values include `shared` and `legacy`.
-</ResponseField>
-
-<ResponseField name="has_db_access" type="boolean">
-Whether database access is enabled on this deployment.
 </ResponseField>
 
 <ResponseField name="watch_enabled" type="boolean">
@@ -118,28 +126,29 @@ Whether usage-based billing is on for the workspace.
 </ResponseField>
 
 <ResponseField name="usage_billing_enabled_at" type="timestamp">
-When usage-based billing was enabled.
+Timestamp of when usage-based billing was enabled for this instance.
 </ResponseField>
 
 <ResponseField name="record_creates_blocked" type="boolean">
-`true` when the instance cannot create new records.
+`true` when the instance has used its included records and usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
 </ResponseField>
 
-<ResponseField name="created_at" type="timestamp" required>
+<ResponseField name="created_at" type="timestamp">
 When the deployment was created.
 </ResponseField>
 
-<ResponseField name="updated_at" type="timestamp" required>
+<ResponseField name="updated_at" type="timestamp">
 When the deployment was last updated.
 </ResponseField>
 
-Poll [Get deployment details](/cloud/reference/get-deployment) until `status` is `ACTIVE`. Then `url` and `domain` are present.
+---
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Managed instances", href: "/cloud/instances/deploy" },
+    { title: "Self-hosted instances", href: "/cloud/instances/create" },
     { title: "Get deployment details", href: "/cloud/reference/get-deployment" },
     { title: "List deployments", href: "/cloud/reference/list-deployments" },
   ]}

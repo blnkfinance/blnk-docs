@@ -1,6 +1,6 @@
 ---
 title: "Upgrade deployment"
-api: "POST /deployments/{id}/upgrade"
+api: "POST /deployments/{deployment_id}/upgrade"
 description: "Upgrade a managed Core instance through Blnk Cloud."
 ---
 
@@ -8,7 +8,19 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Upgrade a managed instance the same way the dashboard upgrade flow does. Production payment-method rules match the dashboard.
+Use this endpoint to upgrade a managed Core to the latest version Cloud supports. The deployment must be `ACTIVE`. See [Managed instances](/cloud/instances/deploy) to learn more.
+
+Cloud starts a new runtime next to the current one, health-checks it, then cuts traffic over. Ledger data and the Core secret stay in place. 
+
+Cloud creates a new `deployment_id` and a new `instance_id`. After cutover, use those new ids. Any requests sent to the old `instance_id` would fail or return errors.
+
+The response returns the new `deployment_id` on `new_deployment`. Get the new `instance_id` from [Get deployment details](/cloud/reference/get-deployment) once the successor is provisioned.
+
+<Note>
+This endpoint upgrades managed instances only. For a connected (self-hosted) instance, follow [Upgrade Blnk Core](/changelog/upgrade).
+</Note>
+
+---
 
 <Authorization />
 
@@ -17,21 +29,93 @@ Upgrade a managed instance the same way the dashboard upgrade flow does. Product
 <RequestExample>
 ```bash cURL
 curl -X POST 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc/upgrade' \
-  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
   -H 'Content-Type: application/json' \
   -d '{}'
 ```
 </RequestExample>
 
-<ParamField path="id" type="string" required>
-Unique identifier of the deployment to upgrade.
+<ParamField path="deployment_id" type="string" required>
+Unique id of the deployment to upgrade (`deploy_...`). Do not pass `instance_id` here.
 </ParamField>
+
+### Body
+
+The body is optional. Omit it, or send `{}`, to upgrade to the latest Core version Cloud supports.
+
+<ParamField body="force" type="boolean">
+Set to `true` to run the upgrade even when the deployment is already on the latest version. Default is `false`. When `false` and the deployment is already current, Cloud returns `upgrade_status: "skipped"`.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 202
+{
+  "new_deployment": {
+    "deployment_id": "deploy_a1c83e2f-4b19-4d6a-9e2c-7f1b0c8d4e55",
+    "name": "my-sandbox",
+    "ingress_mode": "shared",
+    "dedicated": false,
+    "tier": "B1.Micro",
+    "type": "sandbox",
+    "region": "nyc3",
+    "status": "PENDING",
+    "watch_enabled": false,
+    "usage_billing_enabled": true,
+    "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
+    "record_creates_blocked": false,
+    "created_at": "2026-09-16T08:12:04.551203Z",
+    "updated_at": "2026-09-16T08:12:04.551203Z"
+  },
+  "old_deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "previous_version": "0.15.0",
+  "new_version": "0.15.4",
+  "upgrade_status": "in_progress",
+  "message": "Upgrade initiated. The new deployment will take over once health checks pass."
+}
+```
+
+```json 200
+{
+  "upgrade_status": "skipped",
+  "message": "Deployment is already running the latest version. Use force=true to upgrade anyway."
+}
+```
+</ResponseExample>
+
+<ResponseField name="new_deployment" type="object">
+The successor deployment Cloud is bringing up. Same shape as [Get deployment details](/cloud/reference/get-deployment). Use this `deployment_id` for later Deployments API calls.
+</ResponseField>
+
+<ResponseField name="old_deployment_id" type="string">
+The `deployment_id` you passed in the path. Cloud marks it `UPGRADING`, then retires it after cutover.
+</ResponseField>
+
+<ResponseField name="previous_version" type="string">
+Core version the old deployment was running.
+</ResponseField>
+
+<ResponseField name="new_version" type="string">
+Core version Cloud is rolling out.
+</ResponseField>
+
+<ResponseField name="upgrade_status" type="string">
+`in_progress` when Cloud accepted the upgrade. `skipped` when the deployment is already on the latest version and you did not send `force: true`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+Human-readable status. Track progress with [Get deployment details](/cloud/reference/get-deployment) on `new_deployment.deployment_id`.
+</ResponseField>
+
+---
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Get deployment details", href: "/cloud/reference/get-deployment" },
+    { title: "List deployments", href: "/cloud/reference/list-deployments" },
     { title: "Create deployment", href: "/cloud/reference/create-deployment" },
     { title: "Managed instances", href: "/cloud/instances/deploy" },
   ]}

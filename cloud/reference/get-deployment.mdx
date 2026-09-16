@@ -1,15 +1,23 @@
 ---
 title: "Get deployment details"
 sidebarTitle: "Get deployment details"
-api: "GET /deployments/{id}"
-description: "Retrieve a managed Core instance by deployment ID."
+api: "GET /deployments/{deployment_id}"
+description: "Retrieve a managed Core instance by deployment_id."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve a deployment by ID. The response includes `deployment_id`, `instance_id`, `url`, and `domain`. Use `instance_id` on Proxy, Filters, and Data Lake calls.
+Use this endpoint to retrieve deployment details by `deployment_id`. See [Managed instances](/cloud/instances/deploy) to learn more.
+
+<Note>
+This endpoint is only for deployments. For a connected (self-hosted) instance, [connect it from the dashboard](/cloud/instances/create) first.
+</Note>
+
+The response includes `instance_id`. Pass that on Proxy, Filters, Data Lake, and other Cloud APIs. For the Core secret, use [Get instance details](/cloud/reference/get-instance).
+
+---
 
 <Authorization />
 
@@ -18,12 +26,12 @@ Retrieve a deployment by ID. The response includes `deployment_id`, `instance_id
 <RequestExample>
 ```bash cURL
 curl -X GET 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
+  -H 'Authorization: Bearer CLOUD_API_KEY'
 ```
 </RequestExample>
 
-<ParamField path="id" type="string" required>
-Unique identifier of the deployment to retrieve.
+<ParamField path="deployment_id" type="string" required>
+Unique id of the deployment (`deploy_...`). Do not pass `instance_id` here.
 </ParamField>
 
 ### Response
@@ -58,36 +66,36 @@ Unique identifier of the deployment to retrieve.
 ```
 </ResponseExample>
 
-<ResponseField name="deployment_id" type="string" required>
-Unique identifier for the deployment.
+<ResponseField name="deployment_id" type="string">
+Unique id for this managed deployment (`deploy_...`). Use it with Deployments APIs. Do not pass it as `instance_id` when routing Cloud APIs.
 </ResponseField>
 
 <ResponseField name="instance_id" type="string">
-Cloud instance id (`instance_...`). Use this on Proxy, Filters, and lake calls. Empty while the deployment is still being provisioned. Call this endpoint again until the value is set.
+Unique id for the connected Core (`instance_...`). Pass it on Proxy, Filters, Data Lake, and other Cloud APIs so Cloud routes the request to this Core. Empty while the deployment is still being provisioned.
 </ResponseField>
 
-<ResponseField name="name" type="string" required>
-Instance name.
+<ResponseField name="name" type="string">
+Display name of the instance in your workspace.
 </ResponseField>
 
-<ResponseField name="type" type="string" required>
-`sandbox` or `production`.
+<ResponseField name="type" type="string">
+Deployment type: `sandbox` or `production`. Cloud assigns capacity from this value.
 </ResponseField>
 
-<ResponseField name="tier" type="string" required>
-Capacity tier, such as `B1.Micro` or `B1.Standard`.
+<ResponseField name="tier" type="string">
+Capacity Cloud assigned for this deployment, such as `B1.Micro` or `B1.Standard`. You do not choose this when you create the deployment.
 </ResponseField>
 
-<ResponseField name="status" type="string" required>
-`PENDING`, `ACTIVE`, `DESTROYING`, `DESTROYED`, or `FAILED`.
+<ResponseField name="status" type="string">
+Current state of the deployment: `PENDING`, `ACTIVE`, `DESTROYING`, `DESTROYED`, or `FAILED`. `PENDING` means Cloud is still provisioning. Sandbox typically takes 7 - 10 minutes. Production can take 10 - 30 minutes.
 </ResponseField>
 
 <ResponseField name="region" type="string">
-Datacenter code for the instance.
+Datacenter code for the instance. Cloud assigns this for sandbox. You choose it for production.
 </ResponseField>
 
 <ResponseField name="dedicated" type="boolean">
-`true` for dedicated (Production) infrastructure.
+`true` when the instance runs on dedicated Production infrastructure. Sandbox is always `false`.
 </ResponseField>
 
 <ResponseField name="ingress_mode" type="string">
@@ -95,15 +103,15 @@ How Cloud routes traffic to the instance. Live values include `shared` and `lega
 </ResponseField>
 
 <ResponseField name="domain" type="string">
-Hostname once the instance is reachable. Omitted while `PENDING`.
+Hostname of the Core once the instance is reachable.
 </ResponseField>
 
 <ResponseField name="url" type="string">
-HTTPS Core URL once the instance is reachable. Omitted while `PENDING`.
+HTTPS Core URL once the instance is reachable. Use this to call Core directly, with the Core secret from [Get instance details](/cloud/reference/get-instance).
 </ResponseField>
 
 <ResponseField name="watch_enabled" type="boolean">
-Whether Watch is enabled. When `true`, Watch fields such as `watch_status` and `watch_git_repo` may also be present.
+Whether Watch is enabled.
 </ResponseField>
 
 <ResponseField name="usage_billing_enabled" type="boolean">
@@ -111,43 +119,30 @@ Whether usage-based billing is on for the workspace.
 </ResponseField>
 
 <ResponseField name="usage_billing_enabled_at" type="timestamp">
-When usage-based billing was enabled.
+Timestamp of when usage-based billing was enabled for this instance.
 </ResponseField>
 
 <ResponseField name="record_creates_blocked" type="boolean">
-`true` when the instance cannot create new records.
+`true` when the instance has used its included records and usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
 </ResponseField>
 
-<ResponseField name="limit_reached_at" type="timestamp">
-When the instance last hit its included record allowance. Present only in that case.
-</ResponseField>
-
-<ResponseField name="whitelisted_ips" type="array">
-Inbound IP allow list, when configured.
-</ResponseField>
-
-<ResponseField name="error_message" type="string">
-Present on some `FAILED` or `DESTROYED` rows.
-</ResponseField>
-
-<ResponseField name="destroyed_at" type="timestamp">
-Set when destroy starts.
-</ResponseField>
-
-<ResponseField name="created_at" type="timestamp" required>
+<ResponseField name="created_at" type="timestamp">
 When the deployment was created.
 </ResponseField>
 
-<ResponseField name="updated_at" type="timestamp" required>
+<ResponseField name="updated_at" type="timestamp">
 When the deployment was last updated.
 </ResponseField>
+
+---
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
+    { title: "Managed instances", href: "/cloud/instances/deploy" },
     { title: "List deployments", href: "/cloud/reference/list-deployments" },
-    { title: "Get instance details", href: "/cloud/reference/get-instance" },
     { title: "Create deployment", href: "/cloud/reference/create-deployment" },
+    { title: "Get instance details", href: "/cloud/reference/get-instance" },
   ]}
 />

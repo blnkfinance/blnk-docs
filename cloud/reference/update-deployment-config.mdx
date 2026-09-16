@@ -1,6 +1,6 @@
 ---
 title: "Update deployment config"
-api: "PUT /deployments/{id}/config"
+api: "PUT /deployments/{deployment_id}/config"
 description: "Update configuration for a managed Core instance."
 ---
 
@@ -8,7 +8,13 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Update configuration for a deployment. Send a JSON object of keys from [Get deployment config](/cloud/reference/get-deployment-config). Cloud applies the config and restarts the instance.
+Use this endpoint to override configuration on a deployment. Send only the keys you want to change. Cloud checks the keys against `allowed_keys` from [Get deployment config](/cloud/reference/get-deployment-config), applies the overrides and restarts the instance.
+
+<Warning>
+**The instance restarts after Cloud applies the config**. Make sure your app handles retries and backoffs for failed requests during the restart.
+</Warning>
+
+---
 
 <Authorization />
 
@@ -17,7 +23,7 @@ Update configuration for a deployment. Send a JSON object of keys from [Get depl
 <RequestExample>
 ```bash cURL
 curl -X PUT 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc/config' \
-  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
     "BLNK_WEBHOOK_URL": "https://example.com/webhooks/blnk"
@@ -25,15 +31,34 @@ curl -X PUT 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-
 ```
 </RequestExample>
 
-<ParamField path="id" type="string" required>
-Unique identifier of the deployment.
+<ParamField path="deployment_id" type="string" required>
+Unique id of the deployment (`deploy_...`). Do not pass `instance_id` here.
 </ParamField>
 
 ### Body
 
-<ParamField body="BLNK_WEBHOOK_URL" type="string">
-Example override. Any key from `allowed_keys` on Get deployment config is valid.
-</ParamField>
+The body is a JSON object of overrides. Include any one of the keys from `allowed_keys` on [Get deployment config](/cloud/reference/get-deployment-config), or several. Omit keys you want to leave at the default. Do not send a key that is not in that list.
+
+| Key | Type |
+| :-- | :-- |
+| `BLNK_RATE_LIMIT_BURST` | `int` |
+| `BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC` | `int` |
+| `BLNK_RATE_LIMIT_RPS` | `int` |
+| `BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB` | `int` |
+| `BLNK_SERVER_MAX_UPLOAD_SIZE_MB` | `int` |
+| `BLNK_SLACK_WEBHOOK_URL` | `url` |
+| `BLNK_TRANSACTION_BATCH_SIZE` | `int` |
+| `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK` | `bool` |
+| `BLNK_TRANSACTION_ENABLE_COALESCING` | `bool` |
+| `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` | `bool` |
+| `BLNK_TRANSACTION_LOCK_DURATION` | `int` |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | `int` |
+| `BLNK_TRANSACTION_MAX_QUEUE_SIZE` | `int` |
+| `BLNK_TRANSACTION_MAX_WORKERS` | `int` |
+| `BLNK_WEBHOOK_HEADERS` | `json` |
+| `BLNK_WEBHOOK_URL` | `url` |
+
+Match the type shown for each key. For what each key means, see the [Core configuration reference](/advanced/configuration/reference).
 
 ### Response
 
@@ -45,15 +70,18 @@ Example override. Any key from `allowed_keys` on Get deployment config is valid.
 ```
 </ResponseExample>
 
-<ResponseField name="message" type="string" required>
-Confirmation that the config was applied and the instance is restarting.
+<ResponseField name="message" type="string">
+Confirmation that the config was applied and the instance is restarting. Track progress with [Get deployment details](/cloud/reference/get-deployment).
 </ResponseField>
+
+---
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Get deployment config", href: "/cloud/reference/get-deployment-config" },
+    { title: "Core configuration reference", href: "/advanced/configuration/reference" },
     { title: "Get deployment details", href: "/cloud/reference/get-deployment" },
     { title: "Managed instances", href: "/cloud/instances/deploy" },
   ]}

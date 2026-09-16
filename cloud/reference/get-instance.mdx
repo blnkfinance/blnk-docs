@@ -9,15 +9,19 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve a connected Core instance by ID. Use `instance_id` (`instance_...`) on Proxy, Filters, record counts, and lake requests.
+An instance is any Core connected to your Cloud workspace, whether you host it on-prem or Blnk hosts it as a [managed deployment](/cloud/instances/deploy). Cloud uses `instance_id` (`instance_...`) to route API requests to the right Core.
 
-<Note>
-Proxy, Filters, and Data Lake need `instance_id` (`instance_...`). You can also read it from [get deployment details](/cloud/reference/get-deployment). [List deployments](/cloud/reference/list-deployments) returns `deployment_id` only.
-</Note>
+Use this endpoint only when you need to retrieve the Core secret for your managed deployment. Otherwise, use [Get deployment details](/cloud/reference/get-deployment) to get the deployment details.
 
 <Warning>
-The live payload can include `agent_api_key`. Treat it as a secret. Do not commit it or paste it into tickets.
+The live payload can include secrets. Do not commit it or paste it into tickets.
 </Warning>
+
+<Tip>
+**To view all instances** (on-prem and managed) in your workspace, use `GET /instances` alone with no instance ID.
+</Tip>
+
+---
 
 <Authorization />
 
@@ -26,12 +30,12 @@ The live payload can include `agent_api_key`. Treat it as a secret. Do not commi
 <RequestExample>
 ```bash cURL
 curl -X GET 'https://api.cloud.blnkfinance.com/instances/instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
+  -H 'Authorization: Bearer CLOUD_API_KEY'
 ```
 </RequestExample>
 
 <ParamField path="instance_id" type="string" required>
-Unique identifier of the instance to retrieve (`instance_...`).
+Unique id of the instance (`instance_...`). Do not pass `deployment_id` here.
 </ParamField>
 
 ### Response
@@ -45,6 +49,7 @@ Unique identifier of the instance to retrieve (`instance_...`).
   "sync_status": "connected",
   "ledger_version": "",
   "connection_type": "agent",
+  "agent_api_key": "sk_live_...",
   "instance_url": "https://my-sandbox-sharespaces.deployment.blnkfinance.com",
   "type": "cloud",
   "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
@@ -71,37 +76,53 @@ Unique identifier of the instance to retrieve (`instance_...`).
 ```
 </ResponseExample>
 
-<ResponseField name="instance_id" type="string" required>
-Cloud instance id (`instance_...`). Pass this as `instance_id` on Proxy, Filters, and lake calls.
+<ResponseField name="instance_id" type="string">
+Unique id for this connected Core (`instance_...`). Pass it on Proxy, Filters, Data Lake, and other Cloud APIs so Cloud routes the request to this Core.
 </ResponseField>
 
-<ResponseField name="name" type="string" required>
-Instance display name.
-</ResponseField>
-
-<ResponseField name="deployment_id" type="string">
-Matching managed deployment id (`deploy_...`), when this instance is a Cloud deployment.
+<ResponseField name="name" type="string">
+Display name of the instance in your workspace.
 </ResponseField>
 
 <ResponseField name="sync_status" type="string">
-Connection state. Live values include `connected`.
+Whether Cloud can reach the instance. `connected` means the connection is healthy.
 </ResponseField>
 
 <ResponseField name="connection_type" type="string">
-How Cloud reaches Core. Live values include `agent`.
+How Cloud talks to Core. `agent` means Cloud uses the Query Agent. `direct` means Cloud connects to the database with stored credentials.
+</ResponseField>
+
+<ResponseField name="agent_api_key" type="string">
+Secret used to authenticate with this Core. What it is depends on how the instance is hosted. On a [managed deployment](/cloud/instances/deploy), this is the Core secret key for the deployed Core. Use it as `X-blnk-key` when you directly call the Core's APIs.
+
+On a [self-hosted instance](/cloud/instances/create), this is the Query Agent connection key. It matches the `CONNECTION_KEY` set when you connected the instance.
 </ResponseField>
 
 <ResponseField name="instance_url" type="string">
-HTTPS Core URL for the instance.
+Public HTTPS URL of this Core. Cloud uses it for actions that call the instance.
 </ResponseField>
 
 <ResponseField name="type" type="string">
-Instance type. Live values include `cloud`.
+Where the Core runs. `cloud` is a [managed deployment](/cloud/instances/deploy). `on-prem` is a Core you host.
+</ResponseField>
+
+<ResponseField name="deployment_id" type="string">
+Id of the matching managed deployment (`deploy_...`). Present only when Blnk hosts this instance. Use it with Deployments APIs, not as `instance_id`.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the instance was connected to the workspace.
+</ResponseField>
+
+<ResponseField name="monitoring_enabled" type="boolean">
+Whether Cloud Monitoring is on for this instance.
 </ResponseField>
 
 <ResponseField name="deployment" type="object">
-Nested deployment summary when the instance is managed. Shape overlaps [get deployment details](/cloud/reference/get-deployment). It still does not replace `instance_id` at the top level.
+Nested summary of the managed deployment, when this instance is managed. Same shape as [Get deployment details](/cloud/reference/get-deployment). Do not use the nested `deployment_id` in place of `instance_id` when routing Cloud APIs.
 </ResponseField>
+
+---
 
 <NeedHelp />
 
