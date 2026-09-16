@@ -1,40 +1,38 @@
 ---
 title: "Get record counts"
 api: "GET /data/record-counts"
-description: "Retrieve record usage and overage for a Core instance."
+description: "Return stored records, overage, and create-blocked state for one Core instance."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve record counts and overage for one instance. Use this for usage and overage context.
+Use this to see how many records one instance stores, how many sit above the included allowance, and whether new record creates are blocked.
 
-<Note>
-`instance_id` is the Cloud instance id (`instance_...`), not a `deployment_id`. Get it from [get instance details](/cloud/reference/get-instance).
-</Note>
+A record is a ledger, balance, transaction, identity, or reconciliation external data stored in the instance. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
 
 ---
 
 <Authorization />
 
+### Query
+
 <RequestExample>
-```bash cURL
-curl -X GET 'https://api.cloud.blnkfinance.com/data/record-counts?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
-  -H 'Authorization: Bearer CLOUD_API_KEY'
+```bash cURL wrap
+curl -X GET "https://api.cloud.blnkfinance.com/data/record-counts?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc" \
+  -H "Authorization: Bearer CLOUD_API_KEY"
 ```
 </RequestExample>
 
-### Query
-
 <ParamField query="instance_id" type="string" required>
-Cloud instance id. Required. A `deploy_...` id does not work.
+Cloud instance id (`instance_...`). Get it from [Get instance details](/cloud/reference/get-instance). A `deploy_...` id does not work.
 </ParamField>
 
 ### Response
 
 <ResponseExample>
-```json 200
+```json 200 wrap expandable
 {
   "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
   "record_counts": {
@@ -90,7 +88,7 @@ Cloud instance id. Required. A `deploy_...` id does not work.
 </ResponseExample>
 
 <ResponseField name="instance_id" type="string">
-Instance that was counted.
+Instance that was counted (`instance_...`).
 </ResponseField>
 
 <ResponseField name="record_counts" type="object">
@@ -142,23 +140,23 @@ Records above the included allowance.
 </ResponseField>
 
 <ResponseField name="overage_unit_price" type="number">
-Price per extra record.
+Price per extra record in the billing currency's major unit (for example USD), not cents. In the sample, `0.00135` is $0.00135 per extra record.
 </ResponseField>
 
 <ResponseField name="overage_amount" type="number">
-Overage charge for the current count.
+Estimated overage charge for the current count, in the billing currency's major unit (for example USD), not cents.
 </ResponseField>
 
 <ResponseField name="usage_billing_enabled" type="boolean">
-Whether usage-based billing is on for this instance.
+Whether usage-based billing is on for the organization.
 </ResponseField>
 
 <ResponseField name="usage_billing_enabled_at" type="timestamp">
-When usage-based billing was enabled.
+When usage-based billing was enabled for the organization. ISO 8601.
 </ResponseField>
 
 <ResponseField name="record_creates_blocked" type="boolean">
-`true` when the instance has used its included records and usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
+`true` when this instance has used its included records and organization usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on.
 </ResponseField>
 
 ---
@@ -167,8 +165,8 @@ When usage-based billing was enabled.
 
 <RelatedTopics
   items={[
-    { title: "Get usage billing", href: "/cloud/reference/get-usage-billing" },
     { title: "Enable usage billing", href: "/cloud/reference/enable-usage-billing" },
+    { title: "Get usage billing", href: "/cloud/reference/get-usage-billing" },
     { title: "Billing", href: "/cloud/organization/billing" },
   ]}
 />

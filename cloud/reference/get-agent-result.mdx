@@ -1,5 +1,6 @@
 ---
 title: "Get job result"
+sidebarTitle: "Get job result"
 api: "GET /agents/jobs/{job_id}/result"
 description: "Read the final output, subtasks, and errors for an agent job."
 ---
@@ -10,7 +11,7 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 Use this endpoint after an agent job completes or fails. You can call it earlier, but `output`, `final_message`, `completed_at`, and `failed_at` are fully populated only in a terminal state.
 
-For in-progress polling, use [Get job status](/cloud/reference/get-agent-status). To receive this payload automatically, set `config.callbacks` when you [create the job](/cloud/reference/create-agent#callbacks).
+For in-progress polling, use [Get job status](/cloud/reference/get-agent-status). To receive this payload automatically, set `config.callbacks` when you [create the job](/cloud/reference/create-agent).
 
 <Note>
 Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object with the raw plan steps and reasoning trail.
@@ -19,8 +20,6 @@ Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object w
 ---
 
 <Authorization />
-
-Cloud API keys and OAuth tokens must include `*`.
 
 ### Path
 
@@ -32,19 +31,15 @@ curl -X GET 'https://api.cloud.blnkfinance.com/agents/jobs/job_17793000000000000
 </RequestExample>
 
 <ParamField path="job_id" type="string" required>
-Job identifier returned by [Create job](/cloud/reference/create-agent) (`job_...`).
+Job whose result you want (`job_...`). Use the `job_id` returned by [Create agent job](/cloud/reference/create-agent).
 </ParamField>
 
 <ParamField query="view" type="string">
-Set to `debug` or `verbose` to include the raw `debug` payload.
-</ParamField>
-
-<ParamField query="verbose" type="string">
-Set to `1` or `true` as an alias for `view=debug`.
+Set to `debug` or `verbose` to add a `debug` object with the raw plan steps and reasoning trail. Leave unset for the compact payload.
 </ParamField>
 
 <ParamField query="instance_id" type="string">
-Optional. When present, Cloud verifies the instance belongs to your organization.
+Optional Core instance (`instance_...`). When present, Cloud checks that the instance belongs to your organization. The job already stores its instance from create.
 </ParamField>
 
 ### Response
@@ -104,73 +99,79 @@ Optional. When present, Cloud verifies the instance belongs to your organization
   }
 }
 ```
+
+```text 404 Not Found wrap
+not found
+```
+
+```text 503 Service Unavailable wrap
+jobs service unavailable
+```
 </ResponseExample>
 
 <ResponseField name="job_id" type="string">
-Job identifier.
+Job you requested (`job_...`). Same value you sent in the path.
 </ResponseField>
 
 <ResponseField name="status" type="string">
-Current state. Terminal values are `completed` and `failed`.
+Where the job is right now. Read `output` and `final_message` when this is `completed`. Read `last_error` when this is `failed`. You can call this endpoint earlier, but those fields fill in only after the job finishes.
 </ResponseField>
 
 <ResponseField name="output" type="object">
-Structured result from the finished plan. Shape depends on the steps that ran.
+Structured result of the finished plan. The keys depend on the steps that ran. Often includes a `summary` string. Empty or partial until `status` is `completed`.
 </ResponseField>
 
 <ResponseField name="final_message" type="string">
-Human-readable summary of the result.
+Plain-language summary of the result. Use this for UI copy. The same text is often also in `output.summary`.
 </ResponseField>
 
 <ResponseField name="last_error" type="string">
-Error message when the job failed.
+Why the job failed. Empty on success. Filled when `status` is `failed`.
 </ResponseField>
 
 <ResponseField name="plan_run_id" type="string">
-Plan run that produced the result.
+Plan that produced this result (`pr_...`). Empty if planning never finished.
 </ResponseField>
 
 <ResponseField name="progress" type="object">
-Counts of plan steps by status. Same shape as [Get job status](/cloud/reference/get-agent-status).
+How many plan steps ended in each state: `total`, `completed`, `running`, `pending`, `failed`, `waiting_approval`. Same shape as [Get job status](/cloud/reference/get-agent-status).
 </ResponseField>
 
 <ResponseField name="failed_step" type="object">
-First compact step with status `failed`. `null` when none have failed.
+First compact step with status `failed`. `null` when the job completed without a failed step. Same shape as one item in `sub_tasks` on [Get job status](/cloud/reference/get-agent-status).
 </ResponseField>
 
 <ResponseField name="sub_tasks" type="array">
-Compact plan steps. Same fields as [Get job status](/cloud/reference/get-agent-status).
+Compact plan steps, oldest first. Same fields as `sub_tasks` on [Get job status](/cloud/reference/get-agent-status).
 </ResponseField>
 
 <ResponseField name="reasoning_trail" type="array">
-Compact planner and execution notes.
+Compact planner and execution notes (`id`, `kind`, `title`, `status`, `summary`). Empty if the planner wrote none.
 </ResponseField>
 
 <ResponseField name="created_at" type="timestamp">
-When Cloud created the job.
+When Cloud accepted the job, in UTC ISO 8601.
 </ResponseField>
 
 <ResponseField name="updated_at" type="timestamp">
-When the job last changed.
+When the job last changed, in UTC ISO 8601.
 </ResponseField>
 
 <ResponseField name="completed_at" type="timestamp">
-When the job completed. `null` until then.
+When the job reached `completed`, in UTC ISO 8601. `null` until then.
 </ResponseField>
 
 <ResponseField name="failed_at" type="timestamp">
-When the job failed. `null` unless `status` is `failed`.
+When the job reached `failed`, in UTC ISO 8601. `null` unless `status` is `failed`.
 </ResponseField>
 
 <ResponseField name="links" type="object">
-Relative paths for status, result, and control.
+Relative paths for `status`, `result`, and `control` on this job. Prefix them with `https://api.cloud.blnkfinance.com`.
 </ResponseField>
 
 <ResponseField name="debug" type="object">
-Present only with `view=debug`. Contains raw `sub_tasks` and `reasoning_trail`.
+Raw `sub_tasks` and `reasoning_trail`. Present only when you send `view=debug` (or `verbose=1`). Omit it in production clients.
 </ResponseField>
-
-Unknown jobs return `404`. If the jobs service is unavailable, the endpoint returns `503`.
 
 ---
 
@@ -178,9 +179,9 @@ Unknown jobs return `404`. If the jobs service is unavailable, the endpoint retu
 
 <RelatedTopics
   items={[
-    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "Create agent job", href: "/cloud/reference/create-agent" },
     { title: "Get job status", href: "/cloud/reference/get-agent-status" },
-    { title: "Control job", href: "/cloud/reference/control-agent" },
+    { title: "Control agent job", href: "/cloud/reference/control-agent" },
     { title: "MCP server", href: "/cloud/reference/mcp" },
   ]}
 />

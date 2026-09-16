@@ -1,30 +1,32 @@
 ---
 title: "Get billing overview"
 api: "GET /billing/overview"
-description: "Retrieve subscription, payment method, and spend summary from Blnk Cloud."
+description: "Return payment method, upcoming charge, and active subscriptions for the organization."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve the billing overview for your organization, including the payment method, upcoming charge, and subscriptions.
+Use this to see for what you will be charged: payment method, next charge, and active subscriptions.
+
+For plan status and renewal, use [Get billing status](/cloud/reference/get-billing-status).
 
 ---
 
 <Authorization />
 
 <RequestExample>
-```bash cURL
-curl -X GET 'https://api.cloud.blnkfinance.com/billing/overview' \
-  -H 'Authorization: Bearer CLOUD_API_KEY'
+```bash cURL wrap
+curl -X GET "https://api.cloud.blnkfinance.com/billing/overview" \
+  -H "Authorization: Bearer CLOUD_API_KEY"
 ```
 </RequestExample>
 
 ### Response
 
 <ResponseExample>
-```json 200
+```json 200 wrap expandable
 {
   "email": "billing@example.com",
   "name": "Acme LLC",
@@ -42,9 +44,9 @@ curl -X GET 'https://api.cloud.blnkfinance.com/billing/overview' \
     "exp_year": 2028
   },
   "next_billing_date": 1791710347,
-  "next_billing_amount": 5000,
+  "next_billing_amount": 10000,
   "currency": "usd",
-  "total_monthly_spend": 5000,
+  "total_monthly_spend": 10000,
   "active_plans": 1,
   "active_deployments": 1,
   "has_payment_method": true,
@@ -132,11 +134,11 @@ Payment method summary. `brand` can be a card network or a wallet such as `Link`
 </ResponseField>
 
 <ResponseField name="next_billing_date" type="integer">
-Unix timestamp for the next charge.
+Unix timestamp (seconds) for the next charge.
 </ResponseField>
 
 <ResponseField name="next_billing_amount" type="integer">
-Upcoming charge in the smallest currency unit (for example, cents).
+Upcoming charge in the smallest currency unit. In the sample, `10000` is $100.00 USD across both subscriptions.
 </ResponseField>
 
 <ResponseField name="currency" type="string">
@@ -148,11 +150,11 @@ Current monthly spend in the smallest currency unit.
 </ResponseField>
 
 <ResponseField name="active_plans" type="integer">
-Number of active plan subscriptions.
+Number of active plan subscriptions (`type` is `plan`).
 </ResponseField>
 
 <ResponseField name="active_deployments" type="integer">
-Number of active deployment subscriptions.
+Number of active deployment subscriptions (`type` is `deployment`).
 </ResponseField>
 
 <ResponseField name="has_payment_method" type="boolean">
@@ -171,7 +173,7 @@ Outstanding balance in the smallest currency unit.
 Active subscriptions.
 <Expandable>
   <ResponseField name="id" type="string">
-  Stripe subscription id.
+  Subscription id (`sub_...`).
   </ResponseField>
   <ResponseField name="status" type="string">
   Subscription status, such as `active`.
@@ -198,10 +200,10 @@ Active subscriptions.
   Billing interval, such as `month`.
   </ResponseField>
   <ResponseField name="current_period_start" type="integer">
-  Unix timestamp for the start of the current period.
+  Unix timestamp (seconds) for the start of the current period.
   </ResponseField>
   <ResponseField name="current_period_end" type="integer">
-  Unix timestamp for the end of the current period.
+  Unix timestamp (seconds) for the end of the current period.
   </ResponseField>
   <ResponseField name="cancel_at_period_end" type="boolean">
   Whether the subscription cancels at the end of the period.

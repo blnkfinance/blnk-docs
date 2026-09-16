@@ -1,5 +1,6 @@
 ---
-title: "Create job"
+title: "Create agent job"
+sidebarTitle: "Create agent job"
 api: "POST /agents/jobs"
 description: "Submit an async agent workflow against a Core instance in your Blnk Cloud workspace."
 ---
@@ -8,13 +9,17 @@ import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Blnk Agent turns an operator or developer request into a workflow that Cloud can plan, execute, approve, pause, resume, and schedule. You send a message such as "Review pending high-value transactions from the last 24 hours" or "Create a customer identity and a NGN balance." The agent plans the work, applies tool and ledger scope, then runs the steps.
+The Agent Jobs API turns an operator or developer request into a workflow that Cloud can plan, execute, approve, pause, resume, and schedule. 
+
+You send a message such as "Review pending high-value transactions from the last 24 hours" or "Create a customer identity and a NGN balance." The agent plans the work, applies the right tools and ledger scope, then runs the steps.
 
 The Jobs API is asynchronous. You create a job once, persist the `job_id`, then [poll status](/cloud/reference/get-agent-status), [read the result](/cloud/reference/get-agent-result), and [control](/cloud/reference/control-agent) the job when you need to pause, approve, or schedule it.
 
 <Note>
-Use this API when your app, worker, or internal tool submits work and tracks the lifecycle. For an AI assistant chatting against your ledger through tools, use the [MCP server](/cloud/reference/mcp). Agents is not the [Query Agent](/cloud/instances/create) that connects a self-hosted Core to Cloud.
+Use this API when your app, worker, or internal tool submits work and tracks the lifecycle. For an AI assistant chatting against your ledger through tools, use the [MCP server](/cloud/reference/mcp).
 </Note>
+
+### How it works
 
 <Steps>
 <Step title="Create the job">
@@ -27,15 +32,13 @@ Store the returned `job_id`. You need it for status, result, and control.
 Poll [Get job status](/cloud/reference/get-agent-status) for progress, subtasks, and approval state. When the job completes or fails, read [Get job result](/cloud/reference/get-agent-result).
 </Step>
 <Step title="Control the job when needed">
-Use [Control job](/cloud/reference/control-agent) to pause, resume, approve, reject, or schedule a follow-up run.
+Use [Control agent job](/cloud/reference/control-agent) to pause, resume, approve, reject, or schedule a follow-up run.
 </Step>
 </Steps>
 
 ---
 
 <Authorization />
-
-Cloud API keys and OAuth tokens must include `*`. There is no `agents:read` or `agents:write` scope yet. A key scoped only to `mcp`, `proxy`, or other resources cannot call `/agents`.
 
 ### Query
 
@@ -85,52 +88,56 @@ Alias for `message`. Both map to the same planner input. Send one of them.
 </ParamField>
 
 <ParamField body="config.skip_approval" type="boolean">
-When `true`, the agent auto-approves workflow checkpoints that would otherwise pause for manual approval.
+When `true`, the job auto-approves steps that would otherwise pause. When `false` or omitted, a step that needs approval moves the job to `waiting_approval`. Poll [Get job status](/cloud/reference/get-agent-status) for the approval state, then [Control agent job](/cloud/reference/control-agent) with `approve` or `reject`.
 </ParamField>
 
 <ParamField body="config.approved_tools" type="array">
-Tool permission tokens the plan may execute. If the planner produces a step that needs a token outside this list, the job fails before execution. Omit the field to allow all tools. Tokens are not step `task_type` values. See [Tool allowlist](#tool-allowlist).
+Capabilities this job is allowed to use, such as `filter.transactions` or `transactions.create`. 
+
+Do not send planner step names like `backoffice.filter_collection`. If a planned step needs a capability that is not in this list, the job fails before it runs. Omit the field to allow every capability. See [Tool allowlist](#tool-allowlist) for the ful list.
 </ParamField>
 
 <ParamField body="config.system_prompt" type="string">
-Higher-level behavior guidance for the planner.
+Standing instructions for how the planner should behave on this job, for example "You are an operations analyst." The original `message` stays the same.
 </ParamField>
 
 <ParamField body="config.steer" type="string">
-Request-specific steering. Does not replace `message`.
+Extra guidance for this request only, for example "Stay concise and list next steps." Use this for one-off constraints. It does not replace `message`.
 </ParamField>
 
 <ParamField body="config.callbacks.success_url" type="string">
-Webhook URL for the terminal payload when the job completes. See [Callbacks](#callbacks).
+HTTPS URL Cloud POSTs when the job completes. Cloud sends this only on the terminal `completed` state. The body is the same payload as [Get job result](/cloud/reference/get-agent-result).
 </ParamField>
 
 <ParamField body="config.callbacks.failure_url" type="string">
-Webhook URL for the terminal payload when the job fails.
+HTTPS URL Cloud POSTs when the job fails. Cloud sends this only on the terminal `failed` state. The body is the same payload as [Get job result](/cloud/reference/get-agent-result).
 </ParamField>
 
 <ParamField body="config.callbacks.hmac_secret" type="string">
-Secret used to sign callback bodies. When set, Cloud sends `X-Blnk-Timestamp` and `X-Blnk-Signature`.
+Shared secret so you can verify the webhook. When set, Cloud adds `X-Blnk-Timestamp` and `X-Blnk-Signature`. The signature is an HMAC-SHA256 hex digest of `{timestamp}.{raw_json_body}`.
 </ParamField>
 
 <ParamField body="filters.ledger_ids" type="array">
-Ledger IDs the job may touch. Enforced before execution, not as prompt hints.
+Ledgers this job is allowed to read or write (`ldg_...`). Cloud narrows collection queries to these IDs, checks every step input against them, and fails the job before a step runs if it uses a ledger outside the list. This is a hard limit, not a hint to the planner.
 </ParamField>
 
 <ParamField body="filters.balance_ids" type="array">
-Balance IDs the job may touch.
+Balances this job is allowed to read or write (`bln_...`). Cloud narrows collection queries to these IDs and fails any step that uses a balance outside the list.
 </ParamField>
 
 <ParamField body="filters.identity_ids" type="array">
-Identity IDs the job may touch.
+Identities this job is allowed to read or write (`idt_...`). Cloud narrows collection queries to these IDs and fails any step that uses an identity outside the list.
 </ParamField>
 
 <ParamField body="filters.transaction_ids" type="array">
-Transaction IDs the job may touch.
+Transactions this job is allowed to read or write (`txn_...`). Cloud narrows collection queries to these IDs and fails any step that uses a transaction outside the list.
 </ParamField>
 
 ### Response
 
-The create endpoint returns `202 Accepted` with the new job ID, an initial status snapshot, and links for the next calls. Cloud claims the job immediately, so the first snapshot is usually `running`. It then moves to `planning` while the agent builds the plan.
+The create endpoint returns `202 Accepted` with the new job ID, an initial status snapshot, and links for the next calls. 
+
+Cloud claims the job immediately, so the first snapshot is usually `running`. It then moves to `planning` while the agent builds the plan.
 
 <ResponseExample>
 ```json 202 Accepted wrap expandable
@@ -176,38 +183,56 @@ The create endpoint returns `202 Accepted` with the new job ID, an initial statu
   }
 }
 ```
+
+```text 400 Missing instance_id wrap
+instance_id is required
+```
+
+```text 400 Missing message wrap
+message or query is required
+```
+
+```json 403 Forbidden wrap
+{
+  "error": "Insufficient permissions for this operation"
+}
+```
+
+```text 503 Service Unavailable wrap
+jobs service unavailable
+```
 </ResponseExample>
 
 <ResponseField name="job_id" type="string">
-Unique job identifier (`job_` plus a timestamp). Persist this for status, result, and control.
+ID of the new job (`job_` plus a timestamp, for example `job_1779300000000000000`). Store this. You pass it to [Get job status](/cloud/reference/get-agent-status), [Get job result](/cloud/reference/get-agent-result), and [Control agent job](/cloud/reference/control-agent).
 </ResponseField>
 
 <ResponseField name="status" type="string">
-Current job state. See [Job lifecycle](#job-lifecycle).
+Where the job is right now. Create usually returns `running` because Cloud claims the job immediately. It then moves to `planning`, then back to `running` while steps execute. Later values: `queued`, `scheduled`, `paused`, `waiting_approval`, `completed`, `failed`. See [Job lifecycle](#job-lifecycle).
 </ResponseField>
 
 <ResponseField name="status_message" type="string">
-Human-readable snapshot of the current state.
+Short sentence that matches `status`, for example `Workflow executing.` or `Planning workflow.` Use this for logs or UI copy. Do not parse it.
 </ResponseField>
 
 <ResponseField name="plan_run_id" type="string">
-Plan run created after planning. Empty until the planner finishes.
+ID of the plan Cloud built from your message (`pr_...`). Empty on create. It fills in after planning finishes. You need it only if you inspect the plan; status, result, and control use `job_id`.
 </ResponseField>
 
 <ResponseField name="created_at" type="timestamp">
-When Cloud created the job.
+When Cloud accepted the job, in UTC ISO 8601.
 </ResponseField>
 
 <ResponseField name="updated_at" type="timestamp">
-When the job last changed.
+When the job last changed, in UTC ISO 8601. On create this matches `created_at`.
 </ResponseField>
 
 <ResponseField name="links" type="object">
-Relative paths for status, result, and control on this job.
+Relative paths for the next calls on this job: `status`, `result`, and `control`. Prefix them with `https://api.cloud.blnkfinance.com`.
 </ResponseField>
 
 <ResponseField name="job_status" type="object">
-Compact status object in the same shape as [Get job status](/cloud/reference/get-agent-status).
+Full compact status snapshot at create time. Same fields as [Get job status](/cloud/reference/get-agent-status), including `progress`, `sub_tasks`, and `links`. On create, steps are still empty. Poll status to watch them fill in.
 </ResponseField>
 
 ---
@@ -226,8 +251,6 @@ A job moves through these states:
 | `waiting_approval` | A step needs approve or reject |
 | `completed` | All steps finished |
 | `failed` | Planning or execution failed |
-
-Typical path: create the job, the agent plans, the plan becomes a plan run with steps, then Cloud executes one step at a time until the job completes, waits for approval, is paused, or fails.
 
 ---
 
@@ -267,65 +290,13 @@ Each `approved_tools` entry is a **tool permission token**, not a step `task_typ
 
 ---
 
-## How scoping works
-
-`filters` are execution scope. Collection queries are narrowed to the allowed IDs, direct task inputs are checked against those IDs, and out-of-scope steps fail before they run.
-
-Use this to hand the same agent to different apps or operator surfaces while keeping each job bounded to the part of the ledger it may touch.
-
----
-
-## How approvals work
-
-When a plan step requires approval, the job moves to `waiting_approval`. [Get job status](/cloud/reference/get-agent-status) shows the current approval state. [Control job](/cloud/reference/control-agent) with `approve` or `reject` resumes or fails the job.
-
-If `skip_approval` is `true`, the job auto-approves workflow checkpoints it owns.
-
----
-
-## Callbacks
-
-Cloud POSTs callbacks only on terminal states: the success URL when the job completes, the failure URL when it fails. The body matches [Get job result](/cloud/reference/get-agent-result).
-
-If `hmac_secret` is set, the request includes:
-
-- `X-Blnk-Timestamp`
-- `X-Blnk-Signature`
-
-The signature is an HMAC-SHA256 hex digest of:
-
-```text
-{timestamp}.{raw_json_body}
-```
-
----
-
-## Error handling
-
-Create returns `400` when `instance_id` is missing, the body is not JSON, or neither `message` nor `query` is set. A scoped Cloud key without `*` returns `403`. If the jobs service is unavailable, the endpoint returns `503`.
-
-```json 400 Bad Request wrap
-instance_id is required
-```
-
-To resolve the error:
-
-| Code | What to do |
-| :-- | :-- |
-| `400` | Send `instance_id` as a query parameter and include `message` or `query`. |
-| `401` | Authenticate with a Cloud API key or OAuth access token. |
-| `403` | Use a Cloud key that includes `*`. |
-| `503` | Retry later. The jobs service is not available on this Cloud deployment. |
-
----
-
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Get job status", href: "/cloud/reference/get-agent-status" },
     { title: "Get job result", href: "/cloud/reference/get-agent-result" },
-    { title: "Control job", href: "/cloud/reference/control-agent" },
+    { title: "Control agent job", href: "/cloud/reference/control-agent" },
     { title: "MCP server", href: "/cloud/reference/mcp" },
   ]}
 />

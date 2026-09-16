@@ -1,5 +1,6 @@
 ---
-title: "Control job"
+title: "Control agent job"
+sidebarTitle: "Control agent job"
 api: "POST /agents/jobs/{job_id}/control"
 description: "Pause, resume, approve, reject, or schedule an agent job."
 ---
@@ -12,15 +13,9 @@ Use this endpoint to pause or resume a running job, approve or reject a waiting 
 
 Pause, resume, approve, and reject return a job status object. Schedule actions return a smaller payload with the new child job or recurring template.
 
-<Note>
-Pause is a soft pause. The current running step is allowed to finish. The workflow stops before the next step starts.
-</Note>
-
 ---
 
 <Authorization />
-
-Cloud API keys and OAuth tokens must include `*`.
 
 ### Path
 
@@ -31,6 +26,15 @@ curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000
   -H 'Content-Type: application/json' \
   -d '{
     "action": "pause"
+  }'
+```
+
+```bash Resume wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "resume"
   }'
 ```
 
@@ -45,7 +49,31 @@ curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000
   }'
 ```
 
-```bash Schedule wrap
+```bash Reject wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "reject",
+    "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "reason": "Out of policy scope"
+  }'
+```
+
+```bash Schedule once wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "schedule",
+    "schedule": {
+      "mode": "once",
+      "run_at": "2026-09-17T09:00:00Z"
+    }
+  }'
+```
+
+```bash Schedule recurring wrap
 curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
   -H 'Authorization: Bearer CLOUD_API_KEY' \
   -H 'Content-Type: application/json' \
@@ -62,131 +90,127 @@ curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000
 </RequestExample>
 
 <ParamField path="job_id" type="string" required>
-Job identifier returned by [Create job](/cloud/reference/create-agent) (`job_...`).
-</ParamField>
-
-<ParamField query="instance_id" type="string">
-Optional. When present, Cloud verifies the instance belongs to your organization.
+Job to control (`job_...`). Use the `job_id` returned by [Create agent job](/cloud/reference/create-agent).
 </ParamField>
 
 ### Body
 
 <ParamField body="action" type="string" required>
-One of `pause`, `resume`, `approve`, `reject`, or `schedule`.
+What to do with the job:
+
+- `pause`: Soft pause. The current step finishes, then the job and its plan run stop before the next step. Status becomes `paused`.
+- `resume`: Start the job again. If `scheduled_run_at` is still in the future, status returns to `scheduled`. Otherwise Cloud runs it now.
+- `approve`: Continue a job in `waiting_approval`. The job must already have a `plan_run_id`.
+- `reject`: Fail the waiting step and move the job to `failed`. The job must already have a `plan_run_id`.
+- `schedule`: Create a one-time child job or a recurring template from this job's plan. The job must already have a reusable plan.
 </ParamField>
 
 <ParamField body="approver_id" type="string">
-Who approved or rejected the checkpoint. Defaults to `job-control` when omitted.
+Who approved or rejected the waiting step. Required in practice for an audit trail. If you omit it, Cloud stores `job-control`. Used only with `approve` and `reject`.
 </ParamField>
 
 <ParamField body="reason" type="string">
-Optional note stored with the approval decision.
+Why you approved or rejected the step. Stored with the decision. Used only with `approve` and `reject`.
 </ParamField>
 
 <ParamField body="schedule.mode" type="string">
-Required for `schedule`. `once` creates a child job. `recurring` creates a recurring template from the job's plan.
+Required when `action` is `schedule`. 
+
+- `once`: creates a child job that runs at `run_at`.
+- `recurring`: creates a template that keeps using this job's plan.
 </ParamField>
 
 <ParamField body="schedule.run_at" type="string">
-RFC3339 timestamp for `mode: "once"`.
+When the child job should start. Required for `mode: "once"`. Send an RFC3339 timestamp such as `2026-09-17T09:00:00Z`.
 </ParamField>
 
 <ParamField body="schedule.cron_expr" type="string">
-Cron expression for `mode: "recurring"`.
+How often the recurring template should run. Required for `mode: "recurring"`, e.g. `0 * * * *` for every hour.
 </ParamField>
 
 <ParamField body="schedule.timezone" type="string">
-Timezone for the recurring schedule. Defaults to `UTC`.
+Timezone for the cron expression. Defaults to `UTC`. Use an IANA name such as `Africa/Lagos`.
 </ParamField>
 
 <ParamField body="schedule.name" type="string">
-Display name for the recurring template. Defaults to a truncated copy of the original message.
+Label for the recurring template. If you omit it, Cloud uses a truncated copy of the original job message.
 </ParamField>
-
-### Actions
-
-#### Pause
-
-```json wrap
-{
-  "action": "pause"
-}
-```
-
-Sets the job (and its plan run, if any) to `paused`.
-
-#### Resume
-
-```json wrap
-{
-  "action": "resume"
-}
-```
-
-Re-queues the job. If `scheduled_run_at` is still in the future, the job returns to `scheduled`. Otherwise Cloud starts it again.
-
-#### Approve
-
-```json wrap
-{
-  "action": "approve",
-  "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
-  "reason": "Reviewed and approved"
-}
-```
-
-Requires a `plan_run_id` on the job. Resumes the waiting checkpoint.
-
-#### Reject
-
-```json wrap
-{
-  "action": "reject",
-  "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
-  "reason": "Out of policy scope"
-}
-```
-
-Fails the waiting checkpoint and moves the job to `failed`.
-
-#### Schedule once
-
-```json wrap
-{
-  "action": "schedule",
-  "schedule": {
-    "mode": "once",
-    "run_at": "2026-09-17T09:00:00Z"
-  }
-}
-```
-
-Creates a new scheduled child job from the reusable plan spec. The job must already have a plan.
-
-#### Schedule recurring
-
-```json wrap
-{
-  "action": "schedule",
-  "schedule": {
-    "mode": "recurring",
-    "cron_expr": "0 * * * *",
-    "timezone": "UTC",
-    "name": "Hourly suspicious transaction review"
-  }
-}
-```
-
-Creates a recurring template from the job's plan.
 
 ### Response
 
-Pause, resume, approve, and reject return the job status object (`job_id`, `status`, `status_message`, `plan_run_id`, `sub_tasks`, timestamps). Use [Get job status](/cloud/reference/get-agent-status) when you want the compact progress view.
-
-Schedule once:
+Pause, resume, approve, and reject return the job after the action. Schedule returns a smaller payload for the new child job or template.
 
 <ResponseExample>
-```json 200 Scheduled once wrap
+```json 200 Pause wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "paused",
+  "status_message": "Job paused.",
+  "plan_run_id": "pr_1779300000000000000",
+  "sub_tasks": [
+    {
+      "id": 1,
+      "plan_run_id": "pr_1779300000000000000",
+      "step_index": 1,
+      "step_id": "s1",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "id": 2,
+      "plan_run_id": "pr_1779300000000000000",
+      "step_index": 2,
+      "step_id": "s2",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000200",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:08Z"
+    }
+  ],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:12Z"
+}
+```
+
+```json 200 Resume wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:14Z"
+}
+```
+
+```json 200 Approve wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:16Z"
+}
+```
+
+```json 200 Reject wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "failed",
+  "status_message": "Out of policy scope",
+  "plan_run_id": "pr_1779300000000000000",
+  "last_error": "Out of policy scope",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:16Z"
+}
+```
+
+```json 200 Schedule once wrap
 {
   "job_id": "job_1779300000000000000",
   "scheduled_job_id": "job_1779386400000000000",
@@ -195,7 +219,7 @@ Schedule once:
 }
 ```
 
-```json 200 Scheduled recurring wrap
+```json 200 Schedule recurring wrap
 {
   "job_id": "job_1779300000000000000",
   "recurring_template_id": "rt_1779300000000000500",
@@ -203,39 +227,67 @@ Schedule once:
   "status": "active"
 }
 ```
+
+```text 400 Bad Request wrap
+unsupported action
+```
+
+```text 404 Not Found wrap
+not found
+```
+
+```text 503 Service Unavailable wrap
+jobs service unavailable
+```
 </ResponseExample>
 
 <ResponseField name="job_id" type="string">
-Original job you controlled.
-</ResponseField>
-
-<ResponseField name="scheduled_job_id" type="string">
-Child job created for `mode: "once"`.
-</ResponseField>
-
-<ResponseField name="scheduled_run_at" type="timestamp">
-When the child job will run.
-</ResponseField>
-
-<ResponseField name="recurring_template_id" type="string">
-Template created for `mode: "recurring"` (`rt_...`).
-</ResponseField>
-
-<ResponseField name="next_run_at" type="timestamp">
-Next time the recurring template will fire.
+Job you sent in the path (`job_...`). On schedule actions this is the parent job, not the new child or template.
 </ResponseField>
 
 <ResponseField name="status" type="string">
-`scheduled` for a one-time child job. `active` for a new recurring template.
+After pause: `paused`. After resume or approve: usually `running`. After reject: `failed`. After schedule once: `scheduled` (the child job). After schedule recurring: `active` (the template).
 </ResponseField>
 
-Unknown jobs return `404`. Invalid JSON, unsupported actions, a missing plan, or a bad `run_at` return `400`.
+<ResponseField name="status_message" type="string">
+Short sentence that matches `status`. Present on pause, resume, approve, and reject. Not on schedule responses.
+</ResponseField>
 
-| Code | When it happens |
-| :-- | :-- |
-| `400` | Invalid JSON, unsupported `action`, no reusable plan, missing `plan_run_id` for approve/reject, or `run_at` is not RFC3339 |
-| `404` | Job not found in your organization |
-| `503` | Jobs service is unavailable |
+<ResponseField name="plan_run_id" type="string">
+Plan attached to the job (`pr_...`). Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Why the job failed. Present after `reject`, or when a step already failed.
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Plan steps on the job. Present on pause, resume, approve, and reject. This is the raw step list, not the compact status view.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud accepted the job. Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the control action landed. Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="scheduled_job_id" type="string">
+New child job created by `schedule` + `once` (`job_...`). Poll this ID with [Get job status](/cloud/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="scheduled_run_at" type="timestamp">
+When that child job will start, in UTC ISO 8601. Only on `schedule` + `once`.
+</ResponseField>
+
+<ResponseField name="recurring_template_id" type="string">
+Template created by `schedule` + `recurring` (`rt_...`).
+</ResponseField>
+
+<ResponseField name="next_run_at" type="timestamp">
+When that template will fire next, in UTC ISO 8601. Only on `schedule` + `recurring`.
+</ResponseField>
 
 ---
 
@@ -243,7 +295,7 @@ Unknown jobs return `404`. Invalid JSON, unsupported actions, a missing plan, or
 
 <RelatedTopics
   items={[
-    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "Create agent job", href: "/cloud/reference/create-agent" },
     { title: "Get job status", href: "/cloud/reference/get-agent-status" },
     { title: "Get job result", href: "/cloud/reference/get-agent-result" },
     { title: "MCP server", href: "/cloud/reference/mcp" },
