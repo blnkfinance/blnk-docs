@@ -1,0 +1,123 @@
+---
+title: "Get lake schema"
+api: "GET /data/lake/schema"
+description: "List column names and types for each lake table on an instance."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Return the latest lake schema for each ledger resource on an instance. Use this before you write SQL or filters so you know which table names and columns Cloud will accept.
+
+The response lists only public columns. Internal columns (names that start with `_blnk_`) are omitted. For table relationships and when to use each column, see [Schema](/cloud/insights/schema).
+
+---
+
+<Authorization />
+
+### Query parameters
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/data/lake/schema?instance_id=YOUR_INSTANCE_ID' \
+  -H 'Authorization: Bearer CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ParamField query="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "data": {
+    "resources": [
+      {
+        "name": "balances",
+        "schema_version": 3,
+        "columns": [
+          {
+            "name": "balance_id",
+            "type": "VARCHAR"
+          },
+          {
+            "name": "currency",
+            "type": "VARCHAR"
+          },
+          {
+            "name": "meta_data",
+            "type": "JSON"
+          }
+        ]
+      },
+      {
+        "name": "transactions",
+        "schema_version": 3,
+        "columns": [
+          {
+            "name": "transaction_id",
+            "type": "VARCHAR"
+          },
+          {
+            "name": "currency",
+            "type": "VARCHAR"
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+```json 400 wrap
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "instance_id is required"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="resources" type="array">
+One entry per lake table Cloud can query on this instance. Empty when the lake has not published a schema for the instance yet.
+<Expandable title="Resource properties">
+  <ResponseField name="name" type="string">
+  Lake table name to use in `FROM` or as `resource`. One of `transactions`, `balances`, `ledgers`, `identity`, or `anomalies`.
+  </ResponseField>
+  <ResponseField name="schema_version" type="integer">
+  Version of the column set Cloud last observed for this table. Increments when the lake adds or changes columns. `0` when Cloud is still describing a mirrored table and has not stored a versioned schema yet.
+  </ResponseField>
+  <ResponseField name="columns" type="array">
+  Public columns you can use in `SELECT`, `WHERE`, or filters. Internal columns are omitted.
+  <Expandable title="Column properties">
+    <ResponseField name="name" type="string">
+    Column name to use in SQL or in a filter `field`. For example `currency`, `status`, or `meta_data`.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+    Physical type Cloud stores for the column, such as `VARCHAR`, `DOUBLE`, `TIMESTAMP`, or `JSON`. `meta_data` is always `JSON`.
+    </ResponseField>
+  </Expandable>
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "Schema", href: "/cloud/insights/schema" },
+    { title: "Create saved query", href: "/cloud/reference/create-saved-lake-query" },
+  ]}
+/>

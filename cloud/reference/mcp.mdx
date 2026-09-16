@@ -5,49 +5,197 @@ description: "Connect to the Blnk MCP server to query and manage ledger data fro
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
-import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-The Blnk MCP server exposes your Core instance through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). AI assistants and MCP-compatible clients connect to this endpoint, authenticate with Blnk Cloud credentials, and call tools to read or write ledger data.
+The Blnk MCP server exposes your Core instance through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). 
 
-<Note>
-All MCP traffic is routed through Blnk Cloud. AI clients never connect directly to your Core instance. Blnk Cloud validates credentials, enforces scopes, and forwards authorized operations to the target instance.
-</Note>
+AI assistants such as Cursor, Claude Desktop, and ChatGPT connect to this endpoint, authenticate with Blnk Cloud credentials, and call tools to read or write ledger data.
 
-For client setup in Cursor, Claude Desktop, ChatGPT, and other tools, see the [MCP integration guide](/cloud/integrations/mcp).
-
----
-
-<Authorization />
-
-Credentials must include one or both MCP scopes:
-
-| Scope | Access |
-| :-- | :-- |
-| `mcp:read` | Read-only access to data through MCP tools |
-| `mcp:write` | Read and write access through MCP tools |
-
-### Body
+**All MCP traffic is routed through Blnk Cloud**. AI clients never connect directly to your Core instance. Cloud validates credentials, enforces scopes, and forwards authorized operations to the target instance.
 
 <RequestExample>
-```bash cURL wrap
-curl -X POST 'https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID' \
-  -H 'Authorization: Bearer CLOUD_API_KEY' \
-  -H 'Content-Type: application/json'
+```json MCP configuration wrap
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "Authorization": "Bearer CLOUD_API_KEY"
+      }
+    }
+  }
+}
 ```
 </RequestExample>
 
-<ParamField path="instance_id" type="string" required>
-Unique identifier of the Blnk Core instance to connect to. Find this in `Settings > MCP` in your Blnk Cloud dashboard, or from the instance currently open in your workspace.
-</ParamField>
+---
 
-### Response
+## Set up your client
+
+<Steps>
+<Step title="Create authentication credentials">
+Choose either an API key or OAuth credentials. Both need `mcp:read` and `mcp:write`.
+
+<Tabs>
+<Tab title="API Key" icon="key">
+Create an API key with MCP scopes in [Settings > API Keys](/cloud/reference/api-keys#create-an-api-key).
+</Tab>
+<Tab title="OAuth Credentials" icon="lock">
+Create an OAuth client with MCP scopes in [Settings > API Keys](/cloud/reference/oauth#create-an-oauth-client). Select `OAuth` as the type when creating.
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Get your MCP endpoint">
+Go to `Settings > MCP` and copy the configuration for your app.
+
+<Tabs>
+<Tab title="API Key" icon="key">
+```json wrap
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "Authorization": "Bearer CLOUD_API_KEY"
+      }
+    }
+  }
+}
+```
+</Tab>
+<Tab title="OAuth Credentials" icon="lock">
+```
+https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID
+```
+
+<Info>
+For OAuth, you only need the MCP endpoint URL. Use your OAuth Client ID and Client Secret for authentication.
+</Info>
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Configure your MCP client">
+<Tabs>
+<Tab title="Cursor" icon="code">
+1. Open Cursor Settings.
+2. Go to `Features > MCP Servers`.
+3. Click `Add Server`.
+4. Paste the configuration from the previous step (full JSON for API keys, or the endpoint URL for OAuth).
+</Tab>
+<Tab title="Claude Desktop" icon="bot">
+Add the configuration from the previous step to `claude_desktop_config.json`:
+
+<CodeGroup>
+```bash MacOS wrap
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+```bash Windows wrap
+%APPDATA%\Claude\claude_desktop_config.json
+```
+</CodeGroup>
+</Tab>
+<Tab title="ChatGPT" icon="bot">
+1. Go to `Settings > Apps`.
+
+<img src="/cloud/img/organization/chatgpt-setup.png" alt="ChatGPT MCP app configuration form showing fields for Name, MCP Server URL, and OAuth authentication settings" />
+
+2. Open `Advanced settings` and enable `Developer mode`.
+3. Click `Create app`.
+4. Fill in the app details:
+   - **Name:** Use a clear name like Blnk MCP.
+   - **MCP Server URL:** Paste the MCP endpoint URL from the previous step.
+   - **Authentication type:** Select OAuth, then enter your Client ID and Client Secret.
+5. Click `Create`.
+6. Sign in with Blnk Cloud when prompted.
+7. After login, ChatGPT returns with the MCP app configured.
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Start chatting with your ledger">
+You can now query, explore, and update Blnk data from your assistant.
+</Step>
+</Steps>
+
+---
+
+## What you can ask
+
+1. **Monitor activity**
+   - "Show me all transactions from the last 24 hours"
+   - "What changed since yesterday?"
+
+2. **Check balances**
+   - "What is the current balance for wallet bln_wallet_456?"
+   - "Show me all negative or low balances"
+
+3. **Investigate issues**
+   - "Find failed or voided transactions"
+   - "Get the transaction with reference order_456"
+
+4. **Review large movements**
+   - "Show all USD transactions over $5,000"
+   - "List unusually large transactions today"
+
+5. **Answer operational questions**
+   - "How much money moved today?"
+   - "What is the total balance across all customer wallets?"
+
+---
+
+## Supported tools
+
+Blnk MCP registers 33 tools.
+
+<Tabs>
+<Tab title="Ledgers" icon="book-open">
+- `create_ledger` - Create a new ledger for organizing balances
+- `get_ledger` - Retrieve ledger details by ID
+- `list_ledgers` - List all ledgers
+</Tab>
+<Tab title="Balances" icon="wallet">
+- `create_balance` - Create a balance within a ledger
+- `get_balance` - Retrieve balance details and current amounts by balance ID
+- `list_balances` - List all balances
+</Tab>
+<Tab title="Transactions" icon="arrow-left-right">
+- `record_transaction` - Record a transaction between two balances
+- `get_transaction` - Get a transaction by ID
+- `get_transaction_by_reference` - Get a transaction by its unique reference
+- `commit_inflight` - Commit an inflight transaction to finalize it
+- `void_inflight` - Void an inflight transaction to cancel it
+- `refund_transaction` - Create a refund for a transaction
+- `schedule_transaction` - Schedule a transaction for future execution
+- `bulk_transactions` - Process multiple transactions at once
+</Tab>
+<Tab title="Identities" icon="users">
+- `create_identity` - Create a new identity (individual or organization)
+- `get_identity` - Retrieve identity details by ID
+- `list_identities` - List all identities
+- `update_identity` - Update an existing identity
+- `delete_identity` - Delete an identity
+</Tab>
+<Tab title="Search" icon="search">
+- `search` - Search across transactions, ledgers, balances, or identities. Requires `entity` and `query`.
+</Tab>
+<Tab title="Queries" icon="database">
+- `query_transactions` - Query transactions with advanced filters
+- `query_balances` - Query balances with advanced filters
+- `query_ledgers` - Query ledgers with advanced filters
+- `query_identities` - Query identities with advanced filters
+</Tab>
+</Tabs>
+
+---
+
+## Response
 
 Blnk MCP follows the [Model Context Protocol specification](https://modelcontextprotocol.io/specification/2025-03-26). Request and response formats, session lifecycle, transport, and error handling are defined by the MCP standard.
 
 Most MCP clients handle the protocol automatically. If you are building a custom client, refer to the MCP specification for message structure, initialization, and tool invocation.
-
-For the list of supported tools, see [Supported tools](/cloud/integrations/mcp#supported-tools) in the MCP integration guide.
 
 ---
 
@@ -55,8 +203,9 @@ For the list of supported tools, see [Supported tools](/cloud/integrations/mcp#s
 
 <RelatedTopics
   items={[
-    { title: "Cloud MCP", href: "/cloud/integrations/mcp" },
-    { title: "LLM", href: "/home/llms" },
+    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "API keys", href: "/cloud/reference/api-keys" },
+    { title: "OAuth", href: "/cloud/reference/oauth" },
     { title: "Integrations overview", href: "/cloud/integrations/overview" },
   ]}
 />

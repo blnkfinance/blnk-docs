@@ -1,0 +1,157 @@
+---
+title: "Get saved query"
+api: "GET /data/lake/queries/{query_id}"
+description: "Return one saved lake query, including its SQL, date range, and schedule when one is set."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+A **saved query** is lake SQL you store on an instance so you can rerun it later. It is not a query run.
+
+This endpoint returns one saved query by `query_id`, including the SQL, how Cloud picks the date range, and the [schedule](/cloud/reference/schedule-saved-lake-query) when one is set.
+
+---
+
+<Authorization />
+
+### Path
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/data/lake/queries/lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' \
+  -H 'Authorization: Bearer CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ParamField path="query_id" type="string" required>
+Unique id of the saved query (`lake_query_...`). Get it from [List saved queries](/cloud/reference/list-saved-lake-queries) or [Create saved query](/cloud/reference/create-saved-lake-query).
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "data": {
+    "id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "owner_user_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "name": "Applied volume by currency",
+    "description": "APPLIED transaction counts by currency",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+    "range_mode": "fixed",
+    "start_date": "2026-08-01T00:00:00Z",
+    "end_date": "2026-08-31T00:00:00Z",
+    "rolling_days": 0,
+    "schedule": {
+      "id": "lake_query_schedule_6e6feddd-930b-4e38-8ba1-1a3eee659bb3",
+      "query_id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "cron_expression": "0 9 * * *",
+      "timezone": "America/New_York",
+      "enabled": true,
+      "next_run_at": "2026-08-16T13:00:00Z"
+    },
+    "created_at": "2026-08-12T09:28:16.864765Z",
+    "updated_at": "2026-08-12T09:28:16.864765Z"
+  }
+}
+```
+
+```json 404 wrap
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "saved lake query not found"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="id" type="string">
+Unique id of this saved query (`lake_query_...`). Pass it as `saved_query_id` on [Create new query](/cloud/reference/create-new-query).
+</ResponseField>
+
+<ResponseField name="instance_id" type="string">
+Unique id of the instance (`instance_...`) this query is bound to.
+</ResponseField>
+
+<ResponseField name="owner_user_id" type="string">
+User who created the query. Anyone in the workspace can run it. Only this owner or an admin can update, delete, or schedule it.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Label shown in Insights and copied onto query runs that come from this query.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Optional note about what the query returns. Empty string when none was set.
+</ResponseField>
+
+<ResponseField name="sql" type="string">
+Read-only DuckDB `SELECT` or `WITH` Cloud runs each time you execute this query.
+</ResponseField>
+
+<ResponseField name="range_mode" type="string">
+How Cloud picks the lake date range when the query runs. `fixed` uses the stored `start_date` and `end_date`. `rolling` uses the last `rolling_days` days, resolved at run time.
+</ResponseField>
+
+<ResponseField name="start_date" type="timestamp">
+First day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="end_date" type="timestamp">
+Last day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="rolling_days" type="integer">
+Number of days of lake history to open when `range_mode` is `rolling` (1 to 3650). `0` when the query is `fixed`.
+</ResponseField>
+
+<ResponseField name="schedule" type="object">
+Cron schedule Cloud uses to run this query automatically. Present only after you [set a schedule](/cloud/reference/schedule-saved-lake-query).
+<Expandable title="Schedule properties">
+  <ResponseField name="id" type="string">
+  Unique id of the schedule (`lake_query_schedule_...`).
+  </ResponseField>
+  <ResponseField name="query_id" type="string">
+  Saved query this schedule belongs to (`lake_query_...`).
+  </ResponseField>
+  <ResponseField name="cron_expression" type="string">
+  Five-field cron that says when Cloud starts a query run. Example: `0 9 * * *` is every day at 09:00 in `timezone`.
+  </ResponseField>
+  <ResponseField name="timezone" type="string">
+  IANA timezone Cloud uses to interpret the cron, such as `America/New_York`. `next_run_at` is still returned in UTC.
+  </ResponseField>
+  <ResponseField name="enabled" type="boolean">
+  Whether Cloud will fire the schedule. `false` keeps the schedule stored but skips runs.
+  </ResponseField>
+  <ResponseField name="next_run_at" type="timestamp">
+  Next time Cloud will start a query run for this schedule, in UTC.
+  </ResponseField>
+  <ResponseField name="last_run_at" type="timestamp">
+  When Cloud last started a query run from this schedule. Omitted until the first fire.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the saved query was first created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the saved SQL, name, description, or date range was last changed.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Update saved query", href: "/cloud/reference/update-saved-lake-query" },
+    { title: "Schedule saved query", href: "/cloud/reference/schedule-saved-lake-query" },
+    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+  ]}
+/>

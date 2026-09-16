@@ -1,0 +1,159 @@
+---
+title: "List query runs"
+api: "GET /data/lake/query-runs"
+description: "Return recent executions of lake SQL for an instance."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+A **query run** is one execution of lake SQL. Cloud creates a run when you [create a new query](/cloud/reference/create-new-query) with `sql` or `saved_query_id`, or when a [scheduled saved query](/cloud/reference/schedule-saved-lake-query) fires.
+
+Each run stores a snapshot of the SQL and date range that actually ran, the status of that execution, and a preview of the result rows. The preview is bounded: at most 1000 rows, or less if the preview exceeds 2 MB. It is not the full result set. Editing a saved query later does not change past runs.
+
+This endpoint returns recent runs for one instance, newest first. Use the query parameters to narrow by saved query, status, or how the run started.
+
+---
+
+<Authorization />
+
+### Query parameters
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/data/lake/query-runs?instance_id=YOUR_INSTANCE_ID&limit=20' \
+  -H 'Authorization: Bearer CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ParamField query="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+</ParamField>
+
+<ParamField query="query_id" type="string">
+Return only runs that came from this [saved query](/cloud/reference/get-saved-lake-query) (`lake_query_...`). Omit it to include every run on the instance, including ad-hoc SQL that was not saved.
+</ParamField>
+
+<ParamField query="status" type="string">
+Return only runs in this state: `running` (still executing), `succeeded` (finished with rows or an empty result), or `failed` (the SQL did not complete).
+</ParamField>
+
+<ParamField query="trigger" type="string">
+Return only runs started this way: `manual` (you called Create new query) or `scheduled` (a saved-query schedule fired).
+</ParamField>
+
+<ParamField query="cursor" type="string">
+ID of the last run from the previous response (`next_cursor`). Cloud returns the next page after that run. Omit it on the first request.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+Maximum number of runs to return. Defaults to `50`. Maximum `100`. Values outside that range are treated as `50`.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "data": [
+    {
+      "id": "lake_query_run_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "saved_query_id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "trigger": "manual",
+      "query_name": "Applied volume by currency",
+      "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+      "start_date": "2026-08-01T00:00:00Z",
+      "end_date": "2026-08-31T00:00:00Z",
+      "status": "succeeded",
+      "row_count": 1,
+      "preview_limited": false,
+      "duration_ms": 842,
+      "started_at": "2026-08-15T11:04:12.112739Z",
+      "finished_at": "2026-08-15T11:04:12.954739Z",
+      "rows": [
+        {
+          "currency": "USD",
+          "txn_count": 1280
+        }
+      ]
+    }
+  ],
+  "next_cursor": ""
+}
+```
+</ResponseExample>
+
+<ResponseField name="data" type="array">
+Query runs for this instance, newest first.
+<Expandable title="Run properties">
+  <ResponseField name="id" type="string">
+  Unique id of this run (`lake_query_run_...`). Pass it to [Get query run](/cloud/reference/get-lake-query-run).
+  </ResponseField>
+  <ResponseField name="instance_id" type="string">
+  Unique id of the instance (`instance_...`).
+  </ResponseField>
+  <ResponseField name="saved_query_id" type="string">
+  Saved query this run came from (`lake_query_...`). Omitted when you ran ad-hoc SQL without a saved query.
+  </ResponseField>
+  <ResponseField name="trigger" type="string">
+  How the run started: `manual` (Create new query) or `scheduled` (a saved-query schedule).
+  </ResponseField>
+  <ResponseField name="query_name" type="string">
+  Display name of the saved query at the time of the run. Empty for ad-hoc SQL.
+  </ResponseField>
+  <ResponseField name="sql" type="string">
+  Exact SQL Cloud executed. This is a snapshot. Later edits to a saved query do not change it.
+  </ResponseField>
+  <ResponseField name="start_date" type="timestamp">
+  First day of lake history this run opened. For a rolling saved query, this is the start Cloud resolved at run time.
+  </ResponseField>
+  <ResponseField name="end_date" type="timestamp">
+  Last day of lake history this run opened. For a rolling saved query, this is the end Cloud resolved at run time.
+  </ResponseField>
+  <ResponseField name="status" type="string">
+  `running` while Cloud is still executing, `succeeded` when it finished, or `failed` when the SQL did not complete.
+  </ResponseField>
+  <ResponseField name="row_count" type="integer">
+  Number of rows the query produced. Can be larger than `rows` when the preview is truncated.
+  </ResponseField>
+  <ResponseField name="preview_limited" type="boolean">
+  `true` when `rows` is a truncated preview (more than 1000 rows, or the preview exceeded the size cap). Use `row_count` for the full total.
+  </ResponseField>
+  <ResponseField name="duration_ms" type="integer">
+  How long the query took to execute, in milliseconds.
+  </ResponseField>
+  <ResponseField name="error_code" type="string">
+  Machine-readable failure code, such as `INVALID_SQL` or `QUERY_TOO_EXPENSIVE`. Present only when `status` is `failed`.
+  </ResponseField>
+  <ResponseField name="error_message" type="string">
+  Human-readable reason the run failed. Present only when `status` is `failed`.
+  </ResponseField>
+  <ResponseField name="started_at" type="timestamp">
+  When Cloud started executing this run.
+  </ResponseField>
+  <ResponseField name="finished_at" type="timestamp">
+  When the run reached `succeeded` or `failed`. Omitted while `status` is `running`.
+  </ResponseField>
+  <ResponseField name="rows" type="array">
+  Preview of result rows. Column names match the SQL aliases. At most 1000 rows. Not the full result when `preview_limited` is `true`.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="next_cursor" type="string">
+ID of the last run on this page. Pass it as `cursor` on the next request to continue. Empty when there are no more runs.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get query run", href: "/cloud/reference/get-lake-query-run" },
+    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "List saved queries", href: "/cloud/reference/list-saved-lake-queries" },
+  ]}
+/>

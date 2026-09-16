@@ -1,0 +1,204 @@
+---
+title: "Create new query"
+api: "POST /data/lake/query"
+description: "Learn what the instance data lake is and run read-only SQL against it through Blnk Cloud."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+The **data lake** is a stored copy of your ledger, built for reports. Your ledger stays the system of record. A lake builder then copies ledgers, balances, transactions, and identities into daily history for reporting and audits.
+
+This endpoint runs read-only SQL against that copy. It is not a live instance query. Use it for reporting and audits over a date range. The `start_date` and `end_date` you send choose which days of history Cloud opens. A `WHERE` filter can drop rows inside those days. It does not choose which days to scan.
+
+When you send `sql` or `saved_query_id`, Cloud also records a [query run](/cloud/reference/list-lake-query-runs): one execution, with a snapshot of the SQL and dates plus a result preview. Filter-mode requests return rows in this response and do not create a run.
+
+For live lists, filters, and current holdings, use the [Filters API](/cloud/reference/filters-api). To learn more about the data lake, see [Insights](/cloud/insights/overview).
+
+<Info>
+`POST /data/lake/query` accepts `data:read` or `data:write`. This feature is available only to Production managed instances and Enterprise customers.
+</Info>
+
+---
+
+<Authorization />
+
+---
+
+### Request body
+
+You can create a new query in two ways: using SQL or using filters.
+
+<RequestExample>
+```bash Using SQL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/query' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "instance_id": "YOUR_INSTANCE_ID",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-31",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
+  }'
+```
+
+```bash Using filters wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/query' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "instance_id": "YOUR_INSTANCE_ID",
+    "resource": "transactions",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-31",
+    "filters": [
+      {
+        "field": "currency",
+        "op": "eq",
+        "value": "USD"
+      }
+    ],
+    "sort_field": "created_at",
+    "sort_dir": "desc",
+    "limit": 100,
+    "offset": 0
+  }'
+```
+</RequestExample>
+
+<Tabs>
+<Tab title="Using SQL">
+Send a read-only `SELECT` or `WITH` statement. Narrow rows in the SQL with `WHERE`. To rerun a [saved query](/cloud/reference/create-saved-lake-query), send `saved_query_id` instead of `sql`.
+
+<ParamField body="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`. Optional when you send `saved_query_id`; Cloud uses the saved query's instance.
+
+**Pass it in the request JSON, not as a query parameter.**
+</ParamField>
+
+<ParamField body="start_date" type="string">
+First day of lake history Cloud opens for this query. ISO date (`2026-08-01`) or datetime. Required with `end_date` when you send `sql`. A `WHERE` clause can drop rows inside these days. It does not choose which days to scan.
+</ParamField>
+
+<ParamField body="end_date" type="string">
+Last day of lake history Cloud opens for this query. Required with `start_date` when you send `sql`. Must be after `start_date`.
+</ParamField>
+
+<ParamField body="sql" type="string">
+One read-only DuckDB `SELECT` or `WITH` statement. Cloud infers tables from the SQL. Allowed tables are `transactions`, `balances`, `ledgers`, `identity`, and `anomalies`. Do not send `sql` together with `saved_query_id` or `resource`.
+</ParamField>
+
+<ParamField body="saved_query_id" type="string">
+ID of a [saved query](/cloud/reference/get-saved-lake-query) to run (`lake_query_...`) instead of sending `sql`. Cloud loads the saved SQL and resolves the date range from the query's `range_mode` (`fixed` dates or the current rolling window).
+</ParamField>
+</Tab>
+
+<Tab title="Using filters">
+Query one ledger resource with structured filters instead of SQL. Send `resource` and omit `sql` and `saved_query_id`.
+
+<ParamField body="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+
+**Pass it in the request JSON, not as a query parameter.**
+</ParamField>
+
+<ParamField body="resource" type="string" required>
+Which lake table to query. One of `transactions`, `balances`, `ledgers`, or `identity`. Confirm column names with [Get lake schema](/cloud/reference/get-lake-schema).
+</ParamField>
+
+<ParamField body="start_date" type="string">
+First day of lake history Cloud opens. ISO date (`2026-08-01`) or datetime. Required if `end_date` is empty. Filters only drop rows inside these days. They do not choose which days to scan.
+</ParamField>
+
+<ParamField body="end_date" type="string">
+Last day of lake history Cloud opens. Required if `start_date` is empty. Must be after `start_date` when both are set.
+</ParamField>
+
+<ParamField body="filters" type="array">
+Conditions to apply on top of the date range. Omit `filters` to return rows from `resource` with no extra conditions. Each object needs `field`, `op`, and `value`.
+
+| Field | Description |
+| :-- | :-- |
+| `field` | Column to filter on, such as `currency` or `status`. Must exist on `resource`. |
+| `op` | Comparison: `eq` (equal), `gt`, `gte`, `lt`, `lte`, `like`, or `ilike` (case-insensitive `like`) |
+| `value` | Value to compare against `field` |
+</ParamField>
+
+<ParamField body="sort_field" type="string">
+Column to sort by, such as `created_at` or `amount`. Must exist on `resource`.
+</ParamField>
+
+<ParamField body="sort_dir" type="string">
+Sort order for `sort_field`: `asc` (lowest first) or `desc` (highest first).
+</ParamField>
+
+<ParamField body="limit" type="integer">
+Maximum number of rows to return. Must be 0 or greater.
+</ParamField>
+
+<ParamField body="offset" type="integer">
+Number of rows to skip before the first result. Use with `limit` to move through results. Must be 0 or greater.
+</ParamField>
+</Tab>
+</Tabs>
+
+---
+
+## Response
+
+<ResponseExample>
+```json 200 wrap
+{
+  "data": {
+    "run_id": "lake_query_run_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+    "rows": [
+      {
+        "currency": "USD",
+        "txn_count": 1280
+      }
+    ],
+    "total": 1,
+    "duration_ms": 842
+  }
+}
+```
+
+```json 400 wrap
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "instance_id is required"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="run_id" type="string">
+ID of the [query run](/cloud/reference/get-lake-query-run) Cloud recorded for this SQL request (`lake_query_run_...`). Use it to fetch the snapshot and preview later. Present when you send `sql` or `saved_query_id`.
+</ResponseField>
+
+<ResponseField name="rows" type="array">
+Result rows for this request. Column names match the SQL aliases, or the columns of `resource` when you used filters. For SQL, this is the same bounded preview stored on the query run (at most 1000 rows).
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+Number of rows the query produced. Can be larger than `rows` when the SQL preview is truncated.
+</ResponseField>
+
+<ResponseField name="duration_ms" type="integer">
+How long the query took to execute, in milliseconds.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "How the lake works", href: "/cloud/insights/lake" },
+    { title: "Insights", href: "/cloud/insights/overview" },
+    { title: "Get lake schema", href: "/cloud/reference/get-lake-schema" },
+    { title: "Filters API", href: "/cloud/reference/filters-api" },
+  ]}
+/>

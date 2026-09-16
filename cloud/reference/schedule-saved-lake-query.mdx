@@ -1,0 +1,126 @@
+---
+title: "Schedule saved query"
+api: "PUT /data/lake/queries/{query_id}/schedule"
+description: "Create or update a cron schedule for a saved lake query."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Create or replace the schedule on a saved lake query. When the cron fires, Cloud creates a [query run](/cloud/reference/list-lake-query-runs): one execution of the last saved SQL and date range. That run stores a result preview. The schedule does not send email or webhook notifications.
+
+Only the query owner or an admin can set a schedule. `cron_expression` is a five-field cron (`minute hour day-of-month month day-of-week`). `timezone` is an IANA timezone such as `America/New_York`.
+
+---
+
+<Authorization />
+
+### Path
+
+<RequestExample>
+```bash cURL wrap
+curl -X PUT 'https://api.cloud.blnkfinance.com/data/lake/queries/lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94/schedule' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "cron_expression": "0 9 * * *",
+    "timezone": "America/New_York",
+    "enabled": true
+  }'
+```
+</RequestExample>
+
+<ParamField path="query_id" type="string" required>
+Unique id of the saved query (`lake_query_...`). Get it from [Get saved query](/cloud/reference/get-saved-lake-query).
+</ParamField>
+
+### Body
+
+<ParamField body="cron_expression" type="string" required>
+Five-field cron that says when Cloud starts a query run (`minute hour day-of-month month day-of-week`). Example: `0 9 * * *` is every day at 09:00 in `timezone`.
+</ParamField>
+
+<ParamField body="timezone" type="string" required>
+IANA timezone Cloud uses to interpret `cron_expression`, such as `America/New_York` or `UTC`. `next_run_at` is still returned in UTC. For a rolling saved query, Cloud also resolves the date window in this timezone.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+Whether Cloud will fire the schedule. Defaults to `true`. Send `false` to keep the schedule stored but skip runs until you enable it again.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap
+{
+  "data": {
+    "id": "lake_query_schedule_6e6feddd-930b-4e38-8ba1-1a3eee659bb3",
+    "query_id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "cron_expression": "0 9 * * *",
+    "timezone": "America/New_York",
+    "enabled": true,
+    "next_run_at": "2026-08-16T13:00:00Z",
+    "created_at": "2026-08-15T11:02:41.112739Z",
+    "updated_at": "2026-08-15T11:02:41.112739Z"
+  }
+}
+```
+
+```json 400 wrap
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "cron_expression must be a valid five-field cron expression"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="id" type="string">
+Unique id of this schedule (`lake_query_schedule_...`).
+</ResponseField>
+
+<ResponseField name="query_id" type="string">
+Saved query this schedule belongs to (`lake_query_...`).
+</ResponseField>
+
+<ResponseField name="cron_expression" type="string">
+Five-field cron Cloud stored. This is when each query run starts, interpreted in `timezone`.
+</ResponseField>
+
+<ResponseField name="timezone" type="string">
+IANA timezone Cloud uses to interpret the cron, such as `America/New_York`.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+Whether Cloud will fire the schedule. `false` keeps the schedule stored but skips runs.
+</ResponseField>
+
+<ResponseField name="next_run_at" type="timestamp">
+Next time Cloud will start a query run for this schedule, in UTC.
+</ResponseField>
+
+<ResponseField name="last_run_at" type="timestamp">
+When Cloud last started a query run from this schedule. Omitted until the first fire.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the schedule was first created. A replace keeps this value.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the cron, timezone, or enabled flag was last changed.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get saved query", href: "/cloud/reference/get-saved-lake-query" },
+    { title: "Delete query schedule", href: "/cloud/reference/delete-saved-lake-query-schedule" },
+    { title: "List query runs", href: "/cloud/reference/list-lake-query-runs" },
+  ]}
+/>

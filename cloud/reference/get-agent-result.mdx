@@ -1,0 +1,186 @@
+---
+title: "Get job result"
+api: "GET /agents/jobs/{job_id}/result"
+description: "Read the final output, subtasks, and errors for an agent job."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use this endpoint after an agent job completes or fails. You can call it earlier, but `output`, `final_message`, `completed_at`, and `failed_at` are fully populated only in a terminal state.
+
+For in-progress polling, use [Get job status](/cloud/reference/get-agent-status). To receive this payload automatically, set `config.callbacks` when you [create the job](/cloud/reference/create-agent#callbacks).
+
+<Note>
+Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object with the raw plan steps and reasoning trail.
+</Note>
+
+---
+
+<Authorization />
+
+Cloud API keys and OAuth tokens must include `*`.
+
+### Path
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/result' \
+  -H 'Authorization: Bearer CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ParamField path="job_id" type="string" required>
+Job identifier returned by [Create job](/cloud/reference/create-agent) (`job_...`).
+</ParamField>
+
+<ParamField query="view" type="string">
+Set to `debug` or `verbose` to include the raw `debug` payload.
+</ParamField>
+
+<ParamField query="verbose" type="string">
+Set to `1` or `true` as an alias for `view=debug`.
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+Optional. When present, Cloud verifies the instance belongs to your organization.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "completed",
+  "output": {
+    "summary": "3 pending transactions above the threshold look suspicious and should be reviewed."
+  },
+  "final_message": "3 pending transactions above the threshold look suspicious and should be reviewed.",
+  "last_error": "",
+  "plan_run_id": "pr_1779300000000000000",
+  "progress": {
+    "total": 2,
+    "completed": 2,
+    "running": 0,
+    "pending": 0,
+    "failed": 0,
+    "waiting_approval": 0
+  },
+  "failed_step": null,
+  "sub_tasks": [
+    {
+      "step_id": "s1",
+      "title": "filter collection",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "summary": "Step completed.",
+      "input_summary": "transactions filtered by 1 condition",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "step_id": "s2",
+      "title": "watch assess and summarize",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000200",
+      "summary": "Step completed.",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:20Z"
+    }
+  ],
+  "reasoning_trail": [],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:20Z",
+  "completed_at": "2026-09-16T05:10:20Z",
+  "failed_at": null,
+  "links": {
+    "status": "/agents/jobs/job_1779300000000000000/status",
+    "result": "/agents/jobs/job_1779300000000000000/result",
+    "control": "/agents/jobs/job_1779300000000000000/control"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="job_id" type="string">
+Job identifier.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Current state. Terminal values are `completed` and `failed`.
+</ResponseField>
+
+<ResponseField name="output" type="object">
+Structured result from the finished plan. Shape depends on the steps that ran.
+</ResponseField>
+
+<ResponseField name="final_message" type="string">
+Human-readable summary of the result.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Error message when the job failed.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+Plan run that produced the result.
+</ResponseField>
+
+<ResponseField name="progress" type="object">
+Counts of plan steps by status. Same shape as [Get job status](/cloud/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="failed_step" type="object">
+First compact step with status `failed`. `null` when none have failed.
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Compact plan steps. Same fields as [Get job status](/cloud/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="reasoning_trail" type="array">
+Compact planner and execution notes.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud created the job.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the job last changed.
+</ResponseField>
+
+<ResponseField name="completed_at" type="timestamp">
+When the job completed. `null` until then.
+</ResponseField>
+
+<ResponseField name="failed_at" type="timestamp">
+When the job failed. `null` unless `status` is `failed`.
+</ResponseField>
+
+<ResponseField name="links" type="object">
+Relative paths for status, result, and control.
+</ResponseField>
+
+<ResponseField name="debug" type="object">
+Present only with `view=debug`. Contains raw `sub_tasks` and `reasoning_trail`.
+</ResponseField>
+
+Unknown jobs return `404`. If the jobs service is unavailable, the endpoint returns `503`.
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "Get job status", href: "/cloud/reference/get-agent-status" },
+    { title: "Control job", href: "/cloud/reference/control-agent" },
+    { title: "MCP server", href: "/cloud/reference/mcp" },
+  ]}
+/>

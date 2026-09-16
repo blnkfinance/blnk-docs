@@ -1,0 +1,239 @@
+---
+title: "Get job status"
+api: "GET /agents/jobs/{job_id}/status"
+description: "Poll progress, subtasks, and approval state for an agent job."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use this endpoint while an agent job is in progress. The response is a compact snapshot: status, progress counts, the current or failed step, and summarized subtasks.
+
+For the final output after the job completes or fails, use [Get job result](/cloud/reference/get-agent-result). To pause, resume, approve, reject, or schedule, use [Control job](/cloud/reference/control-agent).
+
+<Note>
+Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object with the raw plan steps and reasoning trail.
+</Note>
+
+---
+
+<Authorization />
+
+Cloud API keys and OAuth tokens must include `*`.
+
+### Path
+
+<RequestExample>
+```bash cURL wrap
+curl -X GET 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/status' \
+  -H 'Authorization: Bearer CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ParamField path="job_id" type="string" required>
+Job identifier returned by [Create job](/cloud/reference/create-agent) (`job_...`).
+</ParamField>
+
+<ParamField query="view" type="string">
+Set to `debug` or `verbose` to include the raw `debug` payload.
+</ParamField>
+
+<ParamField query="verbose" type="string">
+Set to `1` or `true` as an alias for `view=debug`.
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+Optional. When present, Cloud verifies the instance belongs to your organization.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "approval_state": "",
+  "last_error": "",
+  "schedule": null,
+  "progress": {
+    "total": 2,
+    "completed": 1,
+    "running": 1,
+    "pending": 0,
+    "failed": 0,
+    "waiting_approval": 0
+  },
+  "current_step": {
+    "step_id": "s2",
+    "title": "watch assess and summarize",
+    "task_type": "backoffice.watch_assess_and_summarize",
+    "status": "running",
+    "summary": "Step is running.",
+    "created_at": "2026-09-16T05:10:04Z",
+    "updated_at": "2026-09-16T05:10:08Z"
+  },
+  "failed_step": null,
+  "sub_tasks": [
+    {
+      "step_id": "s1",
+      "title": "filter collection",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "summary": "Step completed.",
+      "input_summary": "transactions filtered by 1 condition",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "step_id": "s2",
+      "title": "watch assess and summarize",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "running",
+      "summary": "Step is running.",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:08Z"
+    }
+  ],
+  "reasoning_trail": [],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:08Z",
+  "links": {
+    "status": "/agents/jobs/job_1779300000000000000/status",
+    "result": "/agents/jobs/job_1779300000000000000/result",
+    "control": "/agents/jobs/job_1779300000000000000/control"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="job_id" type="string">
+Job identifier.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Current state: `queued`, `scheduled`, `planning`, `running`, `paused`, `waiting_approval`, `completed`, or `failed`.
+</ResponseField>
+
+<ResponseField name="status_message" type="string">
+Human-readable snapshot of the current state.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+Plan run that owns the steps. Empty until planning finishes.
+</ResponseField>
+
+<ResponseField name="approval_state" type="string">
+Current approval state when the job is waiting for a decision.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Most recent error message, if any.
+</ResponseField>
+
+<ResponseField name="schedule" type="object">
+Schedule metadata when the job is scheduled or tied to a recurring template.
+
+<Expandable title="Schedule properties">
+<ResponseField name="scheduled_run_at" type="timestamp">
+When a one-time scheduled job should run.
+</ResponseField>
+
+<ResponseField name="recurring_template_id" type="string">
+Recurring template created from this job (`rt_...`).
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="progress" type="object">
+Counts of plan steps by status: `total`, `completed`, `running`, `pending`, `failed`, `waiting_approval`.
+</ResponseField>
+
+<ResponseField name="current_step" type="object">
+Compact step currently `running`, `created_task`, `waiting_approval`, or the next `pending` step. `null` when none apply.
+</ResponseField>
+
+<ResponseField name="failed_step" type="object">
+First compact step with status `failed`. `null` when none have failed.
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Compact plan steps, oldest first.
+
+<Expandable title="Compact step">
+<ResponseField name="step_id" type="string">
+Step identifier from the plan (`s1`, `s2`, ...).
+</ResponseField>
+
+<ResponseField name="title" type="string">
+Humanized `task_type` (the `backoffice.` prefix is removed).
+</ResponseField>
+
+<ResponseField name="task_type" type="string">
+Planner step type, such as `backoffice.filter_collection`. Map these to [tool tokens](/cloud/reference/create-agent#tool-allowlist).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Step state: `pending`, `running`, `created_task`, `waiting_approval`, `completed`, or `failed`.
+</ResponseField>
+
+<ResponseField name="task_id" type="string">
+Underlying task identifier (`tsk_...`) after the step creates a task.
+</ResponseField>
+
+<ResponseField name="depends_on" type="array">
+Step IDs this step waits on.
+</ResponseField>
+
+<ResponseField name="summary" type="string">
+Short status or reasoning summary, truncated to 220 characters.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+Step error, when the step failed.
+</ResponseField>
+
+<ResponseField name="input_summary" type="string">
+Short description of the step input, such as `transactions filtered by 1 condition`.
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="reasoning_trail" type="array">
+Compact planner and execution notes (`id`, `kind`, `title`, `status`, `summary`).
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud created the job.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the job last changed.
+</ResponseField>
+
+<ResponseField name="links" type="object">
+Relative paths for status, result, and control.
+</ResponseField>
+
+<ResponseField name="debug" type="object">
+Present only with `view=debug`. Contains raw `sub_tasks` and `reasoning_trail`.
+</ResponseField>
+
+Unknown jobs return `404`. If the jobs service is unavailable, the endpoint returns `503`.
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "Get job result", href: "/cloud/reference/get-agent-result" },
+    { title: "Control job", href: "/cloud/reference/control-agent" },
+    { title: "MCP server", href: "/cloud/reference/mcp" },
+  ]}
+/>

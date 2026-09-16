@@ -1,0 +1,162 @@
+---
+title: "Update saved query"
+api: "PATCH /data/lake/queries/{query_id}"
+description: "Update the name, SQL, or date range of a saved lake query."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Update a saved lake query. Send only the fields you want to change. Changing the SQL or date range does not rewrite past [query runs](/cloud/reference/list-lake-query-runs). Those runs keep the snapshot from when they executed.
+
+Only the query owner or an admin can update it.
+
+If you change `range_mode` to `fixed`, send `start_date` and `end_date`. If you change it to `rolling`, send `rolling_days`.
+
+---
+
+<Authorization />
+
+### Path
+
+<RequestExample>
+```bash cURL wrap
+curl -X PATCH 'https://api.cloud.blnkfinance.com/data/lake/queries/lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Applied volume by currency (30d)",
+    "range_mode": "rolling",
+    "rolling_days": 30
+  }'
+```
+</RequestExample>
+
+<ParamField path="query_id" type="string" required>
+Unique id of the saved query (`lake_query_...`). Get it from [List saved queries](/cloud/reference/list-saved-lake-queries) or [Get saved query](/cloud/reference/get-saved-lake-query).
+</ParamField>
+
+### Body
+
+<ParamField body="instance_id" type="string">
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`. Send this to move the query to a different instance in the same workspace.
+</ParamField>
+
+<ParamField body="name" type="string">
+Replacement label shown in Insights and copied onto later query runs. Maximum 160 characters.
+</ParamField>
+
+<ParamField body="description" type="string">
+Replacement note about what the query returns. Maximum 1000 characters.
+</ParamField>
+
+<ParamField body="sql" type="string">
+Replacement read-only DuckDB `SELECT` or `WITH`. Same table and statement rules as [Create new query](/cloud/reference/create-new-query). Later runs use this SQL. Past runs keep the old snapshot.
+</ParamField>
+
+<ParamField body="range_mode" type="string">
+How Cloud should pick the lake date range on later runs. `fixed` uses `start_date` and `end_date`. `rolling` uses the last `rolling_days` days, resolved at run time.
+</ParamField>
+
+<ParamField body="start_date" type="string">
+First day of lake history. Required when you set `range_mode` to `fixed`. ISO date or datetime.
+</ParamField>
+
+<ParamField body="end_date" type="string">
+Last day of lake history. Required when you set `range_mode` to `fixed`. Must be after `start_date`.
+</ParamField>
+
+<ParamField body="rolling_days" type="integer">
+Number of days of lake history Cloud opens on later runs (1 to 3650). Required when you set `range_mode` to `rolling`. Cloud resolves the window at run time.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 200 wrap expandable
+{
+  "data": {
+    "id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "owner_user_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "name": "Applied volume by currency (30d)",
+    "description": "APPLIED transaction counts by currency",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+    "range_mode": "rolling",
+    "rolling_days": 30,
+    "created_at": "2026-08-12T09:28:16.864765Z",
+    "updated_at": "2026-08-15T11:02:41.112739Z"
+  }
+}
+```
+
+```json 403 wrap
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "lake query mutation is not permitted"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="id" type="string">
+Unique id of this saved query (`lake_query_...`).
+</ResponseField>
+
+<ResponseField name="instance_id" type="string">
+Unique id of the instance (`instance_...`) this query is bound to after the update.
+</ResponseField>
+
+<ResponseField name="owner_user_id" type="string">
+User who created the query. The owner does not change when you update other fields.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Current label after the update.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Current note after the update.
+</ResponseField>
+
+<ResponseField name="sql" type="string">
+Current `SELECT` or `WITH` after the update. Later runs use this SQL.
+</ResponseField>
+
+<ResponseField name="range_mode" type="string">
+How Cloud picks the lake date range on later runs: `fixed` or `rolling`.
+</ResponseField>
+
+<ResponseField name="start_date" type="timestamp">
+First day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="end_date" type="timestamp">
+Last day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="rolling_days" type="integer">
+Number of days of lake history to open when `range_mode` is `rolling`. `0` when the query is `fixed`.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the saved query was first created. This does not change on update.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When this update was applied.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Get saved query", href: "/cloud/reference/get-saved-lake-query" },
+    { title: "Delete saved query", href: "/cloud/reference/delete-saved-lake-query" },
+    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+  ]}
+/>

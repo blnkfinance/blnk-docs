@@ -1,0 +1,251 @@
+---
+title: "Control job"
+api: "POST /agents/jobs/{job_id}/control"
+description: "Pause, resume, approve, reject, or schedule an agent job."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use this endpoint to pause or resume a running job, approve or reject a waiting checkpoint, or promote a finished plan into a one-time or recurring schedule.
+
+Pause, resume, approve, and reject return a job status object. Schedule actions return a smaller payload with the new child job or recurring template.
+
+<Note>
+Pause is a soft pause. The current running step is allowed to finish. The workflow stops before the next step starts.
+</Note>
+
+---
+
+<Authorization />
+
+Cloud API keys and OAuth tokens must include `*`.
+
+### Path
+
+<RequestExample>
+```bash Pause wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "pause"
+  }'
+```
+
+```bash Approve wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "approve",
+    "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "reason": "Reviewed and approved"
+  }'
+```
+
+```bash Schedule wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "schedule",
+    "schedule": {
+      "mode": "recurring",
+      "cron_expr": "0 * * * *",
+      "timezone": "UTC",
+      "name": "Hourly suspicious transaction review"
+    }
+  }'
+```
+</RequestExample>
+
+<ParamField path="job_id" type="string" required>
+Job identifier returned by [Create job](/cloud/reference/create-agent) (`job_...`).
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+Optional. When present, Cloud verifies the instance belongs to your organization.
+</ParamField>
+
+### Body
+
+<ParamField body="action" type="string" required>
+One of `pause`, `resume`, `approve`, `reject`, or `schedule`.
+</ParamField>
+
+<ParamField body="approver_id" type="string">
+Who approved or rejected the checkpoint. Defaults to `job-control` when omitted.
+</ParamField>
+
+<ParamField body="reason" type="string">
+Optional note stored with the approval decision.
+</ParamField>
+
+<ParamField body="schedule.mode" type="string">
+Required for `schedule`. `once` creates a child job. `recurring` creates a recurring template from the job's plan.
+</ParamField>
+
+<ParamField body="schedule.run_at" type="string">
+RFC3339 timestamp for `mode: "once"`.
+</ParamField>
+
+<ParamField body="schedule.cron_expr" type="string">
+Cron expression for `mode: "recurring"`.
+</ParamField>
+
+<ParamField body="schedule.timezone" type="string">
+Timezone for the recurring schedule. Defaults to `UTC`.
+</ParamField>
+
+<ParamField body="schedule.name" type="string">
+Display name for the recurring template. Defaults to a truncated copy of the original message.
+</ParamField>
+
+### Actions
+
+#### Pause
+
+```json wrap
+{
+  "action": "pause"
+}
+```
+
+Sets the job (and its plan run, if any) to `paused`.
+
+#### Resume
+
+```json wrap
+{
+  "action": "resume"
+}
+```
+
+Re-queues the job. If `scheduled_run_at` is still in the future, the job returns to `scheduled`. Otherwise Cloud starts it again.
+
+#### Approve
+
+```json wrap
+{
+  "action": "approve",
+  "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+  "reason": "Reviewed and approved"
+}
+```
+
+Requires a `plan_run_id` on the job. Resumes the waiting checkpoint.
+
+#### Reject
+
+```json wrap
+{
+  "action": "reject",
+  "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+  "reason": "Out of policy scope"
+}
+```
+
+Fails the waiting checkpoint and moves the job to `failed`.
+
+#### Schedule once
+
+```json wrap
+{
+  "action": "schedule",
+  "schedule": {
+    "mode": "once",
+    "run_at": "2026-09-17T09:00:00Z"
+  }
+}
+```
+
+Creates a new scheduled child job from the reusable plan spec. The job must already have a plan.
+
+#### Schedule recurring
+
+```json wrap
+{
+  "action": "schedule",
+  "schedule": {
+    "mode": "recurring",
+    "cron_expr": "0 * * * *",
+    "timezone": "UTC",
+    "name": "Hourly suspicious transaction review"
+  }
+}
+```
+
+Creates a recurring template from the job's plan.
+
+### Response
+
+Pause, resume, approve, and reject return the job status object (`job_id`, `status`, `status_message`, `plan_run_id`, `sub_tasks`, timestamps). Use [Get job status](/cloud/reference/get-agent-status) when you want the compact progress view.
+
+Schedule once:
+
+<ResponseExample>
+```json 200 Scheduled once wrap
+{
+  "job_id": "job_1779300000000000000",
+  "scheduled_job_id": "job_1779386400000000000",
+  "status": "scheduled",
+  "scheduled_run_at": "2026-09-17T09:00:00Z"
+}
+```
+
+```json 200 Scheduled recurring wrap
+{
+  "job_id": "job_1779300000000000000",
+  "recurring_template_id": "rt_1779300000000000500",
+  "next_run_at": "2026-09-16T06:00:00Z",
+  "status": "active"
+}
+```
+</ResponseExample>
+
+<ResponseField name="job_id" type="string">
+Original job you controlled.
+</ResponseField>
+
+<ResponseField name="scheduled_job_id" type="string">
+Child job created for `mode: "once"`.
+</ResponseField>
+
+<ResponseField name="scheduled_run_at" type="timestamp">
+When the child job will run.
+</ResponseField>
+
+<ResponseField name="recurring_template_id" type="string">
+Template created for `mode: "recurring"` (`rt_...`).
+</ResponseField>
+
+<ResponseField name="next_run_at" type="timestamp">
+Next time the recurring template will fire.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+`scheduled` for a one-time child job. `active` for a new recurring template.
+</ResponseField>
+
+Unknown jobs return `404`. Invalid JSON, unsupported actions, a missing plan, or a bad `run_at` return `400`.
+
+| Code | When it happens |
+| :-- | :-- |
+| `400` | Invalid JSON, unsupported `action`, no reusable plan, missing `plan_run_id` for approve/reject, or `run_at` is not RFC3339 |
+| `404` | Job not found in your organization |
+| `503` | Jobs service is unavailable |
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create job", href: "/cloud/reference/create-agent" },
+    { title: "Get job status", href: "/cloud/reference/get-agent-status" },
+    { title: "Get job result", href: "/cloud/reference/get-agent-result" },
+    { title: "MCP server", href: "/cloud/reference/mcp" },
+  ]}
+/>

@@ -1,0 +1,164 @@
+---
+title: "Create saved query"
+api: "POST /data/lake/queries"
+description: "Save a lake SQL query with a fixed or rolling date range."
+---
+
+import NeedHelp from "/cloud/snippets/need-help.mdx";
+import Authorization from "/cloud/snippets/authorization.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+A **saved query** is lake SQL you store on an instance so you can rerun it later. It is not a query run. Saving does not execute the SQL. After you save it, run it with [Create new query](/cloud/reference/create-new-query) by sending `saved_query_id`, or attaching a [schedule](/cloud/reference/schedule-saved-lake-query).
+
+<Note>
+A saved query stores SQL only. You cannot create one with `resource` and `filters`, and you cannot [update](/cloud/reference/update-saved-lake-query) an existing saved query to filters later. Use [Create new query](/cloud/reference/create-new-query) when you want to query with filters.
+</Note>
+
+---
+
+<Authorization />
+
+### Body
+
+<RequestExample>
+```bash cURL wrap
+curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/queries' \
+  -H 'Authorization: Bearer CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "instance_id": "YOUR_INSTANCE_ID",
+    "name": "Applied volume by currency",
+    "description": "APPLIED transaction counts by currency",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+    "range_mode": "fixed",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-31"
+  }'
+```
+</RequestExample>
+
+<ParamField body="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Get it from [get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+Label shown in Insights and copied onto query runs that come from this query. Maximum 160 characters.
+</ParamField>
+
+<ParamField body="description" type="string">
+Optional note about what the query returns. Maximum 1000 characters.
+</ParamField>
+
+<ParamField body="sql" type="string" required>
+One read-only DuckDB `SELECT` or `WITH` statement Cloud will run each time you execute this query. Same table and statement rules as [Create new query](/cloud/reference/create-new-query).
+</ParamField>
+
+<ParamField body="range_mode" type="string" required>
+How Cloud picks the lake date range when the query runs. `fixed` uses `start_date` and `end_date` on every run. `rolling` uses the last `rolling_days` days, resolved at run time.
+</ParamField>
+
+<ParamField body="start_date" type="string">
+First day of lake history. Required when `range_mode` is `fixed`. ISO date (`2026-08-01`) or datetime. Omit it for rolling queries.
+</ParamField>
+
+<ParamField body="end_date" type="string">
+Last day of lake history. Required when `range_mode` is `fixed`. Must be after `start_date`. Omit it for rolling queries.
+</ParamField>
+
+<ParamField body="rolling_days" type="integer">
+Required when `range_mode` is `rolling`. Number of days of lake history Cloud opens when the query runs (1 to 3650). Cloud resolves the window at run time: UTC for a manual run, or the schedule timezone when a schedule fires. 
+
+For example, `30` opens the last 30 days. A manual run on 16 September 2026 (UTC) opens `2026-08-18` through `2026-09-16`. Omit it for fixed queries.
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json 201 wrap expandable
+{
+  "data": {
+    "id": "lake_query_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "owner_user_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "name": "Applied volume by currency",
+    "description": "APPLIED transaction counts by currency",
+    "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+    "range_mode": "fixed",
+    "start_date": "2026-08-01T00:00:00Z",
+    "end_date": "2026-08-31T00:00:00Z",
+    "rolling_days": 0,
+    "created_at": "2026-08-12T09:28:16.864765Z",
+    "updated_at": "2026-08-12T09:28:16.864765Z"
+  }
+}
+```
+
+```json 400 wrap
+{
+  "error": {
+    "code": "INVALID_SQL",
+    "message": "sql is required"
+  }
+}
+```
+</ResponseExample>
+
+<ResponseField name="id" type="string">
+Unique id of this saved query (`lake_query_...`). Pass it as `saved_query_id` on [Create new query](/cloud/reference/create-new-query).
+</ResponseField>
+
+<ResponseField name="instance_id" type="string">
+Unique id of the instance (`instance_...`) this query is bound to.
+</ResponseField>
+
+<ResponseField name="owner_user_id" type="string">
+User who created the query. Anyone in the workspace can run it. Only this owner or an admin can update, delete, or schedule it.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Label shown in Insights and copied onto query runs that come from this query.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Note you sent about what the query returns, or an empty string if you omitted it.
+</ResponseField>
+
+<ResponseField name="sql" type="string">
+Read-only DuckDB `SELECT` or `WITH` Cloud stored. Cloud runs this statement each time you execute the query.
+</ResponseField>
+
+<ResponseField name="range_mode" type="string">
+How Cloud picks the lake date range when the query runs: `fixed` or `rolling`.
+</ResponseField>
+
+<ResponseField name="start_date" type="timestamp">
+First day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="end_date" type="timestamp">
+Last day of lake history for a `fixed` query. Omitted when `range_mode` is `rolling`.
+</ResponseField>
+
+<ResponseField name="rolling_days" type="integer">
+Number of days of lake history to open when `range_mode` is `rolling`. `0` when the query is `fixed`.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud created this saved query.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the saved SQL, name, description, or date range was last changed. Same as `created_at` on a new query.
+</ResponseField>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "List saved queries", href: "/cloud/reference/list-saved-lake-queries" },
+    { title: "Schedule saved query", href: "/cloud/reference/schedule-saved-lake-query" },
+  ]}
+/>
