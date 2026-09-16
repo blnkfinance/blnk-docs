@@ -1,9 +1,9 @@
 ---
-title: "OAuth"
-sidebarTitle: "OAuth"
+title: "Using OAuth"
+sidebarTitle: "Using OAuth"
 icon: "shield"
 description: "Learn how to create OAuth clients and get access tokens for Blnk Cloud APIs."
-og:title: "OAuth | Blnk Cloud Guide"
+og:title: "Using OAuth | Blnk Cloud Guide"
 og:description: "Create OAuth client credentials and get access tokens for Blnk Cloud APIs"
 ---
 
@@ -17,7 +17,12 @@ Each OAuth client has:
 - **Client ID:** A public identifier for your OAuth client
 - **Client Secret:** A secret credential used for authentication (shown only once at creation)
 - **Scopes:** Permissions that define what the client can access (e.g., `*` for all permissions, or specific scopes like `mcp:read`, `proxy:write`, or `data:read`)
-- **Expiration:** Optional expiration date, or "Never" for clients that don't expire
+- **Expiration:** Optional expiration date, or **Never** for clients that don't expire
+
+To use OAuth clients, you'll need to:
+1. Create an OAuth client
+2. Get an access token
+3. Use the access token with Cloud APIs; refresh once it expires or reauthenticate OAuth
 
 ---
 
@@ -25,21 +30,28 @@ Each OAuth client has:
 
 <Steps>
 <Step title="Navigate to API Keys">
-1. Go to `Settings > API Keys` in your Blnk Cloud dashboard.
-2. Click `Create API Key` button in the top-right corner of the API Keys page.
+Go to **Settings > API Keys** in your Blnk Cloud dashboard. Click **Create API Key** in the top-right corner of the API Keys page.
+
+<Frame>
+      <img
+        src="/cloud/img/auth/api-keys-create-button.png"
+        alt="API keys page with the Create API key button highlighted"
+        className="rounded-lg"
+      />
+    </Frame>
 </Step>
 
 <Step title="Configure your OAuth client">
 Fill in the required information:
 
 1. **Name:** Enter a descriptive name for your OAuth client (e.g., "Production OAuth Client", "MCP Integration")
-2. **Type:** Select `OAuth` (instead of API Key)
+2. **Type:** Select **OAuth** (instead of **API Key**)
 3. **Scopes:** Select the permissions for this client:
     - `*` for all permissions
     - Specific scopes like `mcp:read`, `proxy:write`, or `data:read` for limited access
 4. **Expires:** Choose when the client should expire:
     - Select a specific date
-    - Choose "Never" for clients that don't expire
+    - Choose **Never** for clients that don't expire
 </Step>
 
 <Step title="Save your OAuth credentials">
@@ -48,7 +60,7 @@ After creating the client, your Client ID and Client Secret will be displayed **
 <img src="/cloud/img/organization/new-oauth.png" alt="OAuth credentials panel showing Client ID, Client Secret, and warning to store credentials securely" />
 
 <Warning>
-`You cannot retrieve the Client Secret after creation.` If you lose the secret, you must create a new OAuth client.
+`You cannot retrieve the Client Secret after creation.` If you lose the secret, you must revoke it and create a new OAuth client.
 </Warning>
 </Step>
 </Steps>
@@ -81,7 +93,7 @@ https://your-app.com/oauth/callback?code=THE_AUTH_CODE
 </Step>
 
 <Step title="Exchange the code for an access token">
-Call the token endpoint with the authorization code and your OAuth client credentials:
+Call the token endpoint with the authorization code and your OAuth client credentials. This access token is valid for 1 hour.
 
 ```bash cURL wrap
 curl -X POST "https://api.cloud.blnkfinance.com/oauth/token" \
@@ -104,7 +116,7 @@ curl -X POST "https://api.cloud.blnkfinance.com/oauth/token" \
 </Step>
 
 <Step title="Refresh an expired access token">
-When the access token expires, use its refresh token to get a new one:
+When the access token expires, use its refresh token to get a new one. The refresh token is valid for 30 days. After 30 days, you'll need to get a new refresh token by reauthenticating OAuth.
 
 ```bash cURL wrap
 curl -X POST "https://api.cloud.blnkfinance.com/oauth/token" \
@@ -135,32 +147,6 @@ curl -X POST "https://api.cloud.blnkfinance.com/transactions/filter?instance_id=
 
 ---
 
-## Find and use the instance ID
-
-To route requests to the correct Blnk Core instance, include `instance_id` as a query parameter on every Proxy and Filters API request. Send it in the JSON body for Data Lake API requests.
-
-<Steps>
-<Step title="How users find their instance ID">
-1. Log in to **Blnk Cloud**.
-2. Open the `Instances` page (your list of instances can be seen on the home page or `Settings > Instances`).
-3. Find the Blnk Core instance you want to use.
-4. Click on the instance to open the details modal.
-5. Copy its **Instance ID** (for example, `instance_01ABC...`).
-</Step>
-
-<Step title="How to use the instance ID">
-Include `instance_id` in every request to target the correct Core instance:
-
-```bash Example request wrap
-curl -X GET "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID" \
-  -H "Authorization: Bearer blnk_at_YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json"
-```
-</Step>
-</Steps>
-
----
-
 ## Revoke an OAuth client
 
 If you need to disable an OAuth client without deleting it permanently, you can revoke it. Revoked clients cannot be used for authentication but remain visible in your API Keys list for reference.
@@ -171,7 +157,7 @@ Click on the OAuth client name in the API Keys table to view its details.
 </Step>
 
 <Step title="Revoke the client">
-In the client details panel, click the `Revoke Key` button.
+In the client details panel, click **Revoke Key**.
 
 <Warning>
 Revoking a client will immediately disable it. Any applications or integrations using this client will stop working until you create and configure a new client.
@@ -207,8 +193,8 @@ Historical SQL over an instance lake.
 
 <RelatedTopics
   items={[
-    { title: "API keys", href: "/cloud/auth/api-keys" },
+    { title: "API keys", href: "/cloud/reference/api-keys" },
     { title: "Security", href: "/cloud/account/security" },
-    { title: "Get access token", href: "/cloud/reference/get-access-token" },
+    { title: "Refresh access token", href: "/cloud/reference/refresh-access-token" },
   ]}
 />

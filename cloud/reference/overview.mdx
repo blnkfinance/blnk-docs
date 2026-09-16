@@ -2,133 +2,87 @@
 title: "Cloud API reference"
 sidebarTitle: "Overview"
 icon: "book-open"
-description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data lake, Filters, Alerts, and MCP integrations."
+description: "Learn how to use the Blnk Cloud APIs for your integration."
 og:title: "Cloud API Reference Overview | Blnk Cloud Guide"
-og:description: "Browse Blnk Cloud REST endpoints for OAuth authentication, Deployments, Billing, Audit, Proxy, Data lake, Filters, Alerts, and MCP integrations."
+og:description: "Learn how to use the Blnk Cloud APIs for your integration."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
-import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Cloud APIs let you interact with your Blnk Core instances through Blnk Cloud. 
+Cloud APIs let you interact with connected Blnk Core instances in your Blnk Cloud workspace. They add capabilities to your Blnk integration that may be costly to build on your own:
 
-They sit on top of Core and add capabilities that are difficult or costly to manage on your own, such as centralized authentication, audit logs, alerts, and workspace controls.
+Here are some of the benefits of using Cloud APIs:
 
-You can use Cloud APIs to:
+1. **Centralized authentication.** Access multiple Core instances (dev, staging, production) through a single endpoint.
+2. **Deployments.** Create and manage deployments of Core instances in your workspace.
+3. **Audit logging.** Every API call is logged in your workspace for compliance and debugging.
+4. **Data lake.** Run custom, advanced insights SQL against your ledger instance via Data Lake.
+5. **Real-time alerts.** Set up programmable alerts to notify you on your workspace when something happens in your integration.
+6. **AI integrations.** Implement AI back-office workflows with our MCP and Agents API.
 
-1. **Access multiple Core instances** through a single endpoint
-2. **Authenticate requests** using OAuth 2.0 or API keys
-3. **Track activity** with comprehensive audit logs
-4. **Monitor operations** with real-time alerts
-5. **Apply advanced filters** when querying data
-6. **Connect AI assistants** through the MCP server
-7. **Deploy managed Core instances** without using the dashboard
-8. **Read billing and usage** without using the dashboard
-9. **Query the data lake** with read-only SQL
-10. **Read audit logs** without using the dashboard
+---
 
-<Authorization />
+## How Cloud APIs work
 
-### How Cloud APIs work
+Cloud APIs act as an intelligent layer between your application and your Blnk Core instances. They do not replace the Core API, but rather provide a more convenient way to interact with your Core instances.
 
-Cloud APIs act as an intelligent layer between your application and your Blnk Core instances:
+Suppose you’re building an internal dashboard to manage multiple Blnk Core instances, such as staging and production. A straightforward approach is to store each instance’s credentials in your server’s .env and have your dashboard’s backend call the appropriate instance directly.
 
-<img src="/cloud/img/auth/cloud-api.png" alt="How Cloud APIs work" className="rounded-lg" />
+But connecting to each instance is only part of the work. Once your team starts using the dashboard, you also need to know who did what, when, and on which instance. That means building and maintaining auth and audit logging from scratch and making sure every action is recorded against the right user and environment.
+
+Using Blnk Cloud APIs changes this. Your internal tool can use Cloud’s instance management and audit logging APIs instead to manage access to your Core instances. 
+
+Here's a simple demonstration:
+
+<Steps>
+<Step title="Connect your Core instances">
+Connect each of your Core instances to your Blnk Cloud workspace. Each connected instance gets an `instance_id`; this is all you'll need to interact with the instance moving forward. 
+</Step>
+<Step title="Create Cloud API keys">
+For each user in your internal tool, create a **Cloud API key**. This key will be used to authenticate the user when they make API calls to your Core instance.
 
 <Note>
-**Important to note:**
-
-If you're self-hosting Cloud under the Production License, set the base URL to: `https://ENTERPRISE_PUBLIC_URL`.
+**Cloud API keys** are not the same as your Blnk Core API keys. If calling the Core API directly, you'll need to set up your API keys directly in Core. 
 </Note>
 
-When you make a request:
+<img src="/cloud/img/auth/cloud-api.png" alt="How Cloud APIs work" className="rounded-lg" />
+</Step>
+<Step title="Integrate using the Cloud Proxy API">
+Retrieve data, create resources, etc. using the Cloud Proxy API, authenticated with your user's Cloud API key. 
 
-1. Your app authenticates with Blnk Cloud using an access token or an API key.
-2. Blnk Cloud validates the request and logs it for audit purposes.
-3. Your request is processed in your workspace. 
-4. If it's a **proxy request** (`/proxy/*`):
-    - It's forwarded to the correct Core instance using `instance_id`.
-    - The Core instance processes the request and returns the response.
-    - Blnk Cloud returns the response to your app.
-5. If it's a **filter request** (`POST /{resource}/filter`):
-    - Blnk Cloud queries the instance database directly using the JSON filter body and returns the results.
-6. If it's a **data lake request** (`/data/lake/*`):
-    - Blnk Cloud runs read-only SQL against the instance data lake and returns the rows.
-7. If it's a **deployments request** (`/deployments/*`):
-    - Blnk Cloud creates or manages a managed Core instance in your workspace and returns the deployment object.
-    - `GET /instances/{instance_id}` returns full details for a connected instance. Use that `instance_id` on Proxy, Filters, and Data Lake.
-8. If it's a **billing request** (`/billing/*`):
-    - Blnk Cloud returns plan, invoice, or usage for your workspace.
-9. If it's an **audit request** (`/audit/*`):
-    - Blnk Cloud returns activity rows for your workspace.
-10. For other direct requests (alerts, MCP), Blnk Cloud processes the request and returns the response to your app.
+Suppose your user refunded a transaction on your production instance.
 
----
+<Tabs>
+<Tab title="With Cloud APIs">
+Request is made via the Cloud Proxy, your user is authenticated and their actions are logged in your workspace. The request is then routed to the appropriate Core instance.
 
-## Endpoint groups
+```bash cURL wrap
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94?instance_id=YOUR_INSTANCE_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
 
-<CardGroup cols={2}>
-  <Card title="Deployments API" icon="cloud-upload" href="/cloud/reference/create-deployment">
-    Create and manage managed Core instances.
-  </Card>
-  <Card title="Billing API" icon="credit-card" href="/cloud/reference/get-billing-status">
-    Read plans, invoices, and usage.
-  </Card>
-  <Card title="Audit API" icon="scroll" href="/cloud/reference/list-audit-logs">
-    Read workspace activity, including actions performed by API keys.
-  </Card>
-  <Card title="Proxy API" icon="arrow-left-right" href="/cloud/reference/proxy-api">
-    Create and update Core resources.
-  </Card>
-  <Card title="Data lake API" icon="water" href="/cloud/reference/data-lake-api">
-    Run read-only SQL against an instance data lake.
-  </Card>
-  <Card title="Filters API" icon="filter" href="/cloud/reference/filters-api">
-    Filtered reads via POST JSON bodies.
-  </Card>
-</CardGroup>
+To see your user's actions in the audit log, navigate to the **Audit log** tab in your workspace, or query using the [Audit log API](/cloud/reference/audit-log-api).
+</Tab>
+<Tab title="Without Cloud APIs">
+Request is made directly to the Core instance. Instance routing, user authentication, and audit logging are all handled by you. 
+```bash cURL wrap
+curl -X POST "https://YOUR_CORE_INSTANCE_URL/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 \
+  -H "X-Blnk-Key: YOUR_SECRET_KEY"
+```
+</Tab>
+</Tabs>
+</Step>
+</Steps>
 
 ---
-
-## What Cloud APIs add to Core
-
-While Blnk Core provides all the ledger operations, Cloud APIs extend it with premium add-on features:
-
-1. **OAuth authentication:** Secure, token-based authentication with scoped permissions for different operations.
-2. **Audit logging:** Track every action in your system with detailed audit logs for compliance and debugging.
-3. **Advanced filters:** Query your data with powerful operators like `_between`, `_in`, `_like`, and more.
-4. `Real-time alerts:` Set up alerts to notify you when specific conditions are met in your ledger.
-5. **Workspace management:** Organize teams, manage permissions, and control access across your organization.
-6. **Multiple instances:** Access multiple Core instances through a single API endpoint using `instance_id`.
-
----
-
-## Direct Core access vs. Cloud APIs
-
-You can access your Blnk Core instance directly without using Cloud APIs. 
-
-When doing so, Core continues to handle all ledger operations, but Cloud-specific capabilities are not available. This includes audit logs, alerts, OAuth authentication, advanced filtering, and workspace management.
-
-| Feature | Direct Core Access | Through Cloud APIs |
-| --- | --- | --- |
-| Ledger operations | ✅ | ✅ |
-| Balance management | ✅ | ✅ |
-| Transaction processing | ✅ | ✅ |
-| OAuth authentication | ❌ | ✅ |
-| Audit logging | ❌ | ✅ |
-| Triggering alerts | ❌ | ✅ |
-| Advanced filtering | ❌ | ✅ |
-| Managed instance deploy | ❌ | ✅ |
-| Billing and usage | ❌ | ✅ |
-| Lake SQL | ❌ | ✅ |
 
 <NeedHelp />
 
 <RelatedTopics
   items={[
     { title: "Integrations overview", href: "/cloud/integrations/overview" },
-    { title: "Get access token", href: "/cloud/reference/get-access-token" },
+    { title: "OAuth", href: "/cloud/reference/oauth" },
     { title: "Proxy API", href: "/cloud/reference/proxy-api" },
     { title: "Data lake API", href: "/cloud/reference/data-lake-api" },
   ]}
