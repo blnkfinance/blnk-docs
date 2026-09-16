@@ -1,83 +1,151 @@
 ---
 title: "List audit logs"
 api: "GET /audit/logs"
-description: "List activity in your Blnk Cloud workspace."
+description: "Return workspace activity for your organization: who did what, when, and on which resource."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import Authorization from "/cloud/snippets/authorization.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Retrieve audit logs for your organization. The default page returns 10 rows.
+An **audit log** is one workspace action: who did it, when, and which resource they touched. Cloud writes a row when someone uses the dashboard, a [Cloud API key](/cloud/reference/api-keys), the [Proxy API](/cloud/reference/proxy-api), or a [Custom App](/cloud/apps/how-apps-work).
 
-`api_key_id` is present when the actor used an API key. `acting_app` is present when a Custom App performed the action.
+This endpoint lists those rows for the authenticated organization, newest first. To review the same activity in the dashboard, open [Settings > Audit logs](/cloud/organization/audit-logs).
+
+`api_key_id` is present when the actor used an API key. `acting_app` is present when a Custom App performed the action, or when the row is an app lifecycle event such as install or launch.
+
+This endpoint requires the Cloud `audit:read` scope.
 
 ---
 
 <Authorization />
 
+### Query parameters
+
 <RequestExample>
-```bash cURL
-curl -X GET 'https://api.cloud.blnkfinance.com/audit/logs' \
-  -H 'Authorization: Bearer CLOUD_API_KEY'
+```bash cURL wrap
+curl -X GET "https://api.cloud.blnkfinance.com/audit/logs?page=1&page_size=20&action=Deployment&instanceId=YOUR_INSTANCE_ID" \
+  -H "Authorization: Bearer CLOUD_API_KEY"
 ```
 </RequestExample>
 
+<ParamField query="page" type="integer">
+Page number. Defaults to `1`. Values less than `1` are treated as `1`.
+</ParamField>
+
+<ParamField query="page_size" type="integer">
+Audit logs to return. Defaults to `10`. Values less than `1` are treated as `10`.
+</ParamField>
+
+<ParamField query="action" type="string">
+Substring of the `action` label on the log. Case-insensitive. For example: `action=Ledger` matches `Ledger Created` and `Ledger Updated`.
+
+| Supported values | Labels that match |
+| :-- | :-- |
+| `Ledger` | `Ledger Created`, `Ledger Updated` |
+| `Balance` | `Balance Created`, `Balance Updated` |
+| `Transaction` | `Transaction Created`, `Transaction Retrieved` |
+| `Identity` | `Identity Created`, `Identity Updated` |
+| `Reconciliation` | `Reconciliation Started`, `Instant Reconciliation Started` |
+| `Matching Rule` | `Matching Rule Created`, `Matching Rule Updated` |
+| `External Data` | `External Data Uploaded` |
+| `Alert` | `Alert assigned`, `Alert escalated` |
+| `App` | `App Installed`, `App Launched`, `App Deleted` |
+| `Domain` | `Domain verified`, `Domain removed` |
+| `Deployment` | `Deployment created`, `Deployment destroy initiated` |
+</ParamField>
+
+<ParamField query="performed_by" type="string">
+User id stored on the log as `performed_by_id` (`user_...`). Exact match. Do not pass the display name in `performed_by`.
+</ParamField>
+
+<ParamField query="instanceId" type="string">
+Audit logs whose `instance_id` is this Cloud instance (`instance_...`). This is a filter, not a routing param.
+</ParamField>
+
+<ParamField query="ledgerId" type="string">
+Audit logs whose `ledger_id` is this ledger (`ldg_...`).
+</ParamField>
+
+<ParamField query="balanceId" type="string">
+Audit logs whose `balance_id` is this balance (`bln_...`).
+</ParamField>
+
+<ParamField query="transactionId" type="string">
+Audit logs whose `transaction_id` is this transaction (`txn_...`).
+</ParamField>
+
+<ParamField query="identityId" type="string">
+Audit logs whose `identity_id` is this identity (`idt_...`).
+</ParamField>
+
+<ParamField query="reconciliationId" type="string">
+Audit logs whose `reconciliation_id` is this reconciliation (`recon_...`).
+</ParamField>
+
+<ParamField query="anomalyId" type="string">
+Audit logs whose `anomaly_id` is this alert.
+</ParamField>
+
+<ParamField query="doc_id" type="string">
+Audit logs whose `doc_id` is this document.
+</ParamField>
+
+<ParamField query="appId" type="string">
+Audit logs whose `app_id` is this app (`app_...`).
+</ParamField>
+
+<ParamField query="installedAppId" type="string">
+Audit logs whose `installed_app_id` is this install (`instapp_...`).
+</ParamField>
+
+<ParamField query="appName" type="string">
+Case-insensitive substring of `app_name` on the log.
+</ParamField>
+
+<ParamField query="domain_name" type="string">
+Audit logs whose `domain_name` is this workspace domain. `domain` is an alias for the same filter.
+</ParamField>
+
 ### Response
 
+Rows include every resource id field. Unrelated ids come back as empty strings. These fields are omitted when empty: `api_key_id`, `deployment_id`, `domain_name`, `email`, `acting_app`, and `performed_by_id`.
+
 <ResponseExample>
-```json 200
+```json 200 wrap expandable
 {
   "data": [
     {
-      "audit_log_id": "audit_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "audit_log_id": "audit_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
       "action": "Deployment destroy initiated",
-      "performed_by_id": "user_01ABC123DEF456",
+      "performed_by_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
       "performed_by": "Alex Example",
-      "api_key_id": "apikey_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-      "ledger_id": "",
-      "anomaly_id": "",
-      "instance_id": "",
-      "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-      "balance_id": "",
-      "doc_id": "",
-      "transaction_id": "",
-      "identity_id": "",
-      "reconciliation_id": "",
-      "app_id": "",
-      "installed_app_id": "",
-      "app_name": "",
+      "api_key_id": "apikey_6e6feddd-930b-4e38-8ba1-1a3eee659bb3",
+      "deployment_id": "deploy_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
       "created_at": "2026-09-11T09:28:16.864765Z"
     },
     {
       "audit_log_id": "audit_845e6b1e-0463-4ce8-b858-2b3a398beff9",
       "action": "App Launched",
-      "performed_by_id": "user_01ABC123DEF456",
+      "performed_by_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
       "performed_by": "Alex Example",
-      "ledger_id": "",
-      "anomaly_id": "",
       "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-      "balance_id": "",
-      "doc_id": "",
-      "transaction_id": "",
-      "identity_id": "",
-      "reconciliation_id": "",
-      "app_id": "app_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
-      "installed_app_id": "instapp_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "app_id": "app_9a1c4e70-2b8d-4f61-8c3a-7e5d2b1f0a94",
+      "installed_app_id": "instapp_3d5e8f2a-1c94-4b7e-9a2c-6f481d0e3b17",
       "app_name": "Fee Engine",
       "acting_app": {
-        "app_id": "app_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+        "app_id": "app_9a1c4e70-2b8d-4f61-8c3a-7e5d2b1f0a94",
         "name": "Fee Engine",
-        "logo_url": "",
+        "logo_url": "https://cdn.example.com/fee-engine.png",
         "slug": "fee-engine",
-        "installed_app_id": "instapp_073f7ffe-9dfd-42ce-aa50-d1dca1788adc"
+        "installed_app_id": "instapp_3d5e8f2a-1c94-4b7e-9a2c-6f481d0e3b17"
       },
       "created_at": "2026-09-10T21:56:12.112739Z"
     }
   ],
   "pagination": {
     "current_page": 1,
-    "page_size": 10,
+    "page_size": 20,
     "total": 128
   }
 }
@@ -85,67 +153,73 @@ curl -X GET 'https://api.cloud.blnkfinance.com/audit/logs' \
 </ResponseExample>
 
 <ResponseField name="data" type="array">
-Audit log rows for the current page.
-<Expandable>
+Audit log rows for the current page, newest first.
+<Expandable title="Log properties">
   <ResponseField name="audit_log_id" type="string">
-  Unique identifier for the log row.
+  Unique id of this row (`audit_...`).
   </ResponseField>
   <ResponseField name="action" type="string">
-  Activity label, such as `Deployment created`, `Deployment destroy initiated`, `Instance Created`, or `App Launched`.
+  Activity label, such as `Deployment destroy initiated`, `Transaction Created`, or `App Launched`.
   </ResponseField>
   <ResponseField name="performed_by" type="string">
-  Display name of the actor.
+  Display name of the actor (`FirstName LastName`). Falls back to the user id when Cloud cannot resolve the name.
   </ResponseField>
   <ResponseField name="performed_by_id" type="string">
-  User id of the actor (`user_...`).
+  User id of the person who performed the action (`user_...`). Pass this value as `performed_by` to filter. Omitted when the log has no user.
   </ResponseField>
   <ResponseField name="api_key_id" type="string">
-  API key that performed the action (`apikey_...`). Omitted when the actor did not use a key.
+  Cloud API key that performed the action (`apikey_...`). Omitted when the actor did not use a key.
   </ResponseField>
   <ResponseField name="created_at" type="timestamp">
-  When the action occurred.
+  When the action occurred, in UTC.
   </ResponseField>
   <ResponseField name="instance_id" type="string">
-  Related Cloud instance id. Can be empty.
+  Related Cloud instance (`instance_...`). Empty when the action is not tied to an instance.
   </ResponseField>
   <ResponseField name="deployment_id" type="string">
-  Related deployment id. Omitted or empty when the action is not about a deployment.
+  Related managed deployment (`deploy_...`). Omitted when the action is not about a deployment.
   </ResponseField>
   <ResponseField name="ledger_id" type="string">
-  Related ledger id. Can be empty.
+  Related ledger (`ldg_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="balance_id" type="string">
-  Related balance id. Can be empty.
+  Related balance (`bln_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="transaction_id" type="string">
-  Related transaction id. Can be empty.
+  Related transaction (`txn_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="identity_id" type="string">
-  Related identity id. Can be empty.
+  Related identity (`idt_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="reconciliation_id" type="string">
-  Related reconciliation id. Can be empty.
+  Related reconciliation (`recon_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="anomaly_id" type="string">
-  Related alert id. Can be empty.
+  Related alert id. Empty when unused.
   </ResponseField>
   <ResponseField name="doc_id" type="string">
-  Related document id. Can be empty.
+  Related document id. Empty when unused.
   </ResponseField>
   <ResponseField name="app_id" type="string">
-  Related app id. Can be empty.
+  Related app (`app_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="installed_app_id" type="string">
-  Installed app id. Can be empty.
+  Related install (`instapp_...`). Empty when unused.
   </ResponseField>
   <ResponseField name="app_name" type="string">
-  App display name. Can be empty.
+  App display name stored on the row. Empty when unused.
+  </ResponseField>
+  <ResponseField name="domain_name" type="string">
+  Workspace domain this action is about. Present on domain verification and join events.
+  </ResponseField>
+  <ResponseField name="email" type="string">
+  Email stored on the row, such as a pending invite revoked during domain join. Omitted when unused.
   </ResponseField>
   <ResponseField name="acting_app" type="object">
-  Present when a Custom App performed the action.
-  <Expandable>
+  Present when a Custom App performed the action, or when the row already stores app ids from an install or launch. Use `name` and `logo_url` to show the app next to `performed_by`.
+  <Expandable title="Acting app properties">
     <ResponseField name="app_id" type="string">
-    App id.
+    App id (`app_...`).
     </ResponseField>
     <ResponseField name="name" type="string">
     App display name.
@@ -154,10 +228,13 @@ Audit log rows for the current page.
     App slug, such as `fee-engine`.
     </ResponseField>
     <ResponseField name="logo_url" type="string">
-    App logo URL. Can be empty.
+    App logo URL. Empty when none is set, or when Cloud fell back to the stored row.
     </ResponseField>
     <ResponseField name="installed_app_id" type="string">
-    Installed app id.
+    Installed app id (`instapp_...`). Omitted when Cloud cannot resolve the install.
+    </ResponseField>
+    <ResponseField name="from_audit_snapshot" type="boolean">
+    `true` when the app is no longer in the registry and Cloud filled `name` from this log row. Treat `logo_url` as a placeholder when it is empty.
     </ResponseField>
   </Expandable>
   </ResponseField>
@@ -165,16 +242,16 @@ Audit log rows for the current page.
 </ResponseField>
 
 <ResponseField name="pagination" type="object">
-Page info for the list.
-<Expandable>
+Page info for this request.
+<Expandable title="Pagination properties">
   <ResponseField name="current_page" type="integer">
-  Current page. The default request returns page `1`.
+  Page you requested. The default request returns `1`.
   </ResponseField>
   <ResponseField name="page_size" type="integer">
   Rows on this page. The default request returns `10`.
   </ResponseField>
   <ResponseField name="total" type="integer">
-  Total log rows in the workspace.
+  Total rows that match the filters, before pagination.
   </ResponseField>
 </Expandable>
 </ResponseField>
@@ -187,6 +264,7 @@ Page info for the list.
   items={[
     { title: "Audit logs", href: "/cloud/organization/audit-logs" },
     { title: "API keys", href: "/cloud/reference/api-keys" },
-    { title: "Cloud API overview", href: "/cloud/reference/overview" },
+    { title: "Proxy API", href: "/cloud/reference/proxy-api" },
+    { title: "How apps work", href: "/cloud/apps/how-apps-work" },
   ]}
 />
