@@ -14,6 +14,11 @@ Use `blnk.Transactions.refund` to refund a transaction.
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Queued refund">
+
+Omit the optional body to queue the refund using Core defaults. See [Refunds](/transactions/refunds).
+
 ```typescript blnk.Transactions.refund wrap
 const response = await blnk.Transactions.refund(
   'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
@@ -23,28 +28,97 @@ const response = await blnk.Transactions.refund(
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `transactionId` | `string` | Transaction ID of the applied transaction to refund. |
+
+</Tab>
+
+<Tab title="Skip queue">
+
+Process the refund synchronously instead of queuing.
+
+```typescript blnk.Transactions.refund wrap {4}
+const response = await blnk.Transactions.refund(
+  'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
+  {
+    skip_queue: true,
+  },
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
 | `skip_queue` | `boolean` | When `true`, process the refund synchronously instead of queuing. |
+
+</Tab>
+
+<Tab title="Description and metadata">
+
+Set a narration and merge metadata onto the copy inherited from the original. See [Refunds](/transactions/refunds#description-and-metadata).
+
+```typescript blnk.Transactions.refund wrap {4-9}
+const response = await blnk.Transactions.refund(
+  'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
+  {
+    description: 'Refund for ticket #4821',
+    meta_data: {
+      type: 'refund',
+      reason: 'goodwill',
+    },
+  },
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `description` | `string` | Narration for the refund. When omitted or empty, the refund copies the original. |
+| `meta_data` | `Record<string, unknown>` | Merged onto metadata inherited from the original. Keys you send replace matching keys. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the refund without writing anything. See [Dry-run transactions](/transactions/dry-run).
+
+```typescript blnk.Transactions.refund wrap {4}
+const preview = await blnk.Transactions.refund(
+  'txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c',
+  {
+    dry_run: true,
+  },
+);
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dry_run` | `true` | Return a `TransactionPreview` without creating a refund or consuming a reference. |
+
+</Tab>
+</Tabs>
 
 </Step>
 
 <Step title="Save the refund transaction ID">
 
-Use `response.data.transaction_id` to track the refund. Check `parent_transaction` to confirm it links to the original transaction.
+On a posted refund, use `response.data.transaction_id` to track it. Check `parent_transaction` to confirm it links to the original.
+
+A dry run has no `transaction_id`. Check `would_apply` instead.
 
 </Step>
 
 <Step title="Response">
+
+<Tabs>
+<Tab title="Queued refund">
 
 ```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
   "precise_amount": 125034,
-  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "transaction_id": "txn_af70986c-fbdc-450a-bf81-c1af034ce840",
   "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
   "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
   "destination": "@WorldUSD",
-  "reference": "ref_2ye281ewiu",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
   "currency": "USD",
   "description": "Card payment on Stripe",
   "status": "QUEUED",
@@ -53,9 +127,117 @@ Use `response.data.transaction_id` to track the refund. Check `parent_transactio
 }
 ```
 
+</Tab>
+
+<Tab title="Skip queue">
+
+```json 201 Created wrap expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_4c8be5c7-7c40-493f-b4a1-c09fcf8e7e7b",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "hash": "587dec3f5819f2a1e6f5b016fd97153334a3b6c9568475349911ce6356ec31fa",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+</Tab>
+
+<Tab title="Description and metadata">
+
+```json 201 Created wrap expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "description": "Refund for ticket #4821",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "meta_data": {
+    "type": "refund",
+    "channel": "card",
+    "reason": "goodwill"
+  }
+}
+```
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "amount": 1250.34,
+  "precise_amount": "125034",
+  "precision": 100,
+  "notes": [
+    "projected refund of transaction txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c"
+  ],
+  "balances": [
+    {
+      "balance_id": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "125034",
+      "current_available": "125034",
+      "current_credit_balance": "125034",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "125034",
+      "resulting_debit_balance": "125034",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_d5cbde84-d20a-485b-8ce8-6677d782c3a1",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "125034",
+      "resulting_available": "125034",
+      "resulting_credit_balance": "125034",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
-| `transaction_id` | `string` | ID of the new refund transaction. |
+| `transaction_id` | `string` | ID of the new refund transaction. Omitted on a dry run. |
 | `parent_transaction` | `string` | Original transaction being refunded. |
 | `source` | `string` | Original destination, now the source of the refund. |
 | `destination` | `string` | Original source, now the destination of the refund. |
@@ -71,6 +253,7 @@ Use `response.data.transaction_id` to track the refund. Check `parent_transactio
 <RelatedTopics
   items={[
     { title: "Refunds", href: "/transactions/refunds" },
+    { title: "Dry-run transactions", href: "/transactions/dry-run" },
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
     { title: "Parent transactions", href: "/transactions/parent-transactions" },
     { title: "Refund transaction", href: "/reference/refund-transaction" },

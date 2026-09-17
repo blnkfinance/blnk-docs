@@ -14,6 +14,9 @@ Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Create batch">
+
 ```go client.Transaction.CreateBulk wrap
 result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
 	Atomic: true,
@@ -52,9 +55,59 @@ result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionR
 | `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
 | `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
 
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. Use `CreateBulkDryRun`. `SkipQueue` selects cumulative vs independent projection. `RunAsync` is ignored. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.CreateBulkDryRun wrap
+preview, resp, err := client.Transaction.CreateBulkDryRun(blnkgo.CreateBulkTransactionRequest{
+	SkipQueue: false,
+	Transactions: []blnkgo.CreateTransactionRequest{
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				PreciseAmount: big.NewInt(45000),
+				Precision:     100,
+				Currency:      "USD",
+				Source:        "bln_source-bal-001",
+				Destination:   "bln_dest-bal-001",
+				Reference:     "ref_payout_450",
+				Description:   "First payout",
+			},
+		},
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				PreciseAmount: big.NewInt(10000),
+				Precision:     100,
+				Currency:      "USD",
+				Source:        "bln_source-bal-001",
+				Destination:   "bln_dest-bal-002",
+				Reference:     "ref_payout_100",
+				Description:   "Second payout",
+			},
+		},
+	},
+})
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step title="Save the batch ID">
+
+On a posted batch, use `result.BatchID` as parent transaction to find child transactions.
+
+A dry run has no `BatchID`. Check `WouldApply` and `Results`.
+
 </Step>
 
 <Step title="Response">
+
+<Tabs>
+<Tab title="Create batch">
 
 <CodeGroup>
 ```json Sync wrap
@@ -82,6 +135,44 @@ result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionR
 | `Status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
 | `TransactionCount` | `int` | Number of transactions when processed synchronously. |
 | `Message` | `string` | Status message when `RunAsync` is `true`. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100
+    },
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_100",
+      "currency": "USD",
+      "amount": 100,
+      "precise_amount": "10000",
+      "precision": 100
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
 
 </Step>
 </Steps>

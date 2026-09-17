@@ -14,37 +14,98 @@ Use `blnk.transactions.refund` to refund a transaction.
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Queued refund">
+
+Omit the optional body to queue the refund using Core defaults. See [Refunds](/transactions/refunds).
+
 ```python blnk.transactions.refund wrap
 response = blnk.transactions.refund(
   "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 )
 ```
 
+</Tab>
+
+<Tab title="Skip queue">
+
+Process the refund synchronously instead of queuing.
+
+```python blnk.transactions.refund wrap {3}
+response = blnk.transactions.refund(
+  "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  {"skip_queue": True},
+)
+```
+
+</Tab>
+
+<Tab title="Description and metadata">
+
+Set a narration and merge metadata onto the copy inherited from the original. See [Refunds](/transactions/refunds).
+
+```python blnk.transactions.refund wrap {3-8}
+response = blnk.transactions.refund(
+  "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  {
+    "description": "Refund for ticket #4821",
+    "meta_data": {
+      "type": "refund",
+      "reason": "goodwill",
+    },
+  },
+)
+```
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the refund without writing anything. See [Dry-run transactions](/transactions/dry-run).
+
+```python blnk.transactions.refund wrap {3}
+preview = blnk.transactions.refund(
+  "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  {"dry_run": True},
+)
+```
+
+</Tab>
+</Tabs>
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `transactionId` | `str` | Transaction ID of the applied transaction to refund. |
 | `skip_queue` | `bool` | When `True`, process the refund synchronously instead of queuing. |
+| `description` | `str` | Narration for the refund. When omitted or empty, the refund copies the original. |
+| `meta_data` | `dict` | Merged onto metadata inherited from the original. |
+| `dry_run` | `bool` | Return a preview without creating a refund. |
 
 </Step>
 
 <Step title="Save the refund transaction ID">
 
-Use `response.data["transaction_id"]` to track the refund. Check `parent_transaction` to confirm it links to the original transaction.
+On a posted refund, use `response.data["transaction_id"]` to track it. Check `parent_transaction` to confirm it links to the original.
+
+A dry run has no `transaction_id`. Check `would_apply` instead.
 
 </Step>
 
 <Step title="Response">
+
+<Tabs>
+<Tab title="Queued refund">
 
 ```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
   "precise_amount": 125034,
-  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "transaction_id": "txn_af70986c-fbdc-450a-bf81-c1af034ce840",
   "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
   "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
   "destination": "@WorldUSD",
-  "reference": "ref_2ye281ewiu",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
   "currency": "USD",
   "description": "Card payment on Stripe",
   "status": "QUEUED",
@@ -52,6 +113,26 @@ Use `response.data["transaction_id"]` to track the refund. Check `parent_transac
   "created_at": "2024-11-26T09:33:35.265582042Z"
 }
 ```
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "amount": 1250.34,
+  "precise_amount": "125034",
+  "precision": 100
+}
+```
+
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |

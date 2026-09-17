@@ -47,6 +47,23 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 ```
 
 </Tab>
+
+<Tab title="Dry run">
+
+Preview every void without releasing any hold. Use `BulkVoidInflightDryRun`. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.BulkVoidInflightDryRun wrap
+preview, resp, err := client.Transaction.BulkVoidInflightDryRun(
+	blnkgo.BulkVoidInflightRequest{
+		TransactionIDs: []string{
+			"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+			"txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+		},
+	},
+)
+```
+
+</Tab>
 </Tabs>
 
 | Field | Type | Description |
@@ -56,7 +73,18 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 
 </Step>
 
+<Step title="Review per-item results">
+
+On a posted batch, check `result.Results` for each transaction's outcome.
+
+A dry run has no succeeded or failed counts. Check `WouldApply` and `Results`.
+
+</Step>
+
 <Step title="Response">
+
+<Tabs>
+<Tab title="Queued void">
 
 ```json 200 OK wrap expandable
 {
@@ -92,6 +120,35 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 | `Results.`<br />`[].Status` | `string` | `succeeded`, `failed`, or `queued` (when `SkipQueue` is `false`). |
 | `Results.`<br />`[].Code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
 | `Results.`<br />`[].Message` | `string` | Human-readable failure message. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "operation": "void",
+      "status": "VOID",
+      "reference": "ref_hold_001",
+      "currency": "USD",
+      "amount": 120,
+      "precise_amount": "12000",
+      "precision": 100
+    }
+  ]
+}
+```
+
+</Tab>
+</Tabs>
 
 </Step>
 </Steps>

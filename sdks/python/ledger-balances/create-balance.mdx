@@ -14,6 +14,9 @@ Use `blnk.ledger_balances.create` to create a balance on an existing ledger.
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Ledger balance">
+
 ```python blnk.ledger_balances.create wrap
 response = blnk.ledger_balances.create({
   "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
@@ -30,6 +33,28 @@ response = blnk.ledger_balances.create({
 | `allocation_strategy` | `str` | How tagged provider funds are allocated on spend: `FIFO`, `LIFO`, or `PROPORTIONAL`. |
 | `meta_data` | `dict` | Optional metadata for extra context. |
 
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+Create an internal balance yourself instead of waiting for the first `@` reference on a transaction. See [Internal balances](/balances/internal-balances).
+
+```python blnk.ledger_balances.create wrap {2,4}
+response = blnk.ledger_balances.create({
+  "ledger_id": "general_ledger_id",
+  "currency": "USD",
+  "indicator": "@Revenue",
+})
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ledger_id` | `str` | Must be `general_ledger_id`. `indicator` is only allowed on this ledger. |
+| `indicator` | `str` | Must start with `@` and contain no whitespace. The same indicator and currency pair can only exist once. |
+
+</Tab>
+</Tabs>
+
 </Step>
 
 <Step title="Save the balance ID">
@@ -39,6 +64,9 @@ Use `response.data["balance_id"]` as the `source` or `destination` on transactio
 </Step>
 
 <Step title="Response">
+
+<Tabs>
+<Tab title="Ledger balance">
 
 ```json 201 Created wrap
 {
@@ -57,10 +85,36 @@ Use `response.data["balance_id"]` as the `source` or `destination` on transactio
 }
 ```
 
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+```json 201 Created wrap {7}
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "general_ledger_id",
+  "indicator": "@Revenue",
+  "identity_id": "",
+  "balance_id": "bln_a7c3e91f-2d48-4b1a-9e6c-5f8d2a1b4c70",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+</Tab>
+</Tabs>
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `balance_id` | `str` | Unique ID for the balance. Use as `source` or `destination` on transactions. |
 | `ledger_id` | `str` | Ledger ID you passed in the request. |
+| `indicator` | `str` | Set when you created a General Ledger balance with `indicator`. |
 | `currency` | `str` | Currency you passed in the request. |
 | `balance` | `number` | Current net amount in the balance. |
 | `created_at` | `str` | Date and time the balance was created. |
