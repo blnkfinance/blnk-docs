@@ -228,6 +228,32 @@ transaction, resp, err := client.Transaction.Create(
 | `EffectiveDate` | `*time.Time` | Actual date the transaction occurred. ISO 8601 format. |
 
 </Tab>
+
+<Tab title="Dry run">
+
+Preview whether a transaction would apply and how it would change balances without writing anything. Use `CreateDryRun`. Do not set `DryRun: true` on `Create`. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.CreateDryRun wrap
+preview, resp, err := client.Transaction.CreateDryRun(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(12000),
+			Precision: 100,
+			Currency: "USD",
+			Source: "bln_source-bal-001",
+			Destination: "bln_dest-bal-001",
+			Reference: "ref_card_settle_4821",
+			Description: "Card settlement",
+		},
+	},
+)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| Method | `CreateDryRun` | Returns `*TransactionPreview`. Nothing is written and the reference is still free. |
+
+</Tab>
 </Tabs>
 
 </Step>
@@ -430,6 +456,59 @@ transaction, resp, err := client.Transaction.Create(
   "scheduled_for": "0001-01-01T00:00:00Z",
   "inflight_expiry_date": "0001-01-01T00:00:00Z",
   "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
 }
 ```
 

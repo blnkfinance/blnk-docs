@@ -128,7 +128,15 @@ const response = await blnk.Transactions.get('txn_missing');
 }
 ```
 
-Read the failure from `response.error?.code`. Use `response.status` to choose a broad response. Treat `response.error?.message` as display text; Core may change wording between releases. On older Core versions, `response.error?.code` may be `UNKNOWN`.
+The SDK exports these codes as `BlnkErrorCode`:
+
+| Constant | When Core returns it |
+| :-- | :-- |
+| `BlnkErrorCode.TXN_VALIDATION_ERROR` | Negative `amount` or `precision`, or source equal to destination |
+| `BlnkErrorCode.GEN_CONFLICT` | Duplicate General Ledger indicator and currency (`409`) |
+| `BlnkErrorCode.TXN_INVALID_AMOUNT` | Invalid amount (see the [API error codes](/advanced/error-codes) catalog) |
+
+Use `response.status` to pick the first branch (not found, auth, conflict, bad request, or server failure). Then use `response.error?.code` for the specific case.
 
 | Status | When it happens | What to do |
 | :-- | :-- | :-- |
@@ -173,9 +181,9 @@ When debugging transport failures, log `status`, `message`, and the endpoint you
 
 <RelatedTopics
   items={[
-    { title: "Install Core", href: "/home/install" },
-    { title: "Deploy", href: "/home/deploy" },
-    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "Using the SDK", href: "/sdks/typescript/start/using-the-sdk" },
+    { title: "Changelog", href: "/changelog/blnk-ts" },
     { title: "API error codes", href: "/advanced/error-codes" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
   ]}
 />

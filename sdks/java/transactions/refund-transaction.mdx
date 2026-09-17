@@ -13,46 +13,108 @@ Use `blnk.transactions().refund` for this operation.
 <Steps>
 <Step title="Call the method">
 
+<Tabs>
+<Tab title="Skip queue">
+
 ```java wrap
-String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
+String transactionId = "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c";
 
 ApiResponse<JsonNode> response = blnk.transactions().refund(
     transactionId,
     RefundTransactionRequest.create().skipQueue(true));
 ```
 
+</Tab>
+
+<Tab title="Description and metadata">
+
+Set a narration and merge metadata onto the copy inherited from the original. See [Refunds](/transactions/refunds).
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.transactions().refund(
+    "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+    RefundTransactionRequest.create()
+        .description("Refund for ticket #4821")
+        .metaData(Map.of(
+            "type", "refund",
+            "reason", "goodwill")));
+```
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the refund without writing anything. See [Dry-run transactions](/transactions/dry-run).
+
+```java wrap
+ApiResponse<JsonNode> preview = blnk.transactions().refund(
+    "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+    RefundTransactionRequest.create().dryRun(true));
+```
+
+</Tab>
+</Tabs>
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `transactionId` | `String` | Transaction ID of the applied transaction to refund. |
 | `skip_queue` | `boolean` | When `true`, process the refund synchronously instead of queuing. |
+| `description` | `String` | Narration for the refund. When omitted or empty, the refund copies the original. |
+| `meta_data` | `Map<String, Object>` | Merged onto metadata inherited from the original. |
+| `dry_run` | `boolean` | Return a preview without creating a refund. |
 
 </Step>
 
 <Step title="Save the refund transaction ID">
 
-Use `response.data().get("transaction_id").asText()` to track the refund. Check `parent_transaction` to confirm it links to the original transaction.
+On a posted refund, use `response.data().get("transaction_id").asText()` to track it.
+
+A dry run has no `transaction_id`. Check `would_apply` instead.
 
 </Step>
 
 <Step title="Response">
+
+<Tabs>
+<Tab title="Skip queue">
 
 ```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
   "precise_amount": 125034,
-  "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "transaction_id": "txn_4c8be5c7-7c40-493f-b4a1-c09fcf8e7e7b",
   "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
   "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
   "destination": "@WorldUSD",
-  "reference": "ref_2ye281ewiu",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
   "currency": "USD",
   "description": "Card payment on Stripe",
-  "status": "QUEUED",
-  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "status": "APPLIED",
+  "hash": "587dec3f5819f2a1e6f5b016fd97153334a3b6c9568475349911ce6356ec31fa",
   "created_at": "2024-11-26T09:33:35.265582042Z"
 }
 ```
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "amount": 1250.34,
+  "precise_amount": "125034",
+  "precision": 100
+}
+```
+
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
