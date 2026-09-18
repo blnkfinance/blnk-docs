@@ -28,9 +28,8 @@ Custom Apps usually use these Cloud APIs.
 
 | API | When to use it |
 | :-- | :-- |
-| Filters API | Filter live ledger data through Cloud. |
 | Data Lake API | Query historical ledger data with SQL. |
-| Proxy API | Perform Core actions through Cloud. |
+| Proxy API | Call any Core endpoint through Cloud. |
 | Other Cloud features | Use Cloud features that are not Core endpoints, such as alerts. |
 
 All requests use the Cloud base URL:
@@ -45,7 +44,7 @@ The installed app API key goes in the `Authorization` header:
 Authorization: Bearer CLOUD_API_KEY
 ```
 
-For Proxy and Filters API requests, include the selected `instance_id` in the URL:
+For Proxy API requests, include the selected `instance_id` in the URL:
 
 ```bash
 ?instance_id=<instance_id>
@@ -59,13 +58,13 @@ For Data Lake API requests, send `instance_id` in the JSON body.
 
 <Tabs>
 <Tab title="Using the Proxy API">
-  Use the proxy when your app wants to create or update Core resources through Cloud. The format is:
+  Use the proxy when your app wants to call Core through Cloud. The format is:
 
   ```bash wrap
-  https://api.cloud.blnkfinance.com/proxy/<registered-path>?instance_id=<instance_id>
+  https://api.cloud.blnkfinance.com/proxy/<core-path>?instance_id=<instance_id>
   ```
 
-  The path must be a registered Proxy route. Cloud does not forward every Core endpoint. You cannot list ledgers or fetch a balance, transaction, or identity by ID through the proxy. Use the Filters API for those reads.
+  Use the same HTTP method and path you would call on Core. GET, POST, PUT, DELETE, and other Core routes all go through `/proxy`. For historical reporting, use the Data Lake API.
 
   For example, creating a transaction on Core:
 
@@ -98,36 +97,7 @@ For Data Lake API requests, send `instance_id` in the JSON body.
   ```
 
   <Card title="Using the proxy" icon="send" href="/cloud/reference/proxy-api">
-    Registered routes and request shapes.
-  </Card>
-</Tab>
-<Tab title="Using the Filters API">
-  Use the Filters API when your app needs to read live ledger data through Cloud.
-
-  The format is:
-
-  ```bash wrap
-  https://api.cloud.blnkfinance.com/<resource>/filter?instance_id=<instance_id>
-  ```
-
-  `<resource>` is `ledger`, `balances`, `transactions`, `identities`, or `reconciliation`. Ledgers use the singular path `/ledger/filter`.
-
-  For example, to filter transactions:
-
-  ```bash wrap
-  curl -X POST "https://api.cloud.blnkfinance.com/transactions/filter?instance_id=inst_..." \
-    -H "Authorization: Bearer CLOUD_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "filters": [
-        { "field": "status", "operator": "eq", "value": "APPLIED" },
-        { "field": "currency", "operator": "eq", "value": "USD" }
-      ]
-    }'
-  ```
-
-  <Card title="Using the Filters API" icon="list-filter" href="/cloud/reference/filters-api">
-    Filter endpoints and JSON filter bodies.
+    Core routes and request shapes.
   </Card>
 </Tab>
 <Tab title="Using the Data Lake API">
@@ -160,7 +130,7 @@ For Data Lake API requests, send `instance_id` in the JSON body.
 <Tab title="Other Cloud features">
   Use other Cloud endpoints for features that belong to Cloud itself.
 
-  Alerts are a good example. You do not call alerts through `/proxy`, Filters, or the data lake. You call the Alerts API directly.
+  Alerts are a good example. You do not call alerts through `/proxy` or the data lake. You call the Alerts API directly.
 
   ```bash wrap
   https://api.cloud.blnkfinance.com/alerts/flag/<resource_id>
