@@ -1,70 +1,144 @@
 ---
-title: "How the lake works"
-sidebarTitle: "How the lake works"
+title: "Data Lake"
+sidebarTitle: "Data Lake"
 icon: "database"
-description: "Learn how the Insights data lake copies your ledger for SQL reports."
-og:title: "How the lake works | Blnk Cloud Guide"
-og:description: "Learn how the Insights data lake copies your ledger for SQL reports."
+description: "When to query the Data Lake instead of the live ledger."
+og:title: "Data Lake | Blnk Cloud Guide"
+og:description: "The Data Lake is for historical reporting. Use it for activity over a period, not current wallet holdings."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-The **data lake** is a stored copy of your ledger built for reports. Insights runs your SQL against that copy.
+The Data Lake makes your ledger data available for reporting and analysis through [Insights](/cloud/insights/overview) and the [Data Lake API](/cloud/reference/create-new-query). It maintains a separate reporting copy, so you can explore historical activity without adding analytical workloads to your live ledger.
 
-Your ledger is the system of record. Every write lands there first: a posted transaction, a new balance, a new identity. A lake builder then copies those records into **daily history**, one day at a time.
+Your ledger remains the source of truth. Data Lake lets finance, operations, and audit teams explore unlimited history without adding reporting load to that path.
 
-When you run a query, Insights scans **only the days inside the date range you pick in the toolbar**. That range decides how much history the engine opens. A `WHERE` filter on `created_at` can drop rows inside those days. It does not choose which days to open.
+<Info>
+The Data Lake is available only on [managed instances](/cloud/instances/deploy) and to [Enterprise](/cloud/start/license/start) customers. It is not included with connected self-hosted Cores without an Enterprise license.
+</Info>
 
-<Frame caption="From a ledger write to a query result">
-  <div className="lake-flow" role="img" aria-label="Ledger writes to the lake builder, which stores daily history. DuckDB scans those days for Insights and the Data lake API.">
-    <div className="lake-flow__row">
-      <div className="lake-flow__card">
-        <p className="lake-flow__title">Your ledger</p>
-        <p className="lake-flow__sub">System of record</p>
-        <span className="lake-flow__pill">transactions</span>
-        <span className="lake-flow__pill">balances</span>
-        <span className="lake-flow__pill">ledgers</span>
-        <span className="lake-flow__pill">identity</span>
-      </div>
-      <div className="lake-flow__arrow">writes</div>
-      <div className="lake-flow__card">
-        <p className="lake-flow__title">Lake builder</p>
-        <p className="lake-flow__sub">Continuous copy</p>
-        <p className="lake-flow__note">Every posted record is appended to daily history</p>
-        <span className="lake-flow__pill">partitioned by date</span>
-        <p className="lake-flow__note">Copy with a lag</p>
-      </div>
-      <div className="lake-flow__arrow">stores</div>
-      <div className="lake-flow__card">
-        <p className="lake-flow__title">Daily history</p>
-        <p className="lake-flow__sub">Read-only, immutable</p>
-        <span className="lake-flow__pill">2026-09-01.parquet</span>
-        <span className="lake-flow__pill">2026-09-02.parquet</span>
-        <span className="lake-flow__pill">2026-09-03.parquet</span>
-        <p className="lake-flow__note">Never updated in place. History is append-only.</p>
-      </div>
-      <div className="lake-flow__arrow">scans</div>
-      <div className="lake-flow__card">
-        <p className="lake-flow__title">DuckDB</p>
-        <p className="lake-flow__sub">Query engine</p>
-        <p className="lake-flow__note">Reads only the days in your date range</p>
-        <span className="lake-flow__pill">Insights / API</span>
-      </div>
-    </div>
-  </div>
-</Frame>
+---
 
-Keep these lake contracts in mind when you write SQL:
+## What you can query
 
-1. **Daily history is append-only.** Insights opens every day file in your toolbar date range. Files are never updated in place.
-2. **Transactions are lifecycle rows.** Core stores each status change as its own row (`QUEUED`, `INFLIGHT`, `APPLIED`, and so on). Filter by `status`, and use `parent_transaction` when you need commit or void outcomes. See [Transaction lifecycle](/transactions/transaction-lifecycle).
-3. **Balances, ledgers, and identities can repeat across days.** The same ID may appear in more than one day file. Before you join them to transactions, collapse to one row per ID (for example `GROUP BY balance_id` with `ANY_VALUE(...)`). Do not order by `created_at` to pick a "latest" wallet snapshot: `created_at` is when the wallet was created, so daily copies can tie and DuckDB can pick any copy.
-4. **Current wallet holdings belong on the live ledger.** The lake is for history and reports. For live balance amounts, use the [Ledger API](/reference/get-balance).
-5. **Parent and child rows can fall on different days.** Inflight commits and voids create new rows. Set a date range wide enough to include both the parent and its outcomes, or the report can miss a resolution.
-6. **Use `TRY_CAST` on dates and amounts.** See [Use TRY_CAST on dates and amounts](/cloud/insights/queries#use-trycast-on-dates-and-amounts).
+The lake exposes four tables: `transactions`, `balances`, `ledgers`, and `identity`. Open [Schema](/cloud/insights/schema) to see the columns and how they join.
 
-To call the same lake SQL from your backend, use [Create new query](/cloud/reference/create-new-query).
+Records are written to your ledger before they become available in the Data Lake; this means that a payment can already exist on the ledger without appearing in **Insights** yet. Keep that delay in mind when you report on recent activity.
+
+| Question | Where to get it |
+| :-- | :-- |
+| Money that moved over a period | [Data lake](/cloud/reference/create-new-query) |
+| Wallets, ledgers, and identities that appear in transaction history | [Data lake](/cloud/reference/create-new-query) |
+| Amount in a wallet right now | [Ledger API](/reference/get-balance) |
+| Amount in a wallet at a past time | [Historical balances](/cloud/balances/historical) |
+
+---
+
+## How the date range affects your query
+
+The date range in the **Insights** toolbar determines which period of history your query can access. Your SQL then filters and analyzes the records within that selection.
+
+On every table, that range applies to `created_at`:
+
+- On `transactions`, `created_at` is when that lifecycle row was created in your ledger. A September range is payments that moved through a status in September.
+- On `balances`, `ledgers`, and `identity`, `created_at` is when the wallet, ledger, or identity was created. A September range pulls records **created** in September, not every record that existed in September.
+
+Choose a range that covers the activity you want to analyze. A monthly volume report might only need that month. An investigation into pending transactions may need a wider period so commit or void rows are included.
+
+If the toolbar is set to September, an SQL filter for August will not retrieve August records. If you want to include August records, change the toolbar range to include August.
+
+---
+
+## How transactions appear
+
+The Data Lake can contain multiple records for a single payment, one per lifecycle stage. A payment may have a `QUEUED` row followed by an `APPLIED` row. Those describe the same payment at different stages. Counting both incorrectly counts the payment twice. 
+
+For example, if you want to report on completed transactions, your query must filter for `APPLIED` records only:
+
+```sql
+SELECT
+  currency,
+  COUNT(*) AS txn_count,
+  SUM(
+    TRY_CAST(precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0)
+  ) AS volume
+FROM transactions
+WHERE status = 'APPLIED'
+GROUP BY currency
+```
+
+Without the `WHERE` filter, the same payment is counted once as `QUEUED` and again as `APPLIED`. For other reports, change the status to the stage you care about. See [Transaction lifecycle](/transactions/transaction-lifecycle).
+
+To follow an inflight payment to its outcome, connect related rows with `parent_transaction` or `meta_data.QUEUED_PARENT_TRANSACTION`. Those rows can fall on different dates. A hold on September 30 that commits on October 1 needs a range that includes both days.
+
+```sql
+SELECT
+  hold.transaction_id,
+  hold.created_at AS held_at,
+  hold.status,
+  outcome.transaction_id AS outcome_id,
+  outcome.created_at AS resolved_at,
+  outcome.status AS outcome_status
+FROM transactions hold
+LEFT JOIN transactions outcome
+  ON outcome.parent_transaction = hold.transaction_id
+  AND outcome.status IN ('APPLIED', 'VOID')
+WHERE hold.status = 'INFLIGHT'
+```
+
+If the toolbar ends on September 30, an October 1 commit is outside the range. `outcome_id` comes back empty and the hold looks unresolved. Widen the range to include both days. 
+
+---
+
+## How balances appear
+
+A wallet keeps one `balance_id` for its lifetime. Use the `balances` table to count wallets, filter by ledger or currency, and join transactions to the wallet, ledger, or identity they belong to.
+
+The toolbar range follows `created_at`, so you can also report on wallets created in that period:
+
+```sql Wallets created by currency
+SELECT
+  currency,
+  COUNT(*) AS wallet_count
+FROM balances
+GROUP BY currency
+```
+
+Join `balances` to `transactions` when you need ledger or owner context on volume. This totals applied volume that touched wallets in one ledger:
+
+```sql Applied volume for a ledger
+SELECT
+  t.currency,
+  SUM(
+    TRY_CAST(t.precise_amount AS DECIMAL(38, 8))
+    / NULLIF(TRY_CAST(t.precision AS DECIMAL(38, 8)), 0)
+  ) AS volume
+FROM transactions t
+JOIN balances b
+  ON t.source = b.balance_id
+  OR t.destination = b.balance_id
+WHERE b.ledger_id = 'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb'
+  AND t.status = 'APPLIED'
+GROUP BY t.currency
+```
+
+Set the toolbar to the period you want to measure. Filter to `source` or `destination` only if you want outflow or inflow.
+
+Use `ledgers` and `identity` the same way: join them when a report needs a ledger name or an owner.
+
+---
+
+## Write queries that match the data
+
+Keep these in mind when you write SQL:
+
+1. **The lake is for history, not live holdings.** Do not treat `balances.balance` as the current amount in a wallet. Use the [Ledger API](/reference/get-balance) for that.
+2. **Each transaction status is its own row.** Filter by `status`, and use `parent_transaction` when you need commit or void outcomes.
+3. **The date range follows `created_at`.** On wallets, that is creation time. A short range will omit older wallets, even if they still exist on the ledger.
+4. **Widen the range when you follow a parent and its children.** Inflight commits and voids create new rows. If the outcome sits outside the range, the report can miss the resolution.
+5. **Dates and amounts can be typed differently across days.** Wrap them in `TRY_CAST` so one mismatched row does not fail the whole query. See [Accepted SQL](/cloud/insights/queries#accepted-sql).
 
 ---
 

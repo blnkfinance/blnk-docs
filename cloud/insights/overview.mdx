@@ -2,48 +2,82 @@
 title: "Insights"
 sidebarTitle: "Overview"
 icon: "chart-spline"
-description: "Learn what Insights is and how to open the SQL workbench."
+description: "Query a stored copy of your ledger history with SQL, without hitting the live ledger."
 og:title: "Insights | Blnk Cloud Guide"
-og:description: "Learn what Insights is and how to open the SQL workbench."
+og:description: "Insights is the SQL workbench on your instance data lake. Available on Production managed instances and for Enterprise customers."
 ---
 
 import NeedHelp from "/cloud/snippets/need-help.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Insights is the SQL workbench for your ledger history. On a managed Sandbox or Production instance, it reads the instance **data lake**, a stored copy of your ledgers, balances, transactions, and identities.
+Insights lets you query your ledger data with SQL to build reports, investigate transactions, and understand activity across your financial product.
 
-Use it to report on volume, status mix, wallets, and identities. 
-To call the same lake SQL from your backend, use [Create new query](/cloud/reference/create-new-query).
+It runs on our [Data Lake](/cloud/insights/lake) infrastructure, which keeps analytical queries separate from live transaction processing. This lets your finance, operations, and audit teams explore historical data without adding reporting workloads to the ledger that processes your transactions.
+
+<Frame>
+<img src="/cloud/img/insights/insights-sql-workbench.png" alt="Insights SQL workbench with a saved query, date range, Run button, and results table" />
+</Frame>
+
+<Info>
+**Insights and the Data Lake are available only** on managed instances and to Enterprise customers. They are not included with connected self-hosted Cores without an Enterprise license.
+</Info>
+
+Use `SELECT` queries to answer questions such as:
+
+- How has transaction volume grown month over month, broken down by currency?
+- Which customers account for the largest share of transaction volume, and how has that concentration changed?
+- What percentage of transaction value was refunded each month, and which customer segments drove the increase?
+- Of the customers who first transacted in January, how many continued transacting in each subsequent month?
+
+You can view the results as tables or charts, save queries to an instance, and schedule them to run regularly. To query the same data from your backend, use the [Create new query](/cloud/reference/create-new-query) API endpoint.
+
+<Tip>
+Insights is intended for historical analysis and reporting. When your application needs current wallet balances, use the [Ledger API](/search/direct-db).
+</Tip>
 
 ---
 
-## Open Insights
+## Create your first insight
+
+Follow these steps to write, run, and save your first query in Insights.
 
 <Steps>
   <Step title="Open Insights">
-    Navigate to the side navigation and open `Insights`.
+    Select **Insights** from the side navigation.
 
-    <Note>
-      **Note:** Make sure you're in the right instance where you want to query the lake. If you're not sure, you can confirm by checking the active instance in the top right corner of your screen.
-    </Note>
+    Check the active instance in the top-right corner of your screen to confirm you're in the right environment. Insights queries the Data Lake associated with that instance.
   </Step>
   <Step title="Start a query">
-    Click `New query` to open a blank SQL editor. Until you save, the draft is named Untitled lake query.
+    Click **New query** to open a blank SQL editor. Your draft is named **Untitled lake query** until you save it.
 
-    The left sidebar has three tabs:
+    <Frame>
+    <img src="/cloud/img/insights/workbench-new-query.png" alt="Insights workbench after New query, with Untitled lake query and the Queries tab open" />
+    </Frame>
 
-    - **[Queries](/cloud/insights/queries):** reopen Saved queries, manage Scheduled runs, and check History.
-    - **[Schema](/cloud/insights/schema):** browse the tables and columns you can query.
-    - **[Templates](/cloud/insights/templates):** open a starter query and edit it for the report you need.
+    The editor's sidebar has three tabs:
 
-    <img src="/cloud/img/insights/workbench-new-query.png" alt="Insights workbench after New query, with Untitled lake query and the Queries tab open" className="rounded-lg" />
+    - **[Queries](/cloud/insights/queries):** Access saved queries, manage scheduled runs, and review query history.
+    - **[Schema](/cloud/insights/schema):** Explore the available tables and columns to help you write your query.
+    - **[Templates](/cloud/insights/templates):** Choose a ready-made query and adapt it to your reporting needs.
   </Step>
-  <Step title="Set the range, run, and save">
-    Pick start and end dates in the toolbar. Keep the range as tight as the question allows. See [How the lake works](/cloud/insights/lake) for why the date range matters.
+  <Step title="Choose a date range">
+    Use the date picker in the toolbar to select the period you want to analyze. Choose a preset or enter custom start and end dates.
 
-    Write a `SELECT` or `WITH` query, or paste a [template](/cloud/insights/templates). Click **Run** (or ⌘ `Enter` / `Ctrl` `Enter`). Results can be a **Table** or a **Chart**. Click **Save** if you want it on the instance. For schedules and history, see [Queries](/cloud/insights/queries).
+    Limit the range to the period your report needs. See [Data Lake](/cloud/insights/lake) to understand how the date range affects your query.
+  </Step>
+  <Step title="Run your query">
+    Paste a read-only DuckDB `SELECT` or `WITH` from a [template](/cloud/insights/templates) or the editor.
 
-    <img src="/cloud/img/insights/run-and-save.gif" alt="Set the date range, run a query, then save it from Actions" className="rounded-lg" />
+    Click **Run**, or press ⌘ + Enter on macOS or Ctrl + Enter on Windows and Linux. Once the query completes, use **Table** to inspect the returned rows or **Chart** to visualize the results.
+
+    <Frame>
+    <img src="/cloud/img/insights/run-and-save.gif" alt="Set the date range, run a query, then save it from Actions" />
+    </Frame>
+  </Step>
+  <Step title="Save your query">
+    Give your query a descriptive name and click **Save** to store it on the active instance. 
+    
+    You can reopen it from the **Queries** tab whenever you need it.
   </Step>
 </Steps>
 
@@ -53,9 +87,10 @@ To call the same lake SQL from your backend, use [Create new query](/cloud/refer
 
 <RelatedTopics
   items={[
-    { title: "How the lake works", href: "/cloud/insights/lake" },
-    { title: "Schema", href: "/cloud/insights/schema" },
+    { title: "Data Lake", href: "/cloud/insights/lake" },
+    { title: "Queries", href: "/cloud/insights/queries" },
     { title: "Templates", href: "/cloud/insights/templates" },
     { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "Managed instances", href: "/cloud/instances/deploy" },
   ]}
 />
