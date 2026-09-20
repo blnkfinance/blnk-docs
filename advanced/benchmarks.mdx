@@ -1,0 +1,249 @@
+---
+title: "Benchmarks"
+sidebarTitle: "Benchmarks"
+icon: "chart-line"
+description: "Measured accepted throughput and reliability for Blnk Core under balance contention."
+"og:title": "Benchmarks • Blnk Developer Documentation"
+"og:description": "Measured accepted throughput and reliability for Blnk Core, with and without balance contention."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Blnk is designed to process transactions reliably, even when many of them compete for the same balance. Under heavy contention, transactions can be [queued and applied](/transactions/transaction-lifecycle) asynchronously, allowing the ledger to remain reliable while balances converge to their correct state.
+
+This page measures how Blnk behaves under that contention.
+
+These are not peak throughput figures. Instead, these benchmarks measure what happens to throughput and processing time as traffic concentrates on one balance instead of spreading across many.
+
+<Note>
+This benchmark uses the [load testing suite](/advanced/load-testing) in the Blnk repository, run unmodified. The commands are below, so you can reproduce them against your own deployment.
+</Note>
+
+---
+
+## Setup
+
+We ran these tests on a dedicated VPS running Blnk Core `0.15.4`. The server and worker shared one 4 vCPU host; PostgreSQL 16 and Valkey 8 were managed; and k6 ran from a separate 4 vCPU machine.
+
+| Resource | Specification |
+| :-- | :-- |
+| Blnk Core | `v0.15.4`, 4 vCPU, 8 GB |
+| PostgreSQL | `v16`, 4 vCPU, 8 GB, managed |
+| Valkey | `v8`, 2 vCPU, 4 GB, managed |
+| Load generator (k6) | Separate 4 vCPU, 8 GB host |
+
+This is the configuration we used. Every shape on this page ran against it.
+
+<CodeGroup>
+```bash blnk.env wrap
+BLNK_DATA_SOURCE_DNS=postgres://postgres:password@postgres:5432/blnk?sslmode=require
+BLNK_REDIS_DNS=rediss://default:password@valkey:25061/0
+BLNK_REDIS_SKIP_TLS_VERIFY=false
+BLNK_SERVER_PORT=5001
+BLNK_ENABLE_OBSERVABILITY=false
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_BATCH_SIZE=1
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+BLNK_QUEUE_NUMBER_OF_QUEUES=20
+BLNK_QUEUE_ENABLE_HOT_LANE=false
+BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=4
+BLNK_QUEUE_MONITORING_PORT=5004
+```
+
+```json blnk.json wrap expandable
+{
+  "project_name": "Blnk",
+  "enable_observability": false,
+  "data_source": {
+    "dns": "postgres://postgres:password@postgres:5432/blnk?sslmode=require"
+  },
+  "redis": {
+    "dns": "rediss://default:password@valkey:25061/0",
+    "skip_tls_verify": false
+  },
+  "server": {
+    "port": "5001"
+  },
+  "transaction": {
+    "enable_coalescing": true,
+    "batch_size": 1,
+    "lock_wait_timeout": 3
+  },
+  "queue": {
+    "number_of_queues": 20,
+    "enable_hot_lane": false,
+    "transaction_worker_concurrency": 4,
+    "monitoring_port": "5004"
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## What was measured
+
+Four traffic shapes, from least to most contended. 
+
+| Shape | Traffic | What it represents |
+| :-- | :-- | :-- |
+| Baseline | Unique source, unique destination | Traffic spread across balances |
+| Hot source | One source, many destinations | A payout or funding account |
+| Hot destination | Many sources, one destination | A collections or settlement account |
+| Hot pair | The same two balances, repeatedly | A single busy corridor |
+
+The load test posts every request with `inflight: true` and `skip_queue: false`, the suite defaults. The API queues the transaction and returns once it is recorded. A worker then processes it and leaves it [inflight](/transactions/inflight/creating-inflight). As a result, each shape was measured twice:
+
+- **Accepted throughput.** How fast the API takes requests while p95 stays under 300ms.
+- **Reliability.** Of those accepted requests, how many were processed, and how many got dropped or lost.
+
+<Note>
+**Throughput is reported in transactions per minute (TPM).** The load test takes its input rates per second, so a `RATE` of 200 offers 12,000 TPM.
+</Note>
+
+---
+
+## Accepted throughput
+
+To measure how many transactions the API could accept, we increased the request rate in 30-second stages, resetting the ledger between each run.
+
+This table shows the highest throughput where p95 latency stayed under 300ms.
+
+| Shape | Accepted TPM | Avg latency | p95 | Error rate |
+| :-- | :-- | :-- | :-- | :-- |
+| Baseline | 260,600 | 82ms | 277ms | 0% |
+| Hot source | 256,400 | 99ms | 298ms | 0% |
+| Hot destination | 264,300 | 59ms | 209ms | 0% |
+| Hot pair | 272,600 | 79ms | 253ms | 0% |
+
+**Contention does not slow down acceptance.** The four numbers sit within 6 percent of each other, **around 260,000 TPM**, or roughly 4,300 requests per second. Accepting a transaction writes a queued record and returns. It never touches the balance the other shapes are competing for, so the accept path is not affected by contention.
+
+Every request in every step returned `201`, including the steps past the latency threshold. Nothing failed at any rate, in any shape.
+
+---
+
+## Reliability
+
+To verify that accepted transactions were eventually applied to a balance, we ran each workload for 30 seconds at its measured TPM ceiling, then allowed the worker queue to drain completely.
+
+The table compares the number of transactions accepted by the API with the number ultimately processed by the ledger. Any accepted transaction that was never applied would count as lost.
+
+| Shape | Accepted | Processed | Lost |
+| :-- | :-- | :-- | :-- |
+| Baseline | 123,593 | 123,593 | 0 |
+| Hot destination | 130,801 | 130,801 | 0 |
+| Hot pair | 138,602 | 138,602 | 0 |
+| Hot source | 129,086 | 129,086 | 0 |
+
+Across more than 500,000 transactions, **every accepted transaction was eventually processed and applied**. No accepted work was dropped, and the queue returned to zero after every run.
+
+Contention may delay when a transaction reaches a balance, but it does not cause accepted transactions to be lost.
+
+---
+
+## Reproducing these tests
+
+Run these from the repository root against your own deployment.
+
+<Steps>
+
+<Step title="Run a 30-second load test">
+
+Run one workload for 30 seconds at the rate you want to test. Replace the URL with your Blnk server.
+
+```bash wrap
+k6 run \
+  --env URL=http://localhost:5001/transactions \
+  --env SCENARIO=hot_destination \
+  --env RATE=4500 \
+  --env DURATION=30s \
+  --env VUS=800 \
+  --env MAX_VUS=4000 \
+  tests/loadtest/script.js
+```
+
+<Note>
+
+**Start each run with an empty queue.** If transactions from the previous run are still waiting to be applied, they may affect the next result.
+
+</Note>
+
+</Step>
+
+<Step title="Repeat for each workload shape">
+
+Run the same 30-second test for the remaining shapes by changing the scenario flags.
+
+```bash wrap
+# Baseline: unique source and destination
+--env SCENARIO=contention --env HOT_RPS=1 --env RANDOM_RPS=4500
+
+# Hot source
+--env SCENARIO=hot_source --env RATE=4500
+
+# Hot pair
+--env SCENARIO=contention --env HOT_RPS=4500 --env RANDOM_RPS=1
+```
+
+The suite's `baseline` scenario uses a fixed number of virtual users, so it cannot maintain a specific arrival rate. To test uncontended traffic at a known rate, use `contention` with `HOT_RPS=1`.
+
+`HOT_RPS` and `RANDOM_RPS` cannot be set to `0`.
+
+</Step>
+
+<Step title="Wait for all accepted transactions to be applied">
+
+After the load test stops, run the following query repeatedly:
+
+```sql wrap
+SELECT count(*) FILTER (WHERE status IN ('INFLIGHT')) AS processed
+FROM blnk.transactions;
+```
+
+When the count stops increasing across two consecutive checks, the workers have finished processing the run.
+
+</Step>
+
+<Step title="Check for lost transactions">
+
+Compare the final `applied` count with the number of transactions accepted during the k6 run.
+
+If the two numbers match, every accepted transaction was eventually applied. If `applied` is lower, some accepted transactions did not reach the ledger. 
+
+Open the [queue monitoring dashboard](/advanced/monitoring-port) at `http://localhost:5004/monitoring` and look for pending, failed, or discarded work to see what happened.
+
+</Step>
+
+</Steps>
+
+---
+
+## What affects these results
+
+**The API server and transaction workers ran on the same 4 vCPU host**. Increasing worker concurrency can raise applied TPM because more queued transactions are processed in parallel. But on a shared host, those workers also compete with the API for CPU, which can reduce the rate the API can accept.
+
+These tests ran the server and the worker on the same 4 vCPU host. Raising worker concurrency can increase applied TPM, because more workers apply queued transactions in parallel. On a shared host, those extra workers also compete with the API for CPU, so the accepted ceiling can fall.
+
+**The load test also creates balances during each run**. That adds extra database work to every request. It affects the uncontended workload most, because each transaction creates both a new source and a new destination balance.
+
+---
+
+## What this does not cover
+
+These tests measure accepted throughput and reliability in normal conditions and under balance contention. They do not measure how fast workers apply the backlog, and they do not measure [sharding](/guides/hot-balances#sharding-balances) or [hot-lane routing](/guides/hot-balances#hot-lane-routing).
+
+All results are from Blnk Core `0.15.4`.
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Load testing", href: "/advanced/load-testing" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Concurrency", href: "/guides/concurrency" },
+    { title: "Transaction configuration", href: "/advanced/configuration/transactions" },
+  ]}
+/>

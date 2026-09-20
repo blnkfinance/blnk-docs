@@ -44,12 +44,16 @@ cd tests/loadtest
 
 ## Main test script
 
-The primary load test script (`script.js`) supports five configurable load-testing scenarios, each controlled via environment variables.
+The primary load test script (`script.js`) supports seven configurable load-testing scenarios, each controlled via environment variables.
 Each scenario targets a specific aspect of your Blnk server’s transaction performance, allowing you to test different load patterns and system behaviors.
+
+Every request is posted with `inflight: true` and `skip_queue: false` unless you override `INFLIGHT` or `SKIP_QUEUE`.
 
 - **Baseline**: Steady, constant load to measure normal performance.
 - **Ramp**: Gradually increasing load to find when your server struggles.
 - **Contention**: Tests when one balance gets most of the traffic.
+- **Hot source**: One balance funding many destinations (`A → N`).
+- **Hot destination**: Many balances funding one destination (`N → A`).
 - **Soak**: Long-duration test (2 hours) to find memory leaks and stability issues.
 - **Spike**: Sudden traffic surge to test recovery behavior.
 
@@ -153,6 +157,88 @@ Number of pre-allocated virtual users
 
 <ParamField query="MAX_VUS" type="integer" default="800">
 Maximum number of virtual users that can be allocated
+</ParamField>
+</Tab>
+
+<Tab title="Hot source">
+Tests one balance funding many others (`A → N`), such as a payout or treasury account. Every transaction draws from the same source and credits a new destination.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=hot_source \
+  --env HOT_SOURCE=@hot-source-0001 \
+  --env RATE=300 \
+  --env DURATION=5m \
+  --env VUS=200 \
+  --env MAX_VUS=800 \
+  --env SOURCE_BUCKETS=1 \
+  script.js
+```
+
+<ParamField query="HOT_SOURCE" type="string" default="@hot-source-0001">
+The balance identifier that funds every transaction
+</ParamField>
+
+<ParamField query="RATE" type="integer" default="300">
+Requests per second targeting the hot source
+</ParamField>
+
+<ParamField query="DURATION" type="string" default="5m">
+Test duration (e.g., "5m", "30s", "1h")
+</ParamField>
+
+<ParamField query="VUS" type="integer" default="200">
+Number of pre-allocated virtual users
+</ParamField>
+
+<ParamField query="MAX_VUS" type="integer" default="800">
+Maximum number of virtual users that can be allocated
+</ParamField>
+
+<ParamField query="SOURCE_BUCKETS" type="integer" default="1">
+Number of shards to split the hot source across. Values above 1 spread traffic over `@hot-source-0001-bucket-1` through `-bucket-N`
+</ParamField>
+
+<Tip>
+Run this scenario twice, once with `SOURCE_BUCKETS=1` and once with a higher value, to measure what [sharding a hot balance](/guides/hot-balances#sharding-balances) is worth on your deployment.
+</Tip>
+</Tab>
+
+<Tab title="Hot destination">
+Tests many balances funding one (`N → A`), such as a collections or settlement account. Every transaction debits a new source and credits the same destination.
+
+```bash wrap tests/loadtest
+k6 run --env URL=http://localhost:5001/transactions --env SCENARIO=hot_destination \
+  --env HOT_DEST=@hot-balance-0001 \
+  --env RATE=300 \
+  --env DURATION=5m \
+  --env VUS=200 \
+  --env MAX_VUS=800 \
+  --env DESTINATION_BUCKETS=1 \
+  script.js
+```
+
+<ParamField query="HOT_DEST" type="string" default="@hot-balance-0001">
+The balance identifier that receives every transaction
+</ParamField>
+
+<ParamField query="RATE" type="integer" default="300">
+Requests per second targeting the hot destination
+</ParamField>
+
+<ParamField query="DURATION" type="string" default="5m">
+Test duration (e.g., "5m", "30s", "1h")
+</ParamField>
+
+<ParamField query="VUS" type="integer" default="200">
+Number of pre-allocated virtual users
+</ParamField>
+
+<ParamField query="MAX_VUS" type="integer" default="800">
+Maximum number of virtual users that can be allocated
+</ParamField>
+
+<ParamField query="DESTINATION_BUCKETS" type="integer" default="1">
+Number of shards to split the hot destination across. Values above 1 spread traffic over `@hot-balance-0001-bucket-1` through `-bucket-N`
 </ParamField>
 </Tab>
 
