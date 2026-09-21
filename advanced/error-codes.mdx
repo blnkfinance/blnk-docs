@@ -103,13 +103,14 @@ Errors that apply across endpoints: malformed requests, validation failures, rat
 
 | Code | HTTP | Meaning |
 | --- | --- | --- |
-| `GEN_MALFORMED_REQUEST` | 400 | Request body could not be parsed (invalid JSON, wrong types, or body too large) |
+| `GEN_MALFORMED_REQUEST` | 400 | Request body could not be parsed (invalid JSON or wrong types) |
 | `GEN_VALIDATION_ERROR` | 400 | Request failed validation (invalid params, filters, fields) |
 | `GEN_MISSING_PARAMETER` | 400 | A required route or query parameter is missing |
 | `GEN_BAD_REQUEST` | 400 | Request rejected; no more specific code applies |
 | `GEN_NOT_FOUND` | 404 | Resource not found; no domain-specific code applies |
 | `GEN_CONFLICT` | 409 | Request conflicts with current resource state |
 | `GEN_RESOURCE_LOCKED` | 423 | A concurrent operation holds the lock; retry shortly |
+| `GEN_PAYLOAD_TOO_LARGE` | 413 | Request body exceeds the allowed size, including reconciliation file uploads |
 | `GEN_RATE_LIMITED` | 429 | Too many requests |
 | `GEN_INTERNAL` | 500 | Unexpected server failure; message is sanitized |
 
@@ -160,6 +161,18 @@ Errors when creating or fetching ledgers. Codes use the `LGR_*` prefix.
 | --- | --- | --- |
 | `LGR_NOT_FOUND` | 404 | Ledger does not exist |
 | `LGR_DUPLICATE` | 409 | Ledger with this name or ID already exists |
+
+</Tab>
+
+<Tab title="Accounts">
+
+Errors when creating or fetching accounts. Codes use the `ACC_*` prefix.
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `ACC_NOT_FOUND` | 404 | Account does not exist |
+| `ACC_DUPLICATE` | 409 | Account already exists |
+| `ACC_GENERATION_FAILED` | 500 | Account number generation from the configured HTTP service failed |
 
 </Tab>
 
@@ -227,6 +240,8 @@ Errors for reconciliation runs, matching rules, and external data uploads. Codes
 | `RECON_RULE_NOT_FOUND` | 404 | Matching rule does not exist |
 | `RECON_UPLOAD_FAILED` | 400 | External data file upload failed because of the request. |
 | `RECON_UPLOAD_PROCESSING_FAILED` | 500 | Server failed to process the uploaded file |
+| `RECON_UPLOAD_URL_INVALID` | 400 | Upload URL is missing a host or is otherwise invalid |
+| `RECON_UPLOAD_HOST_NOT_ALLOWED` | 400 | Upload URL host is not in the allowed list |
 | `RECON_RULE_INVALID` | 400 | Matching rule failed validation. This can include name, criteria, operator, field, or drift errors. |
 | `RECON_MATCHING_RULES_REQUIRED` | 400 | `matching_rule_ids` is required |
 | `RECON_EXTERNAL_TXNS_REQUIRED` | 400 | `external_transactions` is required |
