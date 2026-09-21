@@ -2,9 +2,9 @@
 title: "Benchmarks"
 sidebarTitle: "Benchmarks"
 icon: "chart-line"
-description: "Measured accepted throughput and reliability for Blnk Core under balance contention."
+description: "Measured accepted throughput, applied throughput, and reliability for Blnk Core under balance contention."
 "og:title": "Benchmarks • Blnk Developer Documentation"
-"og:description": "Measured accepted throughput and reliability for Blnk Core, with and without balance contention."
+"og:description": "Measured accepted and applied throughput for Blnk Core, with and without balance contention."
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
@@ -12,9 +12,9 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 Blnk is designed to process transactions reliably, even when many of them compete for the same balance. Under heavy contention, transactions can be [queued and applied](/transactions/transaction-lifecycle) asynchronously, allowing the ledger to remain reliable while balances converge to their correct state.
 
-This page measures how Blnk behaves under that contention.
+This page measures both: normal conditions, where traffic is spread across many balances, and contention, where traffic concentrates on one.
 
-These are not peak throughput figures. Instead, these benchmarks measure what happens to throughput and processing time as traffic concentrates on one balance instead of spreading across many.
+These are not peak throughput figures. They show what happens to throughput and processing time as traffic moves from many balances onto one.
 
 <Note>
 This benchmark uses the [load testing suite](/advanced/load-testing) in the Blnk repository, run unmodified. The commands are below, so you can reproduce them against your own deployment.
@@ -28,14 +28,16 @@ We ran these tests on a dedicated VPS running Blnk Core `0.15.4`.
 
 The server and worker shared one 4 vCPU host; PostgreSQL 16 and Valkey 8 were managed; and k6 ran from a separate 4 vCPU machine.
 
-| Resource | Specification |
-| :-- | :-- |
-| Blnk Core | `v0.15.4`, 4 vCPU, 8 GB |
-| PostgreSQL | `v16`, 4 vCPU, 8 GB, managed |
-| Valkey | `v8`, 2 vCPU, 4 GB, managed |
-| Load generator (k6) | Separate 4 vCPU, 8 GB host |
+| Resource | Specification | Cost |
+| :-- | :-- | :-- |
+| Blnk Core | `v0.15.4`, 4 vCPU, 8 GB | $48/mo |
+| PostgreSQL | `v16`, 4 vCPU, 8 GB, managed | $122.10/mo |
+| Valkey | `v8`, 2 vCPU, 4 GB, managed | $60/mo |
+| Load generator (k6) | Separate 4 vCPU, 8 GB host | |
 
-This is the Blnk Core configuration we used. Every shape on this page ran against it.
+On DigitalOcean, this ledger stack is **$230.10/mo** at list prices. That figure does not include the load generator.
+
+This is the Blnk Core configuration used. Every shape on this page ran against it.
 
 <CodeGroup>
 ```bash blnk.env wrap
@@ -95,9 +97,10 @@ Four traffic shapes, from least to most contended.
 | Hot destination | Many sources, one destination | A collections or settlement account |
 | Hot pair | The same two balances, repeatedly | A single busy corridor |
 
-The load test posts every request with `inflight: true` and `skip_queue: false`, the suite defaults. The API queues the transaction and returns once it is recorded. A worker then processes it and leaves it [inflight](/transactions/inflight/creating-inflight). As a result, each shape was measured twice:
+The load test posts every request with `inflight: true` and `skip_queue: false`, the suite defaults. The API queues the transaction and returns once it is recorded. A worker then processes it and leaves it [inflight](/transactions/inflight/creating-inflight). As a result, each shape was measured three times:
 
 - **Accepted throughput.** How fast the API takes requests while p95 stays under 300ms.
+- **Applied throughput.** How fast workers process those queued transactions onto balances.
 - **Reliability.** Of those accepted requests, how many were processed, and how many got dropped or lost.
 
 <Note>
@@ -119,13 +122,36 @@ This table shows the highest throughput where p95 latency stayed under 300ms.
 | Hot destination | 264,300 | 59ms | 209ms | 0% |
 | Hot pair | 272,600 | 79ms | 253ms | 0% |
 
-**Contention does not slow down acceptance.** The four numbers sit within 6 percent of each other, **around 260,000 TPM**, or roughly 4,300 requests per second. Accepting a transaction writes a queued record and returns. 
+**Contention does not slow down acceptance.** The four numbers sit within 6 percent of each other, **around 260,000 TPM**, or roughly 4,300 requests per second. Accepting a transaction writes a queued record and returns. A worker then picks it up, processes it, and applies it to the balances.
 
 Every request in every step returned `201`, including the steps past the latency threshold. Nothing failed at any rate, in any shape.
 
 ---
 
-## Reliability
+## Applied throughput
+
+To measure how quickly workers processed queued transactions, we ran each workload for 30 seconds at its accepted ceiling, then measured how fast the backlog cleared.
+
+| Shape | Accepted TPM | Applied TPM | Time to drain |
+| :-- | :-- | :-- | :-- |
+| Baseline | 260,600 | 9,600 | 12 min |
+| Hot destination | 264,300 | 3,500 | 37 min |
+| Hot pair | 272,600 | 3,380 | 41 min |
+| Hot source | 256,400 | 2,830 | 45 min |
+
+**Result:** The API can accept transactions much faster than workers can apply them. After a 30-second burst at the accepted ceiling, the queue took 12 minutes to clear without contention and 37 – 45 minutes when traffic concentrated on a hot balance.
+
+**Contention reduced applied throughput by roughly 3×**. Without contention, workers applied about 9,600 transactions per minute. When many transactions touched the same balance, that fell to between 2,830 and 3,500 TPM.
+
+The reason for this gap is serialization. Transactions touching different balances can be applied in parallel. Transactions touching the same balance must wait on the same balance lock, so adding more workers provides less benefit. 
+
+The type of contention made comparatively little difference. Hot source, hot destination, and hot pair workloads all **fell within the same 2,830 to 3,500 TPM range**. Hot source was the slowest, about 19% below hot destination.
+
+These applied rates are from the configuration above. You can raise them by tuning [coalescing](/guides/hot-balances#coalescing), [hot-lane routing](/guides/hot-balances#hot-lane-routing), and [worker concurrency](/guides/concurrency) where they apply.
+
+---
+
+## Reliability under contention
 
 To verify that accepted transactions were eventually applied to a balance, we ran each workload for 30 seconds at its measured TPM ceiling, then allowed the worker queue to drain completely.
 
@@ -141,6 +167,18 @@ The table compares the number of transactions accepted by the API with the numbe
 Across more than 500,000 transactions, **every accepted transaction was eventually processed and applied**. No accepted work was dropped, and the queue returned to zero after every run.
 
 Contention may delay when a transaction reaches a balance, but it does not cause accepted transactions to be lost.
+
+---
+
+## Conclusion
+
+The practical capacity of a Blnk deployment depends heavily on traffic shape. 
+
+On this 4 vCPU production setup, at **$230.10/mo**, Blnk sustained 9,600 applied transactions per minute when traffic was spread across balances. Sustained over 30 days, that is about **415 million transactions per month**.
+
+Under heavy contention, where many transactions compete for the same balance, throughput fell to 2,830 to 3,500 TPM. Even at the slowest rate measured, that is about **122 million transactions per month**. Across the contended workloads, monthly capacity ranged from **roughly 122 million to 151 million transactions**.
+
+The API can accept traffic much faster than workers apply it, handling short bursts of around 260,000 TPM in these tests. Excess transactions are queued and applied asynchronously, and every accepted transaction in these runs eventually reached a balance.
 
 ---
 
@@ -205,6 +243,18 @@ FROM blnk.transactions;
 
 When the count stops increasing across two consecutive checks, the workers have finished processing the run.
 
+To get applied TPM, pick two readings while the count is still rising. Record the processed count and the clock time for each, then divide the extra processed rows by the minutes between those readings:
+
+```text wrap
+applied TPM = (later count - earlier count) / elapsed minutes
+```
+
+For example, if `processed` goes from 12,000 to 21,600 in 1 minute, applied TPM is 9,600.
+
+<Warning>
+**Measure against the clock** between the checks, not against `created_at`. That timestamp is when the transaction was created, not when it was applied.
+</Warning>
+
 </Step>
 
 <Step title="Check for lost transactions">
@@ -225,15 +275,13 @@ Open the [queue monitoring dashboard](/advanced/monitoring-port) at `http://loca
 
 **The API server and transaction workers ran on the same 4 vCPU host**. Increasing worker concurrency can raise applied TPM because more queued transactions are processed in parallel. But on a shared host, those workers also compete with the API for CPU, which can reduce the rate the API can accept.
 
-These tests ran the server and the worker on the same 4 vCPU host. Raising worker concurrency can increase applied TPM, because more workers apply queued transactions in parallel. On a shared host, those extra workers also compete with the API for CPU, so the accepted ceiling can fall.
-
 **The load test also creates balances during each run**. That adds extra database work to every request. It affects the uncontended workload most, because each transaction creates both a new source and a new destination balance.
 
 ---
 
 ## What this does not cover
 
-These tests measure accepted throughput and reliability in normal conditions and under balance contention. They do not measure how fast workers apply the backlog, and they do not measure [sharding](/guides/hot-balances#sharding-balances) or [hot-lane routing](/guides/hot-balances#hot-lane-routing).
+These tests measure accepted throughput, applied throughput, and reliability in normal conditions and under balance contention. They do not measure [sharding](/guides/hot-balances#sharding-balances) or [hot-lane routing](/guides/hot-balances#hot-lane-routing).
 
 All results are from Blnk Core `0.15.4`.
 
