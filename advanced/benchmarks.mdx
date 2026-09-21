@@ -172,13 +172,15 @@ Contention may delay when a transaction reaches a balance, but it does not cause
 
 ## Conclusion
 
-The practical capacity of a Blnk deployment depends heavily on traffic shape. 
+The practical capacity of a Blnk deployment depends heavily on traffic shape. These results are from a **single-server** setup: the API and workers shared one 4 vCPU host.
 
 On this 4 vCPU production setup, at **$230.10/mo**, Blnk sustained 9,600 applied transactions per minute when traffic was spread across balances. Sustained over 30 days, that is about **415 million transactions per month**.
 
-Under heavy contention, where many transactions compete for the same balance, throughput fell to 2,830 to 3,500 TPM. Even at the slowest rate measured, that is about **122 million transactions per month**. Across the contended workloads, monthly capacity ranged from **roughly 122 million to 151 million transactions**.
+Under heavy contention, where many transactions compete for the same balance, the same setup can still reliably run 2,830 to 3,500 TPM, or about **122 million to 151 million transactions per month**.
 
-The API can accept traffic much faster than workers apply it, handling short bursts of around 260,000 TPM in these tests. Excess transactions are queued and applied asynchronously, and every accepted transaction in these runs eventually reached a balance.
+<Note>
+These figures are for one server. Horizontal scaling and the right [ledger architecture](/ledgers/architecture) can increase accepted throughput, applied throughput, and monthly capacity across the board.
+</Note>
 
 ---
 
@@ -276,14 +278,6 @@ Open the [queue monitoring dashboard](/advanced/monitoring-port) at `http://loca
 **The API server and transaction workers ran on the same 4 vCPU host**. Increasing worker concurrency can raise applied TPM because more queued transactions are processed in parallel. But on a shared host, those workers also compete with the API for CPU, which can reduce the rate the API can accept.
 
 **The load test also creates balances during each run**. That adds extra database work to every request. It affects the uncontended workload most, because each transaction creates both a new source and a new destination balance.
-
----
-
-## What this does not cover
-
-These tests measure accepted throughput, applied throughput, and reliability in normal conditions and under balance contention. They do not measure [sharding](/guides/hot-balances#sharding-balances) or [hot-lane routing](/guides/hot-balances#hot-lane-routing).
-
-All results are from Blnk Core `0.15.4`.
 
 ---
 
