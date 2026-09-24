@@ -80,6 +80,10 @@ Some hosted PostgreSQL providers expose more than one connection URL. For applic
 
 ## Redis configuration
 
+<Note>
+In `blnk.json`, `conn_max_idle_time` is a duration in nanoseconds (for example `120000000000` for 2m). Environment variables accept Go duration format (for example `2m`).
+</Note>
+
 <CodeGroup>
 ```bash blnk.env
 BLNK_REDIS_DNS=redis://:password@redis:6379/0
@@ -95,7 +99,8 @@ BLNK_REDIS_CONN_MAX_IDLE_TIME=2m
     "dns": "redis://:password@redis:6379/0",
     "skip_tls_verify": false,
     "pool_size": 100,
-    "min_idle_conns": 20
+    "min_idle_conns": 20,
+    "conn_max_idle_time": 120000000000
   }
 }
 ```
@@ -107,7 +112,7 @@ BLNK_REDIS_CONN_MAX_IDLE_TIME=2m
 | `BLNK_REDIS_SKIP_TLS_VERIFY`   | Disables TLS certificate verification for Redis connections.                                        | `false` |
 | `BLNK_REDIS_POOL_SIZE`         | Maximum connections in the Redis pool.                                                              | `100`   |
 | `BLNK_REDIS_MIN_IDLE_CONNS`    | Idle connections kept ready in the pool.                                                            | `20`    |
-| `BLNK_REDIS_CONN_MAX_IDLE_TIME` | How long a pooled connection may sit idle before Blnk discards it. Use Go duration format (`2m`). From 0.15.5. | `2m`    |
+| `BLNK_REDIS_CONN_MAX_IDLE_TIME` | How long a pooled connection may sit idle before Blnk discards it. Env: Go duration (`2m`). JSON: nanoseconds. From 0.15.5. | `2m`    |
 
 ### `BLNK_REDIS_DNS`
 
@@ -129,7 +134,7 @@ Only set to `true` when you are working in a controlled environment and understa
 
 Available in version 0.15.5 and later.
 
-How long a pooled Redis or Asynq connection may sit idle before Blnk discards it instead of reusing it. The default is `2m`. Leave it unset unless your Redis, Valkey, or proxy idle timeout is shorter than that.
+How long a pooled Redis or Asynq connection may sit idle before Blnk discards it instead of reusing it. Applies to Redis cache clients and Asynq queue workers. The default is `2m`. Leave it unset unless your Redis, Valkey, or proxy idle timeout is shorter than that.
 
 Set this **below** the server or proxy idle timeout (managed services often use about 300 seconds). If a connection stays idle longer than the remote timeout, the next command can fail with `write: broken pipe`.
 
