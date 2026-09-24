@@ -84,22 +84,30 @@ Some hosted PostgreSQL providers expose more than one connection URL. For applic
 ```bash blnk.env
 BLNK_REDIS_DNS=redis://:password@redis:6379/0
 BLNK_REDIS_SKIP_TLS_VERIFY=false
+BLNK_REDIS_POOL_SIZE=100
+BLNK_REDIS_MIN_IDLE_CONNS=20
+BLNK_REDIS_CONN_MAX_IDLE_TIME=2m
 ```
 
 ```json blnk.json
 {
   "redis": {
     "dns": "redis://:password@redis:6379/0",
-    "skip_tls_verify": false
+    "skip_tls_verify": false,
+    "pool_size": 100,
+    "min_idle_conns": 20
   }
 }
 ```
 </CodeGroup>
 
-|                              | Description                                                     | Default |
-| ---------------------------- | --------------------------------------------------------------- | ------- |
-| `BLNK_REDIS_DNS`             | Redis address or connection URL used by Blnk. This is required. | None    |
-| `BLNK_REDIS_SKIP_TLS_VERIFY` | Disables TLS certificate verification for Redis connections.    | `false` |
+|                                | Description                                                                                         | Default |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | ------- |
+| `BLNK_REDIS_DNS`               | Redis address or connection URL used by Blnk. This is required.                                     | None    |
+| `BLNK_REDIS_SKIP_TLS_VERIFY`   | Disables TLS certificate verification for Redis connections.                                        | `false` |
+| `BLNK_REDIS_POOL_SIZE`         | Maximum connections in the Redis pool.                                                              | `100`   |
+| `BLNK_REDIS_MIN_IDLE_CONNS`    | Idle connections kept ready in the pool.                                                            | `20`    |
+| `BLNK_REDIS_CONN_MAX_IDLE_TIME` | How long a pooled connection may sit idle before Blnk discards it. Use Go duration format (`2m`). From 0.15.5. | `2m`    |
 
 ### `BLNK_REDIS_DNS`
 
@@ -116,6 +124,14 @@ Use a full Redis URL when authentication or TLS is involved. For TLS-enabled Red
 This disables certificate verification for TLS Redis connections.
 
 Only set to `true` when you are working in a controlled environment and understand the risk. Disabling certificate verification weakens transport security and should not be the default for production deployments.
+
+### `BLNK_REDIS_CONN_MAX_IDLE_TIME`
+
+Available in version 0.15.5 and later.
+
+How long a pooled Redis or Asynq connection may sit idle before Blnk discards it instead of reusing it. The default is `2m`. Leave it unset unless your Redis, Valkey, or proxy idle timeout is shorter than that.
+
+Set this **below** the server or proxy idle timeout (managed services often use about 300 seconds). If a connection stays idle longer than the remote timeout, the next command can fail with `write: broken pipe`.
 
 ---
 
