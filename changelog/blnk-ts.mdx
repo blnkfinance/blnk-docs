@@ -14,24 +14,21 @@ import { RelatedTopics } from "/snippets/related-topics.jsx";
   `@blnkfinance/blnk-typescript@1.5.0` targets Blnk Core **0.15.4**.
   </Info>
 
-  ### Error handling
+  ### Transactions
 
-  `BlnkErrorCode` now includes the full Core catalogue. Branch on `response.error?.code`. See [API error codes](/advanced/error-codes) and the [0.15.4 migration guide](/changelog/v15-4-migration).
-
-  Codes introduced or re-routed in 0.15.4:
-
-  - `TXN_ALREADY_REFUNDED` (`409`): refunding a transaction twice, or refunding a refund.
-  - `BAL_NOT_FOUND` (`404`): a transaction naming a missing balance. Previously `TXN_NOT_FOUND`.
-  - `TXN_VALIDATION_ERROR` (`400`) is also returned for a split that has both `sources` and `destinations`.
-  - `GEN_CONFLICT` (`409`) is also returned when a mixed-leg refund fails.
+  A second refund of the same transaction is rejected instead of reversing the first. A source or destination that does not exist is reported as a missing balance, not a missing transaction. A split cannot include both `sources` and `destinations`. See the [0.15.4 migration guide](/changelog/v15-4-migration).
 
   ### Search
 
-  `Search.multiSearch` sends several Typesense searches in one `POST /multi-search` request. See [Search via Typesense](/reference/search-typesense) and the [TypeScript search page](/sdks/typescript/search/search-typesense).
+  Search more than one collection in a single request with `Search.multiSearch`. See [Search via Typesense](/sdks/typescript/search/search-typesense).
 
-  ### List
+  ### Ledgers
 
-  `Ledgers.list`, `LedgerBalances.list`, `Transactions.list`, and `BalanceMonitor.listByBalanceId` wrap `GET /ledgers`, `GET /balances`, `GET /transactions`, and `GET /balance-monitors/balances/:id`.
+  List ledgers, balances, and transactions. List the monitors on one balance with `BalanceMonitor.listByBalanceId`.
+
+  ### Error handling
+
+  Named codes for the full Core catalogue are on `BlnkErrorCode`. Branch on `response.error?.code`. See [API error codes](/advanced/error-codes).
 
   ### Before you upgrade
 
