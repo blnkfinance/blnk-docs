@@ -10,7 +10,7 @@ description: "Learn how transactions move through different states in Blnk."
 import NeedHelp from "/snippets/need-help.mdx";
 import { RelatedTopics } from "/snippets/related-topics.jsx";
 
-Every transaction goes through multiple states in Blnk, and each state change is stored as a separate record in the database. This gives you complete traceability, allowing you to see the lifecycle of a transaction from initiation to completion. 
+Every recorded transaction can go through multiple states in Blnk, and each state change is stored as a separate record in the database. This gives you complete traceability, allowing you to see the lifecycle of a transaction from initiation to completion.
 
 Each state is connected to the previous state through a `parent_transaction` attribute. Here's how it works:
 
@@ -30,7 +30,7 @@ Blnk transactions can have one of five possible statuses throughout their lifecy
 | `APPLIED` | Transaction has been successfully processed and applied to balances | When transaction completes successfully or when an inflight transaction is committed |
 | `INFLIGHT` | Transaction is on hold, waiting for further action | When a transaction is created with `"inflight": true` |
 | `VOID` | Inflight transaction was cancelled and balances reset | When an inflight transaction is voided |
-| `REJECTED` | Transaction was not processed due to errors (e.g., insufficient funds) | When transaction fails validation or processing |
+| `REJECTED` | A recorded transaction was not processed due to an error, such as insufficient funds | When processing fails after Blnk records the request |
 
 <Warning>
 All transactions in Blnk are immutable. Once a transaction has been applied, committed, or voided, you cannot roll back the status to its previous state.
@@ -50,7 +50,7 @@ Blnk then processes it and moves it to one of three possible states:
     * `APPLIED`: If the inflight transaction is committed or;
     * `VOID`: If the inflight transaction is voided.
 * `APPLIED`: When the transaction is completed and applied to the balances.
-* `REJECTED`: When the transaction is not processed due to reasons like insufficient funds, etc.
+* `REJECTED`: When a recorded transaction is not processed because of an error such as insufficient funds.
 
 Here's an example response when you record a new transaction on Blnk:
 
@@ -136,6 +136,8 @@ Use `skip_queue` when:
 * Time-sensitive financial operations.
 
 <Tip>For high traffic, use the default queue (`skip_queue: false`). Learn more: [Handling Hot Balances](/guides/hot-balances#using-the-queue).</Tip>
+
+<Tip>If the source has insufficient funds, the result depends on whether you used the queue. Learn more: [Managing insufficient funds](/transactions/introduction#managing-insufficient-funds).</Tip>
 
 <CardGroup>
   <Card title="Transaction statuses" icon="tag" href="/transactions/transaction-lifecycle#statuses">
