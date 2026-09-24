@@ -463,7 +463,7 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
 }
 ```
 
-The response immediately shows the final status (`INFLIGHT`, `APPLIED`, or `REJECTED`), allowing you to confirm the transaction result without waiting for webhooks or additional API calls.
+With `skip_queue: true`, a successful request immediately returns an `INFLIGHT` or `APPLIED` transaction. If the source has insufficient funds, see [Managing insufficient funds](/transactions/introduction#managing-insufficient-funds).
 
 <Warning>
 When using `skip_queue: true`, you may encounter lock errors if multiple transactions are processed simultaneously on the same balance. Learn how to handle these scenarios in our [Handling Hot Balances](/guides/hot-balances) guide.
@@ -473,11 +473,13 @@ When using `skip_queue: true`, you may encounter lock errors if multiple transac
 
 ## Discarded transactions
 
-A discarded transaction is not recorded in the ledger. Blnk discards transactions for two reasons:
+Some requests are not recorded in the ledger. Common reasons include:
 
 1. **Duplicate reference:** Your new transaction `reference` matches an existing `reference` in your ledger. Blnk requires unique `reference` values per transaction. Options are timestamps (e.g. UNIX timestamp), random string or UUID (e.g. `ref_e55c4f33-bff7-4c30-9b9f-5d2d10a29b7a`), or a business identifier like an `order_id`.
 
 2. **Zero amount:** Your transaction amount is 0. Zero amounts are not recorded in the Blnk ledger.
+
+3. **Insufficient funds with `skip_queue: true`:** The rejected attempt is not recorded. See [Managing insufficient funds](/transactions/introduction#managing-insufficient-funds).
 
 <Tip>Make sure your request body match the Blnk Ledger API specifications. For example, avoid passing `apply_overdraft` instead of `allow_overdraft`.</Tip>
 
@@ -493,10 +495,10 @@ Blnk performs comprehensive balance checks before processing any transaction to 
 
 Inflight debit balance is the amount waiting to be deducted from the source balance from inflight transactions. Learn more: [Create inflight](/transactions/inflight/creating-inflight).
 
-If the transaction amount is more than the available balance, the source has insufficient funds and:
+If the transaction amount is more than the available balance, the outcome depends on how Blnk processes the request:
 
-1. The transaction is rejected and status is recorded as `REJECTED`.
-2. A webhook notification to inform your system of the rejected transaction and a reason in its `meta_data`.
+- **Default queue:** The API first returns a `QUEUED` transaction. If processing fails because of insufficient funds, the worker records a separate `REJECTED` transaction linked to the queued transaction through `parent_transaction`. Blnk also sends a webhook with the rejection reason in `meta_data`.
+- **Skip queue:** When `skip_queue: true`, Blnk processes the request immediately and returns `400 TXN_INSUFFICIENT_FUNDS`. The rejected attempt is not recorded as a transaction.
 
 <Note>
 If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request. [Learn more](/transactions/overdrafts).
