@@ -68,6 +68,54 @@ These are the `event` values Blnk sends to your [global webhook](/webhooks/globa
 
 ---
 
+## Metadata
+
+<Info>
+Available in version 0.15.5 and later.
+</Info>
+
+| Event name | Description |
+| :-- | :-- |
+| `ledger.metadata.updated` | After a successful public ledger metadata update. |
+| `balance.metadata.updated` | After a successful public balance metadata update. |
+| `identity.metadata.updated` | After a successful public identity metadata update. |
+| `transaction.metadata.updated` | After a successful public transaction metadata update. |
+
+Blnk sends these events only after a successful public [Update metadata](/reference/update-metadata) request. Internal metadata writes do not emit them.
+
+Each payload includes `event_id` and `timestamp` in `data` for deduplication.
+
+**Ledger, balance, and identity** — full resource snapshot with merged `meta_data` for this write (same shape as `*.created` events).
+
+**Transaction** — patch only:
+
+```json Example payload wrap
+{
+  "event": "transaction.metadata.updated",
+  "data": {
+    "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
+    "meta_data_patch": {
+      "settlement_batch": "B-42"
+    },
+    "event_id": "7f1b0c8d-4e55-4b19-9e2c-a1c83e2f4b19",
+    "timestamp": "2026-09-24T12:50:59Z"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | String | The id you passed (`txn_…` or `bulk_…`). For bulk ids, one event is sent but the merge applies to every matching row. |
+| `meta_data_patch` | Object | The metadata this request applied. Blnk does not re-read merged `meta_data` in the event. |
+| `event_id` | String | Unique id for this event. |
+| `timestamp` | String | UTC time when the event was enqueued. |
+
+The metadata merge is authoritative once the API returns `200`. Webhook delivery is best-effort after that.
+
+[Update metadata](/metadata/update-metadata) to trigger these events.
+
+---
+
 ## Reconciliations
 
 <Info>
@@ -115,6 +163,7 @@ Available in version 0.12.0 and later.
 <RelatedTopics
   items={[
     { title: "Global webhooks", href: "/webhooks/global-webhooks" },
+    { title: "Update metadata", href: "/metadata/update-metadata" },
     { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
     { title: "Webhooks overview", href: "/webhooks/overview" },
   ]}
