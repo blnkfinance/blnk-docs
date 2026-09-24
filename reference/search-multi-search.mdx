@@ -1,0 +1,183 @@
+---
+title: "Search via multi-search"
+description: "Run several Typesense searches in one request across ledgers, balances, transactions, and identities."
+api: "POST /multi-search"
+noindex: true
+"og:title": "Search via multi-search • Blnk API Reference"
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+
+import Key from "/snippets/key.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+<Key />
+
+<Info>Available in version 0.10.0 and later. This route is not new in Core 0.15.4.</Info>
+
+Run more than one Typesense search in a single round trip. Core binds the JSON body to Typesense `MultiSearchSearchesParameter` and returns one result bucket per search, in the same order as `searches`.
+
+Each search names its own `collection`. Query, filter, sort, and pagination fields match [Search via Typesense](/reference/search-typesense).
+
+### Body
+<ParamField body="searches" type="array" required>
+  Array of searches to run together. Must contain at least one object. Each object uses the same query fields as [Search via Typesense](/reference/search-typesense), plus `collection`.
+</ParamField>
+<ParamField body="collection" type="string" required>
+  On each object in `searches`. The collection to search. Supported values:
+  - `transactions` - Search through all transaction records
+  - `balances` - Find balance records across all ledgers
+  - `ledgers` - Locate specific ledgers by name or metadata
+  - `identities` - Search customer identity records
+</ParamField>
+<ParamField body="q" type="string" required>
+  On each object in `searches`. The search query text. Use `*` to return all records. Supports full-text search when combined with `query_by`. Learn more: [Querying](/search/typesense/querying)
+</ParamField>
+<ParamField body="query_by" type="string">
+  On each object in `searches`. Comma-separated list of fields to search in. When provided, performs field-specific searches. Learn more: [Querying](/search/typesense/querying)
+
+  Examples:
+  - `"name"` - Search ledger names
+  - `"source,destination"` - Search in source and destination fields
+  - `"first_name,last_name,email"` - Search in identity name and email fields
+</ParamField>
+<ParamField body="filter_by" type="string">
+  On each object in `searches`. Filter conditions to refine results. Supports operators like `:=`, `:>`, `:<`, `:>=`, `:<=`, `:!=`, and ranges. Learn more: [Filtering](/search/typesense/filtering)
+
+  Examples:
+  - `"status:=APPLIED"` - Filter by exact status
+  - `"amount:>1000"` - Filter by amount greater than 1000
+  - `"status:=APPLIED && currency:=USD"` - Multiple conditions
+  - `"created_at:[1704067200..1706745599]"` - Date range filter
+</ParamField>
+<ParamField body="sort_by" type="string">
+  On each object in `searches`. Sorting conditions for ordering results. Format: `field:direction` where direction is `asc` or `desc`. Multiple fields: `field1:desc,field2:asc`. Learn more: [Sorting](/search/typesense/sorting)
+
+  Examples:
+  - `"created_at:desc"` - Sort by creation date descending
+  - `"amount:desc,created_at:asc"` - Sort by amount then date
+</ParamField>
+<ParamField body="page" type="integer">
+  On each object in `searches`. Page number for pagination. Starts at 1. Default: 1. Learn more: [Pagination](/search/typesense/pagination)
+</ParamField>
+<ParamField body="per_page" type="integer">
+  On each object in `searches`. Number of results per page. Maximum 250, default 10. Learn more: [Pagination](/search/typesense/pagination)
+</ParamField>
+
+### Response
+<ResponseField name="results" type="array">
+  One search result per entry in `searches`, in the same order. Each item uses the same fields as [Search via Typesense](/reference/search-typesense): `found`, `hits`, `out_of`, `page`, `search_time_ms`, and optional `highlights`.
+</ResponseField>
+<ResponseField name="found" type="integer">
+  On each item in `results`. Total number of matching records for that search.
+</ResponseField>
+<ResponseField name="hits" type="array">
+  On each item in `results`. Array of search results. Each hit contains a `document` object with the record data and optional `highlights` for matched terms.
+</ResponseField>
+<ResponseField name="out_of" type="integer">
+  On each item in `results`. Total number of records in the collection (regardless of filters).
+</ResponseField>
+<ResponseField name="page" type="integer">
+  On each item in `results`. Current page number.
+</ResponseField>
+<ResponseField name="search_time_ms" type="integer">
+  On each item in `results`. Time taken to execute the search in milliseconds.
+</ResponseField>
+
+<RequestExample>
+```bash
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/multi-search" \
+  -H "X-Blnk-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searches": [
+      {
+        "collection": "ledgers",
+        "q": "Customer ledger",
+        "query_by": "name",
+        "per_page": 5
+      },
+      {
+        "collection": "balances",
+        "q": "*",
+        "query_by": "currency",
+        "per_page": 1
+      }
+    ]
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "results": [
+    {
+      "facet_counts": [],
+      "found": 1,
+      "hits": [
+        {
+          "document": {
+            "created_at": 1758116489,
+            "id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "name": "Customer ledger"
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ],
+      "out_of": 12,
+      "page": 1,
+      "request_params": {
+        "collection_name": "ledgers",
+        "per_page": 5,
+        "q": "Customer ledger"
+      },
+      "search_cutoff": false,
+      "search_time_ms": 2
+    },
+    {
+      "facet_counts": [],
+      "found": 4,
+      "hits": [
+        {
+          "document": {
+            "balance": "0",
+            "balance_id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "created_at": 1758116489,
+            "currency": "USD",
+            "id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5"
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ],
+      "out_of": 40,
+      "page": 1,
+      "request_params": {
+        "collection_name": "balances",
+        "per_page": 1,
+        "q": "*"
+      },
+      "search_cutoff": false,
+      "search_time_ms": 1
+    }
+  ]
+}
+```
+</ResponseExample>
+
+<Tip>
+Use this endpoint when you need results from more than one collection in one request. For a single collection, call [Search via Typesense](/reference/search-typesense).
+</Tip>
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Search via Typesense", href: "/reference/search-typesense" },
+    { title: "Typesense overview", href: "/search/typesense/introduction" },
+  ]}
+/>

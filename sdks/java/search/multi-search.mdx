@@ -1,0 +1,103 @@
+---
+mode: "wide"
+title: "Multi-search"
+sidebarTitle: "Multi-search"
+api: "POST /multi-search"
+description: "Run several Typesense searches in one request with the Java SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use `blnk.search().multiSearch` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+```java wrap
+ApiResponse<JsonNode> response = blnk.search().multiSearch(
+    MultiSearchParams.create()
+        .add("ledgers", SearchParams.create().q("Customer ledger").queryBy("name").perPage(5))
+        .add("balances", SearchParams.create().q("*").queryBy("currency").perPage(1)));
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `add(collection, params)` | `MultiSearchParams` | Appends one search. `collection` is `ledgers`, `transactions`, `balances`, or `identities`. |
+| `q` | `String` | Search query text. Use `*` to return all records. |
+| `queryBy` | `String` | Comma-separated list of fields to search in. |
+| `filterBy` | `String` | Filter conditions to refine results. |
+| `sortBy` | `String` | Sort order, for example `created_at:desc`. |
+| `page` | `Number` | Page number, starting at 1. |
+| `perPage` | `Number` | Results per page. Max 250, defaults to 10. |
+
+</Step>
+
+<Step title="Use the search results">
+
+Read `response.data().get("results")`. Each bucket matches one `add()` call, in insertion order, and includes `found`, `hits`, and the same fields as a single-collection search.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "results": [
+    {
+      "found": 1,
+      "out_of": 12,
+      "page": 1,
+      "request_params": {
+        "collection_name": "ledgers",
+        "per_page": 5,
+        "q": "Customer ledger"
+      },
+      "search_time_ms": 2,
+      "facet_counts": [],
+      "search_cutoff": false,
+      "hits": [
+        {
+          "document": {
+            "id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "name": "Customer ledger",
+            "created_at": 1758116489
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ]
+    },
+    {
+      "found": 4,
+      "out_of": 40,
+      "page": 1,
+      "hits": []
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `results` | `JsonNode` | JSON array of result objects, one per `add()`, in insertion order. |
+| `results[].found` | `Number` | Number of records matching that search. |
+| `results[].out_of` | `Number` | Total records in that collection. |
+| `results[].page` | `Number` | Current page number. |
+| `results[].search_time_ms` | `Number` | Time taken to run that search, in milliseconds. |
+| `results[].hits` | `JsonNode` | JSON array of search results. Each element includes a `document` and optional `highlights` and `text_match`. |
+
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Search via multi-search", href: "/reference/search-multi-search" },
+    { title: "Search via Typesense", href: "/sdks/java/search/search-typesense" },
+  ]}
+/>
