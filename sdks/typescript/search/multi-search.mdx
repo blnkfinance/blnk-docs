@@ -1,0 +1,124 @@
+---
+mode: "wide"
+title: "Multi-search"
+sidebarTitle: "Multi-search"
+api: "POST /multi-search"
+description: "Run several Typesense searches in one request with the TypeScript SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use `blnk.Search.multiSearch` to search more than one collection in a single request.
+
+<Steps>
+<Step title="Call the method">
+
+```typescript blnk.Search.multiSearch wrap
+const response = await blnk.Search.multiSearch({
+  searches: [
+    {collection: 'ledgers', q: 'Customer ledger', query_by: 'name', per_page: 5},
+    {collection: 'balances', q: '*', query_by: 'currency', per_page: 1},
+  ],
+});
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `searches` | `object[]` | One or more searches. Results come back in the same order. |
+| `searches[].collection` | `string` | Collection to search: `ledgers`, `transactions`, `balances`, or `identities`. |
+| `searches[].q` | `string` | Search query text. Use `*` to return all records. |
+| `searches[].query_by` | `string` | Comma-separated list of fields to search in. |
+| `searches[].filter_by` | `string` | Filter conditions to refine results. |
+| `searches[].sort_by` | `string` | Sort order, for example `created_at:desc`. |
+| `searches[].page` | `number` | Page number, starting at 1. |
+| `searches[].per_page` | `number` | Results per page. Max 250, defaults to 10. |
+
+</Step>
+
+<Step title="Use the search results">
+
+Read `response.data.results`. Each bucket matches one entry in `searches` and includes `found`, `hits`, and the same fields as a single-collection search.
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap expandable
+{
+  "results": [
+    {
+      "found": 1,
+      "out_of": 12,
+      "page": 1,
+      "request_params": {
+        "collection_name": "ledgers",
+        "per_page": 5,
+        "q": "Customer ledger"
+      },
+      "search_time_ms": 2,
+      "facet_counts": [],
+      "search_cutoff": false,
+      "hits": [
+        {
+          "document": {
+            "id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "name": "Customer ledger",
+            "created_at": 1758116489
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ]
+    },
+    {
+      "found": 4,
+      "out_of": 40,
+      "page": 1,
+      "request_params": {
+        "collection_name": "balances",
+        "per_page": 1,
+        "q": "*"
+      },
+      "search_time_ms": 1,
+      "hits": [
+        {
+          "document": {
+            "id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "balance_id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "currency": "USD",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "created_at": 1758116489
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `results` | `object[]` | One result object per search, in `searches` order. |
+| `results[].found` | `number` | Number of records matching that search. |
+| `results[].out_of` | `number` | Total records in that collection. |
+| `results[].page` | `number` | Current page number. |
+| `results[].search_time_ms` | `number` | Time taken to run that search, in milliseconds. |
+| `results[].hits` | `object[]` | Array of results, each with a `document` and optional `highlights` and `text_match`. |
+
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Search via multi-search", href: "/reference/search-multi-search" },
+    { title: "Search via Typesense", href: "/sdks/typescript/search/search-typesense" },
+  ]}
+/>

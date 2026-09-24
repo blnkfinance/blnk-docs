@@ -1,0 +1,137 @@
+---
+mode: "wide"
+title: "Multi-search"
+sidebarTitle: "Multi-search"
+api: "POST /multi-search"
+description: "Run several Typesense searches in one request with the Go SDK."
+---
+
+import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
+
+Use `client.Search.MultiSearch` to search more than one collection in a single request.
+
+<Steps>
+<Step title="Call the method">
+
+```go client.Search.MultiSearch wrap
+multiResp, resp, err := client.Search.MultiSearch(blnkgo.MultiSearchRequest{
+	Searches: []blnkgo.MultiSearchCollectionParams{
+		{
+			Collection: "ledgers",
+			Q:          "Customer ledger",
+			QueryBy:    "name",
+			PerPage:    5,
+		},
+		{
+			Collection: "balances",
+			Q:          "*",
+			QueryBy:    "currency",
+			PerPage:    1,
+		},
+	},
+})
+if err != nil {
+	fmt.Printf("Error running multi-search: %v\n", err)
+	return
+}
+
+fmt.Printf("HTTP status: %d\n", resp.StatusCode)
+fmt.Printf("Ledgers found: %d\n", multiResp.Results[0].Found)
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Searches` | `[]blnkgo.MultiSearchCollectionParams` | One or more searches. Results come back in the same order. |
+| `Collection` | `string` | Collection to search: `ledgers`, `transactions`, `balances`, or `identities`. |
+| `Q` | `string` | Search query text. Use `*` to return all records. |
+| `QueryBy` | `string` | Comma-separated list of fields to search in. |
+| `FilterBy` | `string` | Filter conditions to refine results. |
+| `SortBy` | `string` | Sort order, for example `created_at:desc`. |
+| `Page` | `int` | Page number, starting at 1. |
+| `PerPage` | `int` | Results per page. Max 250, defaults to 10. |
+
+</Step>
+
+<Step title="Response">
+
+```json 200 OK wrap
+{
+  "results": [
+    {
+      "found": 1,
+      "out_of": 12,
+      "page": 1,
+      "request_params": {
+        "collection_name": "ledgers",
+        "per_page": 5,
+        "q": "Customer ledger"
+      },
+      "search_time_ms": 2,
+      "facet_counts": [],
+      "search_cutoff": false,
+      "hits": [
+        {
+          "document": {
+            "id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "name": "Customer ledger",
+            "created_at": 1758116489
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ]
+    },
+    {
+      "found": 4,
+      "out_of": 40,
+      "page": 1,
+      "request_params": {
+        "collection_name": "balances",
+        "per_page": 1,
+        "q": "*"
+      },
+      "search_time_ms": 1,
+      "hits": [
+        {
+          "document": {
+            "id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "balance_id": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+            "currency": "USD",
+            "ledger_id": "ldg_cd728825-a6e1-4fae-9277-c3235a045ea5",
+            "created_at": 1758116489
+          },
+          "highlights": [],
+          "text_match": 578730123365711993
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Go response (`*blnkgo.MultiSearchResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Results` | `[]blnkgo.SearchResponse` | One result object per search, in `Searches` order. |
+| `Results[i].Found` | `int` | Number of records matching that search. |
+| `Results[i].OutOf` | `int` | Total records in that collection. |
+| `Results[i].Page` | `int` | Current page number. |
+| `Results[i].SearchTimeMs` | `int` | Time taken to run that search, in milliseconds. |
+| `Results[i].Hits` | `[]blnkgo.SearchHit` | Array of results, each with a `Document` field. |
+
+</Step>
+</Steps>
+
+---
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "Search via multi-search", href: "/reference/search-multi-search" },
+    { title: "Search via Typesense", href: "/sdks/go/search/search-typesense" },
+  ]}
+/>
