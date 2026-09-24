@@ -498,7 +498,7 @@ Inflight debit balance is the amount waiting to be deducted from the source bala
 If the transaction amount is more than the available balance, the outcome depends on how Blnk processes the request:
 
 - **Default queue:** The API first returns a `QUEUED` transaction. If processing fails because of insufficient funds, the worker records a separate `REJECTED` transaction linked to the queued transaction through `parent_transaction`. Blnk also sends a webhook with the rejection reason in `meta_data`.
-- **Skip queue:** When `skip_queue: true`, Blnk processes the request immediately and returns `400 TXN_INSUFFICIENT_FUNDS`. The rejected attempt is not recorded as a transaction.
+- **Skip queue:** When `skip_queue: true`, Blnk processes the request immediately and returns `400 TXN_INSUFFICIENT_FUNDS`. The rejected attempt is not recorded as a transaction, and the `reference` is not used. You can retry the same `reference` after the source has enough funds.
 
 <Note>
 If you want a transaction to proceed even when it exceeds the available balance, you can enable overdrafts by setting `allow_overdraft: true` in your transaction request. [Learn more](/transactions/overdrafts).
