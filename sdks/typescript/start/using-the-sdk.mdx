@@ -90,6 +90,36 @@ Owner-scoped keys and permission limits.
 
 ---
 
+## Connect through the Cloud Proxy
+
+The [Proxy API](/cloud/reference/proxy-api) reuses Core HTTP methods, paths, and bodies. Cloud only changes the URL prefix and how it routes the request.
+
+1. Set `baseUrl` to `https://api.cloud.blnkfinance.com/proxy`.
+2. Pass the Cloud instance ID in `instanceId`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+3. Pass a Cloud API key or OAuth access token as the first `BlnkInit` argument. The SDK still sends it in the `X-Blnk-Key` header.
+
+The SDK appends `instance_id` as a query parameter on every proxy request. Ledger, balance, and transaction payloads stay the same as Core.
+
+```typescript wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+export const blnk = BlnkInit(process.env.BLNK_CLOUD_API_KEY ?? '', {
+  baseUrl: 'https://api.cloud.blnkfinance.com/proxy',
+  instanceId: process.env.BLNK_INSTANCE_ID ?? '',
+});
+```
+
+| Option | Type | What it does |
+| :-- | :-- | :-- |
+| `baseUrl` | `string` | Proxy base URL. Must be `https://api.cloud.blnkfinance.com/proxy`, not the Core instance URL. |
+| `instanceId` | `string` | Cloud instance ID (`instance_...`). Sent as the `instance_id` query parameter. |
+
+<Note>
+These client fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with `curl` or your HTTP client as shown in the [Proxy API](/cloud/reference/proxy-api) reference.
+</Note>
+
+---
+
 ## Timeouts and retries
 
 Timeouts and retries ship in v1.2.0 or later. When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. To configure, pass the following parameters in the second `options` object:
@@ -159,7 +189,7 @@ ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed w
   items={[
     { title: "Quick start", href: "/sdks/typescript/start/quick-start" },
     { title: "Error handling", href: "/sdks/typescript/start/error-handling" },
+    { title: "Proxy API", href: "/cloud/reference/proxy-api" },
     { title: "Changelog", href: "/changelog/blnk-ts" },
-    { title: "API error codes", href: "/advanced/error-codes" },
   ]}
 />

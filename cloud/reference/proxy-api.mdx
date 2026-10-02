@@ -111,6 +111,79 @@ These rows are examples. Every Core route works the same way. See the [Core API 
 **When creating a transaction**, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
 </Info>
 
+### Call the Proxy from an SDK
+
+Point an official SDK at the Proxy base URL and pass the instance ID. The SDK keeps Core request bodies unchanged and appends `instance_id` as a query parameter.
+
+<Tabs>
+<Tab title="TypeScript">
+
+```typescript wrap
+import { BlnkInit } from '@blnkfinance/blnk-typescript';
+
+export const blnk = BlnkInit(process.env.BLNK_CLOUD_API_KEY ?? '', {
+  baseUrl: 'https://api.cloud.blnkfinance.com/proxy',
+  instanceId: process.env.BLNK_INSTANCE_ID ?? '',
+});
+```
+
+See [Using the TypeScript SDK](/sdks/typescript/start/using-the-sdk#connect-through-the-cloud-proxy).
+
+</Tab>
+<Tab title="Go">
+
+```go wrap
+baseURL, _ := url.Parse("https://api.cloud.blnkfinance.com/proxy")
+apiKey := os.Getenv("BLNK_CLOUD_API_KEY")
+instanceID := os.Getenv("BLNK_INSTANCE_ID")
+
+client := blnkgo.NewClient(
+	baseURL,
+	&apiKey,
+	blnkgo.WithInstanceID(instanceID),
+)
+```
+
+See [Using the Go SDK](/sdks/go/start/using-the-sdk#connect-through-the-cloud-proxy).
+
+</Tab>
+<Tab title="Python">
+
+```python wrap
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+blnk = blnk_init(
+    api_key,
+    BlnkClientOptions(
+        base_url="https://api.cloud.blnkfinance.com/proxy",
+        instance_id=instance_id,
+    ),
+)
+```
+
+See [Using the Python SDK](/sdks/python/start/using-the-sdk#connect-through-the-cloud-proxy).
+
+</Tab>
+<Tab title="Java">
+
+```java wrap
+Blnk blnk = Blnk.init(
+    apiKey,
+    BlnkClientOptions.builder()
+        .baseUrl("https://api.cloud.blnkfinance.com/proxy")
+        .instanceId(instanceId)
+        .build());
+```
+
+See [Using the Java SDK](/sdks/java/start/using-the-sdk#connect-through-the-cloud-proxy).
+
+</Tab>
+</Tabs>
+
+<Note>
+These constructor fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with the HTTP examples on this page.
+</Note>
+
 ### Response
 
 When Cloud can reach Core, Proxy responses pass through unchanged. Status codes and body shapes match the corresponding Core endpoint.
@@ -144,7 +217,7 @@ Cloud itself returns a JSON error if `instance_id` is missing.
   items={[
     { title: "Core API reference", href: "/reference/overview" },
     { title: "Get instance details", href: "/cloud/reference/get-instance" },
-    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "Using the TypeScript SDK", href: "/sdks/typescript/start/using-the-sdk" },
     { title: "API keys", href: "/cloud/reference/api-keys" },
   ]}
 />

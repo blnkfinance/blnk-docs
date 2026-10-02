@@ -142,6 +142,39 @@ Owner-scoped keys and permission limits.
 
 ---
 
+## Connect through the Cloud Proxy
+
+The [Proxy API](/cloud/reference/proxy-api) reuses Core HTTP methods, paths, and bodies. Cloud only changes the URL prefix and how it routes the request.
+
+1. Set `baseUrl` to `https://api.cloud.blnkfinance.com/proxy`.
+2. Pass the Cloud instance ID with `.instanceId(...)`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+3. Pass a Cloud API key or OAuth access token as the first `Blnk.init` argument. The SDK still sends it in the `X-Blnk-Key` header.
+
+The SDK appends `instance_id` as a query parameter on every proxy request. Ledger, balance, and transaction payloads stay the same as Core.
+
+```java wrap
+String apiKey = System.getenv().getOrDefault("BLNK_CLOUD_API_KEY", "");
+String instanceId = System.getenv().getOrDefault("BLNK_INSTANCE_ID", "");
+
+Blnk blnk = Blnk.init(
+    apiKey,
+    BlnkClientOptions.builder()
+        .baseUrl("https://api.cloud.blnkfinance.com/proxy")
+        .instanceId(instanceId)
+        .build());
+```
+
+| Option | Type | What it does |
+| :-- | :-- | :-- |
+| `baseUrl` | `String` | Proxy base URL. Must be `https://api.cloud.blnkfinance.com/proxy`, not the Core instance URL. |
+| `instanceId` | `String` | Cloud instance ID (`instance_...`). Sent as the `instance_id` query parameter. |
+
+<Note>
+These client fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with `curl` or your HTTP client as shown in the [Proxy API](/cloud/reference/proxy-api) reference.
+</Note>
+
+---
+
 ## Timeouts and retries
 
 When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. Pass these parameters on `BlnkClientOptions.builder()`:
@@ -236,6 +269,10 @@ ApiResponse checks and Core error bodies.
 
 <Card title="Changelog" icon="scroll-text" href="/changelog/blnk-java">
 Java SDK releases and version history.
+</Card>
+
+<Card title="Proxy API" icon="ethernet-port" href="/cloud/reference/proxy-api">
+Call Core routes through Cloud with `instance_id`.
 </Card>
 </CardGroup>
 

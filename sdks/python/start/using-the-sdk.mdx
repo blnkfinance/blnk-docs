@@ -6,6 +6,7 @@ icon: "code"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 <Info>
 `blnk-python@1.5.0` targets Blnk Core **0.15.4**. See the [Changelog](/changelog/blnk-py) before upgrading.
@@ -75,7 +76,6 @@ When `server.secure` is enabled, pass your API key as the first argument. Set `b
 
 ```python wrap
 import os
-import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 from blnk_sdk import BlnkClientOptions, blnk_init
 
@@ -117,6 +117,44 @@ Secure mode, master key, and server hardening.
 Owner-scoped keys and permission limits.
 </Card>
 </CardGroup>
+
+---
+
+## Connect through the Cloud Proxy
+
+The [Proxy API](/cloud/reference/proxy-api) reuses Core HTTP methods, paths, and bodies. Cloud only changes the URL prefix and how it routes the request.
+
+1. Set `base_url` to `https://api.cloud.blnkfinance.com/proxy`.
+2. Pass the Cloud instance ID in `instance_id`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
+3. Pass a Cloud API key or OAuth access token as the first `blnk_init` argument. The SDK still sends it in the `X-Blnk-Key` header.
+
+The SDK appends `instance_id` as a query parameter on every proxy request. Ledger, balance, and transaction payloads stay the same as Core.
+
+```python wrap
+import os
+
+from blnk_sdk import BlnkClientOptions, blnk_init
+
+api_key = os.environ.get("BLNK_CLOUD_API_KEY", "")
+instance_id = os.environ.get("BLNK_INSTANCE_ID", "")
+
+blnk = blnk_init(
+    api_key,
+    BlnkClientOptions(
+        base_url="https://api.cloud.blnkfinance.com/proxy",
+        instance_id=instance_id,
+    ),
+)
+```
+
+| Option | Type | What it does |
+| :-- | :-- | :-- |
+| `base_url` | `str` | Proxy base URL. Must be `https://api.cloud.blnkfinance.com/proxy`, not the Core instance URL. |
+| `instance_id` | `str` | Cloud instance ID (`instance_...`). Sent as the `instance_id` query parameter. |
+
+<Note>
+These client fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with `curl` or your HTTP client as shown in the [Proxy API](/cloud/reference/proxy-api) reference.
+</Note>
 
 ---
 
@@ -202,9 +240,9 @@ ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed w
 
 <RelatedTopics
   items={[
-    { title: "Install Core", href: "/home/install" },
-    { title: "Deploy", href: "/home/deploy" },
-    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "Quick start", href: "/sdks/python/start/quick-start" },
+    { title: "Error handling", href: "/sdks/python/start/error-handling" },
+    { title: "Proxy API", href: "/cloud/reference/proxy-api" },
     { title: "API error codes", href: "/advanced/error-codes" },
   ]}
 />
