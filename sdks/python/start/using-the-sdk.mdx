@@ -122,39 +122,16 @@ Owner-scoped keys and permission limits.
 
 ## Connect through the Cloud Proxy
 
-The [Proxy API](/cloud/reference/proxy-api) reuses Core HTTP methods, paths, and bodies. Cloud only changes the URL prefix and how it routes the request.
+`blnk-python@1.5.0` talks to a Core base URL. It does not accept an `instance_id` client option and does not append `instance_id` on requests.
 
-1. Set `base_url` to `https://api.cloud.blnkfinance.com/proxy`.
-2. Pass the Cloud instance ID in `instance_id`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
-3. Pass a Cloud API key or OAuth access token as the first `blnk_init` argument. The SDK still sends it in the `X-Blnk-Key` header.
+To call Core through Cloud today, send HTTP to the [Proxy API](/cloud/reference/proxy-api). Keep the Core method, path, and body. Prefix the path with `/proxy`, authenticate with a Cloud API key or OAuth access token, and add `instance_id` as a query parameter. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance), not `deployment_id` and not a Data Lake placeholder such as `inst_...`. If the Core path already has query parameters, keep them and add `instance_id` beside them.
 
-The SDK appends `instance_id` as a query parameter on every proxy request. Ledger, balance, and transaction payloads stay the same as Core.
-
-```python wrap
-import os
-
-from blnk_sdk import BlnkClientOptions, blnk_init
-
-api_key = os.environ.get("BLNK_CLOUD_API_KEY", "")
-instance_id = os.environ.get("BLNK_INSTANCE_ID", "")
-
-blnk = blnk_init(
-    api_key,
-    BlnkClientOptions(
-        base_url="https://api.cloud.blnkfinance.com/proxy",
-        instance_id=instance_id,
-    ),
-)
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/balances/bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e?with_queued=true&instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: CLOUD_API_KEY"
 ```
 
-| Option | Type | What it does |
-| :-- | :-- | :-- |
-| `base_url` | `str` | Proxy base URL. Must be `https://api.cloud.blnkfinance.com/proxy`, not the Core instance URL. |
-| `instance_id` | `str` | Cloud instance ID (`instance_...`). Sent as the `instance_id` query parameter. |
-
-<Note>
-These client fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with `curl` or your HTTP client as shown in the [Proxy API](/cloud/reference/proxy-api) reference.
-</Note>
+SDK constructor fields for Cloud Proxy will be documented on this page after a changelog lists a minimum Python SDK version that supports them.
 
 ---
 

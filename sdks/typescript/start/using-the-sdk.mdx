@@ -92,31 +92,16 @@ Owner-scoped keys and permission limits.
 
 ## Connect through the Cloud Proxy
 
-The [Proxy API](/cloud/reference/proxy-api) reuses Core HTTP methods, paths, and bodies. Cloud only changes the URL prefix and how it routes the request.
+`@blnkfinance/blnk-typescript@1.5.0` talks to a Core base URL. It does not accept an `instanceId` option and does not append `instance_id`.
 
-1. Set `baseUrl` to `https://api.cloud.blnkfinance.com/proxy`.
-2. Pass the Cloud instance ID in `instanceId`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id`.
-3. Pass a Cloud API key or OAuth access token as the first `BlnkInit` argument. The SDK still sends it in the `X-Blnk-Key` header.
+To call Core through Cloud today, send HTTP to the [Proxy API](/cloud/reference/proxy-api). Keep the Core method, path, and body. Prefix the path with `/proxy`, authenticate with a Cloud API key or OAuth access token, and add `instance_id` as a query parameter. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance), not `deployment_id` and not a Data Lake placeholder such as `inst_...`. If the Core path already has query parameters, keep them and add `instance_id` beside them.
 
-The SDK appends `instance_id` as a query parameter on every proxy request. Ledger, balance, and transaction payloads stay the same as Core.
-
-```typescript wrap
-import { BlnkInit } from '@blnkfinance/blnk-typescript';
-
-export const blnk = BlnkInit(process.env.BLNK_CLOUD_API_KEY ?? '', {
-  baseUrl: 'https://api.cloud.blnkfinance.com/proxy',
-  instanceId: process.env.BLNK_INSTANCE_ID ?? '',
-});
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/balances/bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e?with_queued=true&instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: CLOUD_API_KEY"
 ```
 
-| Option | Type | What it does |
-| :-- | :-- | :-- |
-| `baseUrl` | `string` | Proxy base URL. Must be `https://api.cloud.blnkfinance.com/proxy`, not the Core instance URL. |
-| `instanceId` | `string` | Cloud instance ID (`instance_...`). Sent as the `instance_id` query parameter. |
-
-<Note>
-These client fields are the intended public API for Cloud Proxy support. Until you install an SDK release that includes them, send Proxy requests with `curl` or your HTTP client as shown in the [Proxy API](/cloud/reference/proxy-api) reference.
-</Note>
+SDK constructor fields for Cloud Proxy will be documented on this page after a changelog lists a minimum TypeScript SDK version that supports them.
 
 ---
 
