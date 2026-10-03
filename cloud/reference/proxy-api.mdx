@@ -93,23 +93,44 @@ Required for requests with a body. Set to `application/json`. Use `multipart/for
 
 ### Calling Core endpoints
 
-Prefix the Core path with `/proxy` and keep the HTTP method. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
+Prefix the Core path with `/proxy` and keep the HTTP method. Add `instance_id` as a query parameter on every request. Keep any Core query parameters that were already on the path.
 
-All paths are relative to `https://api.cloud.blnkfinance.com`.
+All paths are relative to `https://api.cloud.blnkfinance.com`. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance). Do not pass `deployment_id` or a Data Lake placeholder such as `inst_...`.
 
 | Method | Core path | Proxy path |
 | :-- | :-- | :-- |
-| GET | `/ledgers` | `/proxy/ledgers` |
-| GET | `/ledgers/{id}` | `/proxy/ledgers/{id}` |
-| POST | `/ledgers` | `/proxy/ledgers` |
-| PUT | `/ledgers/{id}` | `/proxy/ledgers/{id}` |
-| DELETE | `/reconciliation/matching-rules/{id}` | `/proxy/reconciliation/matching-rules/{id}` |
+| GET | `/ledgers` | `/proxy/ledgers?instance_id=YOUR_INSTANCE_ID` |
+| GET | `/balances/{id}?with_queued=true` | `/proxy/balances/{id}?with_queued=true&instance_id=YOUR_INSTANCE_ID` |
+| GET | `/ledgers/{id}` | `/proxy/ledgers/{id}?instance_id=YOUR_INSTANCE_ID` |
+| POST | `/ledgers` | `/proxy/ledgers?instance_id=YOUR_INSTANCE_ID` |
+| PUT | `/ledgers/{id}` | `/proxy/ledgers/{id}?instance_id=YOUR_INSTANCE_ID` |
+| DELETE | `/reconciliation/matching-rules/{id}` | `/proxy/reconciliation/matching-rules/{id}?instance_id=YOUR_INSTANCE_ID` |
 
 These rows are examples. Every Core route works the same way. See the [Core API reference](/reference/overview) for the full list of methods, paths, and request bodies.
+
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/balances/bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e?with_queued=true&instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN"
+```
 
 <Info>
 **When creating a transaction**, Blnk Cloud automatically adds `precision: 100` and a `reference` value if they are omitted from the request body.
 </Info>
+
+### Call the Proxy from an SDK
+
+Published SDK versions initialize against a Core base URL:
+
+| SDK | Documented version | Cloud Proxy constructor |
+| :-- | :-- | :-- |
+| TypeScript | `@blnkfinance/blnk-typescript@1.5.0` | Not released |
+| Go | `blnk-go@v1.5.0` | Not released |
+| Python | `blnk-python@1.5.0` | Not released |
+| Java | `com.blnkfinance:blnk-java:1.5.0` | Not released |
+
+Those packages do not accept `instanceId`, `instance_id`, or `WithInstanceID`. Pointing them at `https://api.cloud.blnkfinance.com/proxy` without a supported release will not append `instance_id`.
+
+Until a changelog names a minimum version with Cloud Proxy support, send Proxy requests with the HTTP examples on this page. Official SDK constructor fields will be documented here after those releases ship.
 
 ### Response
 
@@ -144,7 +165,7 @@ Cloud itself returns a JSON error if `instance_id` is missing.
   items={[
     { title: "Core API reference", href: "/reference/overview" },
     { title: "Get instance details", href: "/cloud/reference/get-instance" },
-    { title: "Create new query", href: "/cloud/reference/create-new-query" },
+    { title: "Using the TypeScript SDK", href: "/sdks/typescript/start/using-the-sdk" },
     { title: "API keys", href: "/cloud/reference/api-keys" },
   ]}
 />

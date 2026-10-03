@@ -6,6 +6,7 @@ icon: "code"
 ---
 
 import NeedHelp from "/snippets/need-help.mdx";
+import { RelatedTopics } from "/snippets/related-topics.jsx";
 
 <Info>
 `blnk-go@v1.5.0` targets Blnk Core **0.15.4**. See the [Changelog](/changelog/blnk-go) before upgrading.
@@ -21,7 +22,6 @@ Create a helper that reads your base URL and API key from the environment, then 
 package blnk
 
 import (
-import { RelatedTopics } from "/snippets/related-topics.jsx";
 	"net/url"
 	"os"
 	"time"
@@ -106,6 +106,21 @@ Secure mode, master key, and server hardening.
 Owner-scoped keys and permission limits.
 </Card>
 </CardGroup>
+
+---
+
+## Connect through the Cloud Proxy
+
+`blnk-go@v1.5.0` talks to a Core base URL. It does not accept `WithInstanceID` and does not append `instance_id`.
+
+To call Core through Cloud today, send HTTP to the [Proxy API](/cloud/reference/proxy-api). Keep the Core method, path, and body. Prefix the path with `/proxy`, authenticate with a Cloud API key or OAuth access token, and add `instance_id` as a query parameter. Use the `instance_...` value from [Get instance details](/cloud/reference/get-instance), not `deployment_id` and not a Data Lake placeholder such as `inst_...`. If the Core path already has query parameters, keep them and add `instance_id` beside them.
+
+```bash wrap
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/balances/bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e?with_queued=true&instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+SDK constructor options for Cloud Proxy will be documented on this page after a changelog lists a minimum Go SDK version that supports them.
 
 ---
 
@@ -224,9 +239,9 @@ Fields such as `DOB`, `EffectiveDate`, `ScheduledFor`, `InflightCommitDate`, and
 
 <RelatedTopics
   items={[
-    { title: "Install Core", href: "/home/install" },
-    { title: "Deploy", href: "/home/deploy" },
-    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "Quick start", href: "/sdks/go/start/quick-start" },
+    { title: "Error handling", href: "/sdks/go/start/error-handling" },
+    { title: "Proxy API", href: "/cloud/reference/proxy-api" },
     { title: "API error codes", href: "/advanced/error-codes" },
   ]}
 />
