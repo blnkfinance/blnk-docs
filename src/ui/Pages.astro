@@ -1,28 +1,99 @@
 ---
-import { pageHref, type NavItem } from '../content/nav';
+import { matchesPage, pageHref, type NavItem } from '../content/nav';
 import Pages from './Pages.astro';
 
 interface Props {
 	pages: NavItem[];
 	titles: Map<string, string>;
+	pathname: string;
+	idPrefix: string;
+	id?: string;
+	open?: boolean;
 }
 
-const { pages, titles } = Astro.props;
+const { pages, titles, pathname, idPrefix, id, open } = Astro.props;
+
+function contains(item: NavItem): boolean {
+	if (typeof item === 'string') return matchesPage(item, pathname);
+	if (item.page && matchesPage(item.page, pathname)) return true;
+	return item.pages.some((child) => contains(child));
+}
 ---
 
-<ul>
+<ul class="nav-pages" id={id} hidden={open === false ? true : undefined}>
 	{
-		pages.map((page) =>
-			typeof page === 'string' ? (
+		pages.map((page, index) => {
+			if (typeof page === 'string') {
+				const current = matchesPage(page, pathname);
+				return (
+					<li>
+						<a class="nav-item" href={pageHref(page)} aria-current={current ? 'page' : undefined}>
+							<span class="nav-text">{titles.get(page) ?? page}</span>
+						</a>
+					</li>
+				);
+			}
+
+			const panelId = `${idPrefix}-${index}`;
+			const expanded = contains(page);
+			const label = page.dropdown;
+			const current = page.page ? matchesPage(page.page, pathname) : false;
+
+			return (
 				<li>
-					<a href={pageHref(page)}>{titles.get(page) ?? page}</a>
+					{page.page ? (
+						<div class="nav-item">
+							<a href={pageHref(page.page)} aria-current={current ? 'page' : undefined}>
+								<span class="nav-text">{label}</span>
+							</a>
+							<button
+								type="button"
+								data-nav-toggle
+								aria-expanded={String(expanded)}
+								aria-controls={panelId}
+								aria-label={`Toggle ${label}`}
+							>
+								<svg class="nav-chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+									<path
+										d="M6 4.25 9.75 8 6 11.75"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"></path>
+								</svg>
+							</button>
+						</div>
+					) : (
+						<button
+							class="nav-item"
+							type="button"
+							data-nav-toggle
+							aria-expanded={String(expanded)}
+							aria-controls={panelId}
+						>
+							<span class="nav-text">{label}</span>
+							<svg class="nav-chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+								<path
+									d="M6 4.25 9.75 8 6 11.75"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"></path>
+							</svg>
+						</button>
+					)}
+					<Pages
+						pages={page.pages}
+						titles={titles}
+						pathname={pathname}
+						idPrefix={panelId}
+						id={panelId}
+						open={expanded}
+					/>
 				</li>
-			) : (
-				<li>
-					<p>{page.dropdown}</p>
-					<Pages pages={page.pages} titles={titles} />
-				</li>
-			),
-		)
+			);
+		})
 	}
 </ul>

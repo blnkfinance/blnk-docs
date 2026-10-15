@@ -13,6 +13,8 @@ export type NavItem = string | NavDropdown;
 
 export type NavDropdown = {
 	dropdown: string;
+	/** Content path when the label is also a page. */
+	page?: string;
 	pages: NavItem[];
 };
 
@@ -35,6 +37,7 @@ export type NavRoot = {
 export const navDropdown: z.ZodType<NavDropdown> = z.lazy(() =>
 	z.strictObject({
 		dropdown: z.string().min(1),
+		page: pagePath.optional(),
 		pages: z.array(z.union([pagePath, navDropdown])),
 	}),
 );
@@ -95,7 +98,10 @@ export type DocsColors = z.infer<typeof docsSchema>['colors'];
 function walk(pages: NavItem[], paths: string[]) {
 	for (const page of pages) {
 		if (typeof page === 'string') paths.push(page);
-		else walk(page.pages, paths);
+		else {
+			if (page.page) paths.push(page.page);
+			walk(page.pages, paths);
+		}
 	}
 }
 
@@ -114,11 +120,15 @@ export function pageHref(id: string): string {
 	return path === '' ? '/' : `/${path}`;
 }
 
+export function matchesPage(id: string, pathname: string): boolean {
+	return pageHref(id) === normalizePath(pathname);
+}
+
 function listHasPath(pages: NavItem[], pathname: string): boolean {
 	for (const page of pages) {
 		if (typeof page === 'string') {
 			if (pageHref(page) === pathname) return true;
-		} else if (listHasPath(page.pages, pathname)) {
+		} else if ((page.page && pageHref(page.page) === pathname) || listHasPath(page.pages, pathname)) {
 			return true;
 		}
 	}

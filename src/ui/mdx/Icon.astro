@@ -6,6 +6,7 @@ interface Props {
 }
 
 const { icon, size = 16, color = 'currentColor' } = Astro.props;
+const image = icon.startsWith('/') || icon.startsWith('./');
 
 const aliases: Record<string, string> = {
 	'magnifying-glass': 'search',
@@ -23,8 +24,8 @@ const files = import.meta.glob('../../../node_modules/lucide-static/icons/*.svg'
 });
 
 const name = aliases[icon] ?? icon;
-let svg = name === 'github' ? github : '';
-if (!svg) {
+let svg = image || name !== 'github' ? '' : github;
+if (!image && !svg) {
 	const entry = Object.entries(files).find(([path]) => path.endsWith(`/${name}.svg`));
 	if (entry) svg = await entry[1]();
 }
@@ -38,5 +39,13 @@ if (svg) {
 ---
 
 <span class="icon" style={`color: ${color}; width: ${size}px; height: ${size}px`}>
-	{svg ? <Fragment set:html={svg} /> : <span class="icon-missing">{icon}</span>}
+	{
+		image ? (
+			<img src={icon} alt="" width={size} height={size} />
+		) : svg ? (
+			<Fragment set:html={svg} />
+		) : (
+			<span class="icon-missing">{icon}</span>
+		)
+	}
 </span>
