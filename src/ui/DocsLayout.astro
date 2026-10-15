@@ -1,6 +1,7 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
+import { currentTab, navigation } from '../content/nav';
 import '../styles/styles.css';
 import Header from './Header.astro';
 import Nav from './Nav.astro';
@@ -8,10 +9,14 @@ import Toc from './Toc.astro';
 
 interface Props {
 	title: string;
+	description: string;
 	headings: MarkdownHeading[];
+	markdown: string;
 }
 
-const { title, headings } = Astro.props;
+const { title, description, headings, markdown } = Astro.props;
+const section = currentTab(navigation, Astro.url.pathname);
+const sectionName = section && 'tab' in section ? section.tab : '';
 ---
 
 <html lang="en">
@@ -42,11 +47,16 @@ const { title, headings } = Astro.props;
 			<div class="shell">
 				<Nav />
 				<main>
-					<article class="article">
+					<article
+						class="article"
+						data-pagefind-body
+						data-pagefind-meta={sectionName ? `section:${sectionName}` : undefined}
+					>
+						<h1 data-pagefind-meta={`title, description:${description}`}>{title}</h1>
 						<slot />
 					</article>
 				</main>
-				<Toc headings={headings} />
+				<Toc headings={headings} markdown={markdown} />
 			</div>
 		</div>
 	</body>
