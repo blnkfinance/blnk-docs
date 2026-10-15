@@ -1,7 +1,18 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
-import { currentTab, navigation, pageLabel } from '../content/nav';
+import { breadcrumbs, currentTab, navigation, type Crumb } from '../content/nav';
+import {
+	absoluteUrl,
+	canonicalPath,
+	markdownPath,
+	ogImageAlt,
+	ogImageHeight,
+	ogImagePath,
+	ogImageWidth,
+	requireSite,
+	siteName,
+} from '../content/seo';
 import '../styles/styles.css';
 import '../styles/mdx.css';
 import Header from './Header.astro';
@@ -11,15 +22,60 @@ import Toc from './Toc.astro';
 
 interface Props {
 	title: string;
+	documentTitle: string;
 	description: string;
+	indexable: boolean;
 	headings: MarkdownHeading[];
 	markdown: string;
 }
 
-const { title, description, headings, markdown } = Astro.props;
-const section = currentTab(navigation, Astro.url.pathname);
+const { title, documentTitle, description, indexable, headings, markdown } = Astro.props;
+const site = requireSite(Astro.site);
+const path = canonicalPath(Astro.url.pathname);
+const canonical = absoluteUrl(path, site);
+const image = absoluteUrl(ogImagePath, site);
+const section = currentTab(navigation, path);
 const sectionName = section && 'tab' in section ? section.tab : '';
-const label = pageLabel(navigation, Astro.url.pathname);
+const crumbs = breadcrumbs(navigation, path, title);
+const markdownHref = absoluteUrl(markdownPath(path), site);
+const jsonLd = structuredData({ title: documentTitle, description, canonical, image, crumbs });
+
+function structuredData(page: {
+	title: string;
+	description: string;
+	canonical: string;
+	image: string;
+	crumbs: Crumb[];
+}): string {
+	const graph: Record<string, unknown>[] = [
+		{
+			'@type': 'WebPage',
+			name: page.title,
+			description: page.description,
+			url: page.canonical,
+			image: page.image,
+		},
+	];
+	const items: Record<string, unknown>[] = [];
+	for (const [index, crumb] of page.crumbs.entries()) {
+		const isLast = index === page.crumbs.length - 1;
+		const href = isLast ? page.canonical : crumb.href ? absoluteUrl(crumb.href, site) : undefined;
+		if (!href) continue;
+		items.push({
+			'@type': 'ListItem',
+			position: items.length + 1,
+			name: crumb.name,
+			item: href,
+		});
+	}
+	if (items.length > 0) {
+		graph.push({
+			'@type': 'BreadcrumbList',
+			itemListElement: items,
+		});
+	}
+	return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c');
+}
 ---
 
 <html lang="en">
@@ -40,11 +96,33 @@ const label = pageLabel(navigation, Astro.url.pathname);
 		<link rel="icon" href="/favicon.png" type="image/png" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
+		<title>{documentTitle}</title>
+		<meta name="description" content={description} />
+		<link rel="canonical" href={canonical} />
+		<meta name="robots" content={indexable ? 'index, follow' : 'noindex, follow'} />
+		<meta property="og:title" content={documentTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:type" content={path === '/' ? 'website' : 'article'} />
+		<meta property="og:site_name" content={siteName} />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:image" content={image} />
+		<meta property="og:image:width" content={String(ogImageWidth)} />
+		<meta property="og:image:height" content={String(ogImageHeight)} />
+		<meta property="og:image:alt" content={ogImageAlt} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={documentTitle} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={image} />
+		<meta name="twitter:image:width" content={String(ogImageWidth)} />
+		<meta name="twitter:image:height" content={String(ogImageHeight)} />
+		<meta name="twitter:image:alt" content={ogImageAlt} />
+		{indexable && <link rel="alternate" type="text/markdown" href={markdownHref} />}
+		<script type="application/ld+json" set:html={jsonLd} />
 		<Font cssVariable="--font-graphik" preload />
 		<Font cssVariable="--font-geist-mono" />
 	</head>
-	<body>
+	<body data-pagefind-ignore={indexable ? undefined : 'all'}>
 		<div class="frame">
 			<Header />
 			<div class="shell">
@@ -52,11 +130,30 @@ const label = pageLabel(navigation, Astro.url.pathname);
 				<main>
 					<article
 						class="article"
-						data-pagefind-body
-						data-pagefind-meta={sectionName ? `section:${sectionName}` : undefined}
+						data-pagefind-body={indexable ? '' : undefined}
+						data-pagefind-meta={indexable && sectionName ? `section:${sectionName}` : undefined}
 					>
-						<p class="kicker">{label}</p>
-						<h1 data-pagefind-meta={`title, description:${description}`}>{title}</h1>
+						{
+							crumbs.length > 0 && (
+								<nav class="breadcrumb" aria-label="Breadcrumb">
+									<ol>
+										{crumbs.map((crumb, index) => {
+											const current = index === crumbs.length - 1;
+											return (
+												<li>
+													{crumb.href && !current ? (
+														<a href={crumb.href}>{crumb.name}</a>
+													) : (
+														<span aria-current={current ? 'page' : undefined}>{crumb.name}</span>
+													)}
+												</li>
+											);
+										})}
+									</ol>
+								</nav>
+							)
+						}
+						<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
 						<slot />
 					</article>
 				</main>

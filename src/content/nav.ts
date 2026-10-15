@@ -163,13 +163,64 @@ function groupFor(section: NavTab | NavRoot, pathname: string): string | undefin
 	return section.groups.find((group) => listHasPath(group.pages, pathname))?.group;
 }
 
-/** Group name for a page. The section itself uses its tab, and `/` is Home. */
-export function pageLabel(navigation: Navigation, pathname: string): string {
+function dropdownAncestors(section: NavTab | NavRoot, pathname: string): NavDropdown[] {
+	const found: NavDropdown[] = [];
+
+	function walk(pages: NavItem[], stack: NavDropdown[]): boolean {
+		for (const page of pages) {
+			if (typeof page === 'string') {
+				if (pageHref(page) === pathname) {
+					found.push(...stack);
+					return true;
+				}
+				continue;
+			}
+			if (page.page && pageHref(page.page) === pathname) {
+				found.push(...stack);
+				return true;
+			}
+			if (walk(page.pages, [...stack, page])) return true;
+		}
+		return false;
+	}
+
+	for (const group of section.groups) {
+		if (walk(group.pages, [])) return found;
+	}
+	return found;
+}
+
+export type Crumb = {
+	name: string;
+	href?: string;
+};
+
+/** Trail above the title. `/` has none. The last crumb is the current page. */
+export function breadcrumbs(navigation: Navigation, pathname: string, title: string): Crumb[] {
 	const path = normalizePath(pathname);
+	if (path === '/') return [];
+
 	const section = activeTab(navigation, path);
-	const tabName = 'tab' in section ? section.tab : 'Home';
-	if (path === section.path) return tabName;
-	return groupFor(section, path) ?? tabName;
+	const crumbs: Crumb[] = [{ name: 'Home', href: '/' }];
+	if (path === section.path) {
+		crumbs.push({ name: title });
+		return crumbs;
+	}
+
+	if ('tab' in section) crumbs.push({ name: section.tab, href: section.path });
+	if (section.groups.length > 1) {
+		const group = groupFor(section, path);
+		if (group) crumbs.push({ name: group });
+	}
+	for (const dropdown of dropdownAncestors(section, path)) {
+		crumbs.push(
+			dropdown.page
+				? { name: dropdown.dropdown, href: pageHref(dropdown.page) }
+				: { name: dropdown.dropdown },
+		);
+	}
+	crumbs.push({ name: title });
+	return crumbs;
 }
 
 export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string>): void {

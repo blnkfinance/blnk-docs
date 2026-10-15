@@ -11,6 +11,9 @@ const docs = defineCollection({
 	schema: z.object({
 		title: z.string(),
 		description: z.string(),
+		seoTitle: z.string().optional(),
+		metaDescription: z.string().optional(),
+		noindex: z.boolean().optional().default(false),
 	}),
 });
 

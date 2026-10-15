@@ -68,6 +68,8 @@ function face(weight, style, file) {
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://docs.blnkfinance.com',
+	trailingSlash: 'never',
 	integrations: [mdx(), pagefind()],
 	markdown: {
 		processor: unified({
