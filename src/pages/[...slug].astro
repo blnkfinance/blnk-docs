@@ -1,0 +1,26 @@
+---
+import { getCollection, render } from 'astro:content';
+import { assertPagesExist, navigation, pageHref } from '../content/nav';
+import DocsLayout from '../ui/DocsLayout.astro';
+
+export async function getStaticPaths() {
+	const docs = await getCollection('docs');
+	assertPagesExist(
+		navigation,
+		new Set(docs.map((entry) => entry.id)),
+	);
+
+	return docs.map((entry) => ({
+		params: { slug: pageHref(entry.id) === '/' ? undefined : pageHref(entry.id).slice(1) },
+		props: { entry },
+	}));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<DocsLayout title={entry.data.title}>
+	<h1>{entry.data.title}</h1>
+	<Content />
+</DocsLayout>

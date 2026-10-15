@@ -1,0 +1,44 @@
+---
+import { getCollection } from 'astro:content';
+import { navigation, pageHref, type NavGroup } from '../content/nav';
+import Nav from './Nav.astro';
+
+interface Props {
+	groups?: NavGroup[];
+	root?: boolean;
+}
+
+const { groups = navigation.navigation.groups, root = true } = Astro.props;
+const docs = await getCollection('docs');
+const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
+
+---
+
+{
+	root ? (
+		<nav>
+			<Nav groups={groups} root={false} />
+		</nav>
+	) : (
+		<ul>
+			{groups.map((group) => (
+				<li>
+					<p>{group.group}</p>
+					<ul>
+						{group.pages.map((page) =>
+							typeof page === 'string' ? (
+								<li>
+									<a href={pageHref(page)}>{titles.get(page) ?? page}</a>
+								</li>
+							) : (
+								<li>
+									<Nav groups={[page]} root={false} />
+								</li>
+							),
+						)}
+					</ul>
+				</li>
+			))}
+		</ul>
+	)
+}
