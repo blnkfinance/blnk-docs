@@ -5,6 +5,8 @@ import mdx from '@astrojs/mdx';
 const regular = './src/assets/fonts/Graphik-Regular.woff2';
 const italic = './src/assets/fonts/Graphik-RegularItalic.woff2';
 const medium = './src/assets/fonts/Graphik-Medium.woff2';
+const geistRegular = './src/assets/fonts/GeistMono-Regular.woff2';
+const geistMedium = './src/assets/fonts/GeistMono-Medium.woff2';
 
 /**
  * @param {number} weight
@@ -37,6 +39,20 @@ export default defineConfig({
 					face(500, 'normal', medium),
 					face(600, 'normal', medium),
 					face(700, 'normal', medium),
+				],
+			},
+		},
+		{
+			provider: fontProviders.local(),
+			name: 'Geist Mono',
+			cssVariable: '--font-geist-mono',
+			fallbacks: ['monospace'],
+			options: {
+				variants: [
+					face(400, 'normal', geistRegular),
+					face(500, 'normal', geistMedium),
+					face(600, 'normal', geistMedium),
+					face(700, 'normal', geistMedium),
 				],
 			},
 		},
