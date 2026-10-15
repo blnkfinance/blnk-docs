@@ -1,0 +1,59 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+	title?: string;
+	href: string;
+	buttonLabel: string;
+	trackingEvent?: string;
+	buttonTarget?: string;
+	rel?: string;
+}
+
+const { title, href, buttonLabel, trackingEvent, buttonTarget, rel = 'noopener noreferrer' } = Astro.props;
+const external = /^https?:\/\//i.test(href);
+const target = buttonTarget ?? (external ? '_blank' : undefined);
+const linkRel = external ? rel : undefined;
+---
+
+<section class="cta">
+	<div class="cta-layout">
+		{
+			title && (
+				<p class="cta-title">
+					<Icon icon="sparkles" size={14} />
+					{title}
+				</p>
+			)
+		}
+		<div class:list={['cta-body', { 'cta-body-indent': Boolean(title) }]}><slot /></div>
+		<a class="cta-button" href={href} target={target} rel={linkRel} data-docs-cta={trackingEvent}>
+			{buttonLabel}
+			<span aria-hidden="true">→</span>
+		</a>
+	</div>
+</section>
+
+<script>
+	function trackCta(event: Event) {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const link = target.closest('[data-docs-cta]');
+		if (!(link instanceof HTMLAnchorElement)) return;
+		const name = link.dataset.docsCta;
+		if (!name) return;
+		const href = link.href;
+		window.dispatchEvent(new CustomEvent('blnk:docs-cta', { detail: { name, href } }));
+		const view = window as Window & {
+			posthog?: { capture?: (name: string, props: { href: string }) => void };
+			gtag?: (command: string, name: string, props: { cta_href: string }) => void;
+			dataLayer?: Array<Record<string, string>>;
+		};
+		view.posthog?.capture?.(name, { href });
+		view.gtag?.('event', name, { cta_href: href });
+		view.dataLayer = view.dataLayer || [];
+		view.dataLayer.push({ event: name, cta_href: href });
+	}
+
+	document.addEventListener('click', trackCta);
+</script>

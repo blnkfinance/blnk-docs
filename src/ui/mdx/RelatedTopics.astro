@@ -1,0 +1,41 @@
+---
+import Icon from './Icon.astro';
+
+interface Item {
+	title: string;
+	href: string;
+}
+
+interface Props {
+	title?: string;
+	items?: Item[];
+}
+
+const { title = 'Related topics', items = [] } = Astro.props;
+---
+
+{
+	items.length > 0 && (
+		<nav class="related" aria-label={title}>
+			<p class="related-heading">{title}</p>
+			<ul class="related-list">
+				{items.map((item) => {
+					const external = /^https?:\/\//i.test(item.href);
+					return (
+						<li>
+							<a
+								class="related-link"
+								href={item.href}
+								target={external ? '_blank' : undefined}
+								rel={external ? 'noopener noreferrer' : undefined}
+							>
+								<Icon icon="file-text" size={16} />
+								<span>{item.title}</span>
+							</a>
+						</li>
+					);
+				})}
+			</ul>
+		</nav>
+	)
+}

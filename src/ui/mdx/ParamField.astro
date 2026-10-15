@@ -1,0 +1,27 @@
+---
+interface Props {
+	body?: string;
+	query?: string;
+	path?: string;
+	header?: string;
+	type?: string;
+	required?: boolean;
+	default?: string;
+}
+
+const { body, query, path, header, type, required } = Astro.props;
+const fallback = Astro.props.default;
+const name = body ?? query ?? path ?? header ?? '';
+const location = body != null ? 'body' : query != null ? 'query' : path != null ? 'path' : header != null ? 'header' : '';
+---
+
+<div class="field">
+	<p class="field-line">
+		<code class="field-name">{name}</code>
+		{type && <span class="field-type">{type}</span>}
+		{required && <span class="field-required">required</span>}
+		{location && <span class="field-location">{location}</span>}
+	</p>
+	{fallback != null && fallback !== '' && <p class="field-default">Default: <code>{fallback}</code></p>}
+	<div class="field-body"><slot /></div>
+</div>

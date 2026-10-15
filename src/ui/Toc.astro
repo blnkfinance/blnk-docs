@@ -7,24 +7,27 @@ interface Props {
 }
 
 const { headings, markdown } = Astro.props;
+const hasSections = headings.some((heading) => heading.depth === 2);
 const items = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
 const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 ---
 
 <aside class="toc">
 	<div class="toc-body">
-		<nav aria-label="On this page">
-			<ul>
-				{
-					items.map((heading) => (
-						<li data-depth={heading.depth}>
-							<a href={`#${heading.slug}`}>{heading.text}</a>
-						</li>
-					))
-				}
-			</ul>
-		</nav>
-		<div class="copy">
+		{
+			hasSections && (
+				<nav aria-label="On this page">
+					<ul>
+						{items.map((heading) => (
+							<li data-depth={heading.depth}>
+								<a href={`#${heading.slug}`}>{heading.text}</a>
+							</li>
+						))}
+					</ul>
+				</nav>
+			)
+		}
+		<div class:list={['copy', { divided: hasSections }]}>
 			<button type="button" data-copy-page>
 				<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
 					<rect x="5.5" y="5.5" width="8" height="8" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
@@ -35,120 +38,50 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		</div>
 	</div>
 	<script is:inline type="application/json" data-page-markdown set:html={pageJson}></script>
-	<div class="theme" data-theme-root>
-		<button
-			class="theme-button"
-			type="button"
-			aria-haspopup="menu"
-			aria-expanded="false"
-			aria-label="Theme"
-			data-theme-button
-		>
-			<svg class="theme-icon" data-icon="light" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<circle cx="8" cy="8" r="2.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
-				<path
-					d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M3.2 12.8l1.1-1.1M11.7 4.3l1.1-1.1"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"></path>
-			</svg>
-			<svg class="theme-icon" data-icon="dark" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<path
-					d="M10.2 2.2a5.2 5.2 0 1 0 3.6 8.8 4.4 4.4 0 0 1-3.6-8.8Z"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linejoin="round"></path>
-			</svg>
-			<svg class="theme-icon" data-icon="system" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<rect x="2" y="2.5" width="12" height="8.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-				<path d="M6 13.5h4M8 11v2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-			</svg>
-		</button>
-		<div class="theme-menu" role="menu" hidden data-theme-menu>
-			<button type="button" role="menuitemradio" data-theme-value="light" aria-checked="false">
-				Light
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
-			</button>
-			<button type="button" role="menuitemradio" data-theme-value="dark" aria-checked="false">
-				Dark
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
-			</button>
-			<button type="button" role="menuitemradio" data-theme-value="system" aria-checked="false">
-				System
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
-			</button>
-		</div>
-	</div>
 </aside>
 
 <script>
 	const root = document.documentElement;
 	const copyButton = document.querySelector('[data-copy-page]');
 	const copySource = document.querySelector('[data-page-markdown]');
-	const themeRoot = document.querySelector('[data-theme-root]');
-	const themeButton = document.querySelector('[data-theme-button]');
-	const themeMenu = document.querySelector('[data-theme-menu]');
 
-	function appearance(theme) {
-		if (theme === 'dark') return 'dark';
-		if (theme === 'light') return 'light';
-		return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-	}
-
-	function syncThemeUi() {
-		const theme = root.dataset.theme ?? 'system';
-		if (themeButton) themeButton.setAttribute('aria-label', `Theme, ${theme}`);
-		themeMenu?.querySelectorAll('[data-theme-value]').forEach((item) => {
-			item.setAttribute('aria-checked', String(item.dataset.themeValue === theme));
-		});
-	}
-
-	function applyTheme(theme) {
-		root.dataset.theme = theme;
-		root.dataset.appearance = appearance(theme);
-		localStorage.setItem('theme', theme);
-		syncThemeUi();
-	}
-
-	function closeThemeMenu() {
-		if (!(themeMenu instanceof HTMLElement) || themeMenu.hidden) return;
-		themeMenu.hidden = true;
-		themeButton?.setAttribute('aria-expanded', 'false');
-	}
-
-	themeButton?.addEventListener('click', () => {
-		if (!(themeMenu instanceof HTMLElement) || !themeButton) return;
-		const willOpen = themeMenu.hidden;
-		themeMenu.hidden = !willOpen;
-		themeButton.setAttribute('aria-expanded', String(willOpen));
+	const tocLinks = [...document.querySelectorAll('.toc nav a')].flatMap((link) => {
+		if (!(link instanceof HTMLAnchorElement)) return [];
+		const id = decodeURIComponent(link.hash.slice(1));
+		const heading = document.getElementById(id);
+		return heading ? [{ link, heading }] : [];
 	});
 
-	themeMenu?.addEventListener('click', (event) => {
-		const item = event.target instanceof Element ? event.target.closest('[data-theme-value]') : null;
-		if (!(item instanceof HTMLElement) || !item.dataset.themeValue) return;
-		applyTheme(item.dataset.themeValue);
-		closeThemeMenu();
-		themeButton?.focus();
-	});
+	function markCurrentHeading() {
+		const line = 72;
+		let current = null;
+		for (const item of tocLinks) {
+			if (item.heading.getBoundingClientRect().top <= line) current = item;
+		}
+		for (const item of tocLinks) {
+			if (item === current) item.link.setAttribute('aria-current', 'location');
+			else item.link.removeAttribute('aria-current');
+		}
+	}
 
-	document.addEventListener('click', (event) => {
-		if (!(event.target instanceof Node) || themeRoot?.contains(event.target)) return;
-		closeThemeMenu();
-	});
+	function revealHash() {
+		const id = decodeURIComponent(location.hash.slice(1));
+		if (!id) return;
+		const heading = document.getElementById(id);
+		if (!heading) return;
+		const previous = root.style.scrollBehavior;
+		root.style.scrollBehavior = 'auto';
+		heading.scrollIntoView({ block: 'start' });
+		root.style.scrollBehavior = previous;
+		markCurrentHeading();
+	}
 
-	matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-		if (root.dataset.theme === 'system') applyTheme('system');
-	});
+	if (tocLinks.length) {
+		document.addEventListener('scroll', markCurrentHeading, { passive: true });
+	}
 
-	syncThemeUi();
+	revealHash();
+	window.addEventListener('load', revealHash);
 
 	copyButton?.addEventListener('click', async () => {
 		if (!copySource?.textContent) return;
@@ -178,89 +111,7 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		overflow: auto;
 	}
 
-	.theme {
-		position: relative;
-		flex: none;
-		padding: 0.75rem 0 1rem;
-		background: var(--bg);
-	}
-
-	.theme-button {
-		display: grid;
-		place-items: center;
-		width: 2rem;
-		height: 2rem;
-		border: 1px solid var(--line);
-		border-radius: 0.5rem;
-		background: var(--bg);
-		color: var(--fg);
-		cursor: pointer;
-	}
-
-	.theme-icon {
-		display: none;
-	}
-
-	:global(html[data-theme='light']) .theme-icon[data-icon='light'],
-	:global(html[data-theme='dark']) .theme-icon[data-icon='dark'],
-	:global(html[data-theme='system']) .theme-icon[data-icon='system'],
-	:global(html:not([data-theme])) .theme-icon[data-icon='system'] {
-		display: block;
-	}
-
-	.theme-menu {
-		position: absolute;
-		bottom: calc(100% - 0.25rem);
-		left: 0;
-		z-index: 30;
-		min-width: 9.5rem;
-		margin: 0;
-		padding: 0.25rem;
-		border: 1px solid var(--line);
-		border-radius: 0.5rem;
-		background: var(--bg);
-		box-shadow: var(--shadow);
-	}
-
-	.theme-menu[hidden] {
-		display: none;
-	}
-
-	.theme-menu button {
-		display: flex;
-		align-items: center;
-		width: 100%;
-		gap: 0.5rem;
-		padding: 0.4rem 0.55rem;
-		border: 0;
-		border-radius: 0.375rem;
-		background: transparent;
-		color: var(--fg);
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.theme-menu button:hover {
-		background: var(--fill);
-	}
-
-	.check {
-		margin-left: auto;
-		visibility: hidden;
-	}
-
-	.theme-menu button[aria-checked='true'] .check {
-		visibility: visible;
-	}
-
-	.theme-button:focus-visible,
-	.theme-menu button:focus-visible {
-		outline: 2px solid var(--fg);
-		outline-offset: 2px;
-	}
-
-	.copy {
+	.copy.divided {
 		margin-top: 1.25rem;
 		padding-top: 1rem;
 		border-top: 1px solid var(--divider);
@@ -312,5 +163,10 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 
 	a:hover {
 		color: var(--fg);
+	}
+
+	a[aria-current='location'],
+	a[aria-current='location']:hover {
+		color: var(--primary);
 	}
 </style>

@@ -61,11 +61,19 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 			<circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
 			<path d="M10.2 10.2 13.5 13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
 		</svg>
-		<input type="search" placeholder="Search docs" autocomplete="off" spellcheck="false" data-search-input />
+		<input
+			type="search"
+			placeholder="Search docs"
+			autocomplete="off"
+			spellcheck="false"
+			aria-autocomplete="list"
+			aria-controls="search-list"
+			data-search-input
+		/>
 	</div>
 	<div class="search-results" hidden data-search-results>
 		<p class="search-meta" data-search-meta></p>
-		<div data-search-list></div>
+		<div id="search-list" role="listbox" data-search-list></div>
 	</div>
 	<p class="search-empty" hidden data-search-empty>No matching pages.</p>
 </dialog>
@@ -95,6 +103,9 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 	let pagefind = null;
 	let pagefindFailed = false;
 	let request = 0;
+	let active = -1;
+	const recentKey = 'docs-search-recent';
+	const maxResults = 12;
 
 	function escapeHtml(value) {
 		return value.replace(/[&<>"']/g, (char) => {
@@ -108,15 +119,42 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 
 	function highlight(value, terms) {
 		const safe = escapeHtml(value);
-		const pattern = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+		const pattern = terms
+			.map((term) => `${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\p{L}\\p{N}]*`)
+			.join('|');
 		if (!pattern) return safe;
-		return safe.replace(new RegExp(`(${pattern})`, 'gi'), '<mark>$1</mark>');
+		return safe.replace(new RegExp(`(${pattern})`, 'giu'), '<mark>$1</mark>');
 	}
 
 	function resultHref(url) {
 		if (!url) return '/';
 		if (/^https?:/i.test(url)) return url;
-		return url.startsWith('/') ? url : `/${url}`;
+		const hashAt = url.indexOf('#');
+		const path = hashAt === -1 ? url : url.slice(0, hashAt);
+		const hash = hashAt === -1 ? '' : url.slice(hashAt);
+		const normalized = path.startsWith('/') ? path : `/${path}`;
+		return `${normalized}${hash}`;
+	}
+
+	function sameText(left, right) {
+		return left.trim().toLowerCase() === right.trim().toLowerCase();
+	}
+
+	function readRecent() {
+		try {
+			const parsed = JSON.parse(localStorage.getItem(recentKey) || '[]');
+			if (!Array.isArray(parsed)) return [];
+			return parsed
+				.filter((item) => item && typeof item.url === 'string' && typeof item.title === 'string')
+				.slice(0, 5);
+		} catch {
+			return [];
+		}
+	}
+
+	function remember(item) {
+		const next = [item, ...readRecent().filter((saved) => saved.url !== item.url)].slice(0, 5);
+		localStorage.setItem(recentKey, JSON.stringify(next));
 	}
 
 	async function loadPagefind() {
@@ -131,13 +169,135 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		}
 	}
 
-	function snippet(hit, terms) {
-		const title = String(hit.meta?.title ?? '').trim();
-		const plain = String(hit.plain_excerpt ?? '').trim();
-		if (hit.excerpt && plain && plain.toLowerCase() !== title.toLowerCase()) return hit.excerpt;
-		const description = hit.meta?.description;
-		if (typeof description === 'string' && description.trim()) return highlight(description, terms);
+	function excerptHtml(item) {
+		const title = String(item.title ?? '').trim();
+		const plain = String(item.plain_excerpt ?? '').trim();
+		if (item.excerpt && plain && !sameText(plain, title)) return item.excerpt;
+		if (typeof item.description === 'string' && item.description.trim()) return highlight(item.description, item.terms ?? []);
 		return '';
+	}
+
+	function hitLink(item, terms) {
+		const href = resultHref(item.url);
+		const label = item.kicker
+			? `<span class="search-hit-section">${escapeHtml(item.kicker)}</span>`
+			: '';
+		const text = excerptHtml({ ...item, terms });
+		return `<a class="search-hit" role="option" href="${escapeHtml(href)}" data-search-hit data-title="${escapeHtml(item.title)}" data-page-title="${escapeHtml(item.pageTitle)}" data-category="${escapeHtml(item.category || '')}">
+			${label}
+			<span class="search-hit-title">${highlight(item.title, terms)}</span>
+			${text ? `<p>${text}</p>` : ''}
+		</a>`;
+	}
+
+	function groupsFrom(hit) {
+		const pageTitle = String(hit.meta?.title ?? 'Untitled');
+		const category = String(hit.meta?.section ?? '');
+		const description = typeof hit.meta?.description === 'string' ? hit.meta.description : '';
+		const subs = Array.isArray(hit.sub_results) && hit.sub_results.length
+			? hit.sub_results
+			: [{ title: pageTitle, url: hit.url, excerpt: hit.excerpt, plain_excerpt: hit.plain_excerpt }];
+		const sections = subs.filter((sub) => {
+			const url = String(sub.url ?? '');
+			return url.includes('#') && !sameText(String(sub.title ?? ''), pageTitle);
+		});
+		const source = sections.length
+			? sections
+			: [{ title: pageTitle, url: hit.url, excerpt: hit.excerpt, plain_excerpt: hit.plain_excerpt }];
+		const items = source.map((sub) => ({
+			title: String(sub.title ?? pageTitle),
+			url: String(sub.url ?? hit.url),
+			excerpt: sub.excerpt,
+			plain_excerpt: sub.plain_excerpt,
+			description: sections.length ? '' : description,
+			pageTitle,
+			category,
+		}));
+		return { pageTitle, category, items };
+	}
+
+	function renderHits(groups, terms) {
+		if (!list) return;
+		list.innerHTML = groups
+			.map((group) => {
+				const grouped = group.items.some((item) => !sameText(item.title, group.pageTitle));
+				const label = grouped
+					? `<div class="search-group-label"><span>${highlight(group.pageTitle, terms)}</span>${group.category ? `<span class="search-hit-section">${escapeHtml(group.category)}</span>` : ''}</div>`
+					: '';
+				const links = group.items
+					.map((item) =>
+						hitLink(
+							{
+								...item,
+								kicker: grouped ? '' : item.category,
+							},
+							terms,
+						),
+					)
+					.join('');
+				return `<div class="search-group">${label}${links}</div>`;
+			})
+			.join('');
+		setActive(0);
+	}
+
+	function currentHits() {
+		if (!list) return [];
+		return [...list.querySelectorAll('[data-search-hit]')];
+	}
+
+	function setActive(index, scroll = true) {
+		const items = currentHits();
+		if (!(input instanceof HTMLInputElement)) return;
+		if (!items.length) {
+			active = -1;
+			input.removeAttribute('aria-activedescendant');
+			return;
+		}
+		active = (index + items.length) % items.length;
+		items.forEach((item, itemIndex) => {
+			const selected = itemIndex === active;
+			item.toggleAttribute('data-active', selected);
+			item.setAttribute('aria-selected', String(selected));
+			if (selected) {
+				item.id = 'search-hit-active';
+				input.setAttribute('aria-activedescendant', item.id);
+				if (scroll) item.scrollIntoView({ block: 'nearest' });
+			} else {
+				item.removeAttribute('id');
+			}
+		});
+	}
+
+	function showRecent() {
+		if (!results || !list || !meta || !empty) return;
+		const recent = readRecent();
+		if (!recent.length) {
+			results.hidden = true;
+			empty.hidden = true;
+			list.replaceChildren();
+			active = -1;
+			return;
+		}
+		empty.hidden = true;
+		results.hidden = false;
+		meta.textContent = 'Recent';
+		renderHits(
+			recent.map((item) => ({
+				pageTitle: item.pageTitle || item.title,
+				category: item.category || '',
+				items: [
+					{
+						title: item.title,
+						url: item.url,
+						pageTitle: item.pageTitle || item.title,
+						category: item.category || '',
+						kicker: item.title === item.pageTitle ? item.category || '' : item.pageTitle || item.category || '',
+					},
+				],
+			})),
+			[],
+		);
 	}
 
 	async function renderResults(immediate = false) {
@@ -146,9 +306,7 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		const terms = query.split(/\s+/).filter(Boolean);
 		if (!terms.length) {
 			request += 1;
-			results.hidden = true;
-			empty.hidden = true;
-			list.replaceChildren();
+			showRecent();
 			return;
 		}
 		const id = ++request;
@@ -163,32 +321,29 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		}
 		const search = immediate ? await engine.search(query) : await engine.debouncedSearch(query);
 		if (!search || id !== request) return;
-		const hits = await Promise.all(search.results.slice(0, 8).map((result) => result.data()));
+		const pages = await Promise.all(search.results.map((result) => result.data()));
 		if (id !== request) return;
-		if (!hits.length) {
+		const groups = [];
+		let shown = 0;
+		for (const page of pages) {
+			if (shown >= maxResults) break;
+			const group = groupsFrom(page);
+			group.items = group.items.slice(0, maxResults - shown);
+			shown += group.items.length;
+			if (group.items.length) groups.push(group);
+		}
+		if (!shown) {
 			results.hidden = true;
 			list.replaceChildren();
 			empty.textContent = 'No matching pages.';
 			empty.hidden = false;
+			active = -1;
 			return;
 		}
 		empty.hidden = true;
 		results.hidden = false;
-		const total = search.results.length;
-		meta.textContent = total === 1 ? '1 result' : `${total} results`;
-		list.innerHTML = hits
-			.map((hit) => {
-				const section = hit.meta?.section
-					? `<span class="search-hit-section">${highlight(String(hit.meta.section), terms)}</span>`
-					: '';
-				const text = snippet(hit, terms);
-				return `<a class="search-hit" href="${escapeHtml(resultHref(hit.url))}">
-					${section}
-					<span class="search-hit-title">${highlight(String(hit.meta?.title ?? 'Untitled'), terms)}</span>
-					${text ? `<p>${text}</p>` : ''}
-				</a>`;
-			})
-			.join('');
+		meta.textContent = shown === 1 ? '1 result' : `${shown} results`;
+		renderHits(groups, terms);
 	}
 
 	function openSearch() {
@@ -198,6 +353,13 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		input.focus();
 		loadPagefind();
 		if (input.value.trim()) renderResults(true);
+		else showRecent();
+	}
+
+	function typingTarget(target) {
+		if (!(target instanceof HTMLElement)) return false;
+		const tag = target.tagName;
+		return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
 	}
 
 	function closeSearch() {
@@ -210,19 +372,64 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		renderResults(false);
 	});
 
+	list?.addEventListener('click', (event) => {
+		const hit = event.target instanceof Element ? event.target.closest('[data-search-hit]') : null;
+		if (!(hit instanceof HTMLAnchorElement)) return;
+		remember({
+			title: hit.dataset.title || hit.textContent || '',
+			url: hit.getAttribute('href') || '/',
+			pageTitle: hit.dataset.pageTitle || hit.dataset.title || '',
+			category: hit.dataset.category || '',
+		});
+	});
+
+	list?.addEventListener('mouseover', (event) => {
+		const hit = event.target instanceof Element ? event.target.closest('[data-search-hit]') : null;
+		if (!(hit instanceof HTMLElement)) return;
+		const index = currentHits().indexOf(hit);
+		if (index !== -1 && index !== active) setActive(index, false);
+	});
+
 	dialog?.addEventListener('click', (event) => {
 		if (event.target === dialog) closeSearch();
 	});
 
 	document.addEventListener('keydown', (event) => {
+		const searchOpen = dialog instanceof HTMLDialogElement && dialog.open;
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 			event.preventDefault();
-			if (dialog instanceof HTMLDialogElement && dialog.open) closeSearch();
+			if (searchOpen) closeSearch();
 			else openSearch();
+			return;
+		}
+		if (event.key === '/' && !searchOpen && !event.metaKey && !event.ctrlKey && !event.altKey && !typingTarget(event.target)) {
+			event.preventDefault();
+			openSearch();
+			return;
+		}
+		if (!searchOpen) {
+			if (event.key === 'Escape') closeThemeMenu();
+			return;
 		}
 		if (event.key === 'Escape') {
 			closeThemeMenu();
 			closeSearch();
+			return;
+		}
+		const items = currentHits();
+		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (items.length) setActive(active + (event.key === 'ArrowDown' ? 1 : -1));
+			return;
+		}
+		if ((event.key === 'Home' || event.key === 'End') && items.length) {
+			event.preventDefault();
+			setActive(event.key === 'Home' ? 0 : items.length - 1);
+			return;
+		}
+		if (event.key === 'Enter' && items[active] instanceof HTMLAnchorElement) {
+			event.preventDefault();
+			items[active].click();
 		}
 	});
 
@@ -401,8 +608,10 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 
 	.search-dialog {
 		width: min(42rem, calc(100vw - 2rem));
+		max-height: min(70vh, 36rem);
 		margin: 12vh auto auto;
 		padding: 0;
+		overflow: auto;
 		border: 1px solid var(--line);
 		border-radius: 0.75rem;
 		background: var(--bg);
@@ -446,6 +655,23 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		font-size: 12px;
 	}
 
+	:global(.search-group + .search-group) {
+		margin-top: 0.35rem;
+	}
+
+	:global(.search-group-label) {
+		display: flex;
+		align-items: baseline;
+		gap: 0.75rem;
+		padding: 0.45rem 0.7rem 0.1rem;
+		font-weight: 500;
+	}
+
+	:global(.search-group-label .search-hit-section) {
+		margin-left: auto;
+		font-weight: 400;
+	}
+
 	:global(.search-hit) {
 		display: flex;
 		flex-direction: column;
@@ -456,7 +682,8 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		text-decoration: none;
 	}
 
-	:global(.search-hit:hover) {
+	:global(.search-hit:hover),
+	:global(.search-hit[data-active]) {
 		background: var(--fill);
 	}
 

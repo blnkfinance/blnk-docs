@@ -1,9 +1,11 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
-import { currentTab, navigation } from '../content/nav';
+import { currentTab, navigation, pageLabel } from '../content/nav';
 import '../styles/styles.css';
+import '../styles/mdx.css';
 import Header from './Header.astro';
+import CodeBlocks from './mdx/CodeBlocks.astro';
 import Nav from './Nav.astro';
 import Toc from './Toc.astro';
 
@@ -17,6 +19,7 @@ interface Props {
 const { title, description, headings, markdown } = Astro.props;
 const section = currentTab(navigation, Astro.url.pathname);
 const sectionName = section && 'tab' in section ? section.tab : '';
+const label = pageLabel(navigation, Astro.url.pathname);
 ---
 
 <html lang="en">
@@ -52,12 +55,14 @@ const sectionName = section && 'tab' in section ? section.tab : '';
 						data-pagefind-body
 						data-pagefind-meta={sectionName ? `section:${sectionName}` : undefined}
 					>
+						<p class="kicker">{label}</p>
 						<h1 data-pagefind-meta={`title, description:${description}`}>{title}</h1>
 						<slot />
 					</article>
 				</main>
 				<Toc headings={headings} markdown={markdown} />
 			</div>
+			<CodeBlocks />
 		</div>
 	</body>
 </html>

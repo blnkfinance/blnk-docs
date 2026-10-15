@@ -149,6 +149,19 @@ export function activeTab(navigation: Navigation, pathname: string): NavTab | Na
 	return currentTab(navigation, pathname) ?? navigation.navigation.root;
 }
 
+function groupFor(section: NavTab | NavRoot, pathname: string): string | undefined {
+	return section.groups.find((group) => listHasPath(group.pages, pathname))?.group;
+}
+
+/** Group name for a page. The section itself uses its tab, and `/` is Home. */
+export function pageLabel(navigation: Navigation, pathname: string): string {
+	const path = normalizePath(pathname);
+	const section = activeTab(navigation, path);
+	const tabName = 'tab' in section ? section.tab : 'Home';
+	if (path === section.path) return tabName;
+	return groupFor(section, path) ?? tabName;
+}
+
 export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string>): void {
 	const hrefs = new Set([...ids].map((id) => pageHref(id)));
 	const missing = pagePaths(navigation).filter((path) => !ids.has(path));

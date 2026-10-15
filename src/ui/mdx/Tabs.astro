@@ -1,0 +1,44 @@
+<div class="tabs" data-tabs>
+	<slot />
+</div>
+
+<script>
+	function initTabs() {
+		document.querySelectorAll('[data-tabs]').forEach((root) => {
+			if (!(root instanceof HTMLElement) || root.dataset.ready) return;
+			root.dataset.ready = 'true';
+			const panels = [...root.querySelectorAll(':scope > .tab')];
+			if (panels.length === 0) return;
+			const bar = document.createElement('div');
+			bar.className = 'tab-bar';
+			bar.setAttribute('role', 'tablist');
+			panels.forEach((panel, index) => {
+				if (!(panel instanceof HTMLElement)) return;
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'tab-button';
+				button.setAttribute('role', 'tab');
+				const label = panel.querySelector(':scope > .tab-label');
+				if (label) button.append(label);
+				else button.textContent = panel.dataset.title ?? `Tab ${index + 1}`;
+				label?.removeAttribute('hidden');
+				const selected = index === 0;
+				button.setAttribute('aria-selected', selected ? 'true' : 'false');
+				panel.hidden = !selected;
+				button.addEventListener('click', () => {
+					panels.forEach((item, itemIndex) => {
+						if (item instanceof HTMLElement) item.hidden = itemIndex !== index;
+					});
+					bar.querySelectorAll('.tab-button').forEach((item, itemIndex) => {
+						item.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+					});
+				});
+				bar.append(button);
+			});
+			root.prepend(bar);
+		});
+	}
+
+	initTabs();
+	document.addEventListener('astro:page-load', initTabs);
+</script>

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { defineConfig, fontProviders } from 'astro/config';
 import mdx from '@astrojs/mdx';
+import { unified } from '@astrojs/markdown-remark';
+import { fenceMetaTransformer } from './src/content/fence-meta.mjs';
 import { remarkContentImages } from './src/content/remark-content-images.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
@@ -68,7 +70,15 @@ function face(weight, style, file) {
 export default defineConfig({
 	integrations: [mdx(), pagefind()],
 	markdown: {
-		remarkPlugins: [remarkContentImages],
+		processor: unified({
+			remarkPlugins: [remarkContentImages],
+		}),
+		shikiConfig: {
+			langAlias: {
+				text: 'plaintext',
+			},
+			transformers: [fenceMetaTransformer()],
+		},
 	},
 	fonts: [
 		{

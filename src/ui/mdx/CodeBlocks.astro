@@ -1,0 +1,61 @@
+<script>
+	function codeLabel(pre: HTMLElement) {
+		return pre.dataset.title || pre.dataset.language || 'Code';
+	}
+
+	function collapse(pre: HTMLElement) {
+		if (!pre.hasAttribute('data-expandable') || pre.dataset.collapsed) return;
+		pre.dataset.collapsed = 'true';
+		pre.classList.add('is-collapsed');
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'code-expand';
+		button.textContent = 'Show more';
+		button.addEventListener('click', () => {
+			const collapsed = pre.classList.toggle('is-collapsed');
+			button.textContent = collapsed ? 'Show more' : 'Show less';
+		});
+		pre.after(button);
+	}
+
+	function enhanceCodeBlocks() {
+		document.querySelectorAll('[data-code-group]').forEach((group) => {
+			if (!(group instanceof HTMLElement) || group.dataset.ready) return;
+			const pres = [...group.querySelectorAll(':scope > pre')].filter(
+				(node): node is HTMLElement => node instanceof HTMLElement,
+			);
+			if (pres.length === 0) return;
+			group.dataset.ready = 'true';
+			const bar = document.createElement('div');
+			bar.className = 'code-group-bar';
+			bar.setAttribute('role', 'tablist');
+			pres.forEach((pre, index) => {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'code-group-tab';
+				button.setAttribute('role', 'tab');
+				button.textContent = codeLabel(pre);
+				button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+				pre.hidden = index !== 0;
+				button.addEventListener('click', () => {
+					pres.forEach((item, itemIndex) => {
+						item.hidden = itemIndex !== index;
+					});
+					bar.querySelectorAll('.code-group-tab').forEach((item, itemIndex) => {
+						item.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+					});
+				});
+				bar.append(button);
+				collapse(pre);
+			});
+			group.prepend(bar);
+		});
+
+		document.querySelectorAll('pre[data-expandable]').forEach((pre) => {
+			if (pre instanceof HTMLElement && !pre.closest('[data-code-group]')) collapse(pre);
+		});
+	}
+
+	enhanceCodeBlocks();
+	document.addEventListener('astro:page-load', enhanceCodeBlocks);
+</script>
