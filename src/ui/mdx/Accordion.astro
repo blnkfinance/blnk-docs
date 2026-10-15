@@ -13,6 +13,65 @@ const { title, icon } = Astro.props;
 	<summary>
 		{icon && <Icon icon={icon} size={14} />}
 		{title}
+		<span class="accordion-mark" aria-hidden="true"><span></span><span></span></span>
 	</summary>
-	<div class="accordion-body"><slot /></div>
+	<div class="accordion-panel">
+		<div class="accordion-body">
+			<div class="accordion-content"><slot /></div>
+		</div>
+	</div>
 </details>
+
+<script>
+	function bindAccordions() {
+		document.querySelectorAll('.accordion').forEach((details) => {
+			if (!(details instanceof HTMLDetailsElement) || details.dataset.bound) return;
+			details.dataset.bound = 'true';
+			const summary = details.querySelector('summary');
+			const panel = details.querySelector('.accordion-panel');
+			if (!summary || !(panel instanceof HTMLElement)) return;
+			if (details.open) details.classList.add('is-open');
+
+			/** @type {Animation | undefined} */
+			let animation;
+
+			summary.addEventListener('click', (event) => {
+				event.preventDefault();
+				animation?.cancel();
+				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				const opening = !details.open;
+				const content = panel.querySelector('.accordion-content');
+				if (reduce) {
+					details.open = opening;
+					details.classList.toggle('is-open', opening);
+					return;
+				}
+				if (opening) {
+					details.classList.add('is-open');
+					const height = content instanceof HTMLElement ? content.offsetHeight : panel.scrollHeight;
+					details.open = true;
+					animation = panel.animate([{ height: '0px' }, { height: `${height}px` }], {
+						duration: 220,
+						easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+					});
+					animation.onfinish = () => animation?.cancel();
+					return;
+				}
+				details.classList.remove('is-open');
+				const height = panel.getBoundingClientRect().height;
+				animation = panel.animate([{ height: `${height}px` }, { height: '0px' }], {
+					duration: 180,
+					easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+					fill: 'forwards',
+				});
+				animation.onfinish = () => {
+					details.open = false;
+					animation?.cancel();
+				};
+			});
+		});
+	}
+
+	bindAccordions();
+	document.addEventListener('astro:page-load', bindAccordions);
+</script>

@@ -8,5 +8,59 @@ const { title = 'Details' } = Astro.props;
 
 <details class="expandable">
 	<summary>{title}</summary>
-	<div class="expandable-body"><slot /></div>
+	<div class="expandable-panel">
+		<div class="expandable-body">
+			<div class="expandable-content"><slot /></div>
+		</div>
+	</div>
 </details>
+
+<script>
+	function bindExpandables() {
+		document.querySelectorAll('.expandable').forEach((details) => {
+			if (!(details instanceof HTMLDetailsElement) || details.dataset.bound) return;
+			details.dataset.bound = 'true';
+			const summary = details.querySelector('summary');
+			const panel = details.querySelector('.expandable-panel');
+			if (!summary || !(panel instanceof HTMLElement)) return;
+
+			/** @type {Animation | undefined} */
+			let animation;
+
+			summary.addEventListener('click', (event) => {
+				event.preventDefault();
+				animation?.cancel();
+				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				const opening = !details.open;
+				const content = panel.querySelector('.expandable-content');
+				if (reduce) {
+					details.open = opening;
+					return;
+				}
+				if (opening) {
+					const height = content instanceof HTMLElement ? content.offsetHeight : panel.scrollHeight;
+					details.open = true;
+					animation = panel.animate([{ height: '0px' }, { height: `${height}px` }], {
+						duration: 220,
+						easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+					});
+					animation.onfinish = () => animation?.cancel();
+					return;
+				}
+				const height = panel.getBoundingClientRect().height;
+				animation = panel.animate([{ height: `${height}px` }, { height: '0px' }], {
+					duration: 180,
+					easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+					fill: 'forwards',
+				});
+				animation.onfinish = () => {
+					details.open = false;
+					animation?.cancel();
+				};
+			});
+		});
+	}
+
+	bindExpandables();
+	document.addEventListener('astro:page-load', bindExpandables);
+</script>

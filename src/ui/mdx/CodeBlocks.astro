@@ -3,7 +3,7 @@
 		return pre.dataset.title || pre.dataset.language || 'Code';
 	}
 
-	function collapse(pre: HTMLElement) {
+	function collapse(pre: HTMLElement, isHidden: () => boolean = () => pre.hidden) {
 		if (!pre.hasAttribute('data-expandable') || pre.dataset.collapsed) return;
 		pre.dataset.collapsed = 'true';
 		pre.classList.add('is-collapsed');
@@ -16,6 +16,11 @@
 			button.textContent = collapsed ? 'Show more' : 'Show less';
 		});
 		pre.after(button);
+		const sync = () => {
+			button.hidden = isHidden();
+		};
+		sync();
+		return sync;
 	}
 
 	function enhanceCodeBlocks() {
@@ -29,25 +34,104 @@
 			const bar = document.createElement('div');
 			bar.className = 'code-group-bar';
 			bar.setAttribute('role', 'tablist');
+			const stack = document.createElement('div');
+			stack.className = 'code-group-stack';
+			const panels: HTMLElement[] = [];
+			const syncExpand: Array<() => void> = [];
+			const ease = 'cubic-bezier(0.23, 1, 0.32, 1)';
+			let motion: Animation[] = [];
+
+			function stopMotion() {
+				motion.forEach((animation) => {
+					animation.onfinish = null;
+					animation.cancel();
+				});
+				motion = [];
+				panels.forEach((panel) => {
+					panel.style.position = '';
+					panel.style.inset = '';
+					panel.style.opacity = '';
+				});
+				stack.style.height = '';
+			}
+
+			function shownPanel() {
+				return panels.find((panel) => panel.style.position === 'absolute') ?? panels.find((panel) => !panel.hidden);
+			}
+
+			function select(index: number) {
+				const next = panels[index];
+				bar.querySelectorAll('.code-group-tab').forEach((item, itemIndex) => {
+					item.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+				});
+				const incoming = panels.find((panel) => panel.style.position === 'absolute');
+				stopMotion();
+				if (incoming) {
+					panels.forEach((panel) => {
+						panel.hidden = panel !== incoming;
+					});
+				}
+				const current = shownPanel();
+				if (!next || current === next) return;
+				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				if (!current || reduce) {
+					panels.forEach((panel) => {
+						panel.hidden = panel !== next;
+					});
+					syncExpand.forEach((sync) => sync());
+					return;
+				}
+				const from = current.offsetHeight;
+				next.hidden = false;
+				syncExpand.forEach((sync) => sync());
+				const to = next.offsetHeight;
+				next.style.position = 'absolute';
+				next.style.inset = '0 0 auto';
+				next.style.opacity = '0';
+				stack.style.height = `${from}px`;
+				const height = stack.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+					duration: 200,
+					easing: ease,
+					fill: 'forwards',
+				});
+				const fadeOut = current.animate([{ opacity: 1 }, { opacity: 0 }], {
+					duration: 160,
+					easing: ease,
+					fill: 'forwards',
+				});
+				const fadeIn = next.animate([{ opacity: 0 }, { opacity: 1 }], {
+					duration: 200,
+					easing: ease,
+					fill: 'forwards',
+				});
+				motion = [height, fadeOut, fadeIn];
+				fadeIn.onfinish = () => {
+					current.hidden = true;
+					stopMotion();
+					syncExpand.forEach((sync) => sync());
+				};
+			}
+
 			pres.forEach((pre, index) => {
+				const panel = document.createElement('div');
+				panel.className = 'code-group-panel';
+				panel.hidden = index !== 0;
+				pre.replaceWith(panel);
+				panel.append(pre);
+				stack.append(panel);
+				panels.push(panel);
 				const button = document.createElement('button');
 				button.type = 'button';
 				button.className = 'code-group-tab';
 				button.setAttribute('role', 'tab');
 				button.textContent = codeLabel(pre);
 				button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-				pre.hidden = index !== 0;
-				button.addEventListener('click', () => {
-					pres.forEach((item, itemIndex) => {
-						item.hidden = itemIndex !== index;
-					});
-					bar.querySelectorAll('.code-group-tab').forEach((item, itemIndex) => {
-						item.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
-					});
-				});
+				button.addEventListener('click', () => select(index));
 				bar.append(button);
-				collapse(pre);
+				const sync = collapse(pre, () => panel.hidden);
+				if (sync) syncExpand.push(sync);
 			});
+			group.append(stack);
 			group.prepend(bar);
 		});
 

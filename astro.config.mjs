@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { defineConfig, fontProviders } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
+import { codeTheme } from './src/content/code-theme.mjs';
 import { fenceMetaTransformer } from './src/content/fence-meta.mjs';
 import { remarkContentImages } from './src/content/remark-content-images.mjs';
 
@@ -79,6 +80,11 @@ export default defineConfig({
 			langAlias: {
 				text: 'plaintext',
 			},
+			themes: {
+				light: codeTheme('light'),
+				dark: codeTheme('dark'),
+			},
+			defaultColor: false,
 			transformers: [fenceMetaTransformer()],
 		},
 	},
