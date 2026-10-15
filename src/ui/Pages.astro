@@ -1,0 +1,28 @@
+---
+import { pageHref, type NavItem } from '../content/nav';
+import Pages from './Pages.astro';
+
+interface Props {
+	pages: NavItem[];
+	titles: Map<string, string>;
+}
+
+const { pages, titles } = Astro.props;
+---
+
+<ul>
+	{
+		pages.map((page) =>
+			typeof page === 'string' ? (
+				<li>
+					<a href={pageHref(page)}>{titles.get(page) ?? page}</a>
+				</li>
+			) : (
+				<li>
+					<p>{page.dropdown}</p>
+					<Pages pages={page.pages} titles={titles} />
+				</li>
+			),
+		)
+	}
+</ul>
