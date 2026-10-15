@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { absoluteUrl, requireSite } from '../content/seo';
+import { absoluteUrl, requireSite } from '../lib/seo';
 
 export const GET: APIRoute = ({ site }) => {
 	const body = `User-agent: *\nAllow: /\n\nSitemap: ${absoluteUrl('/sitemap.xml', requireSite(site))}\n`;

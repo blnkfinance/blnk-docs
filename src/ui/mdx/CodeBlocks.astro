@@ -28,8 +28,17 @@
 		pre.append(button);
 	}
 
+	const collapsedLines = 12;
+
+	function lineCount(pre: HTMLElement) {
+		const lines = pre.querySelectorAll('.line').length;
+		if (lines > 0) return lines;
+		const text = pre.querySelector('code')?.textContent ?? '';
+		return text ? text.split('\n').length : 0;
+	}
+
 	function collapse(pre: HTMLElement, isHidden: () => boolean = () => pre.hidden) {
-		if (!pre.hasAttribute('data-expandable') || pre.dataset.collapsed) return;
+		if (pre.dataset.collapsed || lineCount(pre) <= collapsedLines) return;
 		pre.dataset.collapsed = 'true';
 		pre.classList.add('is-collapsed');
 		const button = document.createElement('button');
@@ -160,7 +169,7 @@
 			group.prepend(bar);
 		});
 
-		document.querySelectorAll('pre[data-expandable]').forEach((pre) => {
+		document.querySelectorAll('.article pre').forEach((pre) => {
 			if (pre instanceof HTMLElement && !pre.closest('[data-code-group]')) collapse(pre);
 		});
 

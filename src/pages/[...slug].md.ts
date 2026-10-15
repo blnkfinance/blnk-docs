@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { loadIndexablePages } from '../content/seo';
+import { loadIndexablePages } from '../lib/seo';
 
 export async function getStaticPaths() {
 	const pages = await loadIndexablePages();

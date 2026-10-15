@@ -1,5 +1,5 @@
 import { z } from 'astro/zod';
-import docs from './docs.json' with { type: 'json' };
+import docs from '../content/docs.json' with { type: 'json' };
 
 const pagePath = z
 	.string()

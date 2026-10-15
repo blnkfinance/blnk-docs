@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { absoluteUrl, loadIndexablePages, requireSite, xmlEscape } from '../content/seo';
+import { absoluteUrl, loadIndexablePages, requireSite, xmlEscape } from '../lib/seo';
 
 export const GET: APIRoute = async ({ site }) => {
 	const origin = requireSite(site);

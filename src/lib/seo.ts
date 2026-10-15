@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { navigation, pageHref, pagePaths, type NavGroup, type NavItem } from './nav';
+import { navigation, pageHref, pagePaths, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
 export const ogImagePath = '/og.png';

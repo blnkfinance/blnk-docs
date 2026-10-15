@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { llmsDirectory, loadIndexablePages, requireSite } from '../content/seo';
+import { llmsDirectory, loadIndexablePages, requireSite } from '../lib/seo';
 
 export const GET: APIRoute = async ({ site }) => {
 	const pages = await loadIndexablePages();
