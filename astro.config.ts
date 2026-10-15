@@ -1,36 +1,30 @@
-// @ts-check
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { defineConfig, fontProviders } from 'astro/config';
+import type { AstroIntegration } from 'astro';
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
-import { codeTheme } from './src/content/code-theme.mjs';
-import { fenceMetaTransformer } from './src/content/fence-meta.mjs';
-import { remarkContentImages } from './src/content/remark-content-images.mjs';
+import { codeTheme } from './src/lib/code-theme';
+import { fenceMetaTransformer } from './src/lib/fence-meta';
+import { remarkContentImages } from './src/lib/remark-content-images';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
-/**
- * @param {string} command
- * @param {string[]} args
- */
-function run(command, args) {
-	return new Promise((resolve, reject) => {
+function run(command: string, args: string[]) {
+	return new Promise<void>((resolve, reject) => {
 		const child = spawn(command, args, { stdio: 'inherit' });
 		child.on('error', reject);
 		child.on('exit', (code) => {
-			if (code === 0) resolve(undefined);
+			if (code === 0) resolve();
 			else reject(new Error(`${command} exited with ${code}`));
 		});
 	});
 }
 
-/** Index the built site, then copy the bundle so the dev server can serve it.
- * @returns {import('astro').AstroIntegration}
- */
-function pagefind() {
+/** Index the built site, then copy the bundle so the dev server can serve it. */
+function pagefind(): AstroIntegration {
 	return {
 		name: 'pagefind',
 		hooks: {
@@ -52,18 +46,12 @@ const medium = './src/assets/fonts/Graphik-Medium.woff2';
 const geistRegular = './src/assets/fonts/GeistMono-Regular.woff2';
 const geistMedium = './src/assets/fonts/GeistMono-Medium.woff2';
 
-/**
- * @param {number} weight
- * @param {'normal' | 'italic'} style
- * @param {string} file
- * @returns {{ weight: number, style: 'normal' | 'italic', src: [string], display: 'swap' }}
- */
-function face(weight, style, file) {
+function face(weight: number, style: 'normal' | 'italic', file: string) {
 	return {
 		weight,
 		style,
-		src: [file],
-		display: 'swap',
+		src: [file] as [string],
+		display: 'swap' as const,
 	};
 }
 

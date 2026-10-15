@@ -1,8 +1,9 @@
+import type { ThemeRegistration } from 'shiki';
+
 /**
  * Quiet syntax colors. The block background is the page, set in CSS.
- * @param {'light' | 'dark'} type
  */
-export function codeTheme(type) {
+export function codeTheme(type: 'light' | 'dark'): ThemeRegistration {
 	const light = type === 'light';
 	const fg = light ? '#3f3f3f' : '#d8d8d8';
 	const comment = light ? '#8a8a8a' : '#8f8f8f';

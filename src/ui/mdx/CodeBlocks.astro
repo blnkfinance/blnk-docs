@@ -1,6 +1,31 @@
 <script>
+	const copyIcon = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"></rect><path d="M4.5 10.5H3.75A1.25 1.25 0 0 1 2.5 9.25v-5.5A1.25 1.25 0 0 1 3.75 2.5h5.5A1.25 1.25 0 0 1 10.5 3.75V4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>`;
+	const copiedIcon = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
 	function codeLabel(pre: HTMLElement) {
 		return pre.dataset.title || pre.dataset.language || 'Code';
+	}
+
+	function addCopy(pre: HTMLElement) {
+		if (pre.querySelector('.code-copy')) return;
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'code-copy';
+		button.setAttribute('aria-label', 'Copy code');
+		button.innerHTML = copyIcon;
+		let reset = 0;
+		button.addEventListener('click', async () => {
+			const code = pre.querySelector('code');
+			await navigator.clipboard.writeText(code?.textContent ?? '');
+			button.setAttribute('aria-label', 'Copied');
+			button.innerHTML = copiedIcon;
+			window.clearTimeout(reset);
+			reset = window.setTimeout(() => {
+				button.setAttribute('aria-label', 'Copy code');
+				button.innerHTML = copyIcon;
+			}, 2000);
+		});
+		pre.append(button);
 	}
 
 	function collapse(pre: HTMLElement, isHidden: () => boolean = () => pre.hidden) {
@@ -137,6 +162,10 @@
 
 		document.querySelectorAll('pre[data-expandable]').forEach((pre) => {
 			if (pre instanceof HTMLElement && !pre.closest('[data-code-group]')) collapse(pre);
+		});
+
+		document.querySelectorAll('.article pre').forEach((pre) => {
+			if (pre instanceof HTMLElement) addCopy(pre);
 		});
 	}
 

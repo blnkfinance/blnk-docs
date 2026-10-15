@@ -1,19 +1,27 @@
+import type { Element, Properties } from 'hast';
+import type { ShikiTransformer } from 'shiki';
+
+type FenceMeta = {
+	title: string;
+	wrap: boolean;
+	expandable: boolean;
+	icon?: string;
+	highlight: Set<number>;
+	focus: Set<number>;
+};
+
 /**
  * Fence info after the language.
  * `cURL wrap`, `200 OK wrap expandable highlight={2} focus={2,4-5}`,
  * `200 Success icon="circle-check"`.
- * @param {string} meta
  */
-export function parseFenceMeta(meta) {
+export function parseFenceMeta(meta: string): FenceMeta {
 	const tokens = meta.match(/icon="[^"]*"|[^\s]+/g) ?? [];
 	let wrap = false;
 	let expandable = false;
-	/** @type {string | undefined} */
-	let icon;
-	/** @type {Set<number>} */
-	const highlight = new Set();
-	/** @type {Set<number>} */
-	const focus = new Set();
+	let icon: string | undefined;
+	const highlight = new Set<number>();
+	const focus = new Set<number>();
 	const title = [];
 	for (const token of tokens) {
 		if (token === 'wrap') wrap = true;
@@ -27,12 +35,8 @@ export function parseFenceMeta(meta) {
 	return { title: title.join(' '), wrap, expandable, icon, highlight, focus };
 }
 
-/**
- * `2`, `{2,4-6}`, or `2,4-6`.
- * @param {Set<number>} set
- * @param {string} raw
- */
-function addLines(set, raw) {
+/** `2`, `{2,4-6}`, or `2,4-6`. */
+function addLines(set: Set<number>, raw: string) {
 	const value = raw.replace(/^\{|\}$/g, '');
 	for (const part of value.split(',')) {
 		const piece = part.trim();
@@ -44,40 +48,35 @@ function addLines(set, raw) {
 	}
 }
 
-/**
- * @param {{ options: { meta?: string | { __raw?: string } } }} transformer
- */
-function metaOf(transformer) {
-	const meta = transformer.options.meta;
+function metaOf(context: { options: { meta?: string | { __raw?: string } } }) {
+	const meta = context.options.meta;
 	const raw = typeof meta === 'string' ? meta : (meta?.__raw ?? '');
 	return parseFenceMeta(raw);
 }
 
+function props(node: Element): Properties {
+	return (node.properties ??= {});
+}
+
 /** Shiki transformer. The first fence word stays the language. */
-export function fenceMetaTransformer() {
+export function fenceMetaTransformer(): ShikiTransformer {
 	return {
 		name: 'mintlify-fence-meta',
 		pre(node) {
 			const parsed = metaOf(this);
-			const properties = node.properties ?? {};
+			const properties = props(node);
 			if (parsed.title) properties['data-title'] = parsed.title;
 			else if (this.options.lang) properties['data-language'] = this.options.lang;
 			if (parsed.wrap) properties['data-wrap'] = '';
 			if (parsed.expandable) properties['data-expandable'] = '';
 			if (parsed.icon) properties['data-icon'] = parsed.icon;
 			if (parsed.focus.size) properties['data-focus'] = '';
-			node.properties = properties;
 		},
-		/**
-		 * @param {import('hast').Element} node
-		 * @param {number} line
-		 */
 		line(node, line) {
 			const parsed = metaOf(this);
-			const properties = node.properties ?? {};
+			const properties = props(node);
 			if (parsed.highlight.has(line)) properties['data-highlight'] = '';
 			if (parsed.focus.has(line)) properties['data-focus'] = '';
-			node.properties = properties;
 		},
 	};
 }

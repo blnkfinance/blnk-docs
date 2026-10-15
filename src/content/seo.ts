@@ -10,7 +10,7 @@ export const ogImageHeight = 339;
 const llmsIntro = 'Developer documentation for the Blnk ledger.';
 
 export function requireSite(site: URL | undefined): URL {
-	if (!site) throw new Error('Set site in astro.config.mjs');
+	if (!site) throw new Error('Set site in astro.config.ts');
 	return site;
 }
 

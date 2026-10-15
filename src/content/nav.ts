@@ -76,13 +76,13 @@ export type Navigation = z.infer<typeof navigationSchema>;
 const oklch = z.string().regex(/^oklch\(\s*(?:0|1|0?\.\d{1,3})\s+(?:0|0?\.\d{1,3})\s+(?:0|[1-9]\d{0,2}(?:\.\d{1,3})?)\s*\)$/);
 
 const palette = z.strictObject({
-	primary: oklch,
-	text: oklch,
-	muted: oklch,
-	background: oklch,
-	divider: oklch,
-	line: oklch,
-	fill: oklch,
+	pageBackground: oklch,
+	bodyText: oklch,
+	secondaryText: oklch,
+	brandAccent: oklch,
+	layoutDivider: oklch,
+	contentBorder: oklch,
+	surfaceFill: oklch,
 });
 
 const docsSchema = z.strictObject({
