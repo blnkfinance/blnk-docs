@@ -1,7 +1,7 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
-import { breadcrumbs, currentTab, navigation, type Crumb } from '../content/nav';
+import { breadcrumbs, currentTab, navigation, pageLabel, type Crumb } from '../content/nav';
 import {
 	absoluteUrl,
 	canonicalPath,
@@ -27,9 +27,11 @@ interface Props {
 	indexable: boolean;
 	headings: MarkdownHeading[];
 	markdown: string;
+	lede?: string;
 }
 
-const { title, documentTitle, description, indexable, headings, markdown } = Astro.props;
+const { title, documentTitle, description, indexable, headings, markdown, lede } = Astro.props;
+const pageDescription = lede?.trim();
 const site = requireSite(Astro.site);
 const path = canonicalPath(Astro.url.pathname);
 const canonical = absoluteUrl(path, site);
@@ -37,6 +39,7 @@ const image = absoluteUrl(ogImagePath, site);
 const section = currentTab(navigation, path);
 const sectionName = section && 'tab' in section ? section.tab : '';
 const crumbs = breadcrumbs(navigation, path, title);
+const label = pageLabel(navigation, path);
 const markdownHref = absoluteUrl(markdownPath(path), site);
 const jsonLd = structuredData({ title: documentTitle, description, canonical, image, crumbs });
 
@@ -133,27 +136,9 @@ function structuredData(page: {
 						data-pagefind-body={indexable ? '' : undefined}
 						data-pagefind-meta={indexable && sectionName ? `section:${sectionName}` : undefined}
 					>
-						{
-							crumbs.length > 0 && (
-								<nav class="breadcrumb" aria-label="Breadcrumb">
-									<ol>
-										{crumbs.map((crumb, index) => {
-											const current = index === crumbs.length - 1;
-											return (
-												<li>
-													{crumb.href && !current ? (
-														<a href={crumb.href}>{crumb.name}</a>
-													) : (
-														<span aria-current={current ? 'page' : undefined}>{crumb.name}</span>
-													)}
-												</li>
-											);
-										})}
-									</ol>
-								</nav>
-							)
-						}
+						{label && <p class="page-label">{label}</p>}
 						<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
+						{pageDescription && <p class="page-description">{pageDescription}</p>}
 						<slot />
 					</article>
 				</main>

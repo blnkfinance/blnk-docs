@@ -134,15 +134,65 @@ const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
 	syncThemeUi();
 
 	const sidebar = document.querySelector('.sidebar');
+	const navEase = 'cubic-bezier(0.23, 1, 0.32, 1)';
+	/** @type {WeakMap<HTMLElement, Animation>} */
+	const navAnimations = new WeakMap();
+
+	/**
+	 * @param {HTMLButtonElement} button
+	 * @param {HTMLElement} panel
+	 */
+	function toggleNav(button, panel) {
+		const open = button.getAttribute('aria-expanded') !== 'true';
+		button.setAttribute('aria-expanded', String(open));
+		const from = panel.getBoundingClientRect().height;
+		const running = navAnimations.get(panel);
+		if (running) {
+			running.onfinish = null;
+			running.cancel();
+		}
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			panel.hidden = !open;
+			panel.style.height = '';
+			return;
+		}
+		if (open) {
+			panel.hidden = false;
+			panel.style.height = '';
+			const height = panel.offsetHeight;
+			panel.style.height = `${from}px`;
+			const animation = panel.animate([{ height: `${from}px` }, { height: `${height}px` }], {
+				duration: 220,
+				easing: navEase,
+			});
+			navAnimations.set(panel, animation);
+			animation.onfinish = () => {
+				panel.style.height = '';
+				animation.cancel();
+			};
+			return;
+		}
+		panel.style.height = `${from}px`;
+		const animation = panel.animate([{ height: `${from}px` }, { height: '0px' }], {
+			duration: 180,
+			easing: navEase,
+			fill: 'forwards',
+		});
+		navAnimations.set(panel, animation);
+		animation.onfinish = () => {
+			panel.hidden = true;
+			panel.style.height = '';
+			animation.cancel();
+		};
+	}
+
 	sidebar?.addEventListener('click', (event) => {
 		const button = event.target instanceof Element ? event.target.closest('[data-nav-toggle]') : null;
 		if (!(button instanceof HTMLButtonElement)) return;
 		const panelId = button.getAttribute('aria-controls');
 		const panel = panelId ? document.getElementById(panelId) : null;
 		if (!(panel instanceof HTMLElement)) return;
-		const open = button.getAttribute('aria-expanded') !== 'true';
-		button.setAttribute('aria-expanded', String(open));
-		panel.hidden = !open;
+		toggleNav(button, panel);
 	});
 </script>
 

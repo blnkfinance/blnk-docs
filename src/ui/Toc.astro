@@ -9,6 +9,17 @@ interface Props {
 const { headings, markdown } = Astro.props;
 const hasSections = headings.some((heading) => heading.depth === 2);
 const items = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+
+type TocGroup = { heading: MarkdownHeading; children: MarkdownHeading[] };
+const groups: TocGroup[] = [];
+for (const heading of items) {
+	if (heading.depth === 3 && groups.length > 0) {
+		groups[groups.length - 1].children.push(heading);
+		continue;
+	}
+	groups.push({ heading, children: [] });
+}
+
 const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 ---
 
@@ -18,9 +29,18 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 			hasSections && (
 				<nav aria-label="On this page">
 					<ul>
-						{items.map((heading) => (
-							<li data-depth={heading.depth}>
-								<a href={`#${heading.slug}`}>{heading.text}</a>
+						{groups.map((group) => (
+							<li>
+								<a href={`#${group.heading.slug}`}>{group.heading.text}</a>
+								{group.children.length > 0 && (
+									<ul>
+										{group.children.map((heading) => (
+											<li>
+												<a href={`#${heading.slug}`}>{heading.text}</a>
+											</li>
+										))}
+									</ul>
+								)}
 							</li>
 						))}
 					</ul>
@@ -157,8 +177,10 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		margin-top: 0.4rem;
 	}
 
-	li[data-depth='3'] {
+	ul ul {
+		margin-top: 0.4rem;
 		padding-left: 0.75rem;
+		border-left: 1px solid var(--line);
 	}
 
 	a {

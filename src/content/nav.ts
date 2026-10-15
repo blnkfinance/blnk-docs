@@ -195,7 +195,14 @@ export type Crumb = {
 	href?: string;
 };
 
-/** Trail above the title. `/` has none. The last crumb is the current page. */
+/** Group name above the title. Home and pages outside the nav have none. */
+export function pageLabel(navigation: Navigation, pathname: string): string | undefined {
+	const path = normalizePath(pathname);
+	if (path === '/') return undefined;
+	return groupFor(activeTab(navigation, path), path);
+}
+
+/** Trail for structured data. `/` has none. The last crumb is the current page. */
 export function breadcrumbs(navigation: Navigation, pathname: string, title: string): Crumb[] {
 	const path = normalizePath(pathname);
 	if (path === '/') return [];

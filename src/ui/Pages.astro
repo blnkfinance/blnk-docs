@@ -18,6 +18,10 @@ function contains(item: NavItem): boolean {
 	if (item.page && matchesPage(item.page, pathname)) return true;
 	return item.pages.some((child) => contains(child));
 }
+
+function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
+	return item.pages.some((child) => contains(child));
+}
 ---
 
 <ul class="nav-pages" id={id} hidden={open === false ? true : undefined}>
@@ -37,53 +41,20 @@ function contains(item: NavItem): boolean {
 			const panelId = `${idPrefix}-${index}`;
 			const expanded = contains(page);
 			const label = page.dropdown;
-			const current = page.page ? matchesPage(page.page, pathname) : false;
+			const current = childSelected(page);
 
 			return (
 				<li>
-					{page.page ? (
-						<div class="nav-item">
-							<a href={pageHref(page.page)} aria-current={current ? 'page' : undefined}>
-								<span class="nav-text">{label}</span>
-							</a>
-							<button
-								type="button"
-								data-nav-toggle
-								aria-expanded={String(expanded)}
-								aria-controls={panelId}
-								aria-label={`Toggle ${label}`}
-							>
-								<svg class="nav-chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-									<path
-										d="M6 4.25 9.75 8 6 11.75"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="1.5"
-										stroke-linecap="round"
-										stroke-linejoin="round"></path>
-								</svg>
-							</button>
-						</div>
-					) : (
-						<button
-							class="nav-item"
-							type="button"
-							data-nav-toggle
-							aria-expanded={String(expanded)}
-							aria-controls={panelId}
-						>
-							<span class="nav-text">{label}</span>
-							<svg class="nav-chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-								<path
-									d="M6 4.25 9.75 8 6 11.75"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.5"
-									stroke-linecap="round"
-									stroke-linejoin="round"></path>
-							</svg>
-						</button>
-					)}
+					<button
+						class:list={['nav-item', { 'is-current': current }]}
+						type="button"
+						data-nav-toggle
+						aria-expanded={String(expanded)}
+						aria-controls={panelId}
+					>
+						<span class="nav-text">{label}</span>
+						<span class="nav-mark" aria-hidden="true"><span></span><span></span></span>
+					</button>
 					<Pages
 						pages={page.pages}
 						titles={titles}
