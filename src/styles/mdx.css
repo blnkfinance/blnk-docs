@@ -42,6 +42,7 @@
 .callout {
 	margin: 0 0 1rem;
 	padding: 0.85rem 1rem;
+	font-size: 14px;
 	border: 1px solid var(--callout-line);
 	border-left-width: 3px;
 	border-left-color: var(--callout);
@@ -130,7 +131,7 @@ html[data-appearance='dark'] .callout-check {
 	display: flex;
 	align-items: center;
 	gap: 0.4rem;
-	margin: 0 0 0.35rem;
+	margin: 0 0 15px;
 	color: var(--callout);
 	font-size: 13px;
 	font-weight: 500;
@@ -142,7 +143,7 @@ html[data-appearance='dark'] .callout-check {
 
 .steps {
 	counter-reset: step;
-	margin: 0 0 1rem;
+	margin: 32px 0;
 }
 
 .step {
@@ -153,8 +154,14 @@ html[data-appearance='dark'] .callout-check {
 	margin: 0 0 2rem;
 }
 
+.step-index {
+	position: relative;
+}
+
 .step-index::before {
 	content: counter(step);
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -165,6 +172,18 @@ html[data-appearance='dark'] .callout-check {
 	color: var(--fg);
 	font-size: 12px;
 	font-weight: 500;
+}
+
+.step:not(:last-child) .step-index::after {
+	content: '';
+	position: absolute;
+	z-index: 0;
+	top: 1.5rem;
+	bottom: -2rem;
+	left: 50%;
+	width: 1px;
+	background: var(--line);
+	transform: translateX(-50%);
 }
 
 .step-title {
@@ -276,24 +295,25 @@ a.card:focus-visible {
 	outline-offset: 2px;
 }
 
-.article .tabs,
+.article .tabs {
+	margin: 0 0 1rem;
+}
+
 .code-group {
 	margin: 0 0 1rem;
 	border: 1px solid var(--line);
 	border-radius: 0.5rem;
 	overflow: hidden;
+	background: var(--code-bg);
 }
 
 .tab-bar {
 	display: flex;
-	gap: 0.25rem;
-	padding: 0.35rem;
+	align-items: stretch;
+	gap: 1.5rem;
+	padding: 0;
 	border-bottom: 1px solid var(--line);
-	background: var(--fill);
-}
-
-.code-group {
-	background: var(--bg);
+	background: none;
 }
 
 .code-group-bar {
@@ -301,33 +321,66 @@ a.card:focus-visible {
 	gap: 0.15rem;
 	padding: 0 0.35rem;
 	border-bottom: 1px solid var(--line);
-	background: var(--bg);
+	background: var(--code-heading);
 }
 
-.tab-button,
+.tab-button {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	height: 40px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	color: var(--muted);
+	font-family: var(--font-graphik);
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.tab-button:hover,
+.tab-button[aria-selected='true'],
+.tab-button[aria-selected='true']:hover {
+	background: none;
+	color: var(--primary);
+}
+
+.tab-button[aria-selected='true']::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -1px;
+	height: 2px;
+	background: var(--primary);
+}
+
+.tab-button:focus-visible {
+	outline: 2px solid var(--fg);
+	outline-offset: 2px;
+}
+
 .code-group-tab,
 .code-expand {
 	border: 0;
 	border-radius: 0.35rem;
 	background: transparent;
 	color: var(--muted);
-	font: inherit;
+	font-family: var(--font-graphik);
 	font-size: 13px;
 	cursor: pointer;
 	transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
-.tab-button,
 .code-group-tab {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.35rem;
 	padding: 0.25rem 0.55rem;
-}
-
-.tab-button[aria-selected='true'] {
-	background: var(--bg);
-	color: var(--fg);
+	font-weight: 500;
 }
 
 .code-group-tab {
@@ -340,7 +393,7 @@ a.card:focus-visible {
 .code-group-tab[aria-selected='true'],
 .code-group-tab[aria-selected='true']:hover {
 	background: transparent;
-	color: var(--primary);
+	color: var(--fg);
 	box-shadow: inset 0 -2px 0 var(--primary);
 }
 
@@ -359,7 +412,7 @@ a.card:focus-visible {
 }
 
 .tab-panel {
-	padding: 0.85rem 1rem 0.25rem;
+	padding: 1rem 0 0;
 }
 
 .tab-panel > :last-child,
@@ -436,7 +489,6 @@ a.card:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.tab-button:hover,
 	.code-group-tab:hover:not([aria-selected='true']),
 	.code-expand:hover {
 		color: var(--fg);
@@ -453,13 +505,15 @@ a.card:focus-visible {
 		transition: transform 180ms var(--ease-out);
 	}
 
-	.tab-button,
+	.tab-button {
+		transition: color 150ms ease;
+	}
+
 	.code-group-tab,
 	.code-expand {
 		transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 160ms var(--ease-out);
 	}
 
-	.tab-button:active,
 	.code-group-tab:active,
 	.code-expand:active {
 		transform: scale(0.97);
@@ -648,9 +702,11 @@ html[data-appearance='dark'] .field-required {
 .example .code-title {
 	padding: 0.5rem 0.9rem;
 	border-bottom: 1px solid var(--line);
-	background: var(--bg);
+	background: var(--code-heading);
 	color: var(--fg);
+	font-family: var(--font-graphik);
 	font-size: 13px;
+	font-weight: 500;
 	line-height: 1.4;
 }
 
@@ -658,7 +714,7 @@ html[data-appearance='dark'] .field-required {
 	border: 1px solid var(--line);
 	border-radius: 0.5rem;
 	overflow: hidden;
-	background: var(--bg);
+	background: var(--code-bg);
 }
 
 .example .code-frame pre {
@@ -678,24 +734,117 @@ html[data-appearance='dark'] .field-required {
 	border-radius: 0;
 }
 
-.media-frame {
-	margin: 0 0 1rem;
-	padding: 0.75rem;
-	border: 1px solid var(--line);
-	border-radius: 0.5rem;
-	background: var(--fill);
+.example .code-frame + .code-frame {
+	margin-top: 1rem;
 }
 
-.media-frame img {
+.media-frame,
+.article :not(.icon) > img {
 	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	margin: 24px 0;
+	border-radius: 6px;
+	background: var(--fill);
+	overflow: hidden;
+}
+
+.article :not(.icon) > img {
+	height: auto;
+}
+
+.article .media-frame p {
+	margin: 0;
+}
+
+.article .media-frame img {
+	display: block;
+	width: 100%;
 	max-width: 100%;
 	height: auto;
+	margin: 0;
+	border-radius: 0;
+	background: transparent;
 }
 
 .media-frame figcaption {
 	margin-top: 0.5rem;
 	color: var(--muted);
 	font-size: 13px;
+}
+
+.map {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 24px 0;
+}
+
+.map-canvas {
+	position: relative;
+	align-self: stretch;
+}
+
+.map-canvas iframe {
+	display: block;
+	width: 100%;
+	height: 32rem;
+	border: 1px solid var(--line);
+	border-radius: 0.5rem;
+	pointer-events: none;
+}
+
+.map-canvas::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 0.5rem;
+}
+
+.article a.map-open .icon {
+	margin-inline-end: 0;
+}
+
+.article a.map-open {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 40px;
+	padding: 0 12px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--fill);
+	color: var(--fg);
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1;
+	text-decoration: none;
+}
+
+.article a.map-open:hover {
+	background: var(--divider);
+	text-decoration: none;
+}
+
+.video {
+	position: relative;
+	width: 100%;
+	margin: 0 0 1rem;
+	aspect-ratio: 16 / 9;
+	border-radius: 6px;
+	overflow: hidden;
+	background: var(--fill);
+}
+
+.video iframe {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
 }
 
 .update {
@@ -849,13 +998,42 @@ html[data-appearance='dark'] .field-required {
 	fill: var(--schema-edge);
 }
 
+.article .code-frame {
+	margin: 0 0 1rem;
+	border: 1px solid var(--line);
+	border-radius: 0.5rem;
+	overflow: hidden;
+	background: var(--code-bg);
+}
+
+.article .code-frame .code-title {
+	padding: 0.5rem 0.9rem;
+	border-bottom: 1px solid var(--line);
+	background: var(--code-heading);
+	color: var(--fg);
+	font-family: var(--font-graphik);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.article .code-frame pre {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+}
+
+.example .code-frame {
+	margin: 0;
+}
+
 .article pre {
 	--code-line: 1.5em;
 	position: relative;
 	padding: 0.75rem 0;
 	border: 1px solid var(--line);
 	border-radius: 0.5rem;
-	background: var(--bg) !important;
+	background: var(--code-bg) !important;
 	color: var(--shiki-light);
 	tab-size: 2;
 }
@@ -872,7 +1050,7 @@ html[data-appearance='dark'] .field-required {
 	padding: 0;
 	border: 0;
 	border-radius: 0.35rem;
-	background: var(--bg);
+	background: var(--code-bg);
 	color: var(--muted);
 	cursor: pointer;
 }
@@ -940,12 +1118,23 @@ html[data-appearance='dark'] .article pre span {
 	margin-bottom: 0;
 }
 
+.article .code-frame pre.is-collapsed {
+	border-radius: 0;
+}
+
+.article .code-frame pre.is-collapsed + .code-expand {
+	margin: 0;
+	border: 0;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+}
+
 .article pre.is-collapsed + .code-expand {
 	margin: 0 0 1rem;
 	border: 1px solid var(--line);
 	border-top: 0;
 	border-radius: 0 0 0.5rem 0.5rem;
-	background: var(--bg);
+	background: var(--code-bg);
 }
 
 .code-group pre {

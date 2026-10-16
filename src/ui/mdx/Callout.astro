@@ -8,6 +8,14 @@ interface Props {
 
 const { tone, label } = Astro.props;
 
+const defaults = {
+	note: 'Note',
+	info: 'Info',
+	tip: 'Tip',
+	warning: 'Warning',
+	check: 'Check',
+} as const;
+
 const icons = {
 	note: 'information',
 	info: 'information',
@@ -15,14 +23,19 @@ const icons = {
 	warning: 'alert',
 	check: 'check-circle',
 } as const;
+
+const heading = (label ?? defaults[tone]).trim();
+const showLabel = heading.length > 0;
 ---
 
-<aside class:list={['callout', `callout-${tone}`]}>
-	{label && (
-		<p class="callout-label">
-			<Icon icon={icons[tone]} size={14} />
-			{label}
-		</p>
-	)}
+<aside class:list={['callout', `callout-${tone}`, showLabel && 'has-label']}>
+	{
+		showLabel && (
+			<p class="callout-label">
+				<Icon icon={icons[tone]} size={14} />
+				<span>{heading}</span>
+			</p>
+		)
+	}
 	<div class="callout-body"><slot /></div>
 </aside>

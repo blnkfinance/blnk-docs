@@ -4,7 +4,7 @@ import docs from '../content/docs.json' with { type: 'json' };
 const pagePath = z
 	.string()
 	.regex(
-		/^[a-z0-9]+(?:\/[a-z0-9]+)*$/,
+		/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/,
 		'Page paths are relative to src/content, without an extension',
 	);
 
@@ -92,7 +92,7 @@ const navGroup = z.strictObject({
 
 const tabPath = z
 	.string()
-	.regex(/^\/(?:[a-z0-9]+(?:\/[a-z0-9]+)*)?$/, 'Tab paths are site paths, such as / or /reference');
+	.regex(/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)?$/, 'Tab paths are site paths, such as / or /reference');
 
 const navMenuItem = z.strictObject({
 	label: z.string().min(1),

@@ -45,6 +45,7 @@
 	}
 
 	const collapsedLines = 12;
+	const ease = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
 	function lineCount(pre: HTMLElement) {
 		const lines = pre.querySelectorAll('.line').length;
@@ -61,9 +62,42 @@
 		button.type = 'button';
 		button.className = 'code-expand';
 		button.textContent = 'Show more';
+		let animation: Animation | undefined;
+
+		function release() {
+			pre.style.height = '';
+			pre.style.maxHeight = '';
+			pre.style.overflow = '';
+			pre.style.boxSizing = '';
+		}
+
 		button.addEventListener('click', () => {
-			const collapsed = pre.classList.toggle('is-collapsed');
-			button.textContent = collapsed ? 'Show more' : 'Show less';
+			const from = pre.getBoundingClientRect().height;
+			if (animation) {
+				animation.onfinish = null;
+				animation.cancel();
+			}
+			release();
+			const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+			const opening = pre.classList.contains('is-collapsed');
+			pre.classList.toggle('is-collapsed', !opening);
+			button.textContent = opening ? 'Show less' : 'Show more';
+			if (reduce) return;
+			const to = pre.offsetHeight;
+			pre.style.boxSizing = 'border-box';
+			pre.style.overflow = 'hidden';
+			pre.style.maxHeight = 'none';
+			pre.style.height = `${from}px`;
+			animation = pre.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+				duration: opening ? 220 : 180,
+				easing: ease,
+				fill: 'forwards',
+			});
+			animation.onfinish = () => {
+				release();
+				animation?.cancel();
+				animation = undefined;
+			};
 		});
 		pre.after(button);
 		const sync = () => {
@@ -88,7 +122,6 @@
 			stack.className = 'code-group-stack';
 			const panels: HTMLElement[] = [];
 			const syncExpand: Array<() => void> = [];
-			const ease = 'cubic-bezier(0.23, 1, 0.32, 1)';
 			let motion: Animation[] = [];
 
 			function stopMotion() {
@@ -187,7 +220,7 @@
 
 		document.querySelectorAll('.article pre').forEach((pre) => {
 			if (!(pre instanceof HTMLElement) || pre.closest('[data-code-group]')) return;
-			if (pre.closest('.example')) addTitle(pre);
+			if (pre.closest('.example') || pre.dataset.title) addTitle(pre);
 			collapse(pre);
 		});
 

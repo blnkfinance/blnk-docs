@@ -6,6 +6,8 @@ import Pages from './Pages.astro';
 interface Props {
 	pages: NavItem[];
 	titles: Map<string, string>;
+	/** Frontmatter `icon` on each page. Direct children of a group use it. Nested pages do not. */
+	pageIcons: Map<string, string>;
 	methods: Map<string, string>;
 	pathname: string;
 	idPrefix: string;
@@ -15,7 +17,7 @@ interface Props {
 	nested?: boolean;
 }
 
-const { pages, titles, methods, pathname, idPrefix, id, open, nested = false } = Astro.props;
+const { pages, titles, pageIcons, methods, pathname, idPrefix, id, open, nested = false } = Astro.props;
 
 function contains(item: NavItem): boolean {
 	const path = itemPath(item);
@@ -27,10 +29,12 @@ function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
 	return item.pages.some((child) => contains(child));
 }
 
-/** Top-level links and top-level dropdowns. Nested rows stay plain. */
+/** Page rows use frontmatter. A dropdown uses its own nav icon. Nested rows stay plain. */
 function iconName(item: NavItem): string | undefined {
-	if (nested || typeof item === 'string') return undefined;
-	return item.icon;
+	if (nested) return undefined;
+	if (isDropdown(item)) return item.icon;
+	const path = itemPath(item);
+	return path ? pageIcons.get(path) : undefined;
 }
 
 const icons = new Map<string, string>();
@@ -99,6 +103,7 @@ const mark = await renderIcon('add', 14);
 					<Pages
 						pages={page.pages}
 						titles={titles}
+						pageIcons={pageIcons}
 						methods={methods}
 						pathname={pathname}
 						idPrefix={panelId}

@@ -1,0 +1,40 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+	src: string;
+	title?: string;
+}
+
+const hosts = new Set(['map.blnkfinance.com', 'map.blnkfinance.xyz']);
+const { src, title = 'Blnk map' } = Astro.props;
+
+let url: URL | undefined;
+try {
+	url = new URL(src);
+} catch {
+	url = undefined;
+}
+
+const allowed = url != null && url.protocol === 'https:' && hosts.has(url.hostname);
+---
+
+{
+	allowed && url && (
+		<div class="map">
+			<div class="map-canvas">
+				<iframe
+					src={url.toString()}
+					title={title}
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					tabindex="-1"
+				/>
+			</div>
+			<a class="map-open" href={url.toString()} target="_blank" rel="noopener noreferrer">
+				<Icon icon="external-link" size={16} />
+				View full map
+			</a>
+		</div>
+	)
+}

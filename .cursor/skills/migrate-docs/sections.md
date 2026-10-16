@@ -4,10 +4,10 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 ## Core source icon `layers`
 
-### Start Here
+### Start here
 
+- `install`
 - `index`
-- `home/install`
 - `home/deploy`
 - `home/llms`
 - dropdown **Use cases** source icon `lightbulb`

@@ -56,7 +56,7 @@ Wait for a yes. On yes, do that chunk only. Then set its status line to `done` a
 
 If any specimen page is still in `src/content/`, do this once before writing the chunk.
 
-Delete the specimen pages: `core/`, `enterprise/`, `learn/`, `api/`, the prototype guides (`guides/install`, `guides/ledgers`, `guides/transactions/`, `guides/balances/`), `cli/index.mdx`, and `sdks/*/index.mdx`. Keep `src/content/library.mdx` and `src/snippets/`.
+Delete the specimen pages: `core/`, `enterprise/`, `learn/`, `api/`, the prototype guides (`guides/install`, `guides/ledgers`, `guides/transactions/`, `guides/balances/`), `cli/index.mdx`, and `sdks/*/index.mdx`. Keep `src/content/library.mdx` and `src/content/snippets/`.
 
 Keep a minimal `index.mdx` so `/` builds, unless this chunk is Core · Start Here, which replaces it with the original home page.
 
@@ -70,9 +70,15 @@ Add optional `icon` to the docs schema in `src/content.config.ts`. `src/ui/Pages
 
 Read the source from `blnkfinance/blnk-docs` at the same path (the docs filesystem, or GitHub). Do not copy specimen pages. Do not rewrite the prose.
 
-Frontmatter `title` is the H1. `description` is the blockquote under it. Drop that H1 and blockquote. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
+Remove dividers from the body. A divider is a horizontal rule on its own line, `---`, between sections. Leave the frontmatter fences.
 
-Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Use the components registered in `src/ui/mdx/components.ts`: Note, Info, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, NeedHelp, ApiKey.
+When a Core page explains an action you can also do in the dashboard, put the steps and screenshots on that page. Do not link to a Cloud page for those steps. Do not add a separate Cloud page that only repeats them.
+
+When a request sample and its response are followed by a `Tabs` pair of field tables, keep the tabs. The request tab holds the code group, then its field table. The response tab holds the response sample, then its field table. Code groups stay code groups.
+
+Frontmatter `title` is the H1. `description` is the blockquote under it. Copy `sidebarTitle` when the source has one. The sidebar uses it, and uses `title` in sentence case when it is absent. Drop that H1 and blockquote. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
+
+Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Use the components registered in `src/ui/mdx/components.ts`: Note, Info, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, NeedHelp, ApiKey.
 
 Keep internal links. They already use the original paths.
 

@@ -2,8 +2,8 @@
 
 Change `pending` to `done` after the chunk is on the site. Do not start the next group.
 
-- pending — Core · Start Here
-- pending — Core · Ledgers
+- pending — Core · Start here
+- done — Core · Ledgers
 - pending — Core · Ledger balances
 - pending — Core · Transactions
 - pending — Core · Reconciliation

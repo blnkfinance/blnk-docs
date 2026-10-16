@@ -2,6 +2,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
+export const siteTitle = 'Blnk Documentation';
 export const ogImagePath = '/og.png';
 export const ogImageAlt = 'Blnk documentation';
 export const ogImageWidth = 602;
@@ -29,7 +30,29 @@ function present(value: string | undefined): string | undefined {
 }
 
 export function documentTitle(seoTitle: string | undefined, title: string): string {
-	return `${present(seoTitle) ?? title} — ${siteName}`;
+	return `${present(seoTitle) ?? title} | ${siteTitle}`;
+}
+
+/** First word capitalized, later words lowercase. All-caps tokens such as API stay as written. */
+export function sentenceCase(value: string): string {
+	return value
+		.trim()
+		.split(/\s+/)
+		.map((word, index) => {
+			const letters = word.replace(/[^A-Za-z]/g, '');
+			if (letters.length >= 2 && letters === letters.toUpperCase()) return word;
+			const lower = word.toLowerCase();
+			if (index > 0) return lower;
+			const at = lower.search(/\p{L}/u);
+			if (at < 0) return lower;
+			return lower.slice(0, at) + lower.charAt(at).toUpperCase() + lower.slice(at + 1);
+		})
+		.join(' ');
+}
+
+/** Sidebar label. `sidebarTitle` when set, otherwise the page title in sentence case. */
+export function sidebarLabel(sidebarTitle: string | undefined, title: string): string {
+	return present(sidebarTitle) ?? sentenceCase(title);
 }
 
 export function metaDescription(meta: string | undefined, description: string): string {

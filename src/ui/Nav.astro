@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import { renderIcon } from '../icons/mingcute';
+import { sidebarLabel } from '../lib/seo';
 import { activeTab, navigation, sidebarGroups } from './navigation';
 import Pages from './Pages.astro';
 
@@ -13,7 +14,12 @@ const pathname = Astro.url.pathname;
 const navScope = activeTab(navigation, pathname).path;
 const groups = sidebarGroups(navigation, pathname);
 const docs = await getCollection('docs');
-const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
+const titles = new Map(
+	docs.map((entry) => [entry.id, sidebarLabel(entry.data.sidebarTitle, entry.data.title)]),
+);
+const pageIcons = new Map(
+	docs.flatMap((entry) => (entry.data.icon ? [[entry.id, entry.data.icon] as const] : [])),
+);
 const methods = new Map(
 	docs.flatMap((entry) => (entry.data.method ? [[entry.id, entry.data.method] as const] : [])),
 );
@@ -25,7 +31,7 @@ const methods = new Map(
 			groups.map((group, index) => (
 				<div class="nav-group">
 					<p class="nav-label">{group.group}</p>
-					<Pages pages={group.pages} titles={titles} methods={methods} pathname={pathname} idPrefix={`nav-${index}`} />
+					<Pages pages={group.pages} titles={titles} pageIcons={pageIcons} methods={methods} pathname={pathname} idPrefix={`nav-${index}`} />
 				</div>
 			))
 		}

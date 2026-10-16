@@ -1,0 +1,304 @@
+---
+title: "Quick start"
+icon: "sparkles"
+description: "The developer-first toolkit for building compliant financial products."
+---
+
+This is your guide to getting started with Blnk, pronounced as `/blank/`.
+
+If you are new to Blnk or [open-source fintech developer tools](https://blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Finstall), this is where you should start.
+
+## 1: Installation Guide
+
+<Tabs>
+<Tab title="Self-hosted" icon="server">
+
+Manually install Blnk on your own infrastructure. This option requires [Docker](https://www.docker.com/) and [Compose](https://docs.docker.com/compose/).
+
+<Steps titleSize="h3">
+<Step title="Clone the repository">
+
+Clone the Blnk repository into your machine:
+
+```bash bash
+git clone https://github.com/blnkfinance/blnk && cd blnk
+```
+
+</Step>
+
+<Step title="Start Blnk server">
+
+Start your Blnk server with Docker compose:
+
+```bash bash
+docker compose up
+```
+
+<Check>
+Your Blnk server is now running! You can verify it's working by visiting `http://localhost:5001`.
+</Check>
+
+</Step>
+</Steps>
+
+<Note>
+To customize your Blnk configuration, see [Configuration overview](/advanced/configuration/overview).
+</Note>
+
+</Tab>
+
+<Tab title="Managed hosting" icon="cloud">
+
+Get started quickly with Blnk's managed cloud hosting. No infrastructure setup required-just sign up and start building.
+
+<Steps titleSize="h3">
+<Step title="Sign up to Blnk Cloud">
+
+If you don't have a Blnk Cloud account yet, sign up at [cloud.blnkfinance.com](https://cloud.blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Finstall) to create your workspace.
+
+<img src="/images/home/signup-login.png" alt="Sign up to Blnk Cloud" />
+
+</Step>
+
+<Step title="Create an instance on Cloud">
+
+On the homepage, click on **Deploy new Core**.
+
+<img src="/images/home/cloud-home.png" alt="Settings > Instances page showing the Connect new instance button" />
+
+</Step>
+
+<Step title="Provide instance details">
+
+Choose a descriptive name for your instance (e.g., "Production", "Staging"). Next, click on **Deploy managed Core**.
+
+<img src="/images/home/managed-instance-form.png" alt="Instance creation form with Deploy managed Core option" />
+
+</Step>
+
+<Step title="Verify connection">
+
+It takes about 7-10 minutes to deploy your instance and get it ready for use.
+
+When it is ready, the connection status is updated to **Connected** and you can start using your instance.
+
+<Check>
+Your Blnk instance is now running! View the instance details to get your Core URL and secret key for making requests via the Core API.
+</Check>
+
+</Step>
+</Steps>
+
+</Tab>
+</Tabs>
+
+## 2: Create your first transaction
+
+Now that Blnk is running, let's create your first transaction. Blnk uses the [double entry principle](/guides/double-entry) to record transactions, which means every transaction must have a source and destination.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST 'http://localhost:5001/transactions' \
+  -H 'X-blnk-key: <api-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "precise_amount": 100000,
+    "reference": "first_transaction_001",
+    "currency": "USD",
+    "precision": 100,
+    "source": "@FundingPool",
+    "destination": "@MyBalance",
+    "description": "My first Blnk transaction",
+    "allow_overdraft": true,
+    "meta_data": {}
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  precise_amount: 100000,
+  reference: 'first_transaction_001',
+  currency: 'USD',
+  precision: 100,
+  source: '@FundingPool',
+  destination: '@MyBalance',
+  description: 'My first Blnk transaction',
+  allow_overdraft: true,
+  meta_data: {},
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(100000),
+        Reference: "first_transaction_001",
+        Currency: "USD",
+        Precision: 100,
+        Source: "@FundingPool",
+        Destination: "@MyBalance",
+        Description: "My first Blnk transaction",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "precise_amount": 100000,
+  "reference": "first_transaction_001",
+  "currency": "USD",
+  "precision": 100,
+  "source": "@FundingPool",
+  "destination": "@MyBalance",
+  "description": "My first Blnk transaction",
+  "allow_overdraft": True,
+  "meta_data": {},
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(100000)
+        .reference("first_transaction_001")
+        .currency("USD")
+        .precision(100)
+        .source("@FundingPool")
+        .destination("@MyBalance")
+        .description("My first Blnk transaction")
+        .allowOverdraft(true)
+        .metaData(Map.of()));
+```
+</CodeGroup>
+
+```json Response
+{
+  "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "source": "@FundingPool",
+  "destination": "@MyBalance",
+  "reference": "first_transaction_001",
+  "amount": 1000,
+  "precision": 100,
+  "precise_amount": 100000,
+  "currency": "USD",
+  "description": "My first Blnk transaction",
+  "allow_overdraft": true,
+  "status": "QUEUED",
+  "created_at": "2024-12-21T01:36:46.997063436Z",
+  "meta_data": {}
+}
+```
+
+<Check>
+Congratulations! You've successfully created your first transaction in Blnk.
+</Check>
+
+<Tip>
+To preview a transaction without writing it, set `dry_run` to `true`. See [Dry-run transactions](/transactions/dry-run).
+</Tip>
+
+Finally, let's view our balances to confirm that the transaction was recorded:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET 'http://localhost:5001/balances' \
+  -H 'X-blnk-key: <api-key>'
+```
+
+</CodeGroup>
+
+```json Response expandable
+[
+  {
+    "balance": -1000,
+    "version": 1,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 1000,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": 0,
+    "queued_debit_balance": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "indicator": "@FundingPool",
+    "currency": "USD",
+    "created_at": "2024-12-21T01:36:46.997063436Z",
+    "meta_data": null
+  },
+  {
+    "balance": 1000,
+    "version": 1,
+    "inflight_balance": 0,
+    "credit_balance": 1000,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": 0,
+    "queued_debit_balance": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "indicator": "@MyBalance",
+    "currency": "USD",
+    "created_at": "2024-12-21T01:36:46.997063436Z",
+    "meta_data": null
+  }
+]
+```
+
+<Note>
+Balance fields are integers in minor units. Blnk Core does not return `precision` on balance responses. Use the same `precision` you pass on transactions for each currency (for example, `100` for USD) to convert integers to display amounts: `display_amount = balance / precision`.
+</Note>
+
+This will return a list of all balances in your system. You should see the `@FundingPool` balance (which will be negative since it funded the transaction) and the `@MyBalance` balance (which will show the amount we transferred).
+
+## 3: View your ledger (optional)
+
+See your new balances and transaction in your [Blnk Cloud dashboard](https://cloud.blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Finstall).
+
+<Video
+  src="https://www.youtube.com/embed/zFVorhVUv6k"
+  title="View Your Ledger on Blnk Cloud | Blnk Developer Docs"
+/>
+
+<Tip> To learn more about navigating your ledger, see our [Blnk Cloud guide.](https://guide.cloud.blnkfinance.com/?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=home%2Finstall) </Tip>
+
+> You've successfully completed the Blnk getting started guide! You now have a working Blnk instance with your first transaction recorded.
+
+## Key concepts
+
+Now that you're set up, start with these key concepts to build your application:
+
+<CardGroup cols={2}>
+  <Card title="Ledgers" icon="book-open" href="/ledgers/introduction">
+    Organize ledgers for your application.
+  </Card>
+
+  <Card title="Balances" icon="wallet" href="/balances/introduction">
+    Wallets, accounts, and stores of value.
+  </Card>
+
+  <Card title="Transactions" icon="arrow-left-right" href="/transactions/introduction">
+    Record and move money between balances.
+  </Card>
+
+  <Card title="Identities" icon="user" href="/identities/introduction">
+    Link people and entities to balances.
+  </Card>
+</CardGroup>
+
+<Note>
+Using an SDK? See the [TypeScript](/sdks/typescript), [Go](/sdks/go), [Python](/sdks/python), or [Java](/sdks/java) quick starts.
+</Note>
+
+<RelatedTopics
+  items={[
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "Configuration overview", href: "/advanced/configuration/overview" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "LLM", href: "/home/llms" },
+  ]}
+/>

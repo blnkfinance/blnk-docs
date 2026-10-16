@@ -14,6 +14,7 @@ for (const [path, load] of Object.entries(files)) {
 /** Names from the previous Lucide set. A MingCute file with the same name wins. */
 const aliases: Record<string, string> = {
 	activity: 'heartbeat',
+	'arrow-left-right': 'transfer',
 	'book-open': 'book',
 	'circle-check': 'check-circle',
 	info: 'information',
@@ -25,6 +26,7 @@ const aliases: Record<string, string> = {
 	search: 'search-2',
 	'sliders-horizontal': 'settings-2',
 	'triangle-alert': 'alert',
+	user: 'user-3',
 	water: 'drop',
 };
 

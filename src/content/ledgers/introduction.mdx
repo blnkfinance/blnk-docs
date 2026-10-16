@@ -1,0 +1,275 @@
+---
+title: "Overview"
+icon: "book"
+description: "Learn how ledgers work in Blnk"
+---
+
+Blnk uses a structured ledger system to organize and group account balances effectively. This system simplifies navigation and improves the clarity and accessibility of financial data.
+
+When setting up Blnk for your application, the first step is to create ledgers. Since balances need to be grouped within a ledger, you cannot create balances without one. Therefore, it’s essential to plan how you want to categorize your balances before you begin. 
+
+To learn more, see the following: [Ledger architecture](/ledgers/architecture).
+
+## Types of ledgers in Blnk
+
+Blnk includes two types of ledgers - a General Ledger and custom ledgers.
+
+1. **General Ledger:** This built-in ledger is designed to group balances that represent accounts owned by your organization, similar to a Chart of Accounts. 
+
+    Unlike custom ledgers, balances in the General Ledger come with indicators, making it easier to reference them in your code when recording transactions. To learn more about the General Ledger, see the following: [General Ledger](/ledgers/general-ledger).
+
+2. **Custom ledgers:** These are ledgers you create based on the ledger architecture you’ve defined for your application.
+
+## Creating a ledger
+
+### Using the API
+
+To create a ledger, call the [**Create Ledger**](/reference/create-ledger) endpoint:
+
+<Tabs>
+  <Tab title="Create ledger">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Customer Savings Account",
+    "meta_data": {
+        "project_owner": "YOUR_APP_NAME"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: 'Customer Savings Account',
+  meta_data: {
+    project_owner: 'YOUR_APP_NAME',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, err := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "Customer Savings Account",
+    MetaData: blnkgo.MetaData{
+        "project_owner": "YOUR_APP_NAME",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Ledger Created:", ledger.LedgerID)
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "Customer Savings Account",
+  "meta_data": {
+    "project_owner": "YOUR_APP_NAME",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("Customer Savings Account")
+        .metaData(Map.of("project_owner", "YOUR_APP_NAME")));
+```
+
+```bash Blnk CLI wrap
+blnk ledgers create
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `name` | A name that best describes the function of the ledger | Yes |
+| `meta_data` | Custom data associated with the ledger being created | No |
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "name": "Customer Savings Account",
+    "created_at": "2024-12-21T01:36:46.997063436Z",
+    "meta_data":{
+        "project_owner": "YOUR_APP_NAME"
+    }
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `ledger_id` | Unique identification number for your ledger |
+| `name` | The name of your ledger |
+| `created_at` | Date and time of when it was created |
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+You can also create a custom ledger from the dashboard. The General Ledger is already there when your instance is deployed.
+
+<Steps titleSize="h3">
+<Step title="Open Create ledger">
+
+On **Ledgers**, click **Create ledger** in the top right. You can also press `⌥ L` (`Alt+L` on Windows).
+
+<img src="/images/ledgers/create-ledger-open.png" alt="Ledgers table with Create ledger in the header" />
+
+</Step>
+
+<Step title="Enter the ledger name">
+
+Enter a name for the ledger. Metadata is optional.
+
+<img src="/images/ledgers/create-ledger-form.png" alt="Create ledger form with name and metadata" />
+
+</Step>
+
+<Step title="Create the ledger">
+
+Click **Create ledger**. The ledger appears in the Ledgers table.
+
+<img src="/images/ledgers/create-ledger-result.png" alt="Ledgers table showing the new ledger" />
+
+</Step>
+</Steps>
+
+## Updating a ledger name
+
+You can rename an existing ledger using the [**Update Ledger Name**](/reference/update-ledger-name) endpoint without affecting any balances or transactions:
+
+<Tabs>
+  <Tab title="Update ledger">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X PUT "http://localhost:5001/ledgers/{id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Customer Savings Account"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.update(
+  'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
+  {
+    name: 'Updated Customer Savings Account',
+  },
+);
+```
+
+```go Go wrap
+ledger, _, err := client.Ledger.Update(
+    "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    blnkgo.UpdateLedgerRequest{
+        Name: "Updated Customer Savings Account",
+    },
+)
+```
+
+```python Python wrap
+response = blnk.ledgers.update(
+  "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  {
+    "name": "Updated Customer Savings Account",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().update(
+    "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    UpdateLedger.create()
+        .name("Updated Customer Savings Account"));
+```
+
+```bash Blnk CLI wrap
+blnk ledgers update-name
+```
+
+</CodeGroup>
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "Updated Customer Savings Account",
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+  </Tab>
+</Tabs>
+
+<Tip>
+The ledger ID remains unchanged when you update the name, ensuring all existing references continue to work properly.
+</Tip>
+
+## Practical example
+
+Here’s an example with seven accounts to illustrate how to use ledgers in Blnk:
+
+| Account name | Type(s) | 
+| :--- | :--- |
+| Aria Collins | Savings |
+| Luca Sanders | Savings |
+| Ivy Monroe | Checking |
+| Jasper Hale | Checking, Savings |
+| Mia Delgado | Savings |
+| Ezra Donovan | Checking |
+| Ruby Foster | Checking, Savings |
+
+With Blnk’s ledger functionality, you can categorize these accounts by name, type, or other criteria that fit your organizational needs. 
+
+This helps you maintain clean, organized records that are easy to search and manage. As your data scales, this categorization becomes even more valuable, enabling you to conduct deeper analyses, identify patterns, and make more informed decisions.
+
+### Ledger grouping by type
+
+In this approach, accounts are organized by type rather than by individual customer. Two separate ledgers are created- one for “Savings Accounts” and another for “Checking Accounts.” This setup groups accounts by their function, making it easy to reference all accounts within a specific type.
+
+| Savings Account Ledger | Checking Account Ledger |
+| :--- | :--- |
+| Aria Collins | Ivy Monroe |
+| Luca Sanders | Jasper Hale |
+| Jasper Hale | Ezra Donovan |
+| Mia Delgado | Ruby Foster |
+| Ruby Foster | |
+
+In this example, there are 5 savings accounts and 4 checking accounts across 7 unique customers. But customers like Jasper Hale and Ruby Foster have both types of accounts, which means they appear in both ledgers.
+
+This type-based grouping provides a clear breakdown of accounts, showing which accounts fall under savings and which under checking. This can be useful for tracking and reference, particularly if you need to analyze account activity or usage patterns based on account type.
+
+### Ledger grouping by name
+
+In this approach, rather than organizing accounts by type (e.g., Savings or Checking), we create a separate ledger for each unique customer. This allows each customer’s accounts to be listed together under their name, making it easy to view all accounts belonging to a single individual.
+
+| **Aria Collins** | **Luca Sanders** | **Ivy Monroe** | **Jasper Hale** | **Mia Delgado** | **Ezra Donovan** | **Ruby Foster** |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Savings | Savings | Checking | Checking | Savings | Checking | Checking |
+| | | | Savings | | | Savings |
+
+Each ledger entry is focused on the customer, showing all accounts that the customer holds. For instance, Jasper Hale and Ruby Foster each have both a checking and a savings account, so both account types are listed under their names.
+
+This customer-focused organization makes it easy to see all account types associated with each individual. It can be helpful when managing customer relationships or viewing a comprehensive overview of each customer’s financial engagement in the system.
+
+<NeedHelp />
+
+<RelatedTopics
+  items={[
+    { title: "General ledger", href: "/ledgers/general-ledger" },
+    { title: "Money movement map", href: "/ledgers/money-movement-map" },
+    { title: "Balances", href: "/balances/introduction" },
+    { title: "Create ledger", href: "/reference/create-ledger" },
+  ]}
+/>

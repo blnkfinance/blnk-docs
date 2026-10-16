@@ -4,13 +4,13 @@ How to use the MDX components in `src/content`. A rendered copy of each tag live
 
 Pages in `src/content` get every component below with no import. The map is `src/ui/mdx/components.ts`, passed in from `src/pages/[...slug].astro`.
 
-Snippets in `src/snippets` are compiled on their own, so they import the components they use.
+Snippets in `src/content/snippets` are MDX files imported as components. Each file is compiled on its own, so it imports the components it uses.
 
 The page heading, description, and endpoint bar come from frontmatter, not from a component. Set `title` and `description` on every page. Set `method` and `path` together on API pages (`GET`, `POST`, `PUT`, or `DELETE`, and a path that starts with `/`).
 
 ## Callouts
 
-`Note`, `Info`, `Tip`, `Warning`, and `Check` share one layout. The tone changes the color. A label row, with its icon, appears only when you pass `label`.
+`Note`, `Info`, `Tip`, `Warning`, and `Check` share one layout. The tone changes the color. A label row, with its icon, always appears. Omit `label` and it uses the tone name: Note, Info, Tip, Warning, or Check.
 
 | Tag | Use for |
 | --- | --- |
@@ -36,7 +36,7 @@ Do not commit an API key in a public repository.
 
 | Prop | Type | |
 | --- | --- | --- |
-| `label` | `string` | Optional heading inside the callout |
+| `label` | `string` | Heading inside the callout. Defaults to the tone name |
 
 ## Steps
 
@@ -156,6 +156,42 @@ Wraps an image or other media and prints an optional caption.
 | `caption` | `string` | Optional figcaption |
 
 Images in `src/content` are rewritten to site paths by the content-images remark plugin. Put the file next to the page, or under `src/content`, and reference it the way the page already does.
+
+The frame has no background, border, or padding. It shows the image, then the caption.
+
+## Map
+
+Embeds a Blnk money movement map. `src` is a `https://map.blnkfinance.com` or `https://map.blnkfinance.xyz` URL. The map in the page is view-only. **View full map** opens it.
+
+```mdx
+<Map
+  src="https://map.blnkfinance.xyz/YIVzmTEYZ5"
+  title="Wallet structure"
+/>
+```
+
+| Prop | Type | |
+| --- | --- | --- |
+| `src` | `string` | Required. Map URL |
+| `title` | `string` | Accessible name. Default `Blnk map` |
+
+**View full map** is a secondary button under the embed. It opens the map in a new tab. |
+
+## Video
+
+A 16:9 embed that fills the article column. `src` is the player URL. `title` is the accessible name.
+
+```mdx
+<Video
+  src="https://www.youtube.com/embed/EIPuW0Wt004"
+  title="How Money Moves in a Wallet App: Ledger Design Explained"
+/>
+```
+
+| Prop | Type | |
+| --- | --- | --- |
+| `src` | `string` | Required. Embed URL |
+| `title` | `string` | Required. Accessible name of the video |
 
 ## Update
 
@@ -393,7 +429,17 @@ A fixed diagram of how transactions, balances, ledgers, and identity connect. It
 
 ## Snippets
 
-Shared blocks for API pages. They take no props. Drop the tag in where the page needs that copy.
+Shared blocks for API pages. They live in `src/content/snippets` and are imported as components from `src/ui/mdx/components.ts`. They take no props. Drop the tag in where the page needs that copy.
+
+```ts
+export { default as ApiKey } from '../../content/snippets/api-key.mdx';
+```
+
+A snippet is compiled on its own, so it also imports any component it uses:
+
+```mdx
+import ParamField from '../../ui/mdx/ParamField.astro';
+```
 
 | Tag | Inserts |
 | --- | --- |
