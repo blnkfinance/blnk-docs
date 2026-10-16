@@ -1,16 +1,55 @@
 # Components
 
-How to use the MDX components in `src/content`. A rendered copy of each tag lives on the [component library](/library) page (`src/content/library.mdx`).
+MDX tags used in `src/content`. The source is `src/ui/mdx`. Styles for these tags are in `src/styles/mdx.css`.
 
-Pages in `src/content` get every component below with no import. The map is `src/ui/mdx/components.ts`, passed in from `src/pages/[...slug].astro`.
+A page in `src/content` gets every export from `src/ui/mdx/components.ts` with no import. `src/pages/[...slug].astro` passes that map into the page.
 
-Snippets in `src/content/snippets` are MDX files imported as components. Each file is compiled on its own, so it imports the components it uses.
+A snippet in `src/content/snippets` is compiled on its own. It imports each component it uses.
 
-The page heading, description, and endpoint bar come from frontmatter, not from a component. Set `title` and `description` on every page. Set `method` and `path` together on API pages (`GET`, `POST`, `PUT`, or `DELETE`, and a path that starts with `/`).
+`Callout.astro`, `CodeBlocks.astro`, and `fields.ts` are part of this folder and are not page tags. `DocsLayout.astro` includes `CodeBlocks`. `ParamField` and `ResponseField` load `fields.ts`.
+
+## Files
+
+| File | Tag | What it does |
+| --- | --- | --- |
+| `components.ts` | | The map pages receive |
+| `Callout.astro` | | Shared layout for the five callouts. Not exported |
+| `Note.astro` | `Note` | Callout, tone `note`, icon `information` |
+| `Info.astro` | `Info` | Callout, tone `info`, icon `information` |
+| `Tip.astro` | `Tip` | Callout, tone `tip`, icon `bulb` |
+| `Warning.astro` | `Warning` | Callout, tone `warning`, icon `alert` |
+| `Check.astro` | `Check` | Callout, tone `check`, icon `check-circle` |
+| `Steps.astro` | `Steps` | Numbered sequence |
+| `Step.astro` | `Step` | One step |
+| `CardGroup.astro` | `CardGroup` | Grid of cards |
+| `Card.astro` | `Card` | Link or static tile |
+| `Tabs.astro` | `Tabs` | Tab set. The bar is built in the browser |
+| `Tab.astro` | `Tab` | One panel |
+| `AccordionGroup.astro` | `AccordionGroup` | Shared top border around accordions |
+| `Accordion.astro` | `Accordion` | One disclosure. More than one can be open |
+| `Expandable.astro` | `Expandable` | Single disclosure |
+| `Frame.astro` | `Frame` | Figure and optional caption |
+| `Map.astro` | `Map` | Money movement map embed |
+| `Video.astro` | `Video` | 16:9 embed |
+| `Update.astro` | `Update` | Changelog entry |
+| `Tooltip.astro` | `Tooltip` | Hover and focus tip |
+| `Icon.astro` | `Icon` | MingCute icon, or an image |
+| `SectionLabel.astro` | `SectionLabel` | Labeled row. Not a heading |
+| `ParamField.astro` | `ParamField` | Request field |
+| `ResponseField.astro` | `ResponseField` | Response field |
+| `fields.ts` | | Groups consecutive fields and opens them on click |
+| `CodeGroup.astro` | `CodeGroup` | Wrapper. Tabs are built in the browser |
+| `CodeBlocks.astro` | | Copy button, titles, collapse, and code-group tabs |
+| `RequestExample.astro` | `RequestExample` | Sample lifted into the right-hand rail |
+| `ResponseExample.astro` | `ResponseExample` | Sample lifted into the right-hand rail |
+| `RelatedTopics.astro` | `RelatedTopics` | Follow-up links |
+| `SchemaChart.astro` | `SchemaChart` | Fixed diagram of ledgers, balances, identity, and transactions |
+
+The page heading, description, and endpoint bar come from frontmatter. See [README.md](README.md).
 
 ## Callouts
 
-`Note`, `Info`, `Tip`, `Warning`, and `Check` share one layout. The tone changes the color. A label row, with its icon, always appears. Omit `label` and it uses the tone name: Note, Info, Tip, Warning, or Check.
+`Note`, `Info`, `Tip`, `Warning`, and `Check` render `Callout`. The tone sets the color and the default icon. A label row appears when the label has any text. Omit `label` and the label is the tone name. Pass an empty `label` and the row is omitted.
 
 | Tag | Use for |
 | --- | --- |
@@ -53,7 +92,7 @@ A numbered sequence. The numbers come from the order of `Step` children.
 </Steps>
 ```
 
-`titleSize="h3"` enlarges the step titles. Any other value leaves the default size.
+`titleSize="h3"` enlarges the step titles. `"h2"`, a boolean, or omitting the prop leaves the default size.
 
 | Component | Prop | Type | |
 | --- | --- | --- | --- |
@@ -67,7 +106,7 @@ A grid of links or static tiles. `CardGroup` defaults to two columns and stacks 
 
 ```mdx
 <CardGroup cols={2}>
-  <Card title="Install Blnk" icon="sparkles" href="/core">
+  <Card title="Install Blnk" icon="sparkles" href="/install">
     Deploy your ledger in minutes.
   </Card>
   <Card title="Ledgers" icon="book">
@@ -77,6 +116,8 @@ A grid of links or static tiles. `CardGroup` defaults to two columns and stacks 
 ```
 
 A card with `href` renders as a link and shows an arrow. Omit `href` for a tile that does not navigate.
+
+`Card` also accepts `iconType` on its props type. The component does not read it.
 
 | Component | Prop | Type | |
 | --- | --- | --- | --- |
@@ -105,9 +146,13 @@ The first tab is selected. Each `Tab` needs a `title`. An optional `icon` sits i
 | `Tab` | `title` | `string` | Required. Shown on the tab button |
 | `Tab` | `icon` | `string` | Optional icon name |
 
+`Tabs` takes no props. The tab bar is built on the client from the `Tab` children. The first panel is shown.
+
+A `Tab` title is a table-of-contents child of the `h2` or `h3` it follows. `src/lib/toc.ts` reads `title="..."` from the markdown. Clicking that item opens the tab and scrolls to it. The tab's id is the slug of its title. A second tab with the same title gets `-2`, then `-3`.
+
 ## Accordions
 
-`AccordionGroup` draws the shared top border. Each `Accordion` starts closed, and more than one can be open at once.
+`AccordionGroup` draws the shared top border. Each `Accordion` starts closed. More than one can be open at once.
 
 ```mdx
 <AccordionGroup>
@@ -125,9 +170,11 @@ The first tab is selected. Each `Tab` needs a `title`. An optional `icon` sits i
 | `Accordion` | `title` | `string` | Required |
 | `Accordion` | `icon` | `string` | Optional icon name |
 
+`AccordionGroup` takes no props. Open and close animate. `prefers-reduced-motion: reduce` snaps open and closed.
+
 ## Expandable
 
-A single disclosure. The summary defaults to `Details`.
+A single disclosure. The summary defaults to `Details`. It starts closed and uses the same motion as an accordion.
 
 ```mdx
 <Expandable title="Optional parameters">
@@ -141,7 +188,7 @@ A single disclosure. The summary defaults to `Details`.
 
 ## Frame
 
-Wraps an image or other media and prints an optional caption.
+Wraps an image or other media and prints an optional caption. The frame has no background, border, or padding.
 
 ```mdx
 <Frame caption="Wordmark used in the docs header.">
@@ -155,13 +202,13 @@ Wraps an image or other media and prints an optional caption.
 | --- | --- | --- |
 | `caption` | `string` | Optional figcaption |
 
-Images in `src/content` are rewritten to site paths by the content-images remark plugin. Put the file next to the page, or under `src/content`, and reference it the way the page already does.
-
-The frame has no background, border, or padding. It shows the image, then the caption.
+Images in `src/content` are rewritten to site paths by `src/lib/remark-content-images.ts`. `img/file.png` resolves from `src/content` on any page. A path that starts with `.`, `/`, or a scheme is left alone. A missing file is left alone. Write screenshots as markdown images. A JSX `<img src="img/...">` becomes a relative URL and 404s.
 
 ## Map
 
-Embeds a Blnk money movement map. `src` is a `https://map.blnkfinance.com` or `https://map.blnkfinance.xyz` URL. The map in the page is view-only. **View full map** opens it.
+Embeds a Blnk money movement map. `src` must be `https` on `map.blnkfinance.com` or `map.blnkfinance.xyz`. Any other value renders nothing.
+
+The iframe is view-only (`tabindex="-1"`). **View full map** opens the same URL in a new tab.
 
 ```mdx
 <Map
@@ -172,10 +219,8 @@ Embeds a Blnk money movement map. `src` is a `https://map.blnkfinance.com` or `h
 
 | Prop | Type | |
 | --- | --- | --- |
-| `src` | `string` | Required. Map URL |
+| `src` | `string` | Required. Map URL on an allowed host |
 | `title` | `string` | Accessible name. Default `Blnk map` |
-
-**View full map** is a secondary button under the embed. It opens the map in a new tab. |
 
 ## Video
 
@@ -210,7 +255,7 @@ A changelog entry. `label` is the version or the change name. `description` is t
 
 ## Tooltip
 
-The slot is the text in the sentence. `tip` is the text that appears on hover and keyboard focus.
+The slot is the text in the sentence. `tip` is the text that appears on hover and keyboard focus. The wrapper is focusable.
 
 ```mdx
 You can detect if <Tooltip tip="Any change leaves a visible sign in the hash or chain.">protected fields</Tooltip> were changed after recording.
@@ -222,7 +267,7 @@ You can detect if <Tooltip tip="Any change leaves a visible sign in the hash or 
 
 ## Icon
 
-An inline MingCute icon, or an image when `icon` is a path.
+An inline MingCute icon, or an image when `icon` is a path starting with `/` or `./`.
 
 ```mdx
 <Icon icon="sparkles" size={16} color="currentColor" />
@@ -234,11 +279,11 @@ An inline MingCute icon, or an image when `icon` is a path.
 | `size` | `number` | Pixels. Default `16` |
 | `color` | `string` | CSS color. Default `currentColor` |
 
-An unknown name renders as small text of that name.
+An unknown name renders as small text of that name. Names and aliases are in [Icons](#icons).
 
 ## Section label
 
-A short labeled row above a block of prose. It is not a heading, so it does not appear in the table of contents.
+A short labeled row above a block of prose. It is a paragraph, so it does not appear in the table of contents.
 
 ```mdx
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -250,7 +295,7 @@ A short labeled row above a block of prose. It is not a heading, so it does not 
 
 ## API fields
 
-`ParamField` documents a request field. Set one of `body`, `query`, `path`, or `header`. That value is the field name, and it also sets the location badge.
+`ParamField` documents a request field. Set one of `body`, `query`, `path`, or `header`. That value is the field name, and it sets the location badge. If more than one is set, the first of `body`, `query`, `path`, `header` wins.
 
 ```mdx
 <ParamField body="identity_type" type="string" required>
@@ -281,7 +326,7 @@ A short labeled row above a block of prose. It is not a heading, so it does not 
 | `default` | `string` | Shows `default` and the value. Omit it, or leave it empty, to hide the badge |
 | `expanded` | `boolean` | Leaves the field open. Omit it to start collapsed |
 
-`ResponseField` documents a response field. Nest fields to show an object or array.
+`ResponseField` documents a response field. Nest fields to show an object or array. It has no location badge and no default badge.
 
 ```mdx
 <ResponseField name="data" type="array">
@@ -300,13 +345,13 @@ A short labeled row above a block of prose. It is not a heading, so it does not 
 | `required` | `boolean` | Shows a required badge |
 | `expanded` | `boolean` | Leaves the field open. Omit it to start collapsed |
 
-Consecutive fields of the same kind and location are grouped. A heading, paragraph, or other element between them starts a new group. Each field opens on click.
+`fields.ts` groups consecutive fields that share a kind and, for `ParamField`, a location. A heading, paragraph, or other element between them starts a new group. Nested fields group inside their parent. Each field opens on click, with the same reduced-motion behavior as an accordion.
 
 ## Code
 
-Fenced code blocks highlight with Shiki. Every block gets a copy button. A block longer than 12 lines collapses behind **Show more**.
+Fenced code is highlighted with Shiki (`one-light` / `one-dark-pro` in `astro.config.ts`). `text` is an alias for plaintext. `src/lib/fence-meta.ts` reads the words after the language. `CodeBlocks.astro` adds the title, copy button, collapse control, and code-group tabs.
 
-The first word of the fence info is the language. `text` is an alias for plaintext. Words after the language become the title.
+The first word of the fence info is the language. Words after it are a title, unless they are a flag below.
 
 ````mdx
 ```bash cURL wrap
@@ -317,16 +362,22 @@ curl -X POST "http://localhost:5001/ledgers" \
 
 | Meta | Effect |
 | --- | --- |
-| Title words | Inside a `CodeGroup`, this is the tab label. Example: `cURL`, `200 OK` |
+| Title words | Header on a standalone block. Tab label inside a `CodeGroup` or a multi-fence example. Example: `cURL`, `200 OK` |
 | `wrap` | Long lines wrap |
-| `highlight={2}` | Highlight those lines. Also `highlight={2,4-6}` or `{2,4-6}` |
+| `highlight={2}` | Highlight those lines. Also `highlight={2,4-6}`, `{2,4-6}`, or `2,4-6` |
 | `focus={2,3}` | Dim every line outside the range. Ranges work the same way as highlight |
+| `expandable` | Stored as `data-expandable`. No change to the layout |
+| `icon="name"` | Stored as `data-icon`. No change to the layout |
 
-Line numbers start at 1. `expandable` and `icon="name"` are stored on the block and do not change the layout. Collapse follows the 12-line rule on its own.
+Line numbers start at 1. A block longer than 12 lines collapses behind **Show more**. Placeholders shaped like `{ledger_id}` are marked in the sample.
+
+A standalone block with a title gets a header. A block with only a language gets a header when it sits inside `RequestExample` or `ResponseExample`. Give every fence a title. A request is the client name, usually `cURL`. A response is the status, such as `200 OK`.
+
+Every block gets a copy button, except a block inside `RequestExample` or `ResponseExample`.
 
 ### Code group
 
-Put fences one after another inside `CodeGroup`. Each fence becomes a tab. The tab label is the fence title, then the language, then `Code`.
+Put fences one after another as direct children of `CodeGroup`. Each fence becomes a tab. The tab label is the fence title, then the language, then `Code`. The first tab is selected.
 
 ````mdx
 <CodeGroup>
@@ -349,17 +400,17 @@ curl -X POST "http://localhost:5001/ledgers" \
 </CodeGroup>
 ````
 
-The fences need to be direct children of `CodeGroup`. The first tab is selected.
+`CodeGroup` takes no props.
 
 ## Request and response examples
 
-`RequestExample` and `ResponseExample` hold the sample for an API page. Place them as top-level tags in the page. The layout lifts those blocks into the right-hand rail. An example nested inside another component stays in the article.
+`RequestExample` and `ResponseExample` hold the sample for an API page. Place them as top-level tags in the page. `DocsLayout` moves those blocks into the right-hand rail and hides the table of contents. An example nested inside another component stays in the article.
 
 ````mdx
 <RequestExample>
 
 ```bash cURL
-curl -X GET "http://localhost:5001/ledgers/ldg_049495fe" \
+curl -X GET "http://localhost:5001/ledgers/{ledger_id}" \
   -H "X-blnk-key: <api-key>"
 ```
 
@@ -377,14 +428,12 @@ curl -X GET "http://localhost:5001/ledgers/ldg_049495fe" \
 </ResponseExample>
 ````
 
-Neither component takes props. A fence title, such as `cURL` or `201 Created`, is the label on that block. These blocks do not show a copy button.
+Neither component takes props. A fence title, such as `cURL` or `201 Created`, is the label on that block. These blocks do not show a copy button, and their lines scroll. Leave `wrap` off.
 
-`ResponseExample` can hold a `CodeGroup`. Each fence title becomes a tab.
+Two or more fences that are direct children of one example become tabs. The page does that grouping. Leave them as siblings.
 
 ````mdx
 <ResponseExample>
-
-<CodeGroup>
 
 ```json 201 Created
 {
@@ -398,19 +447,19 @@ Neither component takes props. A fence title, such as `cURL` or `201 Created`, i
 }
 ```
 
-</CodeGroup>
-
 </ResponseExample>
 ````
 
+A `CodeGroup` inside an example also becomes tabs. Prefer sibling fences.
+
 ## Related topics
 
-A list of follow-up links. The block is omitted when `items` is empty. Links that start with `http://` or `https://` open in a new tab.
+A list of follow-up links. The block is omitted when `items` is empty. Links that start with `http://` or `https://` open in a new tab. The heading is an `h2`, so it appears in the table of contents.
 
 ```mdx
 <RelatedTopics
   items={[
-    { title: "Open source", href: "/core" },
+    { title: "Install Blnk", href: "/install" },
     { title: "Blnk Finance", href: "https://blnkfinance.com" },
   ]}
 />
@@ -423,7 +472,7 @@ A list of follow-up links. The block is omitted when `items` is empty. Links tha
 
 ## Schema chart
 
-A fixed diagram of how transactions, balances, ledgers, and identity connect. It takes no props.
+A fixed diagram. Transactions point to balances as source and destination. Balances point to ledgers by `ledger_id` and to identity by `identity_id`. It takes no props.
 
 ```mdx
 <SchemaChart />
@@ -431,39 +480,38 @@ A fixed diagram of how transactions, balances, ledgers, and identity connect. It
 
 ## Snippets
 
-Shared blocks for API pages. They live in `src/content/snippets` and are imported as components from `src/ui/mdx/components.ts`. They take no props. Drop the tag in where the page needs that copy.
+Shared blocks live in `src/content/snippets` and are exported from `components.ts`. They take no props. The content collection skips `snippets/`, so a snippet is not its own page.
 
-```ts
-export { default as ApiKey } from '../../content/snippets/api-key.mdx';
-```
-
-A snippet is compiled on its own, so it also imports any component it uses:
+A snippet is compiled on its own, so it imports any component it uses:
 
 ```mdx
 import ParamField from '../../ui/mdx/ParamField.astro';
 ```
 
-| Tag | Inserts |
-| --- | --- |
-| `ApiKey` | Core authorization header (`X-blnk-key`) |
-| `Authorization` | Cloud authorization, including the API key and OAuth token |
-| `Key` | Enterprise base URL note, then the authorization header |
-| `DockerImage` | Which image name to use for Blnk `0.15.3` and later, and for `0.15.2` and earlier |
-| `NeedHelp` | Support email and Discord closer |
+| Tag | File | Inserts |
+| --- | --- | --- |
+| `ApiKey` | `snippets/api-key.mdx` | Core authorization header (`X-blnk-key`) |
+| `Authorization` | `snippets/authorization.mdx` | Cloud authorization, including the API key and OAuth token |
+| `Key` | `snippets/key.mdx` | Authorization header for an API key |
+| `DockerImage` | `snippets/docker-image.mdx` | Which image name to use for Blnk `0.15.3` and later, and for `0.15.2` and earlier |
+| `NeedHelp` | `snippets/need-help.mdx` | Support email and Discord closer |
 
 ```mdx
 <ApiKey />
 ```
 
+`Key` starts at Authorization. It does not include a note about an auto-provisioned Enterprise Core instance. Guides and API reference pages do not use `NeedHelp`.
+
 ## Icons
 
-Icon names are the file names in `src/icons/line`, without `.svg`. `sparkles` loads `src/icons/line/sparkles.svg`.
+Icon names are the file names in `src/icons/line`, without `.svg`. `sparkles` loads `src/icons/line/sparkles.svg`. `src/icons/mingcute.ts` resolves the name. `src/icons/prepare.ts` sets the pixel size and leaves the 24×24 viewBox alone.
 
-These older names still resolve:
+These older names still resolve. A file with the same name as the alias wins over the alias.
 
 | You can write | Loads |
 | --- | --- |
 | `activity` | `heartbeat` |
+| `arrow-left-right` | `transfer` |
 | `book-open` | `book` |
 | `circle-check` | `check-circle` |
 | `info` | `information` |
@@ -475,14 +523,16 @@ These older names still resolve:
 | `search` | `search-2` |
 | `sliders-horizontal` | `settings-2` |
 | `triangle-alert` | `alert` |
+| `user` | `user-3` |
 | `water` | `drop` |
 
-A file with the same name as the alias wins over the alias.
+`Card`, `Tab`, `Accordion`, callouts, and `SectionLabel` all use these names. Frontmatter `icon` on a page uses the same set. The sidebar shows that icon on a page that is a direct child of a group.
 
 ## Adding a component
 
 1. Add the Astro file under `src/ui/mdx/`.
 2. Export it from `src/ui/mdx/components.ts`.
-3. Add a sample to `src/content/library.mdx`.
+3. Add the tag, its props, and a sample to this file.
+4. Put component styles in `src/styles/mdx.css`.
 
-Content pages can use the tag on the next render. Snippets still import the component file directly.
+Content pages can use the tag on the next render. A snippet still imports the component file directly.

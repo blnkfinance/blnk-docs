@@ -69,7 +69,7 @@ Wait for a yes. On yes, do that chunk only. Then set its status line to `done` a
 
 If any specimen page is still in `src/content/`, do this once before writing the chunk.
 
-Delete the specimen pages: `core/`, `enterprise/`, `learn/`, `api/`, the prototype guides (`guides/install`, `guides/ledgers`, `guides/transactions/`, `guides/balances/`), `cli/index.mdx`, and `sdks/*/index.mdx`. Keep `src/content/library.mdx` and `src/content/snippets/`.
+Delete the specimen pages: `core/`, `enterprise/`, `learn/`, `api/`, the prototype guides (`guides/install`, `guides/ledgers`, `guides/transactions/`, `guides/balances/`), `cli/index.mdx`, and `sdks/*/index.mdx`. Keep `src/content/snippets/`.
 
 Keep a minimal `index.mdx` so `/` builds, unless this chunk is Core · Start Here, which replaces it with the original home page.
 
@@ -91,7 +91,7 @@ When a request sample and its response are followed by a `Tabs` pair of field ta
 
 Frontmatter `title` is the H1. `description` is the lede: one sentence about what the reader does on this page. If the source blockquote is a product slogan, rewrite it. Copy `sidebarTitle` when the source has one. The sidebar uses `sidebarTitle`, and uses `title` in sentence case when it is absent. Copy `og:title` to `seoTitle` and `og:description` to `metaDescription`. `seoTitle` is the full document title and `og:title`. It already includes the site name, and `documentTitle` does not append ` | Blnk Documentation` when it is set. `metaDescription` is the meta description and `og:description`. Drop the H1 and blockquote from the body. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
 
-Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Drop `<NeedHelp />`. It is not used on docs or API reference pages. Use the components registered in `src/ui/mdx/components.ts`: Note, Info, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, ApiKey.
+Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Drop `<NeedHelp />`. It is not used on docs or API reference pages. Use the components registered in `src/ui/mdx/components.ts`. The reference is [COMPONENTS.md](../../../COMPONENTS.md). Registered tags: Note, Info, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Map, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, ApiKey.
 
 Keep internal links. They already use the original paths.
 
