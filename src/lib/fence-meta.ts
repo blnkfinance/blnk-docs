@@ -13,7 +13,7 @@ type FenceMeta = {
 /**
  * Fence info after the language.
  * `cURL wrap`, `200 OK wrap expandable highlight={2} focus={2,4-5}`,
- * `200 Success icon="circle-check"`.
+ * `200 Success icon="check-circle"`.
  */
 export function parseFenceMeta(meta: string): FenceMeta {
 	const tokens = meta.match(/icon="[^"]*"|[^\s]+/g) ?? [];
