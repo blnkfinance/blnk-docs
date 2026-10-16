@@ -24,7 +24,7 @@ type MdFile = {
 };
 
 /**
- * `images/file.png` is resolved from `src/content`, from any page.
+ * `img/file.png` is resolved from `src/content`, from any page.
  * Paths that already start with `.`, `/`, or a scheme are left alone.
  */
 export function contentImageUrl(url: string, fromDir: string): string {

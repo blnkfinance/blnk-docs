@@ -1,7 +1,8 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
-import { breadcrumbs, currentTab, navigation, pageLabel, type Crumb } from './navigation';
+import { getCollection } from 'astro:content';
+import { breadcrumbs, currentTab, methodLabel, navigation, pageHref, pageLabel, type Crumb } from './navigation';
 import {
 	absoluteUrl,
 	canonicalPath,
@@ -15,6 +16,7 @@ import {
 } from '../lib/seo';
 import '../styles/styles.css';
 import '../styles/mdx.css';
+import { renderIcon } from '../icons/mingcute';
 import Header from './Header.astro';
 import CodeBlocks from './mdx/CodeBlocks.astro';
 import Nav from './Nav.astro';
@@ -28,9 +30,12 @@ interface Props {
 	headings: MarkdownHeading[];
 	markdown: string;
 	lede?: string;
+	method?: string;
+	endpoint?: string;
 }
 
-const { title, documentTitle, description, indexable, headings, markdown, lede } = Astro.props;
+const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint } = Astro.props;
+const play = method && endpoint ? await renderIcon('play', 14) : '';
 const pageDescription = lede?.trim();
 const site = requireSite(Astro.site);
 const path = canonicalPath(Astro.url.pathname);
@@ -38,7 +43,8 @@ const canonical = absoluteUrl(path, site);
 const image = absoluteUrl(ogImagePath, site);
 const section = currentTab(navigation, path);
 const sectionName = section && 'tab' in section ? section.tab : '';
-const crumbs = breadcrumbs(navigation, path, title);
+const hrefs = new Set((await getCollection('docs')).map((entry) => pageHref(entry.id)));
+const crumbs = breadcrumbs(navigation, path, title, hrefs);
 const label = pageLabel(navigation, path);
 const markdownHref = absoluteUrl(markdownPath(path), site);
 const jsonLd = structuredData({ title: documentTitle, description, canonical, image, crumbs });
@@ -139,7 +145,40 @@ function structuredData(page: {
 						{label && <p class="page-label">{label}</p>}
 						<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
 						{pageDescription && <p class="page-description">{pageDescription}</p>}
+						{
+							method && endpoint && (
+								<div class="endpoint">
+									<span class="method" data-method={method}>
+										{methodLabel(method)}
+									</span>
+									<code class="endpoint-path">{endpoint}</code>
+									<button type="button" class="endpoint-try">
+										<Fragment set:html={play} />
+										Try it
+									</button>
+								</div>
+							)
+						}
 						<slot />
+						<script is:inline>
+							(() => {
+								const article = document.currentScript?.parentElement;
+								if (!(article instanceof HTMLElement)) return;
+								const examples = [...article.querySelectorAll(':scope > .example')];
+								if (examples.length === 0) return;
+								const copy = document.createElement('div');
+								copy.className = 'article-copy';
+								const rail = document.createElement('div');
+								rail.className = 'article-examples';
+								for (const node of [...article.childNodes]) {
+									if (node === document.currentScript) continue;
+									if (node instanceof Element && node.classList.contains('example')) rail.append(node);
+									else copy.append(node);
+								}
+								article.prepend(copy, rail);
+								article.classList.add('has-examples');
+							})();
+						</script>
 					</article>
 				</main>
 				<Toc headings={headings} markdown={markdown} />
