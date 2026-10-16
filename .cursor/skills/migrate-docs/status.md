@@ -1,0 +1,104 @@
+# Status
+
+Change `pending` to `done` after the chunk is on the site. Do not start the next group.
+
+- pending — Core · Start Here
+- pending — Core · Ledgers
+- pending — Core · Ledger balances
+- pending — Core · Transactions
+- pending — Core · Reconciliation
+- pending — Core · Identities
+- pending — Core · Metadata
+- pending — Core · Search
+- pending — Core · Webhooks
+- pending — Core · API keys
+- pending — Core · Guides
+- pending — Core · Configuration
+- pending — Core · Advanced
+- pending — Core · Migration guides
+- pending — Cloud · Start Here
+- pending — Cloud · Instances
+- pending — Cloud · Ledgers
+- pending — Cloud · Balances
+- pending — Cloud · Transactions
+- pending — Cloud · Identities
+- pending — Cloud · Reconciliation
+- pending — Cloud · Filters & Views
+- pending — Cloud · Alerts
+- pending — Cloud · Monitoring
+- pending — Cloud · Insights
+- pending — Cloud · Apps
+- pending — Cloud · Settings
+- pending — Watch · Start here
+- pending — Watch · Watch scripts
+- pending — Watch · Advanced
+- pending — API Reference · Core APIs · Start Here
+- pending — API Reference · Core APIs · Ledgers
+- pending — API Reference · Core APIs · Ledger balances
+- pending — API Reference · Core APIs · Transactions
+- pending — API Reference · Core APIs · Reconciliation
+- pending — API Reference · Core APIs · Identities
+- pending — API Reference · Core APIs · Metadata
+- pending — API Reference · Core APIs · Search
+- pending — API Reference · Core APIs · Transaction hooks
+- pending — API Reference · Core APIs · API keys
+- pending — API Reference · Core APIs · System
+- pending — API Reference · Cloud APIs · Start Here
+- pending — API Reference · Cloud APIs · Deployments
+- pending — API Reference · Cloud APIs · Proxy & data
+- pending — API Reference · Cloud APIs · Data lake
+- pending — API Reference · Cloud APIs · AI integrations
+- pending — API Reference · Cloud APIs · Audit
+- pending — API Reference · Cloud APIs · Alerts
+- pending — API Reference · Cloud APIs · Billing
+- pending — API Reference · Watch APIs · Start Here
+- pending — API Reference · Watch APIs · Transactions
+- pending — API Reference · Watch APIs · Instructions
+- pending — API Reference · Watch APIs · Git sync
+- pending — SDKs & CLI · Blnk CLI · Start Here
+- pending — SDKs & CLI · Blnk CLI · Resource commands
+- pending — SDKs & CLI · Blnk CLI · Additional commands
+- pending — SDKs & CLI · Typescript SDK · Start Here
+- pending — SDKs & CLI · Typescript SDK · Ledgers
+- pending — SDKs & CLI · Typescript SDK · Ledger balances
+- pending — SDKs & CLI · Typescript SDK · Transactions
+- pending — SDKs & CLI · Typescript SDK · Reconciliation
+- pending — SDKs & CLI · Typescript SDK · Identities
+- pending — SDKs & CLI · Typescript SDK · Metadata
+- pending — SDKs & CLI · Typescript SDK · Hooks
+- pending — SDKs & CLI · Typescript SDK · Search
+- pending — SDKs & CLI · Typescript SDK · API keys
+- pending — SDKs & CLI · Typescript SDK · System
+- pending — SDKs & CLI · Go SDK · Start Here
+- pending — SDKs & CLI · Go SDK · Ledgers
+- pending — SDKs & CLI · Go SDK · Ledger balances
+- pending — SDKs & CLI · Go SDK · Transactions
+- pending — SDKs & CLI · Go SDK · Reconciliation
+- pending — SDKs & CLI · Go SDK · Identities
+- pending — SDKs & CLI · Go SDK · Metadata
+- pending — SDKs & CLI · Go SDK · Hooks
+- pending — SDKs & CLI · Go SDK · Search
+- pending — SDKs & CLI · Go SDK · API keys
+- pending — SDKs & CLI · Go SDK · System
+- pending — SDKs & CLI · Python SDK · Start Here
+- pending — SDKs & CLI · Python SDK · Ledgers
+- pending — SDKs & CLI · Python SDK · Ledger balances
+- pending — SDKs & CLI · Python SDK · Transactions
+- pending — SDKs & CLI · Python SDK · Reconciliation
+- pending — SDKs & CLI · Python SDK · Identities
+- pending — SDKs & CLI · Python SDK · Metadata
+- pending — SDKs & CLI · Python SDK · Hooks
+- pending — SDKs & CLI · Python SDK · Search
+- pending — SDKs & CLI · Python SDK · API keys
+- pending — SDKs & CLI · Python SDK · System
+- pending — SDKs & CLI · Java SDK · Start Here
+- pending — SDKs & CLI · Java SDK · Ledgers
+- pending — SDKs & CLI · Java SDK · Ledger balances
+- pending — SDKs & CLI · Java SDK · Transactions
+- pending — SDKs & CLI · Java SDK · Reconciliation
+- pending — SDKs & CLI · Java SDK · Identities
+- pending — SDKs & CLI · Java SDK · Metadata
+- pending — SDKs & CLI · Java SDK · Hooks
+- pending — SDKs & CLI · Java SDK · Search
+- pending — SDKs & CLI · Java SDK · API keys
+- pending — SDKs & CLI · Java SDK · System
