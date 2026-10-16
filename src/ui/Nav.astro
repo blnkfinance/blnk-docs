@@ -1,21 +1,31 @@
 ---
 import { getCollection } from 'astro:content';
-import { activeTab, navigation } from './navigation';
+import { renderIcon } from '../icons/mingcute';
+import { activeTab, navigation, sidebarGroups } from './navigation';
 import Pages from './Pages.astro';
 
+const sun = await renderIcon('sun', 16);
+const moon = await renderIcon('moon', 16);
+const system = await renderIcon('computer', 16);
+const check = await renderIcon('check', 14);
+
 const pathname = Astro.url.pathname;
-const groups = activeTab(navigation, pathname).groups;
+const navScope = activeTab(navigation, pathname).path;
+const groups = sidebarGroups(navigation, pathname);
 const docs = await getCollection('docs');
 const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
+const methods = new Map(
+	docs.flatMap((entry) => (entry.data.method ? [[entry.id, entry.data.method] as const] : [])),
+);
 ---
 
-<nav class="sidebar" aria-label="Documentation">
+<nav class="sidebar" aria-label="Documentation" data-nav-scope={navScope}>
 	<div class="sidebar-body">
 		{
 			groups.map((group, index) => (
 				<div class="nav-group">
 					<p class="nav-label">{group.group}</p>
-					<Pages pages={group.pages} titles={titles} pathname={pathname} idPrefix={`nav-${index}`} />
+					<Pages pages={group.pages} titles={titles} methods={methods} pathname={pathname} idPrefix={`nav-${index}`} />
 				</div>
 			))
 		}
@@ -29,49 +39,57 @@ const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
 			aria-label="Theme"
 			data-theme-button
 		>
-			<svg class="theme-icon" data-icon="light" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<circle cx="8" cy="8" r="2.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
-				<path
-					d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M3.2 12.8l1.1-1.1M11.7 4.3l1.1-1.1"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"></path>
-			</svg>
-			<svg class="theme-icon" data-icon="dark" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<path
-					d="M10.2 2.2a5.2 5.2 0 1 0 3.6 8.8 4.4 4.4 0 0 1-3.6-8.8Z"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linejoin="round"></path>
-			</svg>
-			<svg class="theme-icon" data-icon="system" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-				<rect x="2" y="2.5" width="12" height="8.5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-				<path d="M6 13.5h4M8 11v2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-			</svg>
+			<span class="theme-icon" data-icon="light"><Fragment set:html={sun} /></span>
+			<span class="theme-icon" data-icon="dark"><Fragment set:html={moon} /></span>
+			<span class="theme-icon" data-icon="system"><Fragment set:html={system} /></span>
 		</button>
 		<div class="theme-menu" role="menu" hidden data-theme-menu>
 			<button type="button" role="menuitemradio" data-theme-value="light" aria-checked="false">
 				Light
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
+				<span class="check"><Fragment set:html={check} /></span>
 			</button>
 			<button type="button" role="menuitemradio" data-theme-value="dark" aria-checked="false">
 				Dark
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
+				<span class="check"><Fragment set:html={check} /></span>
 			</button>
 			<button type="button" role="menuitemradio" data-theme-value="system" aria-checked="false">
 				System
-				<svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-					<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-				</svg>
+				<span class="check"><Fragment set:html={check} /></span>
 			</button>
 		</div>
 	</div>
+	<script is:inline>
+		(() => {
+			const sidebar = document.currentScript?.closest('.sidebar');
+			if (!(sidebar instanceof HTMLElement)) return;
+			const key = `nav-open:${sidebar.dataset.navScope ?? ''}`;
+			let stored = [];
+			try {
+				const raw = sessionStorage.getItem(key);
+				const parsed = raw ? JSON.parse(raw) : [];
+				if (Array.isArray(parsed)) stored = parsed.filter((id) => typeof id === 'string');
+			} catch {
+				stored = [];
+			}
+			const open = new Set(stored);
+			sidebar.querySelectorAll('[data-nav-toggle]').forEach((button) => {
+				if (!(button instanceof HTMLButtonElement)) return;
+				const id = button.getAttribute('aria-controls');
+				const panel = id ? document.getElementById(id) : null;
+				if (!id || !(panel instanceof HTMLElement)) return;
+				if (button.getAttribute('aria-expanded') === 'true') open.add(id);
+				else if (open.has(id)) {
+					button.setAttribute('aria-expanded', 'true');
+					panel.hidden = false;
+				}
+			});
+			try {
+				sessionStorage.setItem(key, JSON.stringify([...open]));
+			} catch {
+				/* storage can be unavailable */
+			}
+		})();
+	</script>
 </nav>
 
 <script>
@@ -193,6 +211,17 @@ const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
 		const panel = panelId ? document.getElementById(panelId) : null;
 		if (!(panel instanceof HTMLElement)) return;
 		toggleNav(button, panel);
+		const key = `nav-open:${sidebar?.getAttribute('data-nav-scope') ?? ''}`;
+		const open = [];
+		sidebar?.querySelectorAll('[data-nav-toggle][aria-expanded="true"]').forEach((item) => {
+			const id = item.getAttribute('aria-controls');
+			if (id) open.push(id);
+		});
+		try {
+			sessionStorage.setItem(key, JSON.stringify(open));
+		} catch {
+			/* storage can be unavailable */
+		}
 	});
 </script>
 
@@ -220,11 +249,16 @@ const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
 		display: none;
 	}
 
+	.theme-icon :global(svg) {
+		display: block;
+		overflow: visible;
+	}
+
 	:global(html[data-theme='light']) .theme-icon[data-icon='light'],
 	:global(html[data-theme='dark']) .theme-icon[data-icon='dark'],
 	:global(html[data-theme='system']) .theme-icon[data-icon='system'],
 	:global(html:not([data-theme])) .theme-icon[data-icon='system'] {
-		display: block;
+		display: inline-flex;
 	}
 
 	.theme-menu {
@@ -265,9 +299,15 @@ const titles = new Map(docs.map((entry) => [entry.id, entry.data.title]));
 	}
 
 	.check {
+		display: inline-flex;
+		flex: none;
 		margin-left: auto;
 		visibility: hidden;
-		transform: translateY(-1.5px);
+	}
+
+	.check :global(svg) {
+		display: block;
+		overflow: visible;
 	}
 
 	.theme-menu button[aria-checked='true'] .check {

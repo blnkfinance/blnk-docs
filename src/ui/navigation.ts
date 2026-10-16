@@ -8,54 +8,111 @@ const pagePath = z
 		'Page paths are relative to src/content, without an extension',
 	);
 
-/** A page path, or a dropdown whose pages can themselves be dropdowns. */
-export type NavItem = string | NavDropdown;
+/** A page path, a page with an icon, or a dropdown whose pages can themselves be dropdowns. */
+export type NavItem = string | NavPage | NavDropdown;
+
+export type NavPage = {
+	page: string;
+	icon?: string;
+};
 
 export type NavDropdown = {
 	dropdown: string;
 	/** Content path when the label is also a page. */
 	page?: string;
+	icon?: string;
 	pages: NavItem[];
 };
+
+export function isDropdown(item: NavItem): item is NavDropdown {
+	return typeof item !== 'string' && 'dropdown' in item;
+}
+
+/** Sidebar and endpoint label. DELETE is shortened so the column stays tight. */
+export function methodLabel(method: string): string {
+	return method === 'DELETE' ? 'DEL' : method;
+}
+
+/** Content path for a link or for a dropdown that is also a page. */
+export function itemPath(item: NavItem): string | undefined {
+	if (typeof item === 'string') return item;
+	return item.page;
+}
 
 export type NavGroup = {
 	group: string;
 	pages: NavItem[];
 };
 
-export type NavTab = {
+export type NavMenuItem = {
+	label: string;
+	path: string;
+	groups: NavGroup[];
+};
+
+type NavLinkTab = {
 	tab: string;
 	path: string;
 	groups: NavGroup[];
 };
+
+type NavMenuTab = {
+	tab: string;
+	path: string;
+	menu: NavMenuItem[];
+};
+
+export type NavTab = NavLinkTab | NavMenuTab;
 
 export type NavRoot = {
 	path: '/';
 	groups: NavGroup[];
 };
 
+const iconName = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Icon names are MingCute line filenames');
+
+const navPage = z.strictObject({
+	page: pagePath,
+	icon: iconName.optional(),
+});
+
 export const navDropdown: z.ZodType<NavDropdown> = z.lazy(() =>
 	z.strictObject({
 		dropdown: z.string().min(1),
 		page: pagePath.optional(),
-		pages: z.array(z.union([pagePath, navDropdown])),
+		icon: iconName.optional(),
+		pages: z.array(z.union([pagePath, navPage, navDropdown])),
 	}),
 );
 
 const navGroup = z.strictObject({
 	group: z.string().min(1),
-	pages: z.array(z.union([pagePath, navDropdown])),
+	pages: z.array(z.union([pagePath, navPage, navDropdown])),
 });
 
 const tabPath = z
 	.string()
-	.regex(/^\/[a-z0-9]+(?:\/[a-z0-9]+)*$/, 'Tab paths are site paths, such as /core');
+	.regex(/^\/(?:[a-z0-9]+(?:\/[a-z0-9]+)*)?$/, 'Tab paths are site paths, such as / or /reference');
 
-const navTab = z.strictObject({
-	tab: z.string().min(1),
+const navMenuItem = z.strictObject({
+	label: z.string().min(1),
 	path: tabPath,
 	groups: z.array(navGroup),
 });
+
+/** A tab lists groups directly, or a menu whose items each list groups. */
+const navTab = z.union([
+	z.strictObject({
+		tab: z.string().min(1),
+		path: tabPath,
+		groups: z.array(navGroup),
+	}),
+	z.strictObject({
+		tab: z.string().min(1),
+		path: tabPath,
+		menu: z.array(navMenuItem).min(1),
+	}),
+]);
 
 const navRoot = z.strictObject({
 	path: z.literal('/'),
@@ -97,21 +154,80 @@ export type DocsColors = z.infer<typeof docsSchema>['colors'];
 
 function walk(pages: NavItem[], paths: string[]) {
 	for (const page of pages) {
-		if (typeof page === 'string') paths.push(page);
-		else {
-			if (page.page) paths.push(page.page);
-			walk(page.pages, paths);
-		}
+		const id = itemPath(page);
+		if (id) paths.push(id);
+		if (isDropdown(page)) walk(page.pages, paths);
 	}
+}
+
+function isMenuTab(section: NavTab | NavRoot): section is NavMenuTab {
+	return 'menu' in section;
+}
+
+/** Every group a tab owns, including groups nested under a menu. */
+export function tabGroups(tab: NavTab): NavGroup[] {
+	return isMenuTab(tab) ? tab.menu.flatMap((item) => item.groups) : tab.groups;
+}
+
+function menuMatches(item: NavMenuItem, path: string): boolean {
+	if (item.path === '/') return path === '/';
+	if (path === item.path || path.startsWith(`${item.path}/`)) return true;
+	return item.groups.some((group) => listHasPath(group.pages, path));
+}
+
+/** The menu item that owns this URL. Longer paths win. */
+export function activeMenu(tab: NavMenuTab, pathname: string): NavMenuItem | undefined {
+	const path = normalizePath(pathname);
+	return tab.menu.filter((item) => menuMatches(item, path)).sort((a, b) => b.path.length - a.path.length)[0];
+}
+
+function sectionGroups(section: NavTab | NavRoot, pathname: string): NavGroup[] {
+	if (isMenuTab(section)) return activeMenu(section, pathname)?.groups ?? section.menu[0].groups;
+	return section.groups;
+}
+
+/** Groups for the sidebar. A menu tab shows only the open item. */
+export function sidebarGroups(navigation: Navigation, pathname: string): NavGroup[] {
+	return sectionGroups(activeTab(navigation, pathname), pathname);
 }
 
 export function pagePaths(navigation: Navigation): string[] {
 	const paths: string[] = [];
 	const sections = [navigation.navigation.root, ...navigation.navigation.tabs];
 	for (const section of sections) {
-		for (const group of section.groups) walk(group.pages, paths);
+		const groups = isMenuTab(section) ? tabGroups(section) : section.groups;
+		for (const group of groups) walk(group.pages, paths);
 	}
 	return paths;
+}
+
+function firstPageId(pages: NavItem[]): string | undefined {
+	for (const page of pages) {
+		const id = itemPath(page);
+		if (id) return id;
+		if (isDropdown(page)) {
+			const nested = firstPageId(page.pages);
+			if (nested) return nested;
+		}
+	}
+}
+
+/** First linked page in these groups, in nav order. */
+export function firstPageHref(groups: NavGroup[]): string | undefined {
+	for (const group of groups) {
+		const id = firstPageId(group.pages);
+		if (id) return pageHref(id);
+	}
+}
+
+/**
+ * The path when a page lives there. Otherwise the first page in the list.
+ * The path stays when the list is empty too.
+ */
+export function linkHref(path: string, groups: NavGroup[], hrefs: ReadonlySet<string>): string {
+	const target = normalizePath(path);
+	if (hrefs.has(target)) return target;
+	return firstPageHref(groups) ?? target;
 }
 
 /** `index` is `/`. `docs/install` is `/docs/install`. `docs/index` is `/docs`. */
@@ -126,11 +242,9 @@ export function matchesPage(id: string, pathname: string): boolean {
 
 function listHasPath(pages: NavItem[], pathname: string): boolean {
 	for (const page of pages) {
-		if (typeof page === 'string') {
-			if (pageHref(page) === pathname) return true;
-		} else if ((page.page && pageHref(page.page) === pathname) || listHasPath(page.pages, pathname)) {
-			return true;
-		}
+		const id = itemPath(page);
+		if (id && pageHref(id) === pathname) return true;
+		if (isDropdown(page) && listHasPath(page.pages, pathname)) return true;
 	}
 	return false;
 }
@@ -139,20 +253,23 @@ function normalizePath(pathname: string): string {
 	return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 }
 
-export function tabMatches(tab: { path: string; groups: NavGroup[] }, pathname: string): boolean {
+export function tabMatches(tab: NavTab | NavRoot, pathname: string): boolean {
 	const path = normalizePath(pathname);
 	if (tab.path === '/') {
 		if (path === '/') return true;
 	} else if (path === tab.path || path.startsWith(`${tab.path}/`)) {
 		return true;
 	}
+	if (isMenuTab(tab)) return tab.menu.some((item) => menuMatches(item, path));
 	return tab.groups.some((group) => listHasPath(group.pages, path));
 }
 
 /** The tab that owns this URL, if one does. Longer paths win. */
 export function currentTab(navigation: Navigation, pathname: string): NavTab | NavRoot | undefined {
 	const sections = [navigation.navigation.root, ...navigation.navigation.tabs];
-	return sections.filter((tab) => tabMatches(tab, pathname)).sort((a, b) => b.path.length - a.path.length)[0];
+	return sections
+		.filter((tab) => tabMatches(tab, pathname))
+		.sort((a, b) => b.path.length - a.path.length || Number('tab' in b) - Number('tab' in a))[0];
 }
 
 export function activeTab(navigation: Navigation, pathname: string): NavTab | NavRoot {
@@ -160,7 +277,7 @@ export function activeTab(navigation: Navigation, pathname: string): NavTab | Na
 }
 
 function groupFor(section: NavTab | NavRoot, pathname: string): string | undefined {
-	return section.groups.find((group) => listHasPath(group.pages, pathname))?.group;
+	return sectionGroups(section, pathname).find((group) => listHasPath(group.pages, pathname))?.group;
 }
 
 function dropdownAncestors(section: NavTab | NavRoot, pathname: string): NavDropdown[] {
@@ -168,23 +285,17 @@ function dropdownAncestors(section: NavTab | NavRoot, pathname: string): NavDrop
 
 	function walk(pages: NavItem[], stack: NavDropdown[]): boolean {
 		for (const page of pages) {
-			if (typeof page === 'string') {
-				if (pageHref(page) === pathname) {
-					found.push(...stack);
-					return true;
-				}
-				continue;
-			}
-			if (page.page && pageHref(page.page) === pathname) {
+			const id = itemPath(page);
+			if (id && pageHref(id) === pathname) {
 				found.push(...stack);
 				return true;
 			}
-			if (walk(page.pages, [...stack, page])) return true;
+			if (isDropdown(page) && walk(page.pages, [...stack, page])) return true;
 		}
 		return false;
 	}
 
-	for (const group of section.groups) {
+	for (const group of sectionGroups(section, pathname)) {
 		if (walk(group.pages, [])) return found;
 	}
 	return found;
@@ -203,7 +314,20 @@ export function pageLabel(navigation: Navigation, pathname: string): string | un
 }
 
 /** Trail for structured data. `/` has none. The last crumb is the current page. */
-export function breadcrumbs(navigation: Navigation, pathname: string, title: string): Crumb[] {
+function sectionHref(section: NavTab, pathname: string, hrefs: ReadonlySet<string>): string {
+	if (isMenuTab(section)) {
+		const item = activeMenu(section, pathname) ?? section.menu[0];
+		return linkHref(item.path, item.groups, hrefs);
+	}
+	return linkHref(section.path, section.groups, hrefs);
+}
+
+export function breadcrumbs(
+	navigation: Navigation,
+	pathname: string,
+	title: string,
+	hrefs: ReadonlySet<string> = new Set(),
+): Crumb[] {
 	const path = normalizePath(pathname);
 	if (path === '/') return [];
 
@@ -214,8 +338,9 @@ export function breadcrumbs(navigation: Navigation, pathname: string, title: str
 		return crumbs;
 	}
 
-	if ('tab' in section) crumbs.push({ name: section.tab, href: section.path });
-	if (section.groups.length > 1) {
+	if ('tab' in section) crumbs.push({ name: section.tab, href: sectionHref(section, path, hrefs) });
+	const groups = sectionGroups(section, path);
+	if (groups.length > 1) {
 		const group = groupFor(section, path);
 		if (group) crumbs.push({ name: group });
 	}
@@ -231,14 +356,8 @@ export function breadcrumbs(navigation: Navigation, pathname: string, title: str
 }
 
 export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string>): void {
-	const hrefs = new Set([...ids].map((id) => pageHref(id)));
 	const missing = pagePaths(navigation).filter((path) => !ids.has(path));
-	const tabPaths = [navigation.navigation.root.path, ...navigation.navigation.tabs.map((tab) => tab.path)];
-	const missingTabs = tabPaths.filter((path) => !hrefs.has(path));
-	const problems = [
-		missing.length > 0 ? `missing pages: ${missing.join(', ')}` : '',
-		missingTabs.length > 0 ? `tab paths with no page: ${missingTabs.join(', ')}` : '',
-	].filter(Boolean);
+	const problems = [missing.length > 0 ? `missing pages: ${missing.join(', ')}` : ''].filter(Boolean);
 	if (problems.length > 0) {
 		throw new Error(`docs.json references ${problems.join('; ')}`);
 	}

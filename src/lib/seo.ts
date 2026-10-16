@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { navigation, pageHref, pagePaths, type NavGroup, type NavItem } from '../ui/navigation';
+import { isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
 export const ogImagePath = '/og.png';
@@ -91,11 +91,9 @@ export async function loadIndexablePages(): Promise<IndexablePage[]> {
 function pageIds(items: NavItem[]): string[] {
 	const ids: string[] = [];
 	for (const item of items) {
-		if (typeof item === 'string') ids.push(item);
-		else {
-			if (item.page) ids.push(item.page);
-			ids.push(...pageIds(item.pages));
-		}
+		const id = itemPath(item);
+		if (id) ids.push(id);
+		if (isDropdown(item)) ids.push(...pageIds(item.pages));
 	}
 	return ids;
 }
@@ -152,7 +150,7 @@ export function llmsDirectory(pages: IndexablePage[], site: URL): string {
 	else {
 		for (const group of root.groups) writeSection(group.group, [group]);
 	}
-	for (const tab of navigation.navigation.tabs) writeSection(tab.tab, tab.groups);
+	for (const tab of navigation.navigation.tabs) writeSection(tab.tab, tabGroups(tab));
 
 	const rest = pages.filter((page) => !used.has(page.id));
 	if (rest.length > 0) {

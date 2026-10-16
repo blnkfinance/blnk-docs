@@ -1,38 +1,71 @@
 ---
-import { matchesPage, pageHref, type NavItem } from './navigation';
+import { renderIcon } from '../icons/mingcute';
+import { isDropdown, itemPath, matchesPage, methodLabel, pageHref, type NavItem } from './navigation';
 import Pages from './Pages.astro';
 
 interface Props {
 	pages: NavItem[];
 	titles: Map<string, string>;
+	methods: Map<string, string>;
 	pathname: string;
 	idPrefix: string;
 	id?: string;
 	open?: boolean;
+	/** Anything inside a dropdown stays unlabeled by an icon. */
+	nested?: boolean;
 }
 
-const { pages, titles, pathname, idPrefix, id, open } = Astro.props;
+const { pages, titles, methods, pathname, idPrefix, id, open, nested = false } = Astro.props;
 
 function contains(item: NavItem): boolean {
-	if (typeof item === 'string') return matchesPage(item, pathname);
-	if (item.page && matchesPage(item.page, pathname)) return true;
-	return item.pages.some((child) => contains(child));
+	const path = itemPath(item);
+	if (path && matchesPage(path, pathname)) return true;
+	return isDropdown(item) && item.pages.some((child) => contains(child));
 }
 
 function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
 	return item.pages.some((child) => contains(child));
 }
+
+/** Top-level links and top-level dropdowns. Nested rows stay plain. */
+function iconName(item: NavItem): string | undefined {
+	if (nested || typeof item === 'string') return undefined;
+	return item.icon;
+}
+
+const icons = new Map<string, string>();
+for (const page of pages) {
+	const name = iconName(page);
+	if (!name || icons.has(name)) continue;
+	const svg = await renderIcon(name, 16);
+	if (svg) icons.set(name, svg);
+}
+const mark = await renderIcon('add', 14);
 ---
 
 <ul class="nav-pages" id={id} hidden={open === false ? true : undefined}>
 	{
 		pages.map((page, index) => {
-			if (typeof page === 'string') {
-				const current = matchesPage(page, pathname);
+			if (!isDropdown(page)) {
+				const path = itemPath(page);
+				if (!path) return null;
+				const current = matchesPage(path, pathname);
+				const method = methods.get(path);
+				const icon = icons.get(iconName(page) ?? '');
 				return (
 					<li>
-						<a class="nav-item" href={pageHref(page)} aria-current={current ? 'page' : undefined}>
-							<span class="nav-text">{titles.get(page) ?? page}</span>
+						<a class="nav-item" href={pageHref(path)} aria-current={current ? 'page' : undefined}>
+							{icon && !method && (
+								<span class="nav-icon">
+									<Fragment set:html={icon} />
+								</span>
+							)}
+							{method && (
+								<span class="method" data-method={method}>
+									{methodLabel(method)}
+								</span>
+							)}
+							<span class="nav-text">{titles.get(path) ?? path}</span>
 						</a>
 					</li>
 				);
@@ -42,6 +75,7 @@ function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
 			const expanded = contains(page);
 			const label = page.dropdown;
 			const current = childSelected(page);
+			const icon = icons.get(iconName(page) ?? '');
 
 			return (
 				<li>
@@ -52,16 +86,25 @@ function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
 						aria-expanded={String(expanded)}
 						aria-controls={panelId}
 					>
+						{icon && (
+							<span class="nav-icon">
+								<Fragment set:html={icon} />
+							</span>
+						)}
 						<span class="nav-text">{label}</span>
-						<span class="nav-mark" aria-hidden="true"><span></span><span></span></span>
+						<span class="nav-mark" aria-hidden="true">
+							<Fragment set:html={mark} />
+						</span>
 					</button>
 					<Pages
 						pages={page.pages}
 						titles={titles}
+						methods={methods}
 						pathname={pathname}
 						idPrefix={panelId}
 						id={panelId}
 						open={expanded}
+						nested
 					/>
 				</li>
 			);

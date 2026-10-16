@@ -1,10 +1,21 @@
 ---
-import logoLight from '../content/images/dev-light-mode.svg?url';
-import logoDark from '../content/images/dev-dark-mode.svg?url';
-import { currentTab, navigation } from './navigation';
+import { getCollection } from 'astro:content';
+import logoLight from '../content/img/logo/dev-light-mode.svg?url';
+import logoDark from '../content/img/logo/dev-dark-mode.svg?url';
+import { renderIcon } from '../icons/mingcute';
+import { activeMenu, currentTab, linkHref, navigation, pageHref, type NavTab } from './navigation';
+
+const chevron = await renderIcon('down', 14);
+const searchIcon = await renderIcon('search-2', 16);
 
 const tabs = navigation.navigation.tabs;
-const current = currentTab(navigation, Astro.url.pathname)?.path;
+const pathname = Astro.url.pathname;
+const hrefs = new Set((await getCollection('docs')).map((entry) => pageHref(entry.id)));
+const open = currentTab(navigation, pathname);
+
+function tabCurrent(tab: NavTab): boolean {
+	return open != null && 'tab' in open && open.tab === tab.tab;
+}
 ---
 
 <header class="header">
@@ -21,11 +32,40 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		</a>
 		<nav class="tabs" aria-label="Primary">
 			{
-				tabs.map((tab) => (
-					<a href={tab.path} aria-current={tab.path === current ? 'page' : undefined}>
-						{tab.tab}
-					</a>
-				))
+				tabs.map((tab) =>
+					'menu' in tab ? (
+						<div class="tab-menu" data-tab-menu>
+							<button
+								class="tab-button"
+								type="button"
+								aria-haspopup="menu"
+								aria-expanded="false"
+								aria-current={tabCurrent(tab) ? 'page' : undefined}
+								data-tab-button
+							>
+								{tab.tab}
+								<span class="tab-chevron"><Fragment set:html={chevron} /></span>
+							</button>
+							<div class="tab-popover" role="menu" hidden data-tab-popover>
+								{
+									tab.menu.map((item) => (
+										<a
+											role="menuitem"
+											href={linkHref(item.path, item.groups, hrefs)}
+											aria-current={activeMenu(tab, pathname)?.path === item.path ? 'page' : undefined}
+										>
+											{item.label}
+										</a>
+									))
+								}
+							</div>
+						</div>
+					) : (
+						<a href={linkHref(tab.path, tab.groups, hrefs)} aria-current={tabCurrent(tab) ? 'page' : undefined}>
+							{tab.tab}
+						</a>
+					),
+				)
 			}
 		</nav>
 	</div>
@@ -37,10 +77,7 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		aria-keyshortcuts="Meta+K Control+K"
 		data-search-open
 	>
-		<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-			<circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
-			<path d="M10.2 10.2 13.5 13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-		</svg>
+		<Fragment set:html={searchIcon} />
 		<span>Search</span>
 		<kbd data-search-kbd>⌘K</kbd>
 	</button>
@@ -56,10 +93,7 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 
 <dialog class="search-dialog" aria-label="Search" data-search-dialog>
 	<div class="search-row">
-		<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-			<circle cx="7" cy="7" r="4.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
-			<path d="M10.2 10.2 13.5 13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-		</svg>
+		<Fragment set:html={searchIcon} />
 		<input
 			type="search"
 			placeholder="Search docs"
@@ -434,6 +468,67 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 
 </script>
 
+<script>
+	const tabNav = document.querySelector('.tabs');
+	const tabHover = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+	function closeTabMenus(except: Element | null) {
+		tabNav?.querySelectorAll('[data-tab-menu]').forEach((menu) => {
+			if (menu === except) return;
+			const popover = menu.querySelector('[data-tab-popover]');
+			const button = menu.querySelector('[data-tab-button]');
+			if (popover instanceof HTMLElement) popover.hidden = true;
+			button?.setAttribute('aria-expanded', 'false');
+		});
+	}
+
+	function openTabMenu(menu: Element) {
+		const popover = menu.querySelector('[data-tab-popover]');
+		const button = menu.querySelector('[data-tab-button]');
+		if (!(popover instanceof HTMLElement)) return;
+		closeTabMenus(menu);
+		popover.hidden = false;
+		button?.setAttribute('aria-expanded', 'true');
+	}
+
+	tabNav?.querySelectorAll('[data-tab-menu]').forEach((menu) => {
+		if (!tabHover) return;
+		menu.addEventListener('mouseenter', () => openTabMenu(menu));
+		menu.addEventListener('mouseleave', () => {
+			if (menu.contains(document.activeElement)) return;
+			closeTabMenus(null);
+		});
+		menu.addEventListener('focusin', () => openTabMenu(menu));
+		menu.addEventListener('focusout', (event) => {
+			const next = event.relatedTarget;
+			if (next instanceof Node && menu.contains(next)) return;
+			closeTabMenus(null);
+		});
+	});
+
+	tabNav?.addEventListener('click', (event) => {
+		const button = event.target instanceof Element ? event.target.closest('[data-tab-button]') : null;
+		if (!(button instanceof HTMLButtonElement)) return;
+		// A pointer click while the menu is already open from hover should not dismiss it.
+		if (tabHover && event.detail !== 0) return;
+		const menu = button.closest('[data-tab-menu]');
+		const popover = menu?.querySelector('[data-tab-popover]');
+		if (!(menu instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+		const willOpen = popover.hidden;
+		if (willOpen) openTabMenu(menu);
+		else closeTabMenus(null);
+	});
+
+	document.addEventListener('click', (event) => {
+		if (!(event.target instanceof Node) || tabNav?.contains(event.target)) return;
+		closeTabMenus(null);
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') closeTabMenus(null);
+	});
+</script>
+
 <style>
 	.header {
 		display: grid;
@@ -528,8 +623,8 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		height: 48px;
 	}
 
-	.tabs a,
-	.tabs span {
+	.tabs > a,
+	.tab-button {
 		display: inline-flex;
 		align-items: center;
 		position: relative;
@@ -540,18 +635,56 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		white-space: nowrap;
 	}
 
-	.tabs a:hover {
+	.tab-menu {
+		position: relative;
+		display: flex;
+		align-items: stretch;
+	}
+
+	.tab-button {
+		gap: 0.3rem;
+		border: 0;
+		background: none;
+		font: inherit;
+		font-size: 14px;
+		cursor: pointer;
+	}
+
+	.tab-chevron {
+		display: inline-flex;
+		flex: none;
+		color: var(--muted);
+	}
+
+	.tab-chevron :global(svg) {
+		display: block;
+		overflow: visible;
+	}
+
+	.tabs > a:hover,
+	.tab-button:hover,
+	.tab-menu:hover .tab-button,
+	.tab-button[aria-expanded='true'] {
 		color: var(--primary);
 	}
 
-	.tabs a[aria-current='page'],
-	.tabs a[aria-current='page']:hover {
+	.tabs > a[aria-current='page'],
+	.tabs > a[aria-current='page']:hover,
+	.tab-button[aria-current='page'],
+	.tab-button[aria-current='page']:hover {
 		color: var(--primary);
 		font-weight: 400;
 		background: none;
 	}
 
-	.tabs a[aria-current='page']::after {
+	.tab-menu:hover .tab-chevron,
+	.tab-button[aria-expanded='true'] .tab-chevron,
+	.tab-button[aria-current='page'] .tab-chevron {
+		color: var(--primary);
+	}
+
+	.tabs > a[aria-current='page']::after,
+	.tab-button[aria-current='page']::after {
 		content: '';
 		position: absolute;
 		left: 0;
@@ -559,6 +692,60 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 		bottom: -1px;
 		height: 2px;
 		background: var(--primary);
+	}
+
+	.tab-popover {
+		position: absolute;
+		z-index: 2;
+		top: calc(100% - 4px);
+		left: 0;
+		display: flex;
+		flex-direction: column;
+		min-width: 11rem;
+		padding: 0.35rem;
+		border: 1px solid var(--line);
+		border-radius: 0.5rem;
+		background: var(--bg);
+		box-shadow: var(--shadow);
+	}
+
+	.tab-popover[hidden] {
+		display: none;
+	}
+
+	.tab-popover a {
+		display: flex;
+		align-items: center;
+		height: auto;
+		padding: 0.4rem 0.55rem;
+		border-radius: 0.35rem;
+		color: var(--fg);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	.tab-popover a[aria-current='page'] {
+		color: var(--primary);
+	}
+
+	.tab-popover a[aria-current='page']::after {
+		content: none;
+	}
+
+	.tab-button[aria-expanded='true'] .tab-chevron {
+		transform: rotate(180deg);
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.tab-chevron {
+			transition: transform 180ms var(--ease-out);
+		}
+	}
+
+	@media (hover: hover) {
+		.tab-popover a:hover {
+			background: var(--fill);
+		}
 	}
 
 	.search {
@@ -596,8 +783,9 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 
 	.search svg,
 	.search-row svg {
+		display: block;
 		flex: none;
-		transform: translateY(-1.5px);
+		overflow: visible;
 	}
 
 	.search span {
@@ -724,7 +912,9 @@ const current = currentTab(navigation, Astro.url.pathname)?.path;
 	.search:focus-visible,
 	.dashboard:focus-visible,
 	.logo:focus-visible,
-	.tabs a:focus-visible {
+	.tabs > a:focus-visible,
+	.tab-button:focus-visible,
+	.tab-popover a:focus-visible {
 		outline: 2px solid var(--fg);
 		outline-offset: 2px;
 	}
