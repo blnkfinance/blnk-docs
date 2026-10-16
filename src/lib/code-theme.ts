@@ -1,15 +1,17 @@
 import type { ThemeRegistration } from 'shiki';
 
 /**
- * Quiet syntax colors. The block background is the page, set in CSS.
+ * Syntax colors for the page background. Light colors are darker so they
+ * hold on a near-white page. Dark colors are lighter and more saturated
+ * so they stay readable on the dark page.
  */
 export function codeTheme(type: 'light' | 'dark'): ThemeRegistration {
 	const light = type === 'light';
-	const fg = light ? '#3f3f3f' : '#d8d8d8';
-	const comment = light ? '#8a8a8a' : '#8f8f8f';
-	const string = light ? '#8d5414' : '#e2b17a';
-	const keyword = light ? '#37598a' : '#a8c0dc';
-	const punctuation = light ? '#6b6b6b' : '#a6a6a6';
+	const fg = light ? '#1f1f1f' : '#f3f3f3';
+	const comment = light ? '#5c5c5c' : '#b8b8b8';
+	const string = light ? '#9a4100' : '#ffc46a';
+	const keyword = light ? '#1e40af' : '#93c8ff';
+	const punctuation = light ? '#4b4b4b' : '#d4d4d4';
 
 	return {
 		name: light ? 'blnk-light' : 'blnk-dark',
