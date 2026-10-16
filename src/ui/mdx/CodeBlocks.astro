@@ -107,7 +107,56 @@
 		return sync;
 	}
 
+	const idPattern = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
+
+	function highlightIds(root: ParentNode) {
+		const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+		const nodes: Text[] = [];
+		while (walker.nextNode()) {
+			const node = walker.currentNode;
+			if (node instanceof Text) nodes.push(node);
+		}
+		for (const node of nodes) {
+			const text = node.textContent ?? '';
+			if (!idPattern.test(text)) {
+				idPattern.lastIndex = 0;
+				continue;
+			}
+			idPattern.lastIndex = 0;
+			const parent = node.parentElement;
+			if (!parent || parent.classList.contains('code-id') || parent.closest('script, style')) continue;
+			const fragment = document.createDocumentFragment();
+			let last = 0;
+			for (const match of text.matchAll(idPattern)) {
+				const index = match.index ?? 0;
+				if (index > last) fragment.append(text.slice(last, index));
+				const mark = document.createElement('span');
+				mark.className = 'code-id';
+				mark.textContent = match[0];
+				fragment.append(mark);
+				last = index + match[0].length;
+			}
+			if (last < text.length) fragment.append(text.slice(last));
+			node.replaceWith(fragment);
+		}
+	}
+
 	function enhanceCodeBlocks() {
+		document.querySelectorAll('.article pre').forEach((pre) => highlightIds(pre));
+
+		document.querySelectorAll('[data-example="request"], [data-example="response"]').forEach((example) => {
+			if (!(example instanceof HTMLElement)) return;
+			const pres = [...example.children].filter(
+				(node): node is HTMLElement => node instanceof HTMLElement && node.tagName === 'PRE',
+			);
+			if (pres.length < 2) return;
+			const group = document.createElement('div');
+			group.className = 'code-group';
+			group.setAttribute('data-code-group', '');
+			pres[0].before(group);
+			pres.forEach((pre) => group.append(pre));
+		});
+
 		document.querySelectorAll('[data-code-group]').forEach((group) => {
 			if (!(group instanceof HTMLElement) || group.dataset.ready) return;
 			const pres = [...group.querySelectorAll(':scope > pre')].filter(

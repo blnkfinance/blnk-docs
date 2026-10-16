@@ -6,7 +6,6 @@ import { defineConfig, fontProviders } from 'astro/config';
 import type { AstroIntegration } from 'astro';
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
-import { codeTheme } from './src/lib/code-theme';
 import { fenceMetaTransformer } from './src/lib/fence-meta';
 import { remarkContentImages } from './src/lib/remark-content-images';
 
@@ -69,8 +68,8 @@ export default defineConfig({
 				text: 'plaintext',
 			},
 			themes: {
-				light: codeTheme('light'),
-				dark: codeTheme('dark'),
+				light: 'one-light',
+				dark: 'one-dark-pro',
 			},
 			defaultColor: false,
 			transformers: [fenceMetaTransformer()],

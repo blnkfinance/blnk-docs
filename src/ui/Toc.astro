@@ -1,6 +1,8 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import { renderIcon } from '../icons/mingcute';
+import { tocItems } from '../lib/toc';
+import TocList from './TocList.astro';
 
 const copyIcon = await renderIcon('copy-2', 16);
 
@@ -11,17 +13,7 @@ interface Props {
 
 const { headings, markdown } = Astro.props;
 const hasSections = headings.some((heading) => heading.depth === 2);
-const items = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
-
-type TocGroup = { heading: MarkdownHeading; children: MarkdownHeading[] };
-const groups: TocGroup[] = [];
-for (const heading of items) {
-	if (heading.depth === 3 && groups.length > 0) {
-		groups[groups.length - 1].children.push(heading);
-		continue;
-	}
-	groups.push({ heading, children: [] });
-}
+const groups = tocItems(headings, markdown);
 
 const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 ---
@@ -33,18 +25,7 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 				<nav aria-label="On this page">
 					<ul>
 						{groups.map((group) => (
-							<li>
-								<a href={`#${group.heading.slug}`}>{group.heading.text}</a>
-								{group.children.length > 0 && (
-									<ul>
-										{group.children.map((heading) => (
-											<li>
-												<a href={`#${heading.slug}`}>{heading.text}</a>
-											</li>
-										))}
-									</ul>
-								)}
-							</li>
+							<TocList item={group} />
 						))}
 					</ul>
 				</nav>
@@ -65,17 +46,44 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 	const copyButton = document.querySelector('[data-copy-page]');
 	const copySource = document.querySelector('[data-page-markdown]');
 
-	const tocLinks = [...document.querySelectorAll('.toc nav a')].flatMap((link) => {
-		if (!(link instanceof HTMLAnchorElement)) return [];
-		const id = decodeURIComponent(link.hash.slice(1));
-		const heading = document.getElementById(id);
-		return heading ? [{ link, heading }] : [];
-	});
+	function assignTabIds() {
+		const links = [...document.querySelectorAll('.toc a[data-toc-tab]')];
+		const panels = [...document.querySelectorAll('.article .tab')];
+		panels.forEach((panel, index) => {
+			const link = links[index];
+			if (!(panel instanceof HTMLElement) || !(link instanceof HTMLAnchorElement)) return;
+			panel.id = decodeURIComponent(link.hash.slice(1));
+		});
+	}
+
+	function showTab(panel: HTMLElement) {
+		const tabs = panel.closest('[data-tabs]');
+		if (!(tabs instanceof HTMLElement)) return;
+		const panels = [...tabs.querySelectorAll(':scope > .tab')];
+		const index = panels.indexOf(panel);
+		panels.forEach((item, itemIndex) => {
+			if (item instanceof HTMLElement) item.hidden = itemIndex !== index;
+		});
+		tabs.querySelectorAll(':scope > .tab-bar .tab-button').forEach((button, itemIndex) => {
+			button.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+		});
+	}
+
+	function tocEntries() {
+		return [...document.querySelectorAll('.toc nav a')].flatMap((link) => {
+			if (!(link instanceof HTMLAnchorElement)) return [];
+			const id = decodeURIComponent(link.hash.slice(1));
+			const heading = document.getElementById(id);
+			return heading ? [{ link, heading }] : [];
+		});
+	}
 
 	function markCurrentHeading() {
 		const line = 72;
+		const tocLinks = tocEntries();
 		let current = null;
 		for (const item of tocLinks) {
+			if (item.heading.getClientRects().length === 0) continue;
 			if (item.heading.getBoundingClientRect().top <= line) current = item;
 		}
 		for (const item of tocLinks) {
@@ -84,24 +92,58 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		}
 	}
 
-	function revealHash() {
-		const id = decodeURIComponent(location.hash.slice(1));
-		if (!id) return;
+	function revealTarget(id: string, smooth: boolean) {
 		const heading = document.getElementById(id);
 		if (!heading) return;
+		if (heading.classList.contains('tab')) showTab(heading);
+		const target = heading.classList.contains('tab') ? (heading.closest('.tabs') ?? heading) : heading;
 		const previous = root.style.scrollBehavior;
-		root.style.scrollBehavior = 'auto';
-		heading.scrollIntoView({ block: 'start' });
+		if (!smooth) root.style.scrollBehavior = 'auto';
+		target.scrollIntoView({ block: 'start' });
 		root.style.scrollBehavior = previous;
 		markCurrentHeading();
 	}
 
-	if (tocLinks.length) {
+	function revealHash() {
+		const id = decodeURIComponent(location.hash.slice(1));
+		if (!id) return;
+		revealTarget(id, false);
+	}
+
+	assignTabIds();
+
+	document.querySelector('.toc nav')?.addEventListener('click', (event) => {
+		if (!(event.target instanceof Element)) return;
+		const link = event.target.closest('a[data-toc-tab]');
+		if (!(link instanceof HTMLAnchorElement)) return;
+		const id = decodeURIComponent(link.hash.slice(1));
+		if (!document.getElementById(id)) return;
+		event.preventDefault();
+		history.pushState(null, '', `#${id}`);
+		revealTarget(id, true);
+	});
+
+	document.addEventListener('click', (event) => {
+		if (!(event.target instanceof Element)) return;
+		const button = event.target.closest('.tab-button');
+		if (!(button instanceof HTMLElement)) return;
+		const tabs = button.closest('[data-tabs]');
+		if (!(tabs instanceof HTMLElement)) return;
+		const buttons = [...tabs.querySelectorAll(':scope > .tab-bar .tab-button')];
+		const panels = [...tabs.querySelectorAll(':scope > .tab')];
+		const panel = panels[buttons.indexOf(button)];
+		if (!(panel instanceof HTMLElement) || !panel.id) return;
+		history.replaceState(null, '', `#${panel.id}`);
+		window.setTimeout(markCurrentHeading, 0);
+	});
+
+	if (tocEntries().length) {
 		document.addEventListener('scroll', markCurrentHeading, { passive: true });
 	}
 
 	revealHash();
 	window.addEventListener('load', revealHash);
+	window.addEventListener('hashchange', revealHash);
 
 	copyButton?.addEventListener('click', async () => {
 		if (!copySource?.textContent) return;
@@ -176,33 +218,33 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		outline-offset: 2px;
 	}
 
-	ul {
+	.toc :global(ul) {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 	}
 
-	li + li {
+	.toc :global(li + li) {
 		margin-top: calc(0.4rem + 2px);
 	}
 
-	ul ul {
+	.toc :global(ul ul) {
 		margin-top: calc(0.4rem + 2px);
 		padding-left: 0.75rem;
 		border-left: 1px solid var(--line);
 	}
 
-	a {
+	.toc :global(a) {
 		color: var(--muted);
 		text-decoration: none;
 	}
 
-	a:hover {
+	.toc :global(a:hover) {
 		color: var(--fg);
 	}
 
-	a[aria-current='location'],
-	a[aria-current='location']:hover {
+	.toc :global(a[aria-current='location']),
+	.toc :global(a[aria-current='location']:hover) {
 		color: var(--primary);
 	}
 </style>

@@ -279,6 +279,7 @@ A short labeled row above a block of prose. It is not a heading, so it does not 
 | `type` | `string` | Shown next to the name, for example `string` or `object` |
 | `required` | `boolean` | Shows a required badge |
 | `default` | `string` | Shows `default` and the value. Omit it, or leave it empty, to hide the badge |
+| `expanded` | `boolean` | Leaves the field open. Omit it to start collapsed |
 
 `ResponseField` documents a response field. Nest fields to show an object or array.
 
@@ -297,6 +298,7 @@ A short labeled row above a block of prose. It is not a heading, so it does not 
 | `name` | `string` | Required |
 | `type` | `string` | Shown next to the name |
 | `required` | `boolean` | Shows a required badge |
+| `expanded` | `boolean` | Leaves the field open. Omit it to start collapsed |
 
 Consecutive fields of the same kind and location are grouped. A heading, paragraph, or other element between them starts a new group. Each field opens on click.
 

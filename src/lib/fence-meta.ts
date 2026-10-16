@@ -1,4 +1,4 @@
-import type { Element, Properties } from 'hast';
+import type { Element, ElementContent, Properties, Text } from 'hast';
 import type { ShikiTransformer } from 'shiki';
 
 type FenceMeta = {
@@ -78,5 +78,48 @@ export function fenceMetaTransformer(): ShikiTransformer {
 			if (parsed.highlight.has(line)) properties['data-highlight'] = '';
 			if (parsed.focus.has(line)) properties['data-focus'] = '';
 		},
+		code(node) {
+			highlightIds(node);
+		},
 	};
+}
+
+const idPattern = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
+
+/** `{ledger_id}` and other id placeholders, in the same mark as an id value. */
+function highlightIds(node: Element) {
+	const next: ElementContent[] = [];
+	for (const child of node.children) {
+		if (child.type === 'element') {
+			highlightIds(child);
+			next.push(child);
+			continue;
+		}
+		if (child.type !== 'text' || !idPattern.test(child.value)) {
+			idPattern.lastIndex = 0;
+			next.push(child);
+			continue;
+		}
+		idPattern.lastIndex = 0;
+		next.push(...splitIds(child));
+	}
+	node.children = next;
+}
+
+function splitIds(node: Text): ElementContent[] {
+	const parts: ElementContent[] = [];
+	let last = 0;
+	for (const match of node.value.matchAll(idPattern)) {
+		const index = match.index ?? 0;
+		if (index > last) parts.push({ type: 'text', value: node.value.slice(last, index) });
+		parts.push({
+			type: 'element',
+			tagName: 'span',
+			properties: { className: ['code-id'] },
+			children: [{ type: 'text', value: match[0] }],
+		});
+		last = index + match[0].length;
+	}
+	if (last < node.value.length) parts.push({ type: 'text', value: node.value.slice(last) });
+	return parts;
 }

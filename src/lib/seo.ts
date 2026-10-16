@@ -30,7 +30,7 @@ function present(value: string | undefined): string | undefined {
 }
 
 export function documentTitle(seoTitle: string | undefined, title: string): string {
-	return `${present(seoTitle) ?? title} | ${siteTitle}`;
+	return present(seoTitle) ?? `${title} | ${siteTitle}`;
 }
 
 /** First word capitalized, later words lowercase. All-caps tokens such as API stay as written. */
