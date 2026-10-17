@@ -1,0 +1,125 @@
+---
+title: "Create new balance"
+sidebarTitle: "Create new balance"
+description: "Create a new ledger balance with the Python SDK."
+method: "POST"
+path: "/balances"
+---
+
+Use `blnk.ledger_balances.create` to create a balance on an existing ledger.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```python Ledger balance
+response = blnk.ledger_balances.create({
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "currency": "USD",
+})
+```
+
+```python General Ledger indicator {2,4}
+response = blnk.ledger_balances.create({
+  "ledger_id": "general_ledger_id",
+  "currency": "USD",
+  "indicator": "@Revenue",
+})
+```
+
+</RequestExample>
+
+<Tabs>
+<Tab title="Ledger balance">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ledger_id` | `str` | Ledger the balance belongs to. |
+| `currency` | `str` | Currency or asset class for the balance. |
+| `identity_id` | `str` | Identity to link to the balance. Required when `track_fund_lineage` is `True`. |
+| `track_fund_lineage` | `bool` | Enable [fund lineage](/transactions/lineage) tracking on this balance. |
+| `allocation_strategy` | `str` | How tagged provider funds are allocated on spend: `FIFO`, `LIFO`, or `PROPORTIONAL`. |
+| `meta_data` | `dict` | Optional metadata for extra context. |
+
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+Create an internal balance yourself instead of waiting for the first `@` reference on a transaction. See [Internal balances](/balances/internal-balances).
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ledger_id` | `str` | Must be `general_ledger_id`. `indicator` is only allowed on this ledger. |
+| `indicator` | `str` | Must start with `@` and contain no whitespace. The same indicator and currency pair can only exist once. |
+
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Save the balance ID">
+
+Use `response.data["balance_id"]` as the `source` or `destination` on transactions, or when creating balance monitors.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Ledger balance
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "identity_id": "",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+```json General Ledger indicator {7}
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "general_ledger_id",
+  "indicator": "@Revenue",
+  "identity_id": "",
+  "balance_id": "bln_a7c3e91f-2d48-4b1a-9e6c-5f8d2a1b4c70",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balance_id` | `str` | Unique ID for the balance. Use as `source` or `destination` on transactions. |
+| `ledger_id` | `str` | Ledger ID you passed in the request. |
+| `indicator` | `str` | Set when you created a General Ledger balance with `indicator`. |
+| `currency` | `str` | Currency you passed in the request. |
+| `balance` | `number` | Current net amount in the balance. |
+| `created_at` | `str` | Date and time the balance was created. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Internal balances", href: "/balances/internal-balances" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Create balance", href: "/reference/create-balance" },
+  ]}
+/>

@@ -1,0 +1,139 @@
+---
+title: "Using the SDK"
+sidebarTitle: "Using the SDK"
+description: "Configure authentication, timeouts, retries, logging, and versions for the TypeScript SDK."
+icon: "code"
+---
+
+<Info>
+`@blnkfinance/blnk-typescript@1.5.0` targets Blnk Core **0.15.4**. See the [Changelog](/changelog/blnk-ts) before upgrading.
+</Info>
+
+## Initialize the client
+
+Your Blnk client is the single entry point to everything: ledgers, balances, transactions, webhooks, and more. Configure it once when your app starts, then use it everywhere.
+
+```typescript blnk.ts wrap
+
+export const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
+```
+
+That's it. One import, one call, one client. From here you can create ledgers, move money, reconcile transactions, and manage your entire financial infrastructure.
+
+```typescript create-ledger.ts wrap
+
+const response = await blnk.Ledgers.create({
+  name: 'Customer Savings Account',
+  meta_data: {
+    project_owner: 'YOUR_APP_NAME',
+  },
+});
+
+console.log('Ledger Created:', response.data);
+```
+
+## Authentication
+
+`BlnkInit` takes two arguments: an API key and a client `options` object. 
+
+The `options` object must include `baseUrl`, the root URL of your Blnk Core instance. The SDK sends the API key on every request in the `X-Blnk-Key` header.
+
+How you set the API key depends on whether Core runs in secure mode:
+
+<Tabs>
+<Tab title="Secure mode">
+
+When `server.secure` is enabled, pass your API key as the first argument. Set `baseUrl` to the URL where Core is reachable.
+
+```typescript Secure mode wrap
+
+export const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+});
+```
+
+</Tab>
+<Tab title="Auth disabled">
+
+When secure mode is off, pass an empty string as the first argument.
+
+```typescript Auth disabled wrap
+
+export const blnk = BlnkInit('', {
+  baseUrl: 'http://localhost:5001',
+});
+```
+
+</Tab>
+</Tabs>
+
+## Timeouts and retries
+
+Timeouts and retries ship in v1.2.0 or later. When connections fail, Core restarts, or requests hang, the SDK handles it without blocking your app. To configure, pass the following parameters in the second `options` object:
+
+```typescript Timeouts and retries wrap
+const blnk = BlnkInit(process.env.BLNK_API_KEY ?? '', {
+  baseUrl: process.env.BLNK_BASE_URL ?? 'http://localhost:5001',
+  timeout: 30000,
+  retryCount: 3,
+  retryDelayMs: 2000,
+});
+```
+
+| Option | Type | Default | What it does for you |
+| :-- | :-- | :-- | :-- |
+| `timeout` | `number` | `10000` | How long to wait before giving up on a request. Bump this for slow operations like bulk reconciliations. |
+| `retryCount` | `number` | `1` | How many times to try. `1` means one attempt, no retries. `3` means try up to 3 times. |
+| `retryDelayMs` | `number` | `2000` | How long to wait between retries. Uses linear backoff, so the delay is predictable. |
+
+When to tune these:
+
+- Keep defaults if you're making fast, local calls and want to fail fast.
+- Increase `timeout` if you're running large batch requests that may take a while to complete synchronously.
+- Increase `retryCount` if you're reading data across an unreliable network
+
+## Custom logger
+
+By default, the SDK logs its internal events through a built-in logger that writes to console with `INFO:`, `ERROR:`, and `DEBUG:` prefixes.
+
+Pass a custom logger to route these messages to your own logging system instead of console.
+
+```typescript Custom logger wrap
+const blnk = BlnkInit(apiKey, {
+  baseUrl: 'http://localhost:5001',
+  logger: {
+    info: (message, ...meta) => appLogger.info({ meta }, message),
+    error: (message, ...meta) => appLogger.error({ meta }, message),
+  },
+});
+```
+
+<Note>
+Metadata passed to the logger is redacted. The SDK strips values for keys such as `api_key`, `authorization`, `token`, and `secret` before logging.
+</Note>
+
+| Level | When the SDK calls it |
+| :-- | :-- |
+| `info` | Before a retry, or when a retryable `GET` failure will be retried |
+| `error` | When a request times out, returns a non-retryable HTTP error, or fails with a network error |
+
+```bash Example logs wrap
+INFO: Retrying request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 { attempt: 2, maxAttempts: 3, delayMs: 2000 }
+
+ERROR: Request timed out { endpoint: 'transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94', timeoutMs: 30000 }
+
+ERROR: Request to transactions/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94 failed with status 404.
+```
+
+<RelatedTopics
+  items={[
+    { title: "Quick start", href: "/sdks/typescript/start/quick-start" },
+    { title: "Error handling", href: "/sdks/typescript/start/error-handling" },
+    { title: "Changelog", href: "/changelog/blnk-ts" },
+    { title: "API error codes", href: "/advanced/error-codes" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+    { title: "Scoped API keys", href: "/api-keys/overview" },
+  ]}
+/>

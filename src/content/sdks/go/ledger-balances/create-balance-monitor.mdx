@@ -1,0 +1,86 @@
+---
+title: "Create balance monitor"
+sidebarTitle: "Create balance monitor"
+description: "Create a balance monitor with the Go SDK."
+method: "POST"
+path: "/balance-monitors"
+---
+
+Use `client.BalanceMonitor.Create` to set up [balance monitoring](/balances/balance-monitoring) on an existing balance.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.BalanceMonitor.Create
+monitor, resp, err := client.BalanceMonitor.Create(blnkgo.MonitorData{
+	BalanceID: "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	Condition: blnkgo.MonitorCondition{
+		Field: "credit_balance",
+		Operator: blnkgo.OperatorGreaterThan,
+		Value: 1000,
+		Precision: 100,
+	},
+	CallBackURL: "https://api.example.com/balance-monitor",
+	Description: "Low balance alert",
+})
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BalanceID` | `string` | Balance to monitor. |
+| `Condition` | `MonitorCondition` | Threshold rule with `Field`, `Operator`, `Value`, and `Precision`. |
+| `Condition.`<br />`Field` | `string` | Balance field to watch (for example `credit_balance`, `debit_balance`, `balance`). |
+| `Condition.`<br />`Operator` | `MonitorCondition`<br />`Operators` | Comparison operator: `>`, `<`, `=`, `!=`, `>=`, `<=`. |
+| `Condition.`<br />`Value` | `int64` | Threshold amount. |
+| `Condition.`<br />`Precision` | `int64` | Currency precision (for example `100` for cents). |
+| `CallBackURL` | `string` | Webhook URL when the condition is met. |
+| `Description` | `string` | Optional description for the monitor. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "condition": {
+    "field": "credit_balance",
+    "operator": ">",
+    "value": 1000,
+    "precision": 100
+  },
+  "call_back_url": "https://api.example.com/balance-monitor",
+  "description": "Low balance alert",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.MonitorDataResp`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `MonitorID` | `string` | Unique ID for the monitor. |
+| `BalanceID` | `string` | Balance being monitored. |
+| `Condition` | `MonitorCondition` | Threshold rule you passed in the request. |
+| `CallBackURL` | `string` | Webhook URL for notifications. |
+| `Description` | `string` | Description for the monitor. |
+| `CreatedAt` | `string` | Date and time when the monitor was created. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Balance monitoring", href: "/balances/balance-monitoring" },
+    { title: "Global webhooks", href: "/webhooks/global-webhooks" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Create Balance Monitor", href: "/reference/create-balance-monitor" },
+  ]}
+/>

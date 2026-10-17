@@ -1,0 +1,158 @@
+---
+title: "Update inflight"
+sidebarTitle: "Update inflight"
+description: "Commit or void an inflight transaction with the Java SDK."
+method: "PUT"
+path: "/transactions/inflight/{transaction_id}"
+---
+
+Use `blnk.transactions().updateStatus` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```java Commit
+String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
+
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transactionId,
+    UpdateTransactionStatus.create().status("commit"));
+```
+
+```java Partial commit
+String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
+
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transactionId,
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .amount(500));
+```
+
+```java Void
+String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
+
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    transactionId,
+    UpdateTransactionStatus.create().status("void"));
+```
+
+```java Dry run
+ApiResponse<JsonNode> preview = blnk.transactions().updateStatus(
+    "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .dryRun(true));
+```
+
+</RequestExample>
+
+Preview the commit or void without settling the hold. See [Dry-run transactions](/transactions/dry-run).
+
+| Java builder | Wire field | Type | Description |
+| :-- | :-- | :-- | :-- |
+| (path argument) | `id` | `String` | Inflight transaction ID, or batch ID from `createBulk`. |
+| `status()` | `status` | `String` | `commit` to apply funds, or `void` to cancel and roll back. |
+| `amount()` | `amount` | `Number` | Partial commit amount. See [Partial commits](/transactions/inflight#partial-commits). |
+| `preciseAmount()` | `precise_amount` | `Number` | Precision-applied partial commit amount. Takes precedence over `amount()`. |
+</Step>
+
+<Step title="Confirm the outcome">
+
+Check `response.data().get("status").asText()` for `APPLIED` or `VOID`. The child gets a new `transaction_id`. Use `parent_transaction` to link it to the original inflight transaction.
+
+A dry run has no `transaction_id`. Check `would_apply` instead.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Commit expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "ref_2ye281ewiu",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d33deb588bd0",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+```json Partial commit expandable
+{
+  "amount": 500,
+  "precision": 100,
+  "precise_amount": 50000,
+  "transaction_id": "txn_b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "ref_2ye281ewiu",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d33deb588bd0",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+```json Void expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "ref_2ye281ewiu",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "VOID",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d33deb588bd0",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+```json Dry run expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "operation": "commit",
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | `String` | ID of the new transaction created by the commit or void. |
+| `parent_transaction` | `String` | Original inflight transaction this resolves. |
+| `status` | `String` | `APPLIED` or `VOID`. |
+| `precise_amount` | `Number` | Amount applied (amount × precision). |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Inflight transactions", href: "/transactions/inflight" },
+    { title: "Update inflight", href: "/reference/update-inflight" },
+  ]}
+/>

@@ -1,0 +1,106 @@
+---
+title: "Create identity"
+sidebarTitle: "Create identity"
+description: "Create a new identity with the Go SDK."
+method: "POST"
+path: "/identities"
+---
+
+Use `client.Identity.Create` to create an [identity](/identities/introduction) for an individual or organization.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Identity.Create
+dob, _ := time.Parse(time.RFC3339, "1990-01-15T00:00:00Z")
+
+identity, resp, err := client.Identity.Create(blnkgo.Identity{
+	IdentityType: blnkgo.Individual,
+	FirstName: "Alice",
+	LastName: "Smith",
+	EmailAddress: "alice.smith@example.com",
+	DOB: &dob,
+	MetaData: blnkgo.MetaData{
+		"customer_id": "CUST123456",
+	},
+})
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `IdentityType` | `blnkgo.IdentityType` | `Individual` or `Organization`. |
+
+<Expandable title="Optional parameters">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `IdentityID` | `string` | Optional ID you can set yourself. Must be `idt_` + UUID. Blnk generates one if you omit it. |
+| `OrganizationName` | `string` | Name of the organization. |
+| `FirstName` | `string` | First name of the individual. |
+| `LastName` | `string` | Last name of the individual. |
+| `OtherNames` | `string` | Any other names for the individual. |
+| `Gender` | `string` | Gender of the individual. |
+| `DOB` | `*time.Time` | Date of birth. Parse with `time.Parse(`<br />`time.RFC3339, "...")`. |
+| `EmailAddress` | `string` | Email address. |
+| `PhoneNumber` | `string` | Contact number. |
+| `Nationality` | `string` | Nationality of the individual. |
+| `Category` | `string` | Your own customer category. |
+| `Street` | `string` | Street address. |
+| `Country` | `string` | Country of residence. |
+| `State` | `string` | State of residence. |
+| `PostCode` | `string` | Postal code. |
+| `City` | `string` | City of residence. |
+| `MetaData` | `MetaData` | Optional metadata. |
+
+</Expandable>
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "identity_id": "idt_a8f2c91d-4b3c-4ef4-9ab1-a0decf3d0aa3",
+  "identity_type": "individual",
+  "first_name": "Alice",
+  "last_name": "Smith",
+  "email_address": "alice.smith@example.com",
+  "phone_number": "+1234567890",
+  "nationality": "Canadian",
+  "category": "customer",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": {
+    "customer_id": "CUST123456"
+  }
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.IdentityResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `IdentityId` | `string` | Unique ID for the identity. |
+| `IdentityType` | `blnkgo.IdentityType` | Type you passed in the request. |
+| `FirstName` | `string` | First name of the individual. |
+| `LastName` | `string` | Last name of the individual. |
+| `EmailAddress` | `string` | Email address. |
+| `CreatedAt` | `string` | Date and time the identity was created. |
+| `MetaData` | `MetaData` | Metadata stored with the identity. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Identities overview", href: "/identities/introduction" },
+    { title: "Link balances", href: "/identities/link-balances" },
+    { title: "PII tokenization", href: "/identities/pii-tokenization" },
+    { title: "Create identity", href: "/reference/create-identity" },
+  ]}
+/>

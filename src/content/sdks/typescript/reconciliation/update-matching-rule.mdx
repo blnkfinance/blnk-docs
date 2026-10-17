@@ -1,0 +1,94 @@
+---
+title: "Update matching rule"
+sidebarTitle: "Update matching rule"
+description: "Update a reconciliation matching rule with the TypeScript SDK."
+method: "PUT"
+path: "/reconciliation/matching-rules/{rule_id}"
+---
+
+Use `blnk.Reconciliation.updateMatchingRule` to update a matching rule.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```typescript blnk.Reconciliation.updateMatchingRule
+const response = await blnk.Reconciliation.updateMatchingRule(
+  'rule_890bdbc4-467f-4670-8424-5667e41daf29',
+  {
+    name: 'Amount match (updated)',
+    description: 'Match by amount with 2% drift',
+    criteria: [
+      {
+        field: 'amount',
+        operator: 'equals',
+        allowable_drift: 0.02
+      },
+      {
+        field: 'currency',
+        operator: 'equals'
+      },
+    ],
+  },
+);
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ruleId` | `string` | ID of the matching rule to update. |
+| `name` | `string` | Updated name for the rule. |
+| `description` | `string` | Updated description of what the rule does. |
+| `criteria` | `object[]` | Full replacement array of match criteria. |
+| `criteria[].field` | `string` | Field to match: `amount`, `currency`, `reference`, `description`, or `date`. |
+| `criteria[].operator` | `string` | How to compare the field: `equals` or `contains`. |
+| `criteria[].allowable_drift` | `number` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+</Step>
+
+<Step title="Verify the changes">
+
+Read `response.data` to confirm the updated criteria and description. The rule ID stays the same.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Amount match (updated)",
+  "description": "Match by amount with 2% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.02
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-12-01T10:15:00.000000000Z"
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `rule_id` | `string` | Unchanged ID of the rule. |
+| `name` | `string` | Updated rule name. |
+| `criteria` | `object[]` | The updated match criteria stored for the rule. |
+| `updated_at` | `string` | When the rule was last updated. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Update Matching Rule", href: "/reference/update-matching-rule" },
+  ]}
+/>

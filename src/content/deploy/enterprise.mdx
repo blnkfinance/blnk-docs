@@ -1,0 +1,125 @@
+---
+title: "Enterprise"
+sidebarTitle: "Enterprise"
+description: "Deploy Enterprise on infrastructure you host."
+seoTitle: "Enterprise deployment • Blnk Developer Documentation"
+metaDescription: "Run the Cloud dashboard on your own infrastructure with an Enterprise license, then connect Core."
+enterprise: true
+---
+
+Enterprise is every module on infrastructure you host: Core, the Cloud dashboard, Watch, and Insights. The license comes from [sales](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fenterprise), and the dashboard does not start without the key they send.
+
+Run Core first with the [open-source guide](/deploy/open-source). This page starts the Cloud dashboard beside it and connects the two with the query agent. The full environment reference is in [License configuration](/cloud/start/license/configuration).
+
+<Steps>
+<Step title="Contact sales">
+
+Ask [sales](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fenterprise) for a production license. The email contains a base64 license key, which you set as `ENTERPRISE_LICENSE_B64`.
+
+</Step>
+
+<Step title="Create the database">
+
+Create a managed Postgres database named `blnk-cloud`, with TLS enabled. Save the connection URL for `ENTERPRISE_POSTGRES_URL`.
+
+```sql Create the database
+CREATE DATABASE "blnk-cloud";
+```
+
+</Step>
+
+<Step title="Write the environment file">
+
+Leave `ENTERPRISE_SKIP_CORE` set to `true` so this container runs the dashboard and Core stays the instance you already deployed. Generate your own encryption key and JWT secret, and do not change the encryption key after the dashboard has stored data.
+
+```bash .env wrap
+HOSTNAME=127.0.0.1
+ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/blnk-cloud?sslmode=require
+ENTERPRISE_LICENSE_B64=your_base64_license_string
+ENTERPRISE_SKIP_CORE=true
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+CORS_ORIGINS=http://localhost:8080,http://localhost:3001,https://ledger.yourdomain.com
+BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+JWT_SECRET=your_long_random_secret_here
+```
+
+| Variable | What to set |
+| :--- | :--- |
+| `HOSTNAME` | `127.0.0.1`, so health checks stay on the container loopback. |
+| `ENTERPRISE_POSTGRES_URL` | Connection string for the Postgres instance that holds `blnk-cloud`. |
+| `ENTERPRISE_LICENSE_B64` | The base64 license key from sales. |
+| `ENTERPRISE_PUBLIC_PORT` | Port the dashboard listens on. The sample uses `8080`. |
+| `ENTERPRISE_PUBLIC_URL` | Public URL of the dashboard, including `https://`. |
+| `CORS_ORIGINS` | Browser origins allowed to call the dashboard, with no spaces. Include `ENTERPRISE_PUBLIC_URL`. |
+| `BLNK_ENCRYPTION_KEY` | A unique 32-character key. It encrypts values such as instance connection keys. |
+| `JWT_SECRET` | A long random secret for authentication tokens. |
+
+</Step>
+
+<Step title="Start the dashboard">
+
+Map the host port to `ENTERPRISE_PUBLIC_PORT`. With the file above, that is `8080`. If sales sent a different image name, use that tag instead.
+
+```bash Start the dashboard
+docker run -d \
+  --name blnk-enterprise \
+  --env-file .env \
+  -p 8080:8080 \
+  ghcr.io/blnkfinance/blnk-enterprise:0.1.23
+```
+
+The container name is `blnk-enterprise`, and the dashboard is at `ENTERPRISE_PUBLIC_URL`.
+
+</Step>
+
+<Step title="Connect your Core">
+
+Open `ENTERPRISE_PUBLIC_URL`, sign up, and create the workspace. Then open **Connect an instance** and submit the Core you deployed.
+
+- **Instance name:** a name for this Core
+- **Core URL:** the URL of that Core
+- **Core secret key:** the `secret_key` from the Core configuration
+
+Click **Create connection**.
+
+![Connect an instance form with Core URL and secret key](img/deploy/instance-creation-form.png)
+
+Copy the **Connection key** from the instance details.
+
+![Instance details with the connection key](img/deploy/connection-key.png)
+
+</Step>
+
+<Step title="Run the query agent">
+
+Run the query agent on a host that can reach the Core database. `CONNECTION_URL` is the WebSocket form of `ENTERPRISE_PUBLIC_URL`, with the path `/ws/agent`.
+
+| `ENTERPRISE_PUBLIC_URL` | `CONNECTION_URL` |
+| :--- | :--- |
+| `https://ledger.yourdomain.com` | `wss://ledger.yourdomain.com/ws/agent` |
+| `http://localhost:8080` | `ws://localhost:8080/ws/agent` |
+
+`DB_URL` is the Core Postgres URL, the same value as `data_source.dns` in the Core configuration. `CONNECTION_KEY` is the key you copied from the instance details.
+
+```bash Run the query agent
+docker run -d \
+  -e DB_URL="postgres://username:password@host:5432/blnk?sslmode=require" \
+  -e CONNECTION_KEY="sk_live_..." \
+  -e CONNECTION_URL="wss://ledger.yourdomain.com/ws/agent" \
+  blnkfinance/query-agent:latest
+```
+
+</Step>
+</Steps>
+
+On the query agent setup, the status shows **Connected**.
+
+![Query agent status showing Connected](img/deploy/instance-connected.png)
+
+<RelatedTopics
+  items={[
+    { title: "Open-source", href: "/deploy/open-source" },
+    { title: "License configuration", href: "/cloud/start/license/configuration" },
+  ]}
+/>

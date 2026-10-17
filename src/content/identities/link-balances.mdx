@@ -1,0 +1,231 @@
+---
+title: "Link Identity to a Balance"
+sidebarTitle: "Link balances"
+icon: "link-2"
+description: "Link an identity to a balance when you create it, or update one that already exists."
+seoTitle: "Connect Identity to Balance • Blnk Developer Documentation"
+metaDescription: "Find out how to link users and account balances within Blnk to enhance data accuracy and traceability"
+---
+
+One identity can own many balances. A transaction on a linked balance is mapped to that identity.
+
+## Link an identity when you create a balance
+
+Pass the identity's `identity_id` to [Create balance](/reference/create-balance).
+
+<Tabs>
+  <Tab title="Create balance">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    "currency": "USD"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: 'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
+  identity_id: 'idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d',
+  currency: 'USD',
+});
+```
+
+```go Go wrap
+balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    IdentityID: "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+    Currency: "USD",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+  "currency": "USD",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc")
+        .identityId("idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d")
+        .currency("USD"));
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `ledger_id` | [Ledger](/ledgers/introduction) to create the balance in. | Yes |
+| `identity_id` | [Identity](/identities/introduction) to link. The identity must already exist. | Yes |
+| `currency` | Currency or asset class of the balance. | Yes |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 201 Created
+{
+  "balance": 0,
+  "version": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "identity_id": "idt_0501db5c-baf9-4be1-a931-f4bae7f3a41d",
+  "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+  "currency": "USD",
+  "created_at": "2024-07-05T08:13:18.882616461Z"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `balance_id` | Id of the new balance. |
+| `identity_id` | Identity linked to this balance. |
+| `ledger_id` | Ledger the balance belongs to. |
+| `currency` | Currency or asset class. |
+
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+Open the identity, then click **New**, then **New balance**. You can also press `⌥ B` (`Alt+B` on Windows). The identity id is already filled in. Enter the currency and ledger, then click **Create balance**.
+
+![Create balance form with the identity id filled in](img/identities/create-linked-balance-form.png)
+
+The new balance is linked to that identity.
+
+## Update a balance's identity
+
+Call [Update balance identity](/reference/update-balance-identity) to attach an identity to a balance that does not have one, or to replace the identity that is already linked. The identity must already exist.
+
+<Tabs>
+  <Tab title="Update identity">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X PUT "http://localhost:5001/balances/{balance_id}/identity" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.updateIdentity(
+  'bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a',
+  {
+    identity_id: 'idt_3b63c8da-af29-4cc3-ad38-df17d87456e6',
+  },
+);
+```
+
+```go Go wrap
+result, resp, err := client.LedgerBalance.UpdateIdentity(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    blnkgo.UpdateBalanceIdentityRequest{
+        IdentityID: "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6",
+    },
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.update_identity(
+  "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+  {
+    "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().updateIdentity(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    UpdateBalanceIdentity.create()
+        .identityId("idt_3b63c8da-af29-4cc3-ad38-df17d87456e6"));
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `balance_id` | Balance to update. | Yes |
+| `identity_id` | Identity to link. It must already exist. | Yes |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK
+{
+  "message": "Balance identity updated successfully"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `message` | Confirms the balance now points at that identity. |
+
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+<Steps titleSize="h3">
+<Step title="Open the balance">
+
+On **Balances**, open the balance you want to link.
+
+![Balance details before an identity is assigned](img/balances/assign-identity-balance-details.png)
+
+</Step>
+
+<Step title="Open Actions">
+
+In the top right, click **Actions**.
+
+![Balance details header with Actions](img/balances/assign-identity-actions-button.png)
+
+</Step>
+
+<Step title="Choose Assign identity">
+
+Select **Assign identity**.
+
+![Actions menu with Assign identity](img/balances/assign-identity-action.png)
+
+</Step>
+
+<Step title="Select an identity">
+
+Type a name and pick it from the list, or paste an identity id, then click **Submit**.
+
+![Assign identity modal](img/balances/assign-identity-modal.png)
+
+</Step>
+</Steps>
+
+The **Owner** field shows the linked individual or organization. Follow the same steps to replace the identity on a balance that already has one.
+
+![Balance details with the linked identity in Owner](img/balances/assign-identity-result.png)
+
+<RelatedTopics
+  items={[
+    { title: "Identities overview", href: "/identities/introduction" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Update balance identity", href: "/reference/update-balance-identity" },
+  ]}
+/>

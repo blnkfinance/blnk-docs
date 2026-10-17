@@ -1,0 +1,149 @@
+---
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+description: "Submit multiple transactions in one request with the Java SDK."
+method: "POST"
+path: "/transactions/bulk"
+---
+
+Use `blnk.transactions().createBulk` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```java Create batch
+CreateTransactions payment1 = CreateTransactions.create()
+    .amount(1000)
+    .precision(100)
+    .currency("USD")
+    .source("@source_1")
+    .destination("@dest_1")
+    .reference("bulk_001")
+    .description("Payment 1");
+
+CreateTransactions payment2 = CreateTransactions.create()
+    .amount(2000)
+    .precision(100)
+    .currency("USD")
+    .source("@source_2")
+    .destination("@dest_2")
+    .reference("bulk_002")
+    .description("Payment 2");
+
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .atomic(true)
+        .transactions(List.of(payment1, payment2)));
+```
+
+```java Dry run
+CreateTransactions item = CreateTransactions.create()
+    .preciseAmount(45000)
+    .precision(100)
+    .currency("USD")
+    .source("bln_source-bal-001")
+    .destination("bln_dest-bal-001")
+    .reference("ref_payout_450")
+    .description("First payout");
+
+ApiResponse<JsonNode> preview = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .dryRun(true)
+        .transactions(List.of(item)));
+```
+
+</RequestExample>
+
+<Tabs>
+<Tab title="Create batch">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `List<`<br />`CreateTransactions>` | Transaction objects to create; references must be unique within the batch. |
+| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. See [Dry-run transactions](/transactions/dry-run).
+
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Save the batch ID">
+
+Use `response.data().get("batch_id").asText()` as `parent_transaction` to find child transactions, or with `updateStatus` to commit or void an inflight batch.
+
+A dry run has no `batch_id`. Check `would_apply` and `results`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Sync
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 2
+}
+```
+
+```json Async (run_async: true)
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+
+```json 200 OK expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100
+    }
+  ]
+}
+```
+
+</ResponseExample>
+
+<CodeGroup>
+
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_id` | `String` | Identifier for the batch. Use as parent_transaction to find child transactions, or with `updateStatus` to commit or void an inflight batch. |
+| `status` | `String` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | `Number` | Number of transactions when processed synchronously. |
+| `message` | `String` | Status message when `run_async` is `true`. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Bulk transactions guide", href: "/transactions/bulk-transactions" },
+    { title: "Bulk transactions", href: "/reference/bulk-transactions" },
+  ]}
+/>

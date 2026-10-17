@@ -1,0 +1,92 @@
+---
+title: "Instant reconciliation"
+sidebarTitle: "Instant reconciliation"
+description: "Run instant reconciliation with the Python SDK."
+method: "POST"
+path: "/reconciliation/start-instant"
+---
+
+Use `blnk.reconciliation.run_instant` to reconcile external records inline.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```python blnk.reconciliation.run_instant
+response = blnk.reconciliation.run_instant({
+  "external_transactions": [
+    {
+      "id": "txn_1",
+      "amount": 5.49,
+      "reference": "INV-2023-002",
+      "currency": "GBP",
+      "description": "Card payment",
+      "date": "2024-11-15T14:25:30Z",
+      "source": "bank-api",
+    },
+  ],
+  "strategy": "one_to_one",
+  "dry_run": True,
+  "matching_rule_ids": [
+    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  ],
+})
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `external_transactions` | `list[dict]` | Array of external transaction rows to reconcile. |
+| `external_transactions.`<br />`[].id` | `str` | Unique external transaction ID. |
+| `external_transactions.`<br />`[].amount` | `number` | Transaction amount. |
+| `external_transactions.`<br />`[].reference` | `str` | Unique transaction reference. |
+| `external_transactions.`<br />`[].currency` | `str` | ISO 4217 currency code. |
+| `external_transactions.`<br />`[].description` | `str` | Description of the transaction. |
+| `external_transactions.`<br />`[].date` | `str` | Transaction date and time. |
+| `external_transactions.`<br />`[].source` | `str` | Origin of the transaction data. |
+| `strategy` | `str` | Match strategy: `one_to_one`, `one_to_many`, or `many_to_one`. |
+| `matching_rule_ids` | `string[]` | IDs of the matching rules to apply. |
+
+<Expandable title="Optional parameters">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dry_run` | `bool` | Set `True` to test without writing results to the ledger. |
+| `grouping_criteria` | `str` | Field used to group records during matching. |
+
+</Expandable>
+</Step>
+
+<Step title="Save the reconciliation ID">
+
+Use `response.data["reconciliation_id"]` with `blnk.reconciliation.get` to poll status and match counts.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "reconciliation_id": "rec_a8f2c91d-1234-4abc-9def-0123456789ab"
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `reconciliation_id` | `str` | ID of the reconciliation run. Use it with `blnk.`<br />`reconciliation.get` to check status. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Instant reconciliation", href: "/reference/instant-reconciliation" },
+  ]}
+/>

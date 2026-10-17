@@ -1,0 +1,64 @@
+---
+title: "Upload data"
+sidebarTitle: "Upload data"
+description: "Upload external data for reconciliation with the Java SDK."
+method: "POST"
+path: "/reconciliation/upload"
+---
+
+Use `blnk.reconciliation().upload` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```java reconciliation().upload
+ApiResponse<JsonNode> response = blnk.reconciliation().upload(
+    "/path/to/file.csv", "Stripe"
+);
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `filePath` | `String` | Path to a CSV or JSON file. |
+| `fileStream` | `InputStream` | Readable stream of the same records. Pass this instead of `filePath`. |
+| `source` | `String` | Label describing where the data came from, for example `stripe`. |
+</Step>
+
+<Step title="Save the upload ID">
+
+Use `response.data().get("upload_id").asText()` as the `upload_id` when you [start reconciliation](/sdks/java/reconciliation/start-reconciliation).
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "record_count": 1000,
+  "source": "Stripe"
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `upload_id` | `String` | Unique ID for the upload. Store it to start a batch reconciliation run. |
+| `record_count` | `Number` | Number of records found in the file. |
+| `source` | `String` | Label you passed for the data origin. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "How reconciliation works", href: "/reconciliations/overview" },
+    { title: "Upload external records", href: "/reference/upload-data" },
+  ]}
+/>

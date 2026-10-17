@@ -195,6 +195,27 @@ export function sidebarGroups(navigation: Navigation, pathname: string): NavGrou
 	return sectionGroups(activeTab(navigation, pathname), pathname);
 }
 
+function collectPageIds(pages: NavItem[], ids: string[]) {
+	for (const page of pages) {
+		const id = itemPath(page);
+		if (id) ids.push(id);
+		if (isDropdown(page)) collectPageIds(page.pages, ids);
+	}
+}
+
+/** Page ids in sidebar order for the open SDK menu. Other pages stay one screen. */
+export function sdkStream(navigation: Navigation, pathname: string): string[] | undefined {
+	const section = currentTab(navigation, pathname);
+	if (!section || !('menu' in section)) return;
+	const item = activeMenu(section, pathname);
+	if (!item?.label.endsWith('SDK')) return;
+	const ids: string[] = [];
+	for (const group of item.groups) collectPageIds(group.pages, ids);
+	const path = normalizePath(pathname);
+	if (!ids.some((id) => pageHref(id) === path)) return;
+	return ids;
+}
+
 export function pagePaths(navigation: Navigation): string[] {
 	const paths: string[] = [];
 	const sections = [navigation.navigation.root, ...navigation.navigation.tabs];

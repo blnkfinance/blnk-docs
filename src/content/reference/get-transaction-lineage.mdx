@@ -1,0 +1,81 @@
+---
+title: "View transaction lineage"
+description: "Read which providers funded a debit."
+seoTitle: "View Transaction Lineage • Blnk API Reference"
+method: "GET"
+path: "/transactions/{transaction_id}/lineage"
+noindex: true
+---
+
+<Key />
+
+### Path
+<ParamField path="transaction_id" type="string" required>
+  Specifies the unique ID of the transaction whose lineage you want to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="transaction_id" type="string" required>
+  The ID of the transaction being queried.
+</ResponseField>
+
+<ResponseField name="fund_allocation" type="array">
+  Fund allocation breakdown for debit transactions from a lineage-enabled balance.
+</ResponseField>
+
+<ResponseField name="shadow_transactions" type="array" required>
+  Internal shadow transactions created for lineage tracking (each item is a transaction object).
+</ResponseField>
+
+<Info>
+`fund_allocation[].amount` values are returned as **strings** in **minor units**.
+</Info>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/transactions/{transaction_id}/lineage" \
+  -H "X-blnk-key: <api-key>"
+```
+
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "transaction_id": "txn_8d2ce2f0-0d75-4a91-9d43-2ad2c2e6b9ad",
+  "fund_allocation": [
+    { "provider": "stripe", "amount": "2500" }
+  ],
+  "shadow_transactions": [
+    {
+      "transaction_id": "txn_shadow_123",
+      "reference": "ref_002_release_stripe_0",
+      "precise_amount": "2500",
+      "currency": "USD",
+      "status": "APPLIED"
+    }
+  ]
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "Transaction with ID 'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94' not found",
+    "details": {}
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Fund lineage", href: "/transactions/lineage" },
+    { title: "Parent transactions", href: "/transactions/parent-transactions" },
+    { title: "Get transaction", href: "/reference/get-transaction" },
+  ]}
+/>

@@ -356,6 +356,7 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `reference/create-identity`
 - `reference/get-identity`
 - `reference/edit-identity`
+- `reference/delete-identity`
 - `reference/tokenize-field`
 - `reference/tokenize-identity`
 - `reference/get-tokenized-fields`

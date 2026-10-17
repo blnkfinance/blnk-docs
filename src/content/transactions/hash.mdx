@@ -1,0 +1,180 @@
+---
+title: "Transaction integrity and hashing"
+sidebarTitle: "Transaction hashing"
+icon: "hashtag"
+description: "Check that recorded transaction history still matches what Blnk sealed."
+seoTitle: "Transaction integrity and hashing • Blnk Developer Documentation"
+metaDescription: "Per-row SHA-256 hashes and an optional global hash chain for tamper detection in Blnk."
+---
+
+Blnk makes your transaction history <Tooltip tip="You can detect if protected fields were changed after recording. Any change leaves a visible sign in the hash or chain.">tamper-evident</Tooltip> through hashing. 
+
+Every transaction gets a fingerprint you can check on its own; optionally, your full transaction history can also be sealed into one ordered chain you verify on demand.
+
+| Layer | What it protects | Where you see it | When it's on |
+| :-- | :-- | :-- | :-- |
+| **Per-row `hash`** | A single transaction's core details | Transaction API responses (`hash` field) | Always |
+| **Global hash chain** | Your full transaction history in order | Verify with `blnk verify-chain` | Optional, disabled by default |
+
+<Info>
+The global hash chain is available in Blnk Core **0.15.0** and later. It is **disabled by default**.
+</Info>
+
+## Why hashing matters
+
+Transaction records are the audit trail of your ledger. If amount, balance, currency, status, or reference changes after recording, your balances and reports can no longer be trusted.
+
+Blnk uses hashing to make that history <Tooltip tip="You can detect if protected fields were changed after recording. Any change leaves a visible sign in the hash or chain.">tamper-evident</Tooltip>:
+
+1. Per-row hash - fingerprints important fields on each transaction.
+2. Global hash chain - links sealed transactions together in order.
+3. `blnk verify-chain` - replays the chain and reports the first broken link if protected data changed.
+
+<Frame caption="Global hash chain linking sealed transactions in order, where each seal depends on the previous chain head">
+![Diagram showing transactions sealed into an ordered hash chain from genesis to chain head](img/transactions/hash-chain.png)
+</Frame>
+
+Hashing does not replace database security, backups, access controls, or audit logs. It gives operators a way to verify that ledger history still matches what Blnk originally sealed.
+
+## Quick start
+
+<Steps>
+<Step title="Enable the hash chain">
+Set on the `server` service, then restart.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_HASHCHAIN_ENABLED=true
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "hash_chain": {
+      "enabled": true
+    }
+  }
+}
+```
+</CodeGroup>
+
+See [Hash chain settings](/advanced/configuration/transactions#hash-chain-settings) for all options.
+</Step>
+
+<Step title="Wait for sealing">
+Existing transaction rows are sealed automatically. New ones seal after the trailing delay, `default: 30s`.
+</Step>
+
+<Step title="Verify the chain">
+To verify the chain, run in the same directory as your `docker-compose.yaml`:
+
+```bash Verify the chain
+docker compose run --rm server blnk verify-chain
+```
+
+Exit code `0` means the chain is intact.
+
+```text Success wrap
+chain verified: 153 transactions sealed, head 18526b69d80e7c0b200da69cfc0f9a4e661a55c724b4f984ebf4ebd9b32e92f9 at seq 153
+```
+
+<Note>
+`verify-chain` is a Core CLI command, not an HTTP API. The one-off container uses the same Postgres connection and config as your server.
+</Note>
+</Step>
+
+<Step title="Monitor sealing progress">
+Track backlog and sealing delay over time through [Monitoring in Blnk](/advanced/monitoring). When the hash chain is enabled, these gauges appear on the metrics endpoint:
+
+| Metric | Description |
+| :-- | :-- |
+| `blnk_chain_backlog` | Transactions not yet sealed into the hash chain |
+| `blnk_chain_head_seq` | Sequence number of the hash-chain head |
+| `blnk_chain_lag_seconds` | Seconds since the hash chain last advanced |
+
+See [Metrics reference](/advanced/metrics-reference) for attribute details and other Core metrics.
+</Step>
+</Steps>
+
+## Per-row hash
+
+Every transaction in Blnk gets a `hash` - a SHA-256 fingerprint built from five fields. If any of them change after recording, the fingerprint no longer matches.
+
+Blnk concatenates these values in order, hashes the string with SHA-256, and returns the hex digest as `hash`: `amount`, `reference`, `currency`, `source`, `destination`.
+
+<Note>
+The per-row hash uses `amount` (the display float), not `precise_amount`. Fields such as `description`, `status`, and `meta_data` are not included.
+</Note>
+
+Compare the `hash` from when you first recorded a transaction with the hash on a later fetch to confirm those fingerprinted fields are unchanged. Built-in integrity verification is handled by the global hash chain and `blnk verify-chain`.
+
+## Global hash chain
+
+When you enable the hash chain, transaction rows are linked in order. Each seal depends on the previous one, so your full history acts as one tamper-evident record.
+
+<Frame caption="Broken hash chain where a tampered or reordered transaction breaks verification at the first invalid link">
+![Diagram showing a hash chain with a broken link where verification fails](img/transactions/hash-chain-broken.png)
+</Frame>
+
+This is stronger than checking rows independently because every sealed transaction depends on the previous chain head. If a transaction is changed, removed, or reordered, verification fails where the history breaks.
+
+1. Existing transactions seal automatically when you turn the chain on.
+2. New transactions seal after a short trailing delay so recent writes can finish.
+3. The chain includes all statuses: queued, inflight, applied, voided, rejected, and refund.
+
+The chain checks these fields: `transaction_id`, `source`, `destination`, `amount`, `precise_amount`, `currency`, `status`, `reference`, `created_at`. Change any after sealing and verification fails.
+
+<Note>
+Fields such as `description` and `meta_data` are not integrity-protected by the chain. Changing them does not fail verification. Protected transaction fields are also guarded by the database immutability trigger.
+</Note>
+
+Chain seals are not returned in transaction API or [search](/search/typesense/introduction) responses. Check integrity with `blnk verify-chain`, not by reading a response field.
+
+## Verification
+
+`blnk verify-chain` tells you whether your full sealed history is intact or where it broke. 
+
+Exit code `0` means the chain passed; any other exit code means it failed.
+
+| Result | What it means |
+| :-- | :-- |
+| **Pass** | The full transaction history is intact. Output states how many transactions are sealed. |
+| **Fail** | History was tampered with or broken. Output names the position where verification stopped. |
+
+<Tabs>
+<Tab title="Pass">
+
+When verification passes, output looks like this:
+
+```text Success wrap
+chain verified: 153 transactions sealed, head 18526b69d80e7c0b200da69cfc0f9a4e661a55c724b4f984ebf4ebd9b32e92f9 at seq 153
+```
+
+</Tab>
+
+<Tab title="Fail">
+
+Verification fails when one of these conditions is true:
+
+| Condition | What happened |
+| :-- | :-- |
+| Protected field changed | A sealed transaction detail was altered after sealing |
+| Chain link altered | A seal in the ordered chain no longer matches its transaction |
+| Order disrupted | Transactions are no longer in the expected sequence |
+
+The output looks like this:
+
+```text Failure wrap
+chain BROKEN at seq 6 (txn txn_c1dfaf42-93c1-4371-8918-4d3d6ed2d2be): non-contiguous chain_seq: expected 5, got 6
+```
+
+</Tab>
+</Tabs>
+
+<RelatedTopics
+  items={[
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+    { title: "Secure Blnk", href: "/advanced/secure-blnk" },
+  ]}
+/>

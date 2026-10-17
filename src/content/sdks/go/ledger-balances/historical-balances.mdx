@@ -1,0 +1,75 @@
+---
+title: "Historical balances"
+sidebarTitle: "Get historical balances"
+description: "Retrieve accurate historical balance information with the Go SDK."
+method: "GET"
+path: "/balances/{balance_id}/at"
+---
+
+Use `client.LedgerBalance.GetHistorical` to retrieve a [balance](/balances/historical-balances) at a specific point in time.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.LedgerBalance.GetHistorical
+timestamp, _ := time.Parse(time.RFC3339, "2025-02-24T08:55:26Z")
+
+historical, resp, err := client.LedgerBalance.GetHistorical(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	timestamp,
+	false,
+)
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID to query. |
+| `timestamp` | `time.Time` | Point in time for the historical balance. Parse ISO 8601 strings with `time.Parse(`<br />`time.RFC3339, "...")`. |
+| `fromSource` | `bool` | When `true`, reconstruct from transactions instead of snapshots. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "timestamp": "2025-02-24T08:55:26Z",
+  "from_source": false,
+  "balance": {
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "balance": 5000,
+    "credit_balance": 5000,
+    "debit_balance": 0,
+    "currency": "USD"
+  }
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.LedgerBalanceHistorical`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Timestamp` | `time.Time` | Point in time you queried (ISO 8601). |
+| `FromSource` | `bool` | Whether the balance was reconstructed from transactions. |
+| `Balance.BalanceID` | `string` | Balance you queried. |
+| `Balance.Balance` | `*big.Int` | Net amount at that timestamp. |
+| `Balance.CreditBalance` | `*big.Int` | Total credits at that timestamp. |
+| `Balance.DebitBalance` | `*big.Int` | Total debits at that timestamp. |
+| `Balance.Currency` | `string` | Currency of the balance. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Historical balances", href: "/balances/historical-balances" },
+    { title: "Balance snapshots", href: "/balances/balance-snapshots" },
+    { title: "Historical balances API", href: "/reference/historical-balances" },
+  ]}
+/>

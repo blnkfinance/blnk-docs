@@ -101,10 +101,11 @@ const methods = new Map(
 <script>
 	const root = document.documentElement;
 	const themeRoot = document.querySelector('[data-theme-root]');
-	const themeButton = document.querySelector('[data-theme-button]');
+	const themeButtonQuery = document.querySelector('[data-theme-button]');
+	const themeButton = themeButtonQuery instanceof HTMLElement ? themeButtonQuery : null;
 	const themeMenu = document.querySelector('[data-theme-menu]');
 
-	function appearance(theme) {
+	function appearance(theme: string) {
 		if (theme === 'dark') return 'dark';
 		if (theme === 'light') return 'light';
 		return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -114,11 +115,12 @@ const methods = new Map(
 		const theme = root.dataset.theme ?? 'system';
 		if (themeButton) themeButton.setAttribute('aria-label', `Theme, ${theme}`);
 		themeMenu?.querySelectorAll('[data-theme-value]').forEach((item) => {
+			if (!(item instanceof HTMLElement)) return;
 			item.setAttribute('aria-checked', String(item.dataset.themeValue === theme));
 		});
 	}
 
-	function applyTheme(theme) {
+	function applyTheme(theme: string) {
 		root.dataset.theme = theme;
 		root.dataset.appearance = appearance(theme);
 		localStorage.setItem('theme', theme);
@@ -159,14 +161,9 @@ const methods = new Map(
 
 	const sidebar = document.querySelector('.sidebar');
 	const navEase = 'cubic-bezier(0.23, 1, 0.32, 1)';
-	/** @type {WeakMap<HTMLElement, Animation>} */
-	const navAnimations = new WeakMap();
+	const navAnimations = new WeakMap<HTMLElement, Animation>();
 
-	/**
-	 * @param {HTMLButtonElement} button
-	 * @param {HTMLElement} panel
-	 */
-	function toggleNav(button, panel) {
+	function toggleNav(button: HTMLButtonElement, panel: HTMLElement) {
 		const open = button.getAttribute('aria-expanded') !== 'true';
 		button.setAttribute('aria-expanded', String(open));
 		const from = panel.getBoundingClientRect().height;
@@ -218,7 +215,7 @@ const methods = new Map(
 		if (!(panel instanceof HTMLElement)) return;
 		toggleNav(button, panel);
 		const key = `nav-open:${sidebar?.getAttribute('data-nav-scope') ?? ''}`;
-		const open = [];
+		const open: string[] = [];
 		sidebar?.querySelectorAll('[data-nav-toggle][aria-expanded="true"]').forEach((item) => {
 			const id = item.getAttribute('aria-controls');
 			if (id) open.push(id);

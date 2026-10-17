@@ -1,0 +1,92 @@
+---
+title: "Create matching rule"
+sidebarTitle: "Create matching rule"
+description: "Create a reconciliation matching rule with the Go SDK."
+method: "POST"
+path: "/reconciliation/matching-rules"
+---
+
+Use `client.Reconciliation.CreateMatchingRule` to create a matching rule.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Reconciliation.CreateMatchingRule
+matchingRule, resp, err := client.Reconciliation.CreateMatchingRule(blnkgo.Matcher{
+	Name: "Amount match",
+	Description: "Match by amount with 1% drift",
+	Criteria: []blnkgo.Criteria{
+		{
+			Field: blnkgo.CriteriaFieldAmount,
+			Operator: blnkgo.ReconciliationOperatorEquals,
+			AllowableDrift: 0.01,
+		},
+		{
+			Field: blnkgo.CriteriaFieldCurrency,
+			Operator: blnkgo.ReconciliationOperatorEquals,
+		},
+		{
+			Field: blnkgo.CriteriaFieldReference,
+			Operator: blnkgo.ReconciliationOperatorContains,
+		},
+	},
+})
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Name` | `string` | Name of the matching rule. |
+| `Description` | `string` | Short description of what the rule does. |
+| `Criteria` | `[]blnkgo.`<br />`Criteria` | Array of match criteria. Each entry sets how one field is compared. |
+| `Criteria.`<br />`[].Field` | `blnkgo.`<br />`CriteriaField` | Field to match: `CriteriaField`<br />`Amount`, `CriteriaField`<br />`Currency`, `CriteriaField`<br />`Reference`, `CriteriaField`<br />`Description`, or `CriteriaField`<br />`Date`. |
+| `Criteria.`<br />`[].Operator` | `blnkgo.`<br />`ReconciliationOperator` | How to compare the field: `ReconciliationOperator`<br />`Equals` or `ReconciliationOperator`<br />`Contains`. |
+| `Criteria.`<br />`[].AllowableDrift` | `float64` | Optional tolerance for `amount` (percentage) or `date` (seconds). |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Amount match",
+  "description": "Match by amount with 1% drift",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "allowable_drift": 0.01
+    }
+  ],
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "updated_at": "2024-11-26T08:36:36.238244338Z"
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.RunReconResp`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `RuleID` | `string` | Unique ID for the rule. Store it to apply during reconciliation runs. |
+| `Name` | `string` | Rule name you passed. |
+| `Description` | `string` | Short description of what the rule does. |
+| `Criteria` | `[]blnkgo.`<br />`Criteria` | The match criteria stored for the rule. |
+| `CreatedAt` | `string` | When the rule was created. |
+| `UpdatedAt` | `string` | When the rule was last updated. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Create Matching Rule", href: "/reference/create-matching-rule" },
+  ]}
+/>

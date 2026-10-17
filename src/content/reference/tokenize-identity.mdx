@@ -1,0 +1,78 @@
+---
+title: "Tokenize multiple fields"
+description: "Replace several identity fields with tokens in one request."
+seoTitle: "Tokenize Multiple Fields • Blnk API Reference"
+method: "POST"
+path: "/identities/{identity_id}/tokenize"
+noindex: true
+---
+
+<Key />
+
+<Version>Available in version 0.8.8 and later.</Version>
+
+Blnk tokenizes the fields in order and stops on the first field that fails.
+
+### Path
+
+<ParamField path="identity_id" type="string" required>
+  Id of the identity that holds the fields.
+</ParamField>
+
+### Body
+
+<ParamField body="fields" type="string[]" required>
+  PascalCase names to tokenize. Send at least one of `FirstName`, `LastName`, `OtherNames`, `EmailAddress`, `PhoneNumber`, `Street`, or `PostCode`.
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string" required>
+  Confirms every field in the request is now a token.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "http://localhost:5001/identities/{identity_id}/tokenize" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fields": [
+      "FirstName",
+      "LastName",
+      "EmailAddress",
+      "PhoneNumber"
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "message": "Fields tokenized successfully"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "field first_name is not tokenizable",
+  "error_detail": {
+    "code": "IDT_FIELD_NOT_TOKENIZABLE",
+    "message": "field first_name is not tokenizable"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "PII tokenization", href: "/identities/pii-tokenization" },
+    { title: "Detokenize identity", href: "/reference/detokenize-identity" },
+    { title: "Get tokenized fields", href: "/reference/get-tokenized-fields" },
+  ]}
+/>

@@ -2,7 +2,7 @@
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
 import { getCollection } from 'astro:content';
-import { breadcrumbs, currentTab, labels, methodLabel, navigation, pageHref, pageLabel, type Crumb } from './navigation';
+import { breadcrumbs, currentTab, labels, methodLabel, navigation, pageHref, pageLabel, sdkStream, type Crumb } from './navigation';
 import {
 	absoluteUrl,
 	canonicalPath,
@@ -49,6 +49,8 @@ const sectionName = section && 'tab' in section ? section.tab : '';
 const hrefs = new Set((await getCollection('docs')).map((entry) => pageHref(entry.id)));
 const crumbs = breadcrumbs(navigation, path, title, hrefs);
 const label = pageLabel(navigation, path);
+const stream = sdkStream(navigation, path)?.map((id) => pageHref(id));
+const streamOrder = JSON.stringify(stream ?? []).replace(/</g, '\\u003c');
 const markdownHref = absoluteUrl(markdownPath(path), site);
 const jsonLd = structuredData({ title: documentTitle, description, canonical, image, crumbs });
 
@@ -148,50 +150,222 @@ function structuredData(page: {
 			<div class="shell">
 				<Nav />
 				<main>
-					<article
-						class="article"
-						data-pagefind-body={indexable ? '' : undefined}
-						data-pagefind-meta={indexable && sectionName ? `section:${sectionName}` : undefined}
-					>
-						{label && <p class="page-label">{label}</p>}
-						<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
-						{pageDescription && <p class="page-description">{pageDescription}</p>}
-						{
-							method && endpoint && (
-								<div class="endpoint">
-									<span class="method" data-method={method}>
-										{methodLabel(method)}
-									</span>
-									<code class="endpoint-path">{endpoint.split(/(\{[^}]+\})/).map((part) => part.startsWith('{') ? <span class="endpoint-param">{part}</span> : part)}</code>
-									<button type="button" class="endpoint-try">
-										<Fragment set:html={play} />
-										Try it
-									</button>
-								</div>
-							)
-						}
-						<slot />
+					{
+						stream ? (
+							<article
+								class="article sdk-stream"
+								data-pagefind-body={indexable ? '' : undefined}
+								data-pagefind-meta={indexable && sectionName ? `section:${sectionName}` : undefined}
+							>
+								<section class="sdk-section" data-sdk-path={path} data-document-title={documentTitle}>
+									<div class="article-copy">
+										{label && <p class="page-label">{label}</p>}
+										<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
+										{pageDescription && <p class="page-description">{pageDescription}</p>}
+										{method && endpoint && (
+											<div class="endpoint">
+												<span class="method" data-method={method}>
+													{methodLabel(method)}
+												</span>
+												<code class="endpoint-path">
+													{endpoint.split(/(\{[^}]+\})/).map((part) =>
+														part.startsWith('{') ? <span class="endpoint-param">{part}</span> : part,
+													)}
+												</code>
+												<button type="button" class="endpoint-try">
+													<Fragment set:html={play} />
+													Try it
+												</button>
+											</div>
+										)}
+										<slot />
+									</div>
+									<div class="article-examples" />
+								</section>
+							</article>
+						) : (
+							<article
+								class="article"
+								data-pagefind-body={indexable ? '' : undefined}
+								data-pagefind-meta={indexable && sectionName ? `section:${sectionName}` : undefined}
+							>
+								{label && <p class="page-label">{label}</p>}
+								<h1 data-pagefind-meta={indexable ? `title, description:${description}` : undefined}>{title}</h1>
+								{pageDescription && <p class="page-description">{pageDescription}</p>}
+								{
+									method && endpoint && (
+										<div class="endpoint">
+											<span class="method" data-method={method}>
+												{methodLabel(method)}
+											</span>
+											<code class="endpoint-path">{endpoint.split(/(\{[^}]+\})/).map((part) => part.startsWith('{') ? <span class="endpoint-param">{part}</span> : part)}</code>
+											<button type="button" class="endpoint-try">
+												<Fragment set:html={play} />
+												Try it
+											</button>
+										</div>
+									)
+								}
+								<slot />
+								<script is:inline>
+									(() => {
+										const article = document.currentScript?.parentElement;
+										if (!(article instanceof HTMLElement)) return;
+										const examples = [...article.querySelectorAll(':scope > .example')];
+										if (examples.length === 0) return;
+										const copy = document.createElement('div');
+										copy.className = 'article-copy';
+										const rail = document.createElement('div');
+										rail.className = 'article-examples';
+										for (const node of [...article.childNodes]) {
+											if (node === document.currentScript) continue;
+											if (node instanceof Element && node.classList.contains('example')) rail.append(node);
+											else copy.append(node);
+										}
+										article.prepend(copy, rail);
+										article.classList.add('has-examples');
+									})();
+								</script>
+							</article>
+						)
+					}
+				</main>
+				{
+					stream && (
+						<script id="sdk-order" type="application/json" set:html={streamOrder} />
+					)
+				}
+				{
+					stream && (
 						<script is:inline>
 							(() => {
-								const article = document.currentScript?.parentElement;
-								if (!(article instanceof HTMLElement)) return;
-								const examples = [...article.querySelectorAll(':scope > .example')];
-								if (examples.length === 0) return;
-								const copy = document.createElement('div');
-								copy.className = 'article-copy';
-								const rail = document.createElement('div');
-								rail.className = 'article-examples';
-								for (const node of [...article.childNodes]) {
-									if (node === document.currentScript) continue;
-									if (node instanceof Element && node.classList.contains('example')) rail.append(node);
-									else copy.append(node);
+								const orderNode = document.getElementById('sdk-order');
+								const root = document.querySelector('.sdk-stream');
+								if (!orderNode || !(root instanceof HTMLElement)) return;
+								const order = JSON.parse(orderNode.textContent || '[]');
+								const loaded = new Set(
+									[...root.querySelectorAll(':scope > .sdk-section')].map((section) => section.dataset.sdkPath),
+								);
+								let busy = false;
+
+								function lift(section) {
+									const rail = section.querySelector(':scope > .article-examples');
+									if (!rail) return;
+									section.querySelectorAll('.example').forEach((node) => rail.append(node));
 								}
-								article.prepend(copy, rail);
-								article.classList.add('has-examples');
+
+								function enhance() {
+									const run = () => {
+										if (typeof window.enhanceCodeBlocks === 'function') window.enhanceCodeBlocks();
+									};
+									if (document.readyState === 'loading') {
+										document.addEventListener('DOMContentLoaded', run, { once: true });
+									} else {
+										run();
+									}
+								}
+
+								const first = root.querySelector(':scope > .sdk-section');
+								if (first) lift(first);
+
+								function neighbor(href, direction) {
+									const index = order.indexOf(href);
+									if (index < 0) return;
+									return order[index + direction];
+								}
+
+								async function insert(href, where) {
+									if (!href || loaded.has(href) || busy) return;
+									busy = true;
+									loaded.add(href);
+									try {
+										const response = await fetch(href, { headers: { accept: 'text/html' } });
+										if (!response.ok) throw new Error(String(response.status));
+										const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+										const section = doc.querySelector('.sdk-section');
+										if (!(section instanceof HTMLElement)) {
+											loaded.delete(href);
+											return;
+										}
+										lift(section);
+										const before = document.documentElement.scrollHeight;
+										if (where === 'before') root.prepend(section);
+										else root.append(section);
+										if (where === 'before') {
+											window.scrollBy(0, document.documentElement.scrollHeight - before);
+										}
+										enhance();
+									} catch {
+										loaded.delete(href);
+									} finally {
+										busy = false;
+									}
+								}
+
+								async function fill() {
+									for (let pass = 0; pass < 3; pass += 1) {
+										const sections = [...root.querySelectorAll(':scope > .sdk-section')];
+										const last = sections[sections.length - 1];
+										const top = sections[0];
+										if (!last || !top) return;
+										if (last.getBoundingClientRect().bottom < window.innerHeight + 900) {
+											await insert(neighbor(last.dataset.sdkPath, 1), 'after');
+											continue;
+										}
+										if (top.getBoundingClientRect().top > -160) {
+											await insert(neighbor(top.dataset.sdkPath, -1), 'before');
+											continue;
+										}
+										return;
+									}
+								}
+
+								let shown = location.pathname;
+								function follow() {
+									const line = 128;
+									let best = root.querySelector(':scope > .sdk-section');
+									for (const section of root.querySelectorAll(':scope > .sdk-section')) {
+										if (section.getBoundingClientRect().top <= line) best = section;
+									}
+									if (!(best instanceof HTMLElement)) return;
+									const href = best.dataset.sdkPath;
+									if (!href || href === shown) return;
+									shown = href;
+									history.replaceState(null, '', href);
+									if (best.dataset.documentTitle) document.title = best.dataset.documentTitle;
+									document.querySelectorAll('a.nav-item[aria-current="page"]').forEach((link) => {
+										link.removeAttribute('aria-current');
+									});
+									const link = document.querySelector(`a.nav-item[href="${CSS.escape(href)}"]`);
+									if (!(link instanceof HTMLElement)) return;
+									link.setAttribute('aria-current', 'page');
+									const scroller = link.closest('.sidebar-body');
+									if (!(scroller instanceof HTMLElement)) return;
+									const box = scroller.getBoundingClientRect();
+									const linkBox = link.getBoundingClientRect();
+									if (linkBox.top < box.top || linkBox.bottom > box.bottom) {
+										scroller.scrollTop += linkBox.top - box.top - box.height / 2 + linkBox.height / 2;
+									}
+								}
+
+								let frame = 0;
+								document.addEventListener(
+									'scroll',
+									() => {
+										if (frame) return;
+										frame = requestAnimationFrame(() => {
+											frame = 0;
+											follow();
+											fill();
+										});
+									},
+									{ passive: true },
+								);
+								fill();
 							})();
 						</script>
-					</article>
-				</main>
+					)
+				}
 				<Toc headings={headings} markdown={markdown} />
 			</div>
 			<CodeBlocks />

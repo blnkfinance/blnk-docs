@@ -1,0 +1,93 @@
+---
+title: "Filter identities"
+sidebarTitle: "Filter identities"
+description: "Filter identities with structured query filters using the Go SDK."
+method: "POST"
+path: "/identities/filter"
+---
+
+Use `client.Identity.Filter` to query [identities](/identities/introduction) with structured filters.
+
+<Note>
+The Go SDK exposes `Filter` on each service rather than a unified `Search.filter` helper. Use `client.Identity.Filter` for identities, and see [filter records](/sdks/go/search/search-db) for other collections.
+</Note>
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Identity.Filter
+result, resp, err := client.Identity.Filter(
+ blnkgo.FilterParams{
+	Filters: []blnkgo.Filter{
+	 {
+		Field: "email_address",
+		Operator: blnkgo.OpEqual,
+		Value: "john.doe@example.com",
+	 },
+	 {
+		Field: "category",
+		Operator: blnkgo.OpEqual,
+		Value: "customer",
+	 },
+	},
+	Limit: 20,
+	Offset: 0,
+	IncludeCount: true,
+ },
+)
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Filters` | `[]blnkgo.Filter` | Array of filter conditions, each with a `Field`, `Operator`, and a `Value` or `Values`. |
+| `SortBy` | `string` | Field to sort by. Defaults to `created_at`. |
+| `SortOrder` | `string` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `IncludeCount` | `bool` | Return `TotalCount` in the response. Defaults to `false`. |
+| `Limit` | `int` | Maximum records to return. Defaults to 20, max 100. |
+| `Offset` | `int` | Records to skip for pagination. Defaults to 0. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "data": [
+    {
+      "identity_id": "idt_3b63c8da-af29-4cc3-ad38-df17d87456e6",
+      "identity_type": "individual",
+      "first_name": "John",
+      "last_name": "Doe",
+      "email_address": "john.doe@example.com",
+      "category": "customer",
+      "created_at": "2024-11-26T08:36:36.238244338Z"
+    }
+  ],
+  "total_count": 1
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.FilterResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Data` | `interface{}` | Array of matching `*blnkgo.`<br />`IdentityResponse` records. |
+| `TotalCount` | `*int64` | Total matching records. Only present when `IncludeCount` is `true`. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Identities overview", href: "/identities/introduction" },
+    { title: "Link balances", href: "/identities/link-balances" },
+    { title: "PII tokenization", href: "/identities/pii-tokenization" },
+    { title: "Filter Identities", href: "/reference/get-identity" },
+  ]}
+/>

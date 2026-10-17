@@ -1,0 +1,73 @@
+---
+title: "Balance from source"
+sidebarTitle: "Get balance from source"
+description: "Compute balance directly from transactions with the Go SDK."
+method: "GET"
+path: "/balances/{balance_id}"
+---
+
+Use `client.LedgerBalance.Get` with `FromSource` set to `true` to reconstruct a balance from its transactions.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.LedgerBalance.Get
+balance, resp, err := client.LedgerBalance.Get(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	&blnkgo.GetBalanceRequest{FromSource: true},
+)
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID to compute from source. |
+| `FromSource` | `bool` | Must be `true` to reconstruct from transactions. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "balance": 9620000,
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "credit_balance": 9620000,
+  "currency": "USD",
+  "debit_balance": 0,
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "identity_id": "",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.LedgerBalance`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Balance` | `*big.Int` | Net amount computed from all transactions. |
+| `BalanceID` | `string` | Unique ID for the balance. |
+| `CreditBalance` | `*big.Int` | Total computed from credit transactions. |
+| `DebitBalance` | `*big.Int` | Total computed from debit transactions. |
+| `Currency` | `string` | Currency of the balance. |
+| `LedgerID` | `string` | Ledger this balance belongs to. |
+| `IdentityID` | `string` | Linked identity, if any. |
+| `CreatedAt` | `time.Time` | Date and time the balance was created. |
+| `MetaData` | `MetaData` | Optional metadata on the balance. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Balance from source", href: "/balances/balance-from-source" },
+    { title: "Balance reconstruction", href: "/advanced/balance-reconstruction" },
+    { title: "Balance from source API", href: "/reference/balance-from-source" },
+  ]}
+/>

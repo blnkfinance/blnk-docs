@@ -1,0 +1,82 @@
+---
+title: "Register new hooks"
+sidebarTitle: "Create hooks"
+description: "Register a new hook with the TypeScript SDK."
+method: "POST"
+path: "/hooks"
+---
+
+Use `blnk.Hooks.create` to register a [webhook](/hooks/overview) that Blnk calls before or after a transaction.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```typescript blnk.Hooks.create
+const response = await blnk.Hooks.create({
+  name: 'Pre-transaction validation',
+  url: 'https://api.example.com/validate',
+  type: 'PRE_TRANSACTION',
+  active: true,
+  timeout: 30,
+  retry_count: 3,
+});
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `name` | `string` | Descriptive name for the hook. |
+| `url` | `string` | Endpoint URL Blnk calls when the hook runs. |
+| `type` | `string` | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `active` | `boolean` | Whether the hook is enabled. |
+| `timeout` | `number` | Maximum time in seconds allowed for the hook to execute. |
+| `retry_count` | `number` | Maximum number of retry attempts if the hook fails. |
+</Step>
+
+<Step title="Save the hook ID">
+
+Use `response.data.id` to view, update, or delete the hook later.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "id": "hk_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/validate",
+  "type": "PRE_TRANSACTION",
+  "active": true,
+  "timeout": 30,
+  "retry_count": 3,
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "last_run": "0001-01-01T00:00:00Z",
+  "last_success": false
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `string` | Unique ID for the hook. Use it to view, update, or delete the hook. |
+| `created_at` | `string` | Date and time the hook was created. |
+| `last_run` | `string` | Date and time the hook last executed. |
+| `last_success` | `boolean` | Whether the most recent execution succeeded. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Webhooks overview", href: "/webhooks/overview" },
+    { title: "Supported events", href: "/webhooks/events" },
+    { title: "Create Hooks", href: "/reference/create-hooks" },
+  ]}
+/>

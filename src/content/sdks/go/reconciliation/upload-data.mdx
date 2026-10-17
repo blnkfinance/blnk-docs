@@ -1,0 +1,65 @@
+---
+title: "Upload data"
+sidebarTitle: "Upload data"
+description: "Upload external data for reconciliation with the Go SDK."
+method: "POST"
+path: "/reconciliation/upload"
+---
+
+Use `client.Reconciliation.Upload` to upload external statement data.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Reconciliation.Upload
+file, err := os.Open("statement.csv")
+if err != nil {
+	// handle error
+}
+defer file.Close()
+
+uploadResp, resp, err := client.Reconciliation.Upload("stripe", file, file.Name())
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `source` | `string` | Label describing where the data came from, for example `stripe`. |
+| `file` | `io.Reader` | Open file or other readable source containing the external records. |
+| `fileName` | `string` | Filename sent to Core, typically `file.Name()`. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "record_count": 1000,
+  "source": "Stripe"
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.ReconciliationUploadResp`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `UploadID` | `string` | Unique ID for the upload. Store it to start a batch reconciliation run. |
+| `RecordCount` | `int` | Number of records found in the file. |
+| `Source` | `string` | Label you passed for the data origin. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "External data", href: "/reconciliations/external-data" },
+    { title: "Reconciliation overview", href: "/reconciliations/overview" },
+    { title: "Upload data", href: "/reference/upload-data" },
+  ]}
+/>

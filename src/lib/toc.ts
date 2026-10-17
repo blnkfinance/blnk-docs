@@ -82,6 +82,7 @@ export function tocItems(headings: MarkdownHeading[], markdown: string): TocItem
 			else roots.push(h3);
 			continue;
 		}
+		if (event.kind !== 'tab') continue;
 		const item: TocItem = { text: event.text, slug: event.slug, tab: true, children: [] };
 		if (h3) h3.children.push(item);
 		else if (h2) h2.children.push(item);

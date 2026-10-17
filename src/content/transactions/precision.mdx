@@ -1,0 +1,328 @@
+---
+title: "Transaction Precision"
+sidebarTitle: "Precision"
+description: "Send amounts as integers so the ledger does not round them."
+seoTitle: "Transaction Precision • Blnk Developer Documentation"
+metaDescription: "Learn how to ensure correctness when recording amounts with floating points in your Blnk Ledger"
+---
+
+Blnk stores transaction amounts and balances as integers. Send the minor-unit amount in `precise_amount`, and set `precision` to how many of those units make one major unit. Responses derive the human-readable amount with `amount = precise_amount / precision`.
+
+USD 25.34 is `precise_amount` `2534` at precision `100`, because a dollar is 100 cents. BTC 0.248917 is `24891700` satoshis at precision `100000000`. ETH uses wei the same way.
+
+You can instead pass a float in `amount` and let Blnk multiply it by `precision`. Prefer `precise_amount`. The `amount` field only keeps 15 significant digits.
+
+[151 fiat currencies and their precision values](https://github.com/blnkfinance/blnk-assets).
+
+## Applying precision
+
+You can apply precision to amounts in your ledger in one of two ways. 
+
+1. Use **`precise_amount`** (recommended) to pass the smallest unit directly, or 
+2. Pass a float in **`amount`** and let Blnk convert it using `precision`.
+
+<Tabs>
+<Tab title="Using precise amount">
+
+<Version>Available in version 0.10.1 or later.</Version>
+
+Pass the amount in its smallest unit in `precise_amount`, and include the corresponding `precision` value. 
+
+Blnk stores `precise_amount` as the ledger integer and returns the human-readable `amount` in responses (`amount = precise_amount / precision`).
+
+* Convert the amount to its smallest unit. Precision is how many minor units make one major unit.
+* Enter this value directly into the `precise_amount` field of your request.
+* Include the corresponding `precision` value.
+
+<CodeGroup>
+```bash cURL wrap {5,6}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 75023,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet funding"
+  }'
+```
+
+```typescript TypeScript wrap {2,3}
+const response = await blnk.Transactions.create({
+  precise_amount: 75023,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Wallet funding',
+});
+```
+
+```go Go wrap {3,4}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(75023),
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "Wallet funding",
+    },
+})
+```
+
+```python Python wrap {2,3}
+response = blnk.transactions.create({
+  "precise_amount": 75023,
+  "precision": 100,
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "description": "Wallet funding",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(75023)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("Wallet funding"));
+```
+</CodeGroup>
+
+| Field | Description |
+| :-- | :-- |
+| `precise_amount` | The transaction value in its smallest unit (e.g. 75023 cents for USD 750.23). Cannot be negative. |
+| `precision` | The precision value (e.g. 100 converts USD to cents). Cannot be negative. `0` means not supplied. |
+
+```json Response {6,8}
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_001adcfgf",
+  "amount": 750.23,
+  "precision": 100,
+  "precise_amount": 75023,
+  "currency": "USD",
+  "description": "For fees",
+  "status": "QUEUED",
+  "created_at": "2024-02-20 05:28:03 UTC"
+}
+```
+
+When using `precise_amount` with multiple sources or destinations, use `precise_distribution` instead of `distribution` for fixed amounts in your `sources` or `destinations` array. 
+
+Percentages (`"10%"`) and the remainder (`"left"`) still use `distribution`.
+
+```json Example with precise_distribution wrap
+{
+  ...
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "precise_distribution": "2300000"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "left"
+    }
+  ]
+}
+```
+
+See [Multiple sources](/transactions/split-transactions) and [Multiple destinations](/transactions/split-transactions) for more details.
+
+</Tab>
+
+<Tab title="Using amount">
+
+Pass the amount as a floating-point value in `amount` and specify its `precision` value. Blnk multiplies `amount` by `precision` to store `precise_amount`.
+
+<Warning>
+The `amount` field only supports up to 15 digits. Exceeding this will throw [a rounding error](/transactions/precision#more-than-15-digits-in-the-amount-field) or truncation; switch to `precise_amount` for accuracy with larger values.
+</Warning>
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 750.23,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet funding"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  amount: 750.23,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'Wallet funding',
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        Amount: 750.23,
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "Wallet funding",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "amount": 750.23,
+  "precision": 100,
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "description": "Wallet funding",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .amount(750.23)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("Wallet funding"));
+```
+</CodeGroup>
+
+| Field | Description |
+| :-- | :-- |
+| `amount` | The transaction value as is. Cannot be negative. |
+| `precision` | The precision value (e.g. 100 converts USD to cents). Cannot be negative. `0` means not supplied. |
+
+The resulting `precise_amount` is stored and used to compute your ledger balances.
+
+</Tab>
+</Tabs>
+
+## Important considerations
+
+1. `amount` and `precise_amount` cannot be passed simultaneously when recording a transaction. Prefer `precise_amount` for consistency across your integration.
+2. Ensure that your precision value converts the target amount to the lowest unit possible for its asset class. For example, while 100 works for most fiat currencies, it is not advisable to use it for cryptocurrencies like Bitcoin or Ethereum.
+
+3. Be consistent with how precision is applied in your application. Transactions with the same `currency` should always have the same precision applied to their amounts.
+
+4. Balance fields are integers in minor units. Core does not return `precision` on balances. To display an amount, divide by the precision you use for that currency (`100000 / 100` = \$1,000.00).
+
+5. `amount`, `precise_amount`, and `precision` cannot be negative. Blnk returns `400` before the request is queued. `precision: 0` still means not supplied and is treated as `1`.
+
+6. Regularly review and audit your ledger to ensure that precision is applied consistently and correctly.
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+[Create transaction](/reference/create-transaction) returns `400 TXN_VALIDATION_ERROR` when the amount fields in your request fail validation. Negative `amount`, `precise_amount`, or `precision` are rejected before the request is queued.
+
+<Tabs>
+<Tab title="Negative values">
+
+`amount`, `precise_amount`, or `precision` is negative:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount cannot be negative"
+  },
+  "errors": "amount: amount cannot be negative"
+}
+```
+
+</Tab>
+
+<Tab title="Missing amount fields">
+
+Neither `amount` nor `precise_amount` is set:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount is required."
+  },
+  "errors": "amount: either amount or precise_amount is required."
+}
+```
+
+</Tab>
+
+<Tab title="Both fields exist">
+
+Both `amount` and `precise_amount` are sent in the same request:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount should be provided, not both."
+  },
+  "errors": "amount: either amount or precise_amount should be provided, not both."
+}
+```
+
+</Tab>
+
+<Tab title="15-digit limit">
+
+`amount` has more than 15 significant digits:
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount has more than 15 significant digits which may cause rounding errors; use precise_amount instead"
+  },
+  "errors": "amount: amount has more than 15 significant digits which may cause rounding errors; use precise_amount instead"
+}
+```
+
+</Tab>
+</Tabs>
+
+<RelatedTopics
+  items={[
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Overdrafts", href: "/transactions/overdrafts" },
+    { title: "Create transaction", href: "/reference/create-transaction" },
+    { title: "API error codes", href: "/advanced/error-codes" },
+  ]}
+/>

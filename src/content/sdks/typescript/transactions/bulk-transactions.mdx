@@ -1,0 +1,180 @@
+---
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+description: "Submit multiple transactions in one request with the TypeScript SDK."
+method: "POST"
+path: "/transactions/bulk"
+---
+
+Use `blnk.Transactions.createBulk` to create many [transactions](/transactions/bulk-transactions) in one request (up to **10,000** per request).
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```typescript Create batch
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      amount: 1000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_1',
+      destination: '@dest_1',
+      reference: 'bulk_001',
+      description: 'Payment 1',
+    },
+    {
+      amount: 2000,
+      precision: 100,
+      currency: 'USD',
+      source: '@source_2',
+      destination: '@dest_2',
+      reference: 'bulk_002',
+      description: 'Payment 2',
+    },
+  ],
+});
+```
+
+```typescript Dry run {2}
+const preview = await blnk.Transactions.createBulk({
+  dry_run: true,
+  skip_queue: false,
+  transactions: [
+    {
+      precise_amount: 45000,
+      precision: 100,
+      currency: 'USD',
+      source: 'bln_source-bal-001',
+      destination: 'bln_dest-bal-001',
+      reference: 'ref_payout_450',
+      description: 'First payout',
+    },
+    {
+      precise_amount: 10000,
+      precision: 100,
+      currency: 'USD',
+      source: 'bln_source-bal-001',
+      destination: 'bln_dest-bal-002',
+      reference: 'ref_payout_100',
+      description: 'Second payout',
+    },
+  ],
+});
+```
+
+</RequestExample>
+
+<Tabs>
+<Tab title="Create batch">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `object[]` | Transaction objects to create; up to **10,000** per request. References must be unique within the batch. |
+| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: 'queued'`. |
+| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. `skip_queue` selects cumulative vs independent projection. `run_async` is ignored. See [Dry-run transactions](/transactions/dry-run).
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `dry_run` | `true` | Return a `BulkTransactionPreview` without creating transactions or consuming references. |
+| `skip_queue` | `boolean` | `true` projects items in order against each other. `false` projects each item against current balances on its own. |
+
+Pass `dry_run: true` inline, as shown above, to infer the preview response. If the request is declared separately, type it as `DryRun<BulkTransactions<T>>`.
+
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Save the batch ID">
+
+On a posted batch, use `response.data.batch_id` as `parent_transaction` to find child transactions, or with updateStatus to commit or void an inflight batch.
+
+A dry run has no `batch_id`. Check `would_apply` and `results`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Sync
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 4
+}
+```
+
+```json Async (run_async: true)
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+
+```json 200 OK expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100
+    },
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_100",
+      "currency": "USD",
+      "amount": 100,
+      "precise_amount": "10000",
+      "precision": 100
+    }
+  ]
+}
+```
+
+</ResponseExample>
+
+<CodeGroup>
+
+</CodeGroup>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `batch_id` | `string` | Identifier for the batch. Use as parent_transaction to find child transactions, or with updateStatus to commit or void an inflight batch. |
+| `status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `transaction_count` | `number` | Number of transactions when processed synchronously. |
+| `message` | `string` | Status message when run_async is true. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
+    { title: "Bulk transactions API", href: "/reference/bulk-transactions" },
+  ]}
+/>

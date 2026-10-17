@@ -1,0 +1,186 @@
+---
+title: "Bulk transactions"
+sidebarTitle: "Bulk transactions"
+description: "Submit multiple transactions in one request with the Go SDK."
+method: "POST"
+path: "/transactions/bulk"
+---
+
+Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/bulk-transactions) in one request (up to `blnkgo.MaxBulkCreateItems`, **10,000** per request).
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Transaction.CreateBulk
+result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+	Atomic: true,
+	Transactions: []blnkgo.CreateTransactionRequest{
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				Amount: 1000,
+				Precision: 100,
+				Currency: "USD",
+				Source: "@source_1",
+				Destination: "@dest_1",
+				Reference: "bulk_001",
+				Description: "Payment 1",
+			},
+		},
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				Amount: 2000,
+				Precision: 100,
+				Currency: "USD",
+				Source: "@source_2",
+				Destination: "@dest_2",
+				Reference: "bulk_002",
+				Description: "Payment 2",
+			},
+		},
+	},
+})
+```
+
+```go client.Transaction.CreateBulkDryRun
+preview, resp, err := client.Transaction.CreateBulkDryRun(blnkgo.CreateBulkTransactionRequest{
+	SkipQueue: false,
+	Transactions: []blnkgo.CreateTransactionRequest{
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				PreciseAmount: big.NewInt(45000),
+				Precision:     100,
+				Currency:      "USD",
+				Source:        "bln_source-bal-001",
+				Destination:   "bln_dest-bal-001",
+				Reference:     "ref_payout_450",
+				Description:   "First payout",
+			},
+		},
+		{
+			ParentTransaction: blnkgo.ParentTransaction{
+				PreciseAmount: big.NewInt(10000),
+				Precision:     100,
+				Currency:      "USD",
+				Source:        "bln_source-bal-001",
+				Destination:   "bln_dest-bal-002",
+				Reference:     "ref_payout_100",
+				Description:   "Second payout",
+			},
+		},
+	},
+})
+```
+
+</RequestExample>
+
+<Tabs>
+<Tab title="Create batch">
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Transactions` | `[]blnkgo.`<br />`CreateTransactionRequest` | Transaction objects to create; up to **10,000** per request (`blnkgo.MaxBulkCreateItems`). References must be unique within the batch. |
+| `Atomic` | `bool` | When `true`, every transaction succeeds or fails together. |
+| `Inflight` | `bool` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. Use `CreateBulkDryRun`. `SkipQueue` selects cumulative vs independent projection. `RunAsync` is ignored. See [Dry-run transactions](/transactions/dry-run).
+
+</Tab>
+</Tabs>
+</Step>
+
+<Step title="Save the batch ID">
+
+On a posted batch, use `result.BatchID` as parent transaction to find child transactions.
+
+A dry run has no `BatchID`. Check `WouldApply` and `Results`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Sync
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "applied",
+  "transaction_count": 4
+}
+```
+
+```json Async (RunAsync: true)
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "queued",
+  "message": "Bulk transaction processing started"
+}
+```
+
+```json 200 OK expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "cumulative": false,
+  "atomic": false,
+  "results": [
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_450",
+      "currency": "USD",
+      "amount": 450,
+      "precise_amount": "45000",
+      "precision": 100
+    },
+    {
+      "dry_run": true,
+      "would_apply": true,
+      "status": "APPLIED",
+      "reference": "ref_payout_100",
+      "currency": "USD",
+      "amount": 100,
+      "precise_amount": "10000",
+      "precision": 100
+    }
+  ]
+}
+```
+
+</ResponseExample>
+
+<CodeGroup>
+
+</CodeGroup>
+
+#### Go response (`*blnkgo.CreateBulkTransactionResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BatchID` | `string` | Identifier for the batch. Use as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch. |
+| `Status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `TransactionCount` | `int` | Number of transactions when processed synchronously. |
+| `Message` | `string` | Status message when `RunAsync` is `true`. |
+</Step>
+</Steps>
+
+<Note>
+The Go SDK validates batch size before sending the request. If `len(Transactions)` exceeds `blnkgo.MaxBulkCreateItems` (10,000), `CreateBulk` returns a client-side validation error without calling the API.
+</Note>
+
+<RelatedTopics
+  items={[
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
+    { title: "Bulk transactions API", href: "/reference/bulk-transactions" },
+  ]}
+/>

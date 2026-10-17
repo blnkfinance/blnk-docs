@@ -1,0 +1,73 @@
+---
+title: "Start reindex"
+sidebarTitle: "Start reindex"
+description: "Trigger a Typesense reindex from your existing database with the Go SDK."
+method: "POST"
+path: "/search/reindex"
+---
+
+Use `client.Search.StartReindex` to rebuild the search index.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.Search.StartReindex
+batchSize := 1000
+started, resp, err := client.Search.StartReindex(
+	&blnkgo.StartReindexRequest{
+		BatchSize: &batchSize,
+	},
+)
+```
+
+</RequestExample>
+
+Pass `nil` instead of a request to use the Core default batch size.
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BatchSize` | `*int` | Records processed per batch. Omit or pass `nil` options to use the Core default. Must be a positive integer when set. |
+</Step>
+
+<Step title="Poll reindex progress">
+
+Use [get reindex status](/sdks/go/search/get-reindex) to track progress until `Status` is `completed`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 202 Accepted
+{
+  "message": "Reindex operation started",
+  "progress": {
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 2145709,
+    "processed_records": 0,
+    "started_at": "2026-02-12T12:13:10.448612096Z"
+  }
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.StartReindexResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Message` | `string` | Confirmation that the reindex job started. |
+| `Progress` | `blnkgo.`<br />`ReindexProgress` | Initial progress snapshot with `Status`, `Phase`, `TotalRecords`, `ProcessedRecords`, and `StartedAt`. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "How reindexing works", href: "/search/typesense/reindex" },
+    { title: "Start Typesense reindex", href: "/reference/start-reindex" },
+  ]}
+/>

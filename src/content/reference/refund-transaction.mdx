@@ -1,0 +1,315 @@
+---
+title: "Refund transaction"
+description: "Send funds back to the source of a transaction."
+seoTitle: "Refund Transactions • Blnk API Reference"
+method: "POST"
+path: "/refund-transaction/{transaction_id}"
+noindex: true
+---
+
+<Key />
+
+### Path
+
+<ParamField path="transaction_id" type="string" required>
+  The original transaction ID from the lineage. Blnk resolves refundable records through parent lineage - use the ID returned when you recorded the transaction, or the split parent in `meta_data.QUEUED_PARENT_TRANSACTION`. Do not pass a VOID child's ID.
+</ParamField>
+
+### Body
+
+<ParamField body="skip_queue" type="boolean" default="false">
+  When `true`, processes the refund synchronously instead of placing it on the transaction queue. Requests without a body keep the default queued behavior.
+</ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects the refund without writing anything and returns a preview. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
+<ParamField body="description" type="string">
+  Narration for the refund. When omitted or empty, the refund copies the original transaction's description.
+
+  Available in version 0.15.3 and later.
+</ParamField>
+<ParamField body="meta_data" type="object">
+  Additional metadata for the refund. Blnk merges these keys onto the metadata inherited from the original transaction. Keys you send replace matching keys; other keys stay on the refund. An empty object is ignored. The original transaction is not modified.
+
+  Available in version 0.15.3 and later.
+</ParamField>
+
+### Response
+
+Same JSON structure as [Record a transaction](/reference/create-transaction#response)
+
+<RequestExample>
+```bash Queued refund
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```bash Synchronous refund
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "skip_queue": true
+  }'
+```
+
+```bash With description and metadata
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Refund for ticket #4821",
+    "meta_data": {
+      "type": "refund",
+      "reason": "goodwill"
+    }
+  }'
+```
+
+```bash Dry run
+curl -X POST "http://localhost:5001/refund-transaction/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+```json 201 Queued
+{
+  "amount": 50,
+  "amount_string": "50",
+  "precision": 100,
+  "precise_amount": 5000,
+  "transaction_id": "txn_af70986c-fbdc-450a-bf81-c1af034ce840",
+  "parent_transaction": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e",
+  "source": "bln_f76360da-68db-410d-8a8b-1d960e2a766f",
+  "destination": "bln_b1bd741e-eeb6-4dd4-a562-df35374bbaf9",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 201 Applied
+{
+  "amount": 50,
+  "amount_string": "50",
+  "precision": 100,
+  "precise_amount": 5000,
+  "transaction_id": "txn_4c8be5c7-7c40-493f-b4a1-c09fcf8e7e7b",
+  "parent_transaction": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e",
+  "source": "bln_f76360da-68db-410d-8a8b-1d960e2a766f",
+  "destination": "bln_b1bd741e-eeb6-4dd4-a562-df35374bbaf9",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "hash": "587dec3f5819f2a1e6f5b016fd97153334a3b6c9568475349911ce6356ec31fa",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 200 Dry run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "amount": 50,
+  "precise_amount": "5000",
+  "precision": 100,
+  "notes": [
+    "projected refund of transaction txn_b0468e80-5941-4ca8-b5d2-e44f4572926e"
+  ],
+  "balances": [
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "current_available": "5000",
+      "current_credit_balance": "5000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "5000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 200 Dry run not applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "amount": 50,
+  "precise_amount": "5000",
+  "precision": 100,
+  "notes": [
+    "projected refund of transaction txn_b0468e80-5941-4ca8-b5d2-e44f4572926e"
+  ],
+  "balances": [
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "2000",
+      "current_available": "2000",
+      "current_credit_balance": "2000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "2000",
+      "resulting_available": "2000",
+      "resulting_credit_balance": "2000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 201 With description and metadata
+{
+  "amount": 50,
+  "amount_string": "50",
+  "precision": 100,
+  "precise_amount": 5000,
+  "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  "parent_transaction": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e",
+  "source": "bln_f76360da-68db-410d-8a8b-1d960e2a766f",
+  "destination": "bln_b1bd741e-eeb6-4dd4-a562-df35374bbaf9",
+  "reference": "txn_b0468e80-5941-4ca8-b5d2-e44f4572926e_refund",
+  "currency": "USD",
+  "description": "Refund for ticket #4821",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "allow_overdraft": false,
+  "inflight": false,
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "scheduled_for": "0001-01-01T00:00:00Z",
+  "inflight_expiry_date": "0001-01-01T00:00:00Z",
+  "inflight_commit_date": "0001-01-01T00:00:00Z",
+  "meta_data": {
+    "type": "refund",
+    "channel": "card",
+    "reason": "goodwill"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "unexpected EOF",
+  "error_detail": {
+    "code": "GEN_MALFORMED_REQUEST",
+    "message": "unexpected EOF"
+  }
+}
+```
+
+```json 404 Not Found
+{
+  "error": "no transaction to refund",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "no transaction to refund"
+  }
+}
+```
+
+```json 409 Conflict
+{
+  "error": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded",
+  "error_detail": {
+    "code": "TXN_ALREADY_REFUNDED",
+    "message": "transaction txn_626d9a16-0a34-43e4-9db4-0a4cf26ade7c has already been refunded"
+  }
+}
+```
+
+```json 423 Locked
+{
+  "error": "failed to acquire lock for refund: lock for key refund:txn_aa4b4949-21d0-4fbb-b322-1e0a033e8e60 is already held",
+  "error_detail": {
+    "code": "GEN_RESOURCE_LOCKED",
+    "message": "failed to acquire lock for refund: lock for key refund:txn_aa4b4949-21d0-4fbb-b322-1e0a033e8e60 is already held"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Refunds", href: "/transactions/refunds" },
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+    { title: "Parent transactions", href: "/transactions/parent-transactions" },
+  ]}
+/>

@@ -1,0 +1,198 @@
+---
+title: "Refund transaction"
+sidebarTitle: "Refund transaction"
+description: "Refund a transaction with the Go SDK."
+method: "POST"
+path: "/refund-transaction/{transaction_id}"
+---
+
+Use `client.Transaction.Refund` to refund a transaction.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go Queued refund
+refund, resp, err := client.Transaction.Refund(
+	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+)
+```
+
+```go Synchronous refund
+refund, resp, err := client.Transaction.Refund(
+	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+	&blnkgo.RefundTransactionRequest{
+		SkipQueue: true,
+	},
+)
+```
+
+```go Description and metadata
+refund, resp, err := client.Transaction.Refund(
+	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+	&blnkgo.RefundTransactionRequest{
+		Description: "Refund for ticket #4821",
+		MetaData: blnkgo.MetaData{
+			"type":   "refund",
+			"reason": "goodwill",
+		},
+	},
+)
+```
+
+```go client.Transaction.RefundDryRun
+preview, resp, err := client.Transaction.RefundDryRun(
+	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+)
+```
+
+</RequestExample>
+
+<Tabs>
+<Tab title="Queued refund">
+
+Omit the optional body to queue the refund using Core defaults.
+
+</Tab>
+
+<Tab title="Synchronous refund">
+
+Pass a `RefundTransactionRequest` with `SkipQueue: true` to process the refund synchronously.
+
+</Tab>
+
+<Tab title="Description and metadata">
+
+Set a narration and merge metadata onto the copy inherited from the original. See [Refunds](/transactions/refunds).
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Description` | `string` | Narration for the refund. When omitted or empty, the refund copies the original. |
+| `MetaData` | `MetaData` | Merged onto metadata inherited from the original. Keys you send replace matching keys. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the refund without writing anything. Use `RefundDryRun`. Do not set `DryRun: true` on `Refund`. See [Dry-run transactions](/transactions/dry-run).
+
+</Tab>
+</Tabs>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactionID` | `string` | Transaction ID of the applied transaction to refund. |
+| `SkipQueue` | `bool` | When `true`, process the refund synchronously instead of queuing. |
+</Step>
+
+<Step title="Save the refund transaction ID">
+
+On a posted refund, use `refund.TransactionID` to track it. Check `ParentTransactionID` to confirm it links to the original.
+
+A dry run has no transaction ID. Check `WouldApply` instead.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json Queued refund expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_af70986c-fbdc-450a-bf81-c1af034ce840",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+```json Synchronous refund expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_4c8be5c7-7c40-493f-b4a1-c09fcf8e7e7b",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "description": "Card payment on Stripe",
+  "status": "APPLIED",
+  "hash": "587dec3f5819f2a1e6f5b016fd97153334a3b6c9568475349911ce6356ec31fa",
+  "created_at": "2024-11-26T09:33:35.265582042Z"
+}
+```
+
+```json Description and metadata expandable
+{
+  "amount": 1250.34,
+  "precision": 100,
+  "precise_amount": 125034,
+  "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  "parent_transaction": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+  "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+  "destination": "@WorldUSD",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "description": "Refund for ticket #4821",
+  "status": "QUEUED",
+  "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+  "created_at": "2024-11-26T09:33:35.265582042Z",
+  "meta_data": {
+    "type": "refund",
+    "channel": "card",
+    "reason": "goodwill"
+  }
+}
+```
+
+```json 200 OK expandable {2-3}
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c_refund",
+  "currency": "USD",
+  "amount": 1250.34,
+  "precise_amount": "125034",
+  "precision": 100
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.Transaction`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `TransactionID` | `string` | ID of the new refund transaction. |
+| `ParentTransactionID` | `string` | Original transaction being refunded. |
+| `Source` | `string` | Original destination, now the source of the refund. |
+| `Destination` | `string` | Original source, now the destination of the refund. |
+| `Status` | `blnkgo.`<br />`PryTransactionStatus` | Status of the refund transaction. |
+| `PreciseAmount` | `*big.Int` | Refund amount in minor units. |
+| `Amount` | `float64` | Float refund amount after precision is applied. |
+| `Currency` | `string` | Currency of the refund. |
+| `CreatedAt` | `time.Time` | Date and time the refund was created. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Refunds", href: "/transactions/refunds" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+    { title: "Parent transactions", href: "/transactions/parent-transactions" },
+    { title: "Refund transaction", href: "/reference/refund-transaction" },
+  ]}
+/>

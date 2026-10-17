@@ -1,0 +1,78 @@
+---
+title: "Historical balances"
+sidebarTitle: "Get historical balances"
+description: "Retrieve accurate historical balance information with the TypeScript SDK."
+method: "GET"
+path: "/balances/{balance_id}/at"
+---
+
+Use `blnk.LedgerBalances.getAt` to retrieve a [balance](/balances/historical-balances) at a specific point in time.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```typescript blnk.LedgerBalances.getAt
+const response = await blnk.LedgerBalances.getAt(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    timestamp: '2025-02-24T08:55:26Z',
+  },
+);
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceId` | `string` | Balance ID to query. |
+| `timestamp` | `string` | Specifies the exact date and time for which a historical balance is requested. Use ISO 8601 format (for example `2025-02-24T08:55:26Z`). |
+| `from_source` | `boolean` | When `true`, reconstruct from transactions instead of snapshots. |
+</Step>
+
+<Step title="Use the historical amounts">
+
+Read `response.data.balance` for net, credit, and debit totals at the requested timestamp. Compare with current balance if you are auditing or reconciling.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "timestamp": "2025-02-24T08:55:26Z",
+  "from_source": false,
+  "balance": {
+    "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    "balance": 5000,
+    "credit_balance": 5000,
+    "debit_balance": 0,
+    "currency": "USD"
+  }
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `timestamp` | `string` | Point in time you queried (ISO 8601). |
+| `from_source` | `boolean` | Whether the balance was reconstructed from transactions. |
+| `balance.balance_id` | `string` | Balance you queried. |
+| `balance.balance` | `number` | Net amount at that timestamp. |
+| `balance.credit_balance` | `number` | Total credits at that timestamp. |
+| `balance.debit_balance` | `number` | Total debits at that timestamp. |
+| `balance.currency` | `string` | Currency of the balance. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Historical balances", href: "/balances/historical-balances" },
+    { title: "Balance snapshots", href: "/balances/balance-snapshots" },
+    { title: "Historical balances API", href: "/reference/historical-balances" },
+  ]}
+/>

@@ -1,0 +1,350 @@
+---
+title: "Create new transaction"
+description: "Record a transaction between two balances."
+seoTitle: "Create New Transaction • Blnk API Reference"
+method: "POST"
+path: "/transactions"
+noindex: true
+---
+
+<Key />
+
+### Body
+
+<ParamField body="precise_amount" type="integer">  
+  The transaction amount in its smallest unit (recommended). Include the corresponding `precision` value. Cannot be negative. See [Precision](/transactions/precision).
+
+  <Warning>
+  Either `precise_amount` or `amount` should be provided, not both.
+  </Warning>
+</ParamField>
+<ParamField body="amount" type="float">  
+  The transaction amount as a float. Blnk multiplies `amount` by `precision` to store `precise_amount`. Cannot be negative. The `amount` field supports up to 15 digits; use `precise_amount` for larger values. See also: [Precision](/transactions/precision).
+</ParamField>
+<ParamField body="currency" type="string" required>
+  The currency of the transaction amount is in.
+</ParamField>
+<ParamField body="precision" type="integer" default="1" required>
+  Precision for the transaction's currency. Cannot be negative. `0` means not supplied and is treated as `1`. See also: [Precision](/transactions/precision).
+</ParamField>
+<ParamField body="reference" type="string" required>
+  The unique transaction reference number for the transaction.
+</ParamField>
+<ParamField body="source" type="string" required>
+  The unique id of the balance sending the amount. `@` prefix indicates that the balance is an [internal balance](/balances/internal-balances). A split replaces `source` with `sources`. See [Split transactions](/reference/split-transactions).
+</ParamField>
+<ParamField body="destination" type="string" required>
+  The unique id of the balance receiving the amount. `@` prefix indicates that the balance is an [internal balance](/balances/internal-balances). A split replaces `destination` with `destinations`. See [Split transactions](/reference/split-transactions).
+</ParamField>
+<ParamField body="description" type="string" required>
+  Narration of the transaction.
+</ParamField>
+<ParamField body="scheduled_for" type="string">
+  Indicates the date and time of a scheduled transaction. 
+  
+  Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</ParamField>
+<ParamField body="allow_overdraft" type="boolean" default="false">
+  Specifies whether the transaction should proceed even if the source’s balance is insufficient. If enabled and the source has less than the required amount, the balance will become negative. See also: [Overdrafts](/transactions/overdrafts)
+</ParamField>
+<ParamField body="inflight" type="boolean" default="false">
+  Specifies that the transaction should be held until certain conditions are met. See also: [Create inflight](/transactions/inflight/creating-inflight).
+</ParamField>
+<ParamField body="inflight_expiry_date" type="string">
+  Specifies the date and time when an inflight transaction should expire. Once expired, the transaction is voided and the amount is rolled back.
+
+  Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</ParamField>
+<ParamField body="inflight_commit_date" type="string">
+  When **`inflight`** is true, the date and time when Blnk should **automatically commit** the inflight transaction (same ledger outcome as [Update Inflight](/reference/update-inflight) with **`commit`**). See [Schedule inflight commits](/transactions/inflight/updating-inflight#schedule-inflight-commits).
+
+  Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03+00:00), where `+00:00` specifies the timezone. It is UTC by default.
+</ParamField>
+<ParamField body="effective_date" type="string">
+  Specifies the actual date the transaction occurred. Learn more: [Backdated transactions](/transactions/backdated-transactions).
+</ParamField>
+<ParamField body="skip_queue" type="boolean">
+  When `true`, it bypasses the default transaction queuing system and processes transactions directly. See also: [Skip transaction queue](/transactions/transaction-lifecycle#skip-transaction-queue).
+</ParamField>
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, Blnk projects the transaction without writing anything and returns a preview. See [Dry-run a transaction](/reference/dry-run).
+</ParamField>
+<ParamField body="atomic" type="boolean" default="false">
+  Controls how Blnk processes split transactions when you use `sources` or `destinations`.
+
+  When `false` (default), Blnk applies each leg that can succeed and rejects legs that fail. When `true`, every leg succeeds together or the entire split fails with no partial application.
+
+  Do not send `sources` and `destinations` on the same request. That combination returns `400 TXN_VALIDATION_ERROR`. See [Atomic processing](/transactions/split-transactions#atomic-processing).
+</ParamField>
+<ParamField body="meta_data" type="object">
+  Additional metadata of the transaction.
+
+  <Expandable title="Lineage metadata (optional)">
+    If the **destination** balance has `track_fund_lineage: true`, you can tag incoming funds by setting a provider in metadata. Learn more: [Fund lineage](/transactions/lineage).
+
+    <ParamField body="BLNK_LINEAGE_PROVIDER" type="string">
+      Provider tag used to classify incoming funds (for example: `"stripe"`, `"paypal"`, `"treasury"`).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+<Info>All parameters from the request body also mean the same in the corresponding response JSON.</Info>
+
+<ResponseField name="precise_amount" type="integer">
+  The amount stored in the ledger in its smallest unit. When you pass `amount`, Blnk computes this as `amount` x `precision`. See [Precision](/transactions/precision).
+</ResponseField>
+<ResponseField name="transaction_id" type="string">
+  Unique id of the transaction.
+</ResponseField>
+<ResponseField name="parent_transaction" type="string">
+  The transaction ID of the parent transaction. A parent transaction is one that impacts the creation of a new transaction, such as an inflight transaction, a scheduled transaction, or similar.
+
+  For instance, refunding a sample transaction A creates a new transaction B; therefore A is the parent transaction of B.
+</ResponseField>
+<ResponseField name="status" type="string">
+  The status of the transaction. See the following: [Transaction statuses](/transactions/transaction-lifecycle#statuses).
+</ResponseField>
+<ResponseField name="hash" type="string">
+  Per-row SHA-256 fingerprint of the transaction's core details. The optional global hash chain is separate and not returned in API responses. Learn more: [Transaction hashing](/transactions/hash)
+</ResponseField>
+<ResponseField name="created_at" type="string">
+  Indicates the date & time the transaction was created.
+</ResponseField>
+<ResponseField name="meta_data" type="User Object">
+  Additional metadata of the transaction.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 125034,
+    "currency": "USD",
+    "precision": 100,
+    "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
+    "source": "@WorldUSD",
+    "destination": "@MyBalance",
+    "description": "Fund with starting balance amount",
+    "meta_data": {}
+  }'
+```
+
+```bash Dry run
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dry_run": true,
+    "precise_amount": 12000,
+    "precision": 100,
+    "reference": "ref_card_settle_4821",
+    "currency": "USD",
+    "source": "bln_source-bal-001",
+    "destination": "bln_dest-bal-001",
+    "description": "Card settlement"
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created
+{
+    "amount": 1250.34,
+    "precision": 100,
+    "precise_amount": 125034,
+    "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+    "parent_transaction": "",
+    "source": "bln_f344b673-e855-4bda-b769-3e94a02c1941",
+    "destination": "bln_d5cbde84-d20a-485b-8ce8-6677d782c3a1",
+    "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",
+    "currency": "USD",
+    "description": "Card payment on Stripe",
+    "status": "QUEUED",
+    "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
+    "allow_overdraft": false,
+    "inflight": false,
+    "created_at": "2024-11-26T09:33:35.265582042Z",
+    "scheduled_for": "0001-01-01T00:00:00Z",
+    "inflight_expiry_date": "0001-01-01T00:00:00Z",
+    "inflight_commit_date": "0001-01-01T00:00:00Z"
+}
+```
+
+```json 200 Dry run
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "50000",
+      "current_available": "50000",
+      "current_credit_balance": "50000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "38000",
+      "resulting_available": "38000",
+      "resulting_credit_balance": "50000",
+      "resulting_debit_balance": "12000",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "12000",
+      "resulting_available": "12000",
+      "resulting_credit_balance": "12000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 200 Dry run not applied
+{
+  "dry_run": true,
+  "would_apply": false,
+  "rejection": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "reason": "insufficient_funds",
+    "message": "insufficient funds in source balance"
+  },
+  "reference": "ref_card_settle_4821",
+  "currency": "USD",
+  "amount": 120,
+  "precise_amount": "12000",
+  "precision": 100,
+  "balances": [
+    {
+      "balance_id": "bln_source-bal-001",
+      "role": "source",
+      "currency": "USD",
+      "current_balance": "5000",
+      "current_available": "5000",
+      "current_credit_balance": "5000",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "5000",
+      "resulting_available": "5000",
+      "resulting_credit_balance": "5000",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    },
+    {
+      "balance_id": "bln_dest-bal-001",
+      "role": "destination",
+      "currency": "USD",
+      "current_balance": "0",
+      "current_available": "0",
+      "current_credit_balance": "0",
+      "current_debit_balance": "0",
+      "current_inflight_debit_balance": "0",
+      "current_inflight_credit_balance": "0",
+      "resulting_balance": "0",
+      "resulting_available": "0",
+      "resulting_credit_balance": "0",
+      "resulting_debit_balance": "0",
+      "resulting_inflight_debit_balance": "0",
+      "resulting_inflight_credit_balance": "0"
+    }
+  ]
+}
+```
+
+```json 400 Bad Request
+{
+  "errors": "amount: either amount or precise_amount is required.",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: either amount or precise_amount is required."
+  }
+}
+```
+
+```json 400 Bad Request negative amount
+{
+  "errors": "amount: amount cannot be negative",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: amount cannot be negative"
+  }
+}
+```
+
+```json 400 Insufficient Funds with Skip Queue
+{
+  "error": "failed to apply transaction to balances: insufficient funds in source balance",
+  "error_detail": {
+    "code": "TXN_INSUFFICIENT_FUNDS",
+    "message": "failed to apply transaction to balances: insufficient funds in source balance"
+  }
+}
+```
+
+```json 400 Bad Request both sides
+{
+  "error": "source: a transaction can split either sources or destinations, not both",
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "source: a transaction can split either sources or destinations, not both"
+  }
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Balance with ID 'bln_c8e4f1a2-3b5d-4e7a-9c1f-2d6a8b0e4f73' not found",
+  "error_detail": {
+    "code": "BAL_NOT_FOUND",
+    "message": "Balance with ID 'bln_c8e4f1a2-3b5d-4e7a-9c1f-2d6a8b0e4f73' not found",
+    "details": {}
+  }
+}
+```
+
+```json 409 Conflict
+{
+  "error": "transaction validation failed: reference errcompat-dup-4075 has already been used",
+  "error_detail": {
+    "code": "TXN_DUPLICATE_REFERENCE",
+    "message": "transaction validation failed: reference errcompat-dup-4075 has already been used"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Dry-run a transaction", href: "/reference/dry-run" },
+    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
+    { title: "Overdrafts", href: "/transactions/overdrafts" },
+    { title: "Precision", href: "/transactions/precision" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+  ]}
+/>

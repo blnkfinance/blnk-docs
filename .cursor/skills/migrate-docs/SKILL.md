@@ -141,6 +141,24 @@ Related topics are the next pages for this subject. Point at deploy, configurati
 
 Escape `$` as `\$`.
 
+### A page works
+
+One page, one job. The opening answers that job. A sentence that does not serve it comes out.
+
+A reader who already knows their constraint can name the next page from this one. The name of a thing is the same in the nav, the title, and the first paragraph. A tier of a product stays a tier.
+
+A module, command, image tag, env var, or port is a claim. Trace it to the current source page or the Core repo before writing it.
+
+A step changes the outcome the page promises. Prerequisites are what block the first command. A step that does not move the reader there belongs on another page.
+
+Two or three sentences that share a point stay in one paragraph. Do not stack one-line paragraphs. Do not let a paragraph run to four lines or more. A list is for parallel items. A sentence that only restates the heading does not get its own paragraph.
+
+Before the page is done, check it as someone who did not write it:
+
+- Give them one constraint. They name the right next page, and the reason, in one sentence.
+- Tick every claim against the source without the draft open.
+- Follow the guide. It reaches the outcome the page promised.
+
 ### Dividers
 
 Remove every `---` between sections. Leave the frontmatter fences. Do not put a divider back.

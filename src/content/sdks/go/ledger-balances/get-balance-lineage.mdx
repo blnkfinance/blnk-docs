@@ -1,0 +1,76 @@
+---
+title: "View balance lineage"
+sidebarTitle: "View balance lineage"
+description: "See a balance's provider breakdown when fund lineage is enabled with the Go SDK."
+method: "GET"
+path: "/balances/{balance_id}/lineage"
+---
+
+Use `client.LedgerBalance.GetLineage` to inspect a balance's fund breakdown.
+
+<Note>Fund lineage must be enabled on the balance when it was created. See [Fund lineage](/transactions/lineage).</Note>
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.LedgerBalance.GetLineage
+lineage, resp, err := client.LedgerBalance.GetLineage(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+)
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID with fund lineage enabled. |
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "total_with_lineage": "7500",
+  "providers": [
+    {
+      "provider": "stripe",
+      "amount": "10000",
+      "available": "7500",
+      "spent": "2500",
+      "shadow_balance_id": "bln_shadow_balance_id"
+    }
+  ]
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.BalanceLineage`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BalanceID` | `string` | Balance you queried. |
+| `AggregateBalanceID` | `string` | Internal aggregate balance ID for combined provider funds. |
+| `TotalWithLineage` | `*big.Int` | Total available funds tracked by lineage (minor units). |
+| `Providers` | `[]`<br />`LineageProviderBreakdown` | Provider-by-provider breakdown of received and spent funds. |
+| `Providers.`<br />`Provider` | `string` | Provider name (for example `stripe`). |
+| `Providers.`<br />`Amount` | `*big.Int` | Total amount received from the provider (minor units). |
+| `Providers.`<br />`Available` | `*big.Int` | Remaining available amount (minor units). |
+| `Providers.`<br />`Spent` | `*big.Int` | Amount spent from the provider (minor units). |
+| `Providers.`<br />`ShadowBalanceID` | `string` | Shadow balance ID for this provider's funds. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Fund lineage", href: "/transactions/lineage" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "View balance lineage", href: "/reference/get-balance-lineage" },
+  ]}
+/>

@@ -1,0 +1,82 @@
+---
+title: "Register new hooks"
+sidebarTitle: "Create hooks"
+description: "Register a new hook with the Python SDK."
+method: "POST"
+path: "/hooks"
+---
+
+Use `blnk.hooks.create` to register a [webhook](/hooks/overview) that Blnk calls before or after a transaction.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```python blnk.hooks.create
+response = blnk.hooks.create({
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/validate",
+  "type": "PRE_TRANSACTION",
+  "active": True,
+  "timeout": 30,
+  "retry_count": 3,
+})
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `name` | `str` | Descriptive name for the hook. |
+| `url` | `str` | Endpoint URL Blnk calls when the hook runs. |
+| `type` | `str` | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `active` | `bool` | Whether the hook is enabled. |
+| `timeout` | `number` | Maximum time in seconds allowed for the hook to execute. |
+| `retry_count` | `number` | Maximum number of retry attempts if the hook fails. |
+</Step>
+
+<Step title="Save the hook ID">
+
+Use `response.data["id"]` to view, update, or delete the hook later.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "id": "hk_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Pre-transaction validation",
+  "url": "https://api.example.com/validate",
+  "type": "PRE_TRANSACTION",
+  "active": true,
+  "timeout": 30,
+  "retry_count": 3,
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "last_run": "0001-01-01T00:00:00Z",
+  "last_success": false
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `id` | `str` | Unique ID for the hook. Use it to view, update, or delete the hook. |
+| `created_at` | `str` | Date and time the hook was created. |
+| `last_run` | `str` | Date and time the hook last executed. |
+| `last_success` | `bool` | Whether the most recent execution succeeded. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Webhooks overview", href: "/webhooks/overview" },
+    { title: "Supported events", href: "/webhooks/events" },
+    { title: "Create Hooks", href: "/reference/create-hooks" },
+  ]}
+/>

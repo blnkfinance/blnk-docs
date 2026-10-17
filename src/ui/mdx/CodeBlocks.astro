@@ -54,7 +54,11 @@
 		return text ? text.split('\n').length : 0;
 	}
 
-	function collapse(pre: HTMLElement, isHidden: () => boolean = () => pre.hidden) {
+	function collapsed(element: HTMLElement) {
+		return element.hidden !== false;
+	}
+
+	function collapse(pre: HTMLElement, isHidden: () => boolean = () => collapsed(pre)) {
 		if (pre.dataset.collapsed || lineCount(pre) <= collapsedLines) return;
 		pre.dataset.collapsed = 'true';
 		pre.classList.add('is-collapsed');
@@ -260,7 +264,7 @@
 				button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
 				button.addEventListener('click', () => select(index));
 				bar.append(button);
-				const sync = collapse(pre, () => panel.hidden);
+				const sync = collapse(pre, () => collapsed(panel));
 				if (sync) syncExpand.push(sync);
 			});
 			group.append(stack);
@@ -278,6 +282,7 @@
 		});
 	}
 
+	(window as Window & { enhanceCodeBlocks?: () => void }).enhanceCodeBlocks = enhanceCodeBlocks;
 	enhanceCodeBlocks();
 	document.addEventListener('astro:page-load', enhanceCodeBlocks);
 </script>

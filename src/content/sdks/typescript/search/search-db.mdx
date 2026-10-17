@@ -1,0 +1,93 @@
+---
+title: "Search via DB"
+sidebarTitle: "Filter records"
+description: "Filter ledgers, balances, transactions, and identities with the TypeScript SDK."
+method: "POST"
+path: "/{collection}/filter"
+---
+
+Use `blnk.Search.filter` to filter records in a collection.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```typescript blnk.Search.filter
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'status',
+        operator: 'eq',
+        value: 'APPLIED',
+      },
+    ],
+    logical_operator: 'and',
+    sort_by: 'created_at',
+    sort_order: 'desc',
+    include_count: true,
+    limit: 20,
+    offset: 0,
+  },
+  'transactions',
+);
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `filters` | `object[]` | Array of filter conditions, each with a `field`, `operator`, and a `value` or `values`. |
+| `logical_operator` | `string` | Combine filters with `and` or `or`. Defaults to `and`. |
+| `sort_by` | `string` | Field to sort by. Defaults to `created_at`. |
+| `sort_order` | `string` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `include_count` | `boolean` | Return `total_count` in the response. Defaults to `false`. |
+| `limit` | `number` | Maximum records to return. Defaults to 20, max 100. |
+| `offset` | `number` | Records to skip for pagination. Defaults to 0. |
+| `collection` | `string` | Collection to filter: `ledgers`, `transactions`, `balances`, or `identities`. |
+</Step>
+
+<Step title="Use the filtered results">
+
+Read `response.data.data` for matching records. Use `total_count` with `limit` and `offset` to paginate when `include_count` is `true`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data` | `object[]` | Array of matching records. Shape varies by collection. |
+| `total_count` | `number` | Total matching records. Only present when `include_count` is `true`. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "DB filtering", href: "/search/db/filtering" },
+    { title: "DB performance", href: "/search/db/performance" },
+    { title: "Search via DB", href: "/reference/search-db" },
+  ]}
+/>

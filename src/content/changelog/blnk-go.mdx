@@ -1,0 +1,150 @@
+---
+title: "Go SDK"
+sidebarTitle: "Changelog"
+description: "Latest releases, fixes, and improvements to the Blnk Go SDK."
+seoTitle: "Changelog • Go SDK"
+metaDescription: "Track releases, fixes, and version history for the official Blnk Go SDK."
+icon: "history"
+---
+
+<Update label="1.5.0" description="Sep 24, 2026">
+  <Version>`blnk-go@v1.5.0` targets Blnk Core **0.15.4**.</Version>
+
+  ### Transactions
+
+  A second refund of the same transaction is rejected instead of reversing the first. A source or destination that does not exist is reported as a missing balance, not a missing transaction. A split cannot include both `sources` and `destinations`. See the [0.15.4 migration guide](/changelog/v15-4-migration).
+
+  ### Error handling
+
+  Named codes now cover the rest of Core's catalogue. Branch on `ErrorDetail.Code`. See [API error codes](/advanced/error-codes).
+
+  ### Before you upgrade
+
+  - You need Core **0.15.4** for these error codes.
+</Update>
+
+<Update label="1.4.0" description="Sep 2, 2026">
+  <Version>`blnk-go@v1.4.0` targets Blnk Core **0.15.3**.</Version>
+
+  ### Transactions
+
+  Preview a create, bulk, refund, or inflight update without writing anything. Use the dry-run methods such as `CreateDryRun` and `RefundDryRun`. Core returns whether it would apply and how balances would change. The reference is still free to use on a real post. See [Dry-run transactions](/transactions/dry-run).
+
+  Refunds can take a description and metadata. An empty description inherits the original. Metadata is merged onto the inherited copy.
+
+  ### Balances
+
+  Create a General Ledger balance yourself by passing an `@` indicator with `LedgerID` set to `general_ledger_id`. See [Internal balances](/balances/internal-balances).
+
+  ### Hooks
+
+  Listing hooks without a type now returns PRE and POST hooks.
+
+  ### Error handling
+
+  Named codes for invalid amounts, validation failures, and General Ledger conflicts are exported as constants. Branch on `ErrorDetail.Code`.
+
+  ### Before you upgrade
+
+  - You need Core **0.15.3** for these features.
+  - Call the dry-run methods for previews. Do not set `DryRun: true` on the posted methods.
+</Update>
+
+<Update label="1.3.0" description="Jul 3, 2026">
+  <Version>`blnk-go@v1.3.0` covers Blnk Core **0.15.0**.</Version>
+
+  ### Identities
+
+  Delete identities from the SDK when you need to remove a customer or organization from your ledger.
+
+  ### Balance monitors
+
+  Remove balance monitors you no longer need. Blnk stops checking thresholds and sending webhooks for them.
+
+  ### Reconciliation
+
+  Start a reconciliation run and get back a reconciliation ID. Check final status with webhooks or `Reconciliation.Get`.
+
+  ### Transactions
+
+  Bulk create supports up to **10,000** transactions per request (`MaxBulkCreateItems`).
+
+  ### Error handling
+
+  Core returns structured error codes. The SDK parses them into `ApiErrorResponse.ErrorDetail` so you can branch on `ErrorDetail.Code` without parsing message text.
+
+  ### Before you upgrade
+
+  Note the following breaking changes:
+
+  - `Reconciliation.Run` now returns `StartReconciliationResponse` with only `reconciliation_id`. Use webhooks or `Reconciliation.Get` for final status.
+  - Branch on `ErrorDetail.Code` for Core failures. Do not parse error message text.
+  - Requires Go 1.22 or later.
+  - Fully backward compatible with v1.2.0 except the `Reconciliation.Run` return type noted above.
+</Update>
+
+<Update label="1.2.0" description="Jun 26, 2026">
+  ### Reconciliation
+
+  Run instant reconciliation, fetch a run by ID, and update or delete matching rules.
+
+  ### Identities and search
+
+  Filter identities from the SDK. Search the `identities` collection in Typesense. `identity_id` is optional on create.
+
+  ### Transactions
+
+  Read transaction lineage. Recover stuck queue items. Pass `skip_queue` on inflight commit or void, bulk inflight updates, and refunds. Use `precise_distribution` on split legs.
+
+  ### Balances
+
+  Create balances with fund lineage tracking. Read balances with `from_source`.
+
+  ### Client
+
+  Configurable retry strategy for transient failures.
+
+  ### Before you upgrade
+
+  - Requires Go 1.22 or later.
+  - Fully backward compatible with v1.1.0.
+</Update>
+
+<Update label="1.1.0" description="Jun 12, 2026">
+  ### Transactions
+
+  Bulk create transactions. Fetch a transaction by reference. Bulk commit or void up to 100 inflight transactions in one call, with support for partial commits.
+
+  ### Balances
+
+  Read fund lineage for a balance. Link a balance to an identity. Capture balance snapshots for historical lookups.
+
+  ### Ledgers
+
+  Rename a ledger without changing its ID, balances, or transaction history.
+
+  ### Before you upgrade
+
+  Note the following breaking changes:
+
+  - Requires Go 1.22 or later.
+  - Fully backward compatible with v1.0.1.
+</Update>
+
+<Update label="1.0.1" description="Jun 4, 2026">
+  ### What's in the SDK
+
+  Create, list, and fetch ledgers. Create and read balances, including by indicator and at a point in time. Create, fetch, commit, void, and refund transactions. Manage balance monitors. Create, fetch, list, and update identities. Upload reconciliation data, create matching rules, and start runs. Search Typesense. Update metadata on any entity.
+
+  ### Atomic transactions
+
+  Mark a parent transaction as atomic when you create it. Set `Atomic: true` on `ParentTransaction`.
+</Update>
+
+<RelatedTopics
+  items={[
+    { title: "Install Core", href: "/home/install" },
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "API reference", href: "/reference/overview" },
+  ]}
+/>

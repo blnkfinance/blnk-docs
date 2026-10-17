@@ -1,0 +1,272 @@
+---
+title: "Applying overdrafts"
+sidebarTitle: "Overdrafts"
+icon: "trending-down"
+description: "Let a transaction proceed when the source balance does not cover it."
+seoTitle: "Applying Overdrafts  • Blnk Developer Documentation"
+metaDescription: "Learn how to represent overdrafts and negative balances in your Ledger."
+---
+
+<Version>Available in version 0.6.0 and later.</Version>
+
+To send money, the `source` is required to have enough funds to execute the transaction. If Blnk detects insufficent funds, the transaction is rejected. However, there are certain transaction workflows that do not fit this default requirement.
+
+Overdrafts is a Blnk feature that lets you successfully record a transaction regardless of the `source`'s balance. When overdrafts is enabled, the transaction is processed and the balance (if insufficent) is allowed to go negative. 
+
+Learn more about [how to work with negative balances](/guides/negative-balances)
+
+<Tip>
+    A very popular use-case for overdrafts is lending. You can also use it for [internal balances](/balances/internal-balances) that do not have a starting balance such as `@World`.
+</Tip>
+
+What we'll cover …
+
+1. [Enabling overdrafts](#1-enabling-overdrafts)
+2. [Some real-life applications](#2-some-real-life-applications)
+
+## Enabling overdrafts
+
+Overdrafts are applied when recording a transacton. To enable overdraft, include the `allow_overdraft` parameter and set its value to `true` in your request body:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 11230,
+    "precision": 100,
+    "reference": "ref-ghwe12009",
+    "currency": "USD",
+    "source": "@World",
+    "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "allow_overdraft": true,
+    "meta_data": {
+      "account_type": "savings"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  precise_amount: 11230,
+  precision: 100,
+  reference: 'ref-ghwe12009',
+  currency: 'USD',
+  source: '@World',
+  destination: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  allow_overdraft: true,
+  meta_data: { account_type: 'savings' },
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(11230),
+        Reference: "ref-ghwe12009",
+        Currency: "USD",
+        Precision: 100,
+        Source: "@World",
+        Destination: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "precise_amount": 11230,
+  "precision": 100,
+  "reference": "ref-ghwe12009",
+  "currency": "USD",
+  "source": "@World",
+  "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "allow_overdraft": True,
+  "meta_data": {"account_type": "savings"},
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(11230)
+        .precision(100)
+        .reference("ref-ghwe12009")
+        .currency("USD")
+        .source("@World")
+        .destination("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .allowOverdraft(true)
+        .metaData(Map.of("account_type", "savings")));
+```
+</CodeGroup>
+
+```json 201 Created
+{
+  "amount": 112.30,
+  "precision": 100,
+  "precise_amount": 11230,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "reference": "ref-ghwe12009",
+  "currency": "USD",
+  "source": "@World",
+  "destination": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "status": "QUEUED",
+  "allow_overdraft": true,
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+## Setting overdraft limits
+
+<Version>Available on version 0.10.1 or later.</Version>
+
+By default, when the `allow_overdraft` parameter is set to true without additional settings, there is no limit to how negative an account balance can go. 
+
+However, in most cases, you’ll want to define a maximum overdraft limit using the `overdraft_limit` parameter.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 11230,
+    "precision": 100,
+    "reference": "ref-ghwe12009",
+    "currency": "USD",
+    "source": "@World",
+    "destination": "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+    "allow_overdraft": true,
+    "overdraft_limit": 500.00,
+    "meta_data": {
+      "account_type": "savings"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  precise_amount: 11230,
+  precision: 100,
+  reference: 'ref-ghwe12009',
+  currency: 'USD',
+  source: '@World',
+  destination: 'bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3',
+  allow_overdraft: true,
+  overdraft_limit: 500.00,
+  meta_data: { account_type: 'savings' },
+});
+```
+
+```go Go wrap
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(11230),
+        Reference: "ref-ghwe12009",
+        Currency: "USD",
+        Precision: 100,
+        Source: "@World",
+        Destination: "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+    },
+    AllowOverdraft: true,
+    OverdraftLimit: 500.00,
+})
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "precise_amount": 11230,
+  "precision": 100,
+  "reference": "ref-ghwe12009",
+  "currency": "USD",
+  "source": "@World",
+  "destination": "bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3",
+  "allow_overdraft": True,
+  "overdraft_limit": 500.00,
+  "meta_data": {"account_type": "savings"},
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(11230)
+        .precision(100)
+        .reference("ref-ghwe12009")
+        .currency("USD")
+        .source("@World")
+        .destination("bln_2e8db3e5-c168-4127-a1c4-16274e7a28d3")
+        .allowOverdraft(true)
+        .overdraftLimit(500)
+        .metaData(Map.of("account_type", "savings")));
+```
+</CodeGroup>
+
+```json 201 Created
+{
+  "amount": 112.30,
+  "precision": 100,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "allow_overdraft": true,
+  "overdraft_limit": 500.00,
+  "status": "QUEUED",
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+| Overdraft fields | Type | Description |
+| :-- | :-- | :-- |
+| `allow_overdraft` | Boolean | Enables overdraft functionality, allowing the account balance to go negative. |
+| `overdraft_limit` | Number | Sets the maximum overdraft amount. |
+
+### How overdraft limits work
+
+When processing a transaction with an overdraft limit:
+
+1. If the source account has sufficient funds, the transaction proceeds as normal.
+2. If the source account has insufficient funds but `allow_overdraft` is `true`:
+    
+    * If `overdraft_limit` is set to 0 or not provided, the transaction will succeed, and the balance can go negative without restriction.
+    * If `overdraft_limit` is greater than 0, the transaction will only succeed if the resulting negative balance does not exceed the specified limit.
+
+### Error handling
+
+If a transaction would cause the balance to exceed the overdraft limit, it will fail with the following error message:
+
+```json 400 Bad Request
+{
+  "error": "failed to apply transaction to balances: transaction exceeds overdraft_limit"
+}
+```
+
+## Some real-life applications
+
+1. **Loans and credit facilities:** You can easily implement lending features, track how much a customer has spent outside of their available balance, manage credit history, etc., and record it all in your Blnk Ledger. 
+
+    With overdraft limits, you can set credit limits for different customers based on their creditworthiness.
+
+2. **Internal money movement:** Your internal balances can often face fluctuations in cash flow, especially during unpredictable periods. Overdrafts allow you to efficiently manage this without disrupting your financial operation. 
+
+    Setting overdraft limits helps maintain control over internal spending.
+
+3. **Prepaid cards with buffer:** You can implement prepaid cards that allow a small overdraft buffer (e.g., \$20) to handle scenarios like tips added after a restaurant charge.
+
+4. **Tiered overdraft limits:** You can implement different overdraft limits for different customer tiers or account types by storing these values in your system and applying the appropriate limit in each transaction.
+
+
+## Using the Dashboard
+
+Turn on **Apply overdraft** before you create the transaction. The source balance can then go negative.
+
+![Apply overdraft turned on](img/transactions/overdraft-option.png)
+
+
+<RelatedTopics
+  items={[
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Insufficient funds", href: "/guides/insufficient-funds" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Create inflight", href: "/transactions/inflight/creating-inflight" },
+  ]}
+/>

@@ -1,0 +1,165 @@
+---
+title: "TypeScript SDK"
+sidebarTitle: "Changelog"
+description: "Latest releases, fixes, and improvements to the Blnk TypeScript SDK."
+seoTitle: "Changelog • TypeScript SDK"
+metaDescription: "Track releases, fixes, and version history for the official Blnk TypeScript SDK."
+icon: "history"
+---
+
+<Update label="1.5.0" description="Sep 24, 2026">
+  <Version>`@blnkfinance/blnk-typescript@1.5.0` targets Blnk Core **0.15.4**.</Version>
+
+  ### Transactions
+
+  A second refund of the same transaction is rejected instead of reversing the first. A source or destination that does not exist is reported as a missing balance, not a missing transaction. A split cannot include both `sources` and `destinations`. See the [0.15.4 migration guide](/changelog/v15-4-migration).
+
+  ### Ledgers
+
+  List ledgers, balances, and transactions. List the monitors on one balance with `BalanceMonitor.listByBalanceId`.
+
+  ### Error handling
+
+  Named codes for the full Core catalogue are on `BlnkErrorCode`. Branch on `response.error?.code`. See [API error codes](/advanced/error-codes).
+
+  ### Before you upgrade
+
+  - You need Core **0.15.4** for these features.
+</Update>
+
+<Update label="1.4.0" description="Sep 2, 2026">
+  <Version>`@blnkfinance/blnk-typescript@1.4.0` targets Blnk Core **0.15.3**.</Version>
+
+  ### Transactions
+
+  Preview a create, bulk, refund, or inflight update without writing anything. Pass `dry_run: true` and Core returns whether it would apply and how balances would change. The reference is still free to use on a real post. See [Dry-run transactions](/transactions/dry-run).
+
+  Refunds can take a description and metadata. An empty description inherits the original. Metadata is merged onto the inherited copy.
+
+  ### Balances
+
+  Create a General Ledger balance yourself by passing an `@` indicator with `ledger_id` set to `general_ledger_id`. See [Internal balances](/balances/internal-balances).
+
+  ### Hooks
+
+  Listing hooks without a type now returns PRE and POST hooks.
+
+  ### Error handling
+
+  Named codes for invalid amounts, validation failures, and General Ledger conflicts are on `BlnkErrorCode`. Branch on `response.error?.code`.
+
+  ### Before you upgrade
+
+  - You need Core **0.15.3** for these features.
+  - Existing posted calls do not change. If `dry_run` is only known at runtime, narrow the result before you read `transaction_id`.
+</Update>
+
+<Update label="1.3.0" description="Jun 24, 2026">
+  <Version>`@blnkfinance/blnk-typescript@1.3.0` covers Blnk Core **0.15.0**.</Version>
+
+  ### Identities
+
+  Delete identities from the SDK when you need to remove a customer or organization from your ledger.
+
+  ### Balance monitors
+
+  Remove balance monitors you no longer need. Blnk stops checking thresholds and sending webhooks for them.
+
+  ### Reconciliation
+
+  Start a reconciliation run and get back a reconciliation ID. Check final status with webhooks or `Reconciliation.get`.
+
+  ### Inflight
+
+  Commit or void inflight transactions from the SDK. On Core 0.15.0, these run through the queue by default.
+
+  Pass `skip_queue` when you need an immediate applied or void result.
+
+  ### Transactions
+
+  Bulk create supports up to **10,000** transactions per request.
+
+  ### Error handling
+
+  Core returns structured error codes. The SDK puts them on the response so you can handle failures without parsing message text.
+
+  ### Before you upgrade
+
+  Note the following breaking changes:
+
+  - Transaction and balance responses no longer include `rate` or `currency_multiplier`.
+  - Branch on `response.error?.code` for Core failures. Do not parse error message text.
+</Update>
+
+<Update label="1.2.0" description="Jun 23, 2026">
+  <Version>`@blnkfinance/blnk-typescript@1.2.0` covers the rest of Core (up until `0.14.5`).</Version>
+
+  ### Search
+
+  Search via the DB or Typesense, start a reindex, and check reindex progress from the SDK. The `identities` collection is also included.
+
+  ### Reconciliation
+
+  Upload external data, create and update matching rules, start a run, check status, or reconcile instantly without writing HTTP calls from scratch.
+
+  ### Identities
+
+  Create, fetch, list, and update identities. 
+  
+  Tokenize and detokenize PII, list what's tokenized, and supply your own `identity_id` or ISO 8601 `dob` on create when you need to.
+
+  ### Metadata, hooks, and API keys
+
+  Attach metadata to ledgers, balances, transactions, and identities. Register and manage transaction hooks. Create, list, and revoke scoped API keys.
+
+  ### HTTP client
+
+  The SDK now uses native `fetch`, so you need Node.js 18 or later. Timeouts and retries are configurable. 
+  
+  Retries apply to idempotent `GET` requests only. Logs redact sensitive fields, empty API keys no longer send `X-Blnk-Key`, and `204` responses no longer fail JSON parsing.
+
+  ### Before you upgrade
+
+  Note the following breaking changes:
+
+  - You'll need Node.js 18 or later.
+  - The default HTTP timeout is 10 seconds.
+  - `Identity.create` requires only `identity_type`. Everything else is optional.
+</Update>
+
+<Update label="1.1.0" description="Jun 18, 2026">
+  ### Transactions
+
+  Fetch a transaction by ID or reference. Read lineage. Commit or void inflight transactions, refund, bulk create, bulk commit or void inflight batches, and recover stuck queue items.
+
+  ### Balances
+
+  Read a balance by ID (including from source), by indicator, at a point in time, or with lineage. Link a balance to an identity. Trigger balance snapshots.
+
+  ### Ledgers and system
+
+  Update ledger names. Check Core health with `System.health()`.
+
+  ### Before you upgrade
+
+  - Transaction response types now match Core. If you typed against `CreateTransactionResponse` or `BulkTransactionResponse`, update those types.
+  - Client-side validation is stricter for dates, amounts, and split transaction legs. Fix invalid payloads before retrying.
+</Update>
+
+<Update label="1.0.1" description="Jun 4, 2026">
+  ### What's in the SDK
+
+  Create ledgers, balances, and transactions. Manage balance monitors. Commit, void, refund, and bulk-create transactions.
+
+  ### Fixes
+
+  Updated SDK and example dependencies to patch known security vulnerabilities.
+</Update>
+
+<RelatedTopics
+  items={[
+    { title: "Install Core", href: "/home/install" },
+    { title: "Deploy", href: "/home/deploy" },
+    { title: "API reference", href: "/reference/overview" },
+  ]}
+/>

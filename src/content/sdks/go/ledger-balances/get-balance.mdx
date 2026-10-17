@@ -1,0 +1,84 @@
+---
+title: "View balance details"
+sidebarTitle: "View balance details"
+description: "Get a balance by ID with the Go SDK."
+method: "GET"
+path: "/balances/{balance_id}"
+---
+
+Use `client.LedgerBalance.Get` to retrieve a balance by its balance ID.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```go client.LedgerBalance.Get
+balance, resp, err := client.LedgerBalance.Get(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+)
+```
+
+```go client.LedgerBalance.Get with queued
+balance, resp, err := client.LedgerBalance.Get(
+	"bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+	&blnkgo.GetBalanceRequest{WithQueued: true},
+)
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `balanceID` | `string` | Balance ID to retrieve. |
+| `WithQueued` | `bool` | Optional. When `true`, includes `queued_credit_balance` and `queued_debit_balance` in the response. |
+
+Pass a `*blnkgo.GetBalanceRequest` as the second argument to include queued balances:
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "balance": 0,
+  "inflight_balance": 0,
+  "credit_balance": 0,
+  "inflight_credit_balance": 0,
+  "debit_balance": 0,
+  "inflight_debit_balance": 0,
+  "ledger_id": "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
+  "identity_id": "",
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "currency": "USD",
+  "created_at": "2024-11-26T08:36:36.238244338Z",
+  "meta_data": null
+}
+```
+
+</ResponseExample>
+
+#### Go response (`*blnkgo.LedgerBalance`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BalanceID` | `string` | Unique ID for the balance. |
+| `Balance` | `*big.Int` | Current net amount. |
+| `CreditBalance` | `*big.Int` | Total amount moved into the balance. |
+| `DebitBalance` | `*big.Int` | Total amount moved out of the balance. |
+| `Currency` | `string` | Currency or asset class. |
+| `LedgerID` | `string` | Ledger this balance belongs to. |
+| `CreatedAt` | `time.Time` | Date and time the balance was created. |
+| `MetaData` | `MetaData` | Optional metadata object. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Internal balances", href: "/balances/internal-balances" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "View balance details", href: "/reference/get-balance" },
+  ]}
+/>

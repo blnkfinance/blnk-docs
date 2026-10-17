@@ -254,9 +254,6 @@ function tabCurrent(tab: NavTab): boolean {
 		list.innerHTML = groups
 			.map((group) => {
 				const grouped = group.items.some((item) => !sameText(item.title, group.pageTitle));
-				const label = grouped
-					? `<div class="search-group-label"><span>${highlight(group.pageTitle, terms)}</span>${group.category ? `<span class="search-hit-section">${escapeHtml(group.category)}</span>` : ''}</div>`
-					: '';
 				const links = group.items
 					.map((item) =>
 						hitLink(
@@ -268,7 +265,14 @@ function tabCurrent(tab: NavTab): boolean {
 						),
 					)
 					.join('');
-				return `<div class="search-group">${label}${links}</div>`;
+				if (!grouped) return `<div class="search-group" role="presentation">${links}</div>`;
+				const category = group.category
+					? `<span class="search-hit-section">${escapeHtml(group.category)}</span>`
+					: '';
+				return `<div class="search-group" role="group" aria-label="${escapeHtml(group.pageTitle)}">
+					<div class="search-group-label" aria-hidden="true"><svg class="search-group-icon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M13 3v5.5a.5.5 0 0 0 .5.5H19m-5.414-6H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.414a1 1 0 0 0-.293-.707l-4.414-4.414A1 1 0 0 0 13.586 3Z"/></svg><span>${highlight(group.pageTitle, terms)}</span>${category}</div>
+					<div class="search-group-items">${links}</div>
+				</div>`;
 			})
 			.join('');
 		setActive(0);
@@ -500,6 +504,7 @@ function tabCurrent(tab: NavTab): boolean {
 		});
 		menu.addEventListener('focusin', () => openTabMenu(menu));
 		menu.addEventListener('focusout', (event) => {
+			if (!(event instanceof FocusEvent)) return;
 			const next = event.relatedTarget;
 			if (next instanceof Node && menu.contains(next)) return;
 			closeTabMenus(null);
@@ -507,6 +512,7 @@ function tabCurrent(tab: NavTab): boolean {
 	});
 
 	tabNav?.addEventListener('click', (event) => {
+		if (!(event instanceof MouseEvent)) return;
 		const button = event.target instanceof Element ? event.target.closest('[data-tab-button]') : null;
 		if (!(button instanceof HTMLButtonElement)) return;
 		// A pointer click while the menu is already open from hover should not dismiss it.
@@ -852,20 +858,40 @@ function tabCurrent(tab: NavTab): boolean {
 	}
 
 	:global(.search-group + .search-group) {
-		margin-top: 0.35rem;
+		margin-top: 0.75rem;
 	}
 
 	:global(.search-group-label) {
 		display: flex;
-		align-items: baseline;
-		gap: 0.75rem;
-		padding: 0.45rem 0.7rem 0.1rem;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.7rem 0.25rem;
+		color: var(--muted);
+		font-size: 12px;
 		font-weight: 500;
+	}
+
+	:global(.search-group-icon) {
+		width: 14px;
+		height: 14px;
+		flex: none;
 	}
 
 	:global(.search-group-label .search-hit-section) {
 		margin-left: auto;
+		color: var(--lede);
 		font-weight: 400;
+	}
+
+	:global(.search-group-items) {
+		margin-left: calc(0.7rem + 14px + 0.4rem);
+		padding-left: 0.55rem;
+		border-left: 1px solid var(--line);
+	}
+
+	:global(.search-group-items .search-hit) {
+		padding-left: 0.55rem;
+		padding-right: 0.55rem;
 	}
 
 	:global(.search-hit) {

@@ -1,0 +1,83 @@
+---
+title: "Detokenize multiple fields"
+description: "Read the original values of tokenized identity fields."
+seoTitle: "Detokenize Multiple Fields • Blnk API Reference"
+method: "POST"
+path: "/identities/{identity_id}/detokenize"
+noindex: true
+---
+
+<Key />
+
+<Version>Available in version 0.8.8 and later.</Version>
+
+The identity keeps the tokens. This call only returns the original values. Omit `fields`, or send an empty array, to read every tokenized field.
+
+### Path
+
+<ParamField path="identity_id" type="string" required>
+  Id of the identity that holds the tokens.
+</ParamField>
+
+### Body
+
+<ParamField body="fields" type="string[]">
+  PascalCase names to read. Omit this, or send `[]`, to read every tokenized field.
+</ParamField>
+
+### Response
+
+<ResponseField name="fields" type="object" required>
+  Map of field names to their original values. When you send `fields`, the keys are the names you sent.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "http://localhost:5001/identities/{identity_id}/detokenize" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fields": [
+      "FirstName",
+      "LastName",
+      "EmailAddress",
+      "PhoneNumber"
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "fields": {
+    "FirstName": "Alice",
+    "LastName": "Smith",
+    "EmailAddress": "alice.smith@example.com",
+    "PhoneNumber": "+1234567890"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "field EmailAddress is not tokenized",
+  "error_detail": {
+    "code": "IDT_FIELD_NOT_TOKENIZED",
+    "message": "field EmailAddress is not tokenized"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "PII tokenization", href: "/identities/pii-tokenization" },
+    { title: "Tokenize identity", href: "/reference/tokenize-identity" },
+    { title: "Detokenize field", href: "/reference/detokenize-field" },
+  ]}
+/>

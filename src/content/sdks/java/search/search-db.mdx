@@ -1,0 +1,84 @@
+---
+title: "Search via DB"
+sidebarTitle: "Filter records"
+description: "Filter ledgers, balances, transactions, and identities with the Java SDK."
+method: "POST"
+path: "/{collection}/filter"
+---
+
+Use `blnk.search().filter` for this operation.
+
+<Steps>
+<Step title="Call the method">
+
+<RequestExample>
+
+```java search().filter
+FilterCondition ledgerFilter = FilterCondition.create()
+    .field("ledger_id")
+    .operator("eq")
+    .value("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc");
+
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(ledgerFilter))
+        .limit(10),
+    "balances");
+```
+
+</RequestExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `filters` | `List<`<br />`FilterCondition>` | Filter conditions built with `FilterCondition.`<br />`create()`. |
+| `logical_operator` | `String` | Combine filters with `and` or `or`. Defaults to `and`. |
+| `sort_by` | `String` | Field to sort by. Defaults to `created_at`. |
+| `sort_order` | `String` | Sort direction, `asc` or `desc`. Defaults to `desc`. |
+| `include_count` | `boolean` | Return `total_count` in the response. Defaults to `false`. |
+| `limit` | `Number` | Maximum records to return. Defaults to 20, max 100. |
+| `offset` | `Number` | Records to skip for pagination. Defaults to 0. |
+| `collection` | `String` | Collection to filter: `ledgers`, `transactions`, `balances`, or `identities`. |
+</Step>
+
+<Step title="Use the filtered results">
+
+Read `response.data().get("data")` for matching records. Use `total_count` with `limit` and `offset` to paginate when `include_count` is `true`.
+
+</Step>
+
+<Step title="Response">
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "data": [
+    {
+      "transaction_id": "txn_abc123",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_source123",
+      "destination": "bln_dest456",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
+}
+```
+
+</ResponseExample>
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `data` | `JsonNode` | JSON array of matching records. Read with `response.data().`<br />`get("data").get(i)`. Shape varies by collection. |
+| `total_count` | `Number` | Total matching records. Only present when `include_count` is `true`. |
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "How DB filtering works", href: "/search/db/filtering" },
+    { title: "Search via DB", href: "/reference/search-db" },
+  ]}
+/>
