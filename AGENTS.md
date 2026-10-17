@@ -18,7 +18,7 @@ Query collections with the Filter API. Use Typesense for full-text search. A mon
 
 ## Pages
 
-Keep the original path. A tag that is not in `src/ui/mdx/components.ts` is a stop: ask, and do not add a component to get past it.
+Keep the original path. A tag that is not in `src/ui/mdx/components.ts` and not a file in `src/content/snippets` is a stop: ask, and do not add a component to get past it.
 
 Copy, samples, images, and spacing already decided for this site are in `.cursor/skills/migrate-docs/SKILL.md` under **Decisions already on the site**. Follow that section on any page edit, including ones that are not a migration.
 

@@ -2,9 +2,9 @@
 
 MDX tags used in `src/content`. The source is `src/ui/mdx`. Styles for these tags are in `src/styles/mdx.css`.
 
-A page in `src/content` gets every export from `src/ui/mdx/components.ts` with no import. `src/pages/[...slug].astro` passes that map into the page.
+A page in `src/content` gets every export from `src/ui/mdx/components.ts`, plus one tag per file in `src/content/snippets`. `src/pages/[...slug].astro` passes that map into the page. A page does not import either.
 
-A snippet in `src/content/snippets` is compiled on its own. It imports each component it uses.
+A snippet is compiled on its own. It imports each component it uses.
 
 `Callout.astro`, `CodeBlocks.astro`, and `fields.ts` are part of this folder and are not page tags. `DocsLayout.astro` includes `CodeBlocks`. `ParamField` and `ResponseField` load `fields.ts`.
 
@@ -12,7 +12,7 @@ A snippet in `src/content/snippets` is compiled on its own. It imports each comp
 
 | File | Tag | What it does |
 | --- | --- | --- |
-| `components.ts` | | The map pages receive |
+| `components.ts` | | The component map. Snippets are added beside it |
 | `Callout.astro` | | Shared layout for the five callouts. Not exported |
 | `Note.astro` | `Note` | Callout, tone `note`, icon `information` |
 | `Info.astro` | `Info` | Callout, tone `info`, icon `information` |
@@ -45,7 +45,7 @@ A snippet in `src/content/snippets` is compiled on its own. It imports each comp
 | `RelatedTopics.astro` | `RelatedTopics` | Follow-up links |
 | `SchemaChart.astro` | `SchemaChart` | Fixed diagram of ledgers, balances, identity, and transactions |
 
-The page heading, description, and endpoint bar come from frontmatter. See [README.md](README.md).
+The page heading, description, and endpoint bar come from frontmatter. A page with `enterprise: true` shows a label under the title. The sentence is `labels.enterprise` in `src/content/docs.json`. See [README.md](README.md).
 
 ## Callouts
 
@@ -480,9 +480,11 @@ A fixed diagram. Transactions point to balances as source and destination. Balan
 
 ## Snippets
 
-Shared blocks live in `src/content/snippets` and are exported from `components.ts`. They take no props. The content collection skips `snippets/`, so a snippet is not its own page.
+Shared blocks live in `src/content/snippets`. A file directly in that folder becomes a tag. Drop `.mdx`, capitalize the first letter of each word, and join the words. `api-key.mdx` is `<ApiKey />`. `docker-image.mdx` is `<DockerImage />`. A single word such as `key.mdx` is `<Key />`.
 
-A snippet is compiled on its own, so it imports any component it uses:
+The file name is lowercase words separated by hyphens. The build fails if that name matches a component, such as `note.mdx`. The content collection skips `snippets/`, so a snippet is not its own page.
+
+A snippet takes no props. It is compiled on its own, so it imports any component it uses. A snippet that uses another snippet imports that file the same way.
 
 ```mdx
 import ParamField from '../../ui/mdx/ParamField.astro';

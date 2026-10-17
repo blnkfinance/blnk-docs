@@ -1,8 +1,9 @@
 ---
 import { getCollection, render } from 'astro:content';
 import { documentTitle, metaDescription, pageMarkdown } from '../lib/seo';
-import { assertPagesExist, navigation, pageHref } from '../ui/navigation';
+import { assertPagesExist, labels, navigation, pageHref } from '../ui/navigation';
 import * as mdxComponents from '../ui/mdx/components';
+import { withSnippets } from '../ui/mdx/snippets';
 import DocsLayout from '../ui/DocsLayout.astro';
 
 export async function getStaticPaths() {
@@ -20,8 +21,14 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
+const components = withSnippets(mdxComponents);
 const description = metaDescription(entry.data.metaDescription, entry.data.description);
-const markdown = pageMarkdown(entry.data.title, description, entry.body);
+const markdown = pageMarkdown(
+	entry.data.title,
+	description,
+	entry.body,
+	entry.data.enterprise ? labels.enterprise : undefined,
+);
 ---
 
 <DocsLayout
@@ -34,6 +41,7 @@ const markdown = pageMarkdown(entry.data.title, description, entry.body);
 	lede={entry.data.description}
 	method={entry.data.method}
 	endpoint={entry.data.path}
+	enterprise={entry.data.enterprise}
 >
-	<Content components={mdxComponents} />
+	<Content components={components} />
 </DocsLayout>

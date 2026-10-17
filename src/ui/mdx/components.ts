@@ -26,8 +26,3 @@ export { default as Tooltip } from './Tooltip.astro';
 export { default as RelatedTopics } from './RelatedTopics.astro';
 export { default as SchemaChart } from './SchemaChart.astro';
 export { default as SectionLabel } from './SectionLabel.astro';
-export { default as DockerImage } from '../../content/snippets/docker-image.mdx';
-export { default as Key } from '../../content/snippets/key.mdx';
-export { default as Authorization } from '../../content/snippets/authorization.mdx';
-export { default as NeedHelp } from '../../content/snippets/need-help.mdx';
-export { default as ApiKey } from '../../content/snippets/api-key.mdx';
