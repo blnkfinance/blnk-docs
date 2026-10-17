@@ -1,0 +1,107 @@
+---
+title: "Strategies"
+sidebarTitle: "Strategies"
+icon: "combine"
+description: "Choose whether one record lines up with one record or with many."
+seoTitle: "Reconciliation Strategies • Blnk Developer Documentation"
+metaDescription: "Choose and apply the strategy that best fits your financial workflows."
+---
+
+A strategy says how records on the two sides group before the matching rules run. 
+
+One ledger transaction might be one external row, or one side might split into several rows that should be judged together. 
+
+## One-to-one
+
+Each external record is compared with one ledger transaction. Do not send `grouping_criteria`.
+
+```json one_to_one
+{
+  "strategy": "one_to_one"
+}
+```
+
+<Tip>
+Leave `grouping_criteria` out. One-to-one does not group records.
+</Tip>
+
+A customer pays \$25 and both the ledger and the statement show one \$25 row. Use one-to-one. 
+
+## One-to-many
+
+One external record is compared with a group of ledger transactions. `grouping_criteria` is required. 
+
+Blnk groups ledger transactions that share that field, sums their amounts, and then applies your rules to the group.
+
+The date rule uses the earliest `created_at` in the group. A reference or description rule can match any member. `greater_than` and `less_than` compare the external value with that group.
+
+```json one_to_many
+{
+  "strategy": "one_to_many",
+  "grouping_criteria": "parent_transaction"
+}
+```
+
+<Warning>
+Without `grouping_criteria`, one-to-many cannot group the ledger side.
+</Warning>
+
+| Grouping criteria | What it groups |
+| :--- | :--- |
+| `transaction_id` | Ledger transactions with the same transaction id. |
+| `parent_transaction` | Ledger transactions that share a parent transaction. |
+| `source` | Ledger transactions with the same source balance. |
+| `destination` | Ledger transactions with the same destination balance. |
+| `reference` | Ledger transactions that share a reference. |
+| `currency` | Ledger transactions with the same currency. |
+| `status` | Ledger transactions with the same status. |
+| `created_at` | Ledger transactions with the same created-at value. |
+
+**For example:** If a processor reports one \$100 charge, and the ledger stores the gross amount, the fee, and the net as separate transactions under one parent. Group by `parent_transaction`.
+
+## Many-to-one
+
+Several external records are compared with one ledger transaction. `grouping_criteria` is required. Blnk groups the external rows that share that field and sums their amounts before the rules run.
+
+The date rule uses the earliest external `date`. `greater_than` and `less_than` compare the ledger value with that group sum, so a larger ledger amount is `greater_than`. 
+
+```json many_to_one
+{
+  "strategy": "many_to_one",
+  "grouping_criteria": "description"
+}
+```
+
+<Warning>
+Without `grouping_criteria`, many-to-one cannot group the external side.
+</Warning>
+
+| Grouping criteria | What it groups |
+| :--- | :--- |
+| `id` | External rows with the same id. |
+| `amount` | External rows with the same amount. |
+| `currency` | External rows with the same currency. |
+| `reference` | External rows that share a reference. |
+| `description` | External rows with the same description. |
+| `date` | External rows with the same date. |
+| `source` | External rows from the same source. |
+
+A statement splits one charge into parts, and the ledger stores a single \$120 transaction. Group the external rows by the field they share, such as `reference`.
+
+A `grouping_criteria` value Core cannot group on does not fail the start call. The run finishes as `failed` instead.
+
+## Using the dashboard
+
+When you run a reconciliation, choose the strategy in **Strategy**.
+
+![Strategy and grouping criteria](img/reconciliations/recon-strategy.png)
+
+If the strategy is one-to-many or many-to-one, choose the grouping criteria from the lists above. One-to-one leaves that field empty.
+
+<RelatedTopics
+  items={[
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Practice example", href: "/reconciliations/practice-example" },
+    { title: "Instant reconciliation", href: "/reference/instant-reconciliation" },
+  ]}
+/>

@@ -1,0 +1,158 @@
+---
+title: "Create matching rule"
+description: "Create a rule that decides when an external record matches the ledger."
+seoTitle: "Create Matching Rule • Blnk API Reference"
+method: "POST"
+path: "/reconciliation/matching-rules"
+noindex: true
+---
+
+<Key />
+
+### Body
+
+<ParamField body="name" type="string" required>
+  Name of the rule. An empty name is rejected.
+</ParamField>
+
+<ParamField body="description" type="string">
+  What the rule is for.
+</ParamField>
+
+<ParamField body="criteria" type="object[]" required>
+  Comparisons that must all match. At least one is required.
+
+  <Expandable title="Criterion">
+    <ParamField body="field" type="string" required>
+      `amount`, `currency`, `date`, `reference`, or `description`.
+    </ParamField>
+    <ParamField body="operator" type="string" required>
+      `equals`, `greater_than`, `less_than`, or `contains`. Anything else returns `400` with `RECON_RULE_INVALID`. `amount` matches with `equals`, `greater_than`, and `less_than`. `date` matches with those same three. On one-to-one and one-to-many, `greater_than` means the external date is later. On many-to-one, it means the ledger `created_at` is later. `currency`, `reference`, and `description` match with `equals` and `contains`. An operator that does not match that field is stored and then never matches.
+    </ParamField>
+    <ParamField body="allowable_drift" type="number">
+      On `equals`, a fraction from `0` to `1` for `amount` (`0.01` is 1%), or seconds for `date`. On `contains`, it is divided by 100 and applied to the longer string when neither value includes the other. See [Matching rules](/reconciliations/matching-rules#drifts).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="rule_id" type="string" required>
+  Id of the rule. Pass it in `matching_rule_ids` when you start a run.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name of the rule.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the rule is for.
+</ResponseField>
+
+<ResponseField name="criteria" type="object[]" required>
+  The criteria that were stored. Each criterion also includes `value` and `pattern`. Matching does not read them.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the rule was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  When the rule was last changed. Same as `created_at` on create.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "http://localhost:5001/reconciliation/matching-rules" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Default matcher",
+    "description": "Amount with 1% drift matcher",
+    "criteria": [
+      {
+        "field": "amount",
+        "operator": "equals",
+        "allowable_drift": 0.01
+      },
+      {
+        "field": "currency",
+        "operator": "equals"
+      },
+      {
+        "field": "date",
+        "operator": "equals",
+        "allowable_drift": 1800
+      },
+      {
+        "field": "reference",
+        "operator": "contains"
+      }
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Default matcher",
+  "description": "Amount with 1% drift matcher",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0.01
+    },
+    {
+      "field": "currency",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0
+    },
+    {
+      "field": "date",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 1800
+    },
+    {
+      "field": "reference",
+      "operator": "contains",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0
+    }
+  ],
+  "created_at": "2025-03-17T08:31:24.97610651Z",
+  "updated_at": "2025-03-17T08:31:24.976106635Z"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "invalid operator",
+  "error_detail": {
+    "code": "RECON_RULE_INVALID",
+    "message": "invalid operator"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Update matching rule", href: "/reference/update-matching-rule" },
+  ]}
+/>

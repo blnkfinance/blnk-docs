@@ -1,0 +1,132 @@
+---
+title: "External data"
+sidebarTitle: "External data"
+icon: "file-upload"
+description: "Format external records and upload them for a batch reconciliation."
+seoTitle: "External Data Preparation • Blnk Developer Documentation"
+metaDescription: "Learn how to prepare and upload your external records for reconciliation."
+---
+
+External data is a file of transactions from outside the ledger, such as a bank statement or a processor report. 
+
+Blnk matches that file only after every row uses the same expected format.
+
+## Prepare the file
+
+Export the source file as CSV or JSON, and give each row these fields:
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | String | Unique id for this external transaction. |
+| `amount` | Number | Transaction amount, such as `100.50`. Stored with two decimal places. |
+| `currency` | String | Currency code, such as `USD`. |
+| `description` | String | Narration, such as `Monthly subscription`. |
+| `reference` | String | Transaction reference, such as `ref_128GA6Ag1298ahkj`. |
+| `date` | String | RFC3339 timestamp, such as `2025-02-15T13:30:00Z`. |
+
+Send JSON as an array of objects. `id` must be unique across uploads, and a duplicate rowfails the upload until you resolve the conflict.
+
+In a CSV, a `date` that is not RFC3339 is stored as the zero time and the row is still saved. In JSON, that same `date` fails the upload.
+
+If the ledger queues transactions, the stored reference can carry a `_q` suffix. Put that suffix on the external reference when you need those rows to match exactly.
+
+## Upload the file
+
+### Using the API
+
+Call [Upload external records](/reference/upload-data).
+
+<Tabs>
+  <Tab title="Upload external data">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/reconciliation/upload" \
+  -H "X-blnk-key: <api-key>" \
+  -F "file=@transactions.json" \
+  -F "source=Stripe"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Reconciliation.upload(
+  'transactions.json',
+  'Stripe',
+);
+```
+
+```go Go wrap
+file, _ := os.Open("transactions.json")
+result, resp, err := client.Reconciliation.Upload("Stripe", file, file.Name())
+```
+
+```python Python wrap
+response = blnk.reconciliation.upload("transactions.json", "Stripe")
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().upload(
+    "transactions.json",
+    "Stripe");
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `file` | CSV, or a JSON array of records. | Yes |
+| `source` | Name copied onto every stored row, such as `Stripe`. | No |
+
+When an upload fails, check the file before you send it again:
+
+- Each `id` should be unique, including ids from earlier uploads.
+- Every row has `id`, `amount`, `currency`, `description`, `reference`, and `date`, and none of them is empty.
+- `amount` is a number, `date` is RFC3339, and a JSON file is an array of objects.
+
+</Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "record_count": 1000,
+  "source": "Stripe"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `upload_id` | Id of the upload. Pass it as `upload_id` when you [start reconciliation](/reference/start-reconciliation). |
+| `record_count` | How many rows were stored. |
+| `source` | The source name you sent. |
+
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+<Steps titleSize="h3">
+<Step title="Open Upload external data">
+
+On **Reconciliations**, click **Upload external data** in the top right.
+
+![Upload external data](img/reconciliations/upload-external-data.png)
+
+</Step>
+
+<Step title="Name the source and upload the file">
+
+Choose the CSV or JSON file and enter a source name you can filter on later, such as `Stripe Jan 2025`.
+
+The rows are added to **External transactions**. Filter that table by source, upload id, amount, or currency.
+
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Reconciliation overview", href: "/reconciliations/overview" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Upload external records", href: "/reference/upload-data" },
+  ]}
+/>

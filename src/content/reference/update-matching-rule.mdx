@@ -1,0 +1,164 @@
+---
+title: "Update matching rule"
+description: "Replace the name, description, or criteria of a matching rule."
+seoTitle: "Update Matching Rule • Blnk API Reference"
+method: "PUT"
+path: "/reconciliation/matching-rules/{rule_id}"
+noindex: true
+---
+
+<Key />
+
+The body replaces the stored rule. Send the full criteria list you want to keep.
+
+### Path
+
+<ParamField path="rule_id" type="string" required>
+  Id of the rule to update. An unknown id returns `404` with `RECON_RULE_NOT_FOUND`.
+</ParamField>
+
+### Body
+
+<ParamField body="name" type="string" required>
+  Name of the rule.
+</ParamField>
+
+<ParamField body="description" type="string">
+  What the rule is for.
+</ParamField>
+
+<ParamField body="criteria" type="object[]" required>
+  Comparisons that must all match. Same fields as [Create matching rule](/reference/create-matching-rule).
+
+  <Expandable title="Criterion">
+    <ParamField body="field" type="string" required>
+      `amount`, `currency`, `date`, `reference`, or `description`.
+    </ParamField>
+    <ParamField body="operator" type="string" required>
+      `equals`, `greater_than`, `less_than`, or `contains`.
+    </ParamField>
+    <ParamField body="allowable_drift" type="number">
+      On `equals`, a fraction from `0` to `1` for `amount`, or seconds for `date`. On `contains`, divided by 100 and applied to the longer string when neither value includes the other.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="rule_id" type="string" required>
+  Id of the rule. Unchanged by the update.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name of the rule.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the rule is for.
+</ResponseField>
+
+<ResponseField name="criteria" type="object[]" required>
+  The criteria that were stored. Each criterion also includes `value` and `pattern`. Matching does not read them.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the rule was first created. Not changed by the update.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  When this update was saved.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT "http://localhost:5001/reconciliation/matching-rules/rule_890bdbc4-467f-4670-8424-5667e41daf29" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated matcher",
+    "description": "Amount with 2% drift matcher",
+    "criteria": [
+      {
+        "field": "amount",
+        "operator": "equals",
+        "allowable_drift": 0.02
+      },
+      {
+        "field": "currency",
+        "operator": "equals"
+      },
+      {
+        "field": "reference",
+        "operator": "contains"
+      }
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Updated matcher",
+  "description": "Amount with 2% drift matcher",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0.02
+    },
+    {
+      "field": "currency",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0
+    },
+    {
+      "field": "reference",
+      "operator": "contains",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0
+    }
+  ],
+  "created_at": "2025-03-17T08:31:24.97610651Z",
+  "updated_at": "2025-03-17T09:02:11.120441Z"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "invalid operator",
+  "error_detail": {
+    "code": "RECON_RULE_INVALID",
+    "message": "invalid operator"
+  }
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Matching rule with ID 'rule_00000000-0000-0000-0000-000000000000' not found",
+  "error_detail": {
+    "code": "RECON_RULE_NOT_FOUND",
+    "message": "Matching rule with ID 'rule_00000000-0000-0000-0000-000000000000' not found"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Create matching rule", href: "/reference/create-matching-rule" },
+    { title: "Delete matching rule", href: "/reference/delete-matching-rule" },
+  ]}
+/>

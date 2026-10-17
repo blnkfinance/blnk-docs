@@ -1,0 +1,139 @@
+---
+title: "Instant reconciliation"
+sidebarTitle: "Instant reconciliation"
+description: "Reconcile external records sent in the request."
+seoTitle: "Instant Reconciliation • Blnk API Reference"
+method: "POST"
+path: "/reconciliation/start-instant"
+noindex: true
+---
+
+<Key />
+
+<Version>Available in version 0.10.1 and later.</Version>
+
+### Body
+
+<ParamField body="external_transactions" type="object[]" required>
+  Records to match. At most 10,000. An empty list returns `400` with `RECON_EXTERNAL_TXNS_REQUIRED`. More than 10,000 returns `400` with `GEN_VALIDATION_ERROR`.
+
+  <Expandable title="External transaction">
+    <ParamField body="id" type="string">
+      Unique id for this external transaction.
+    </ParamField>
+    <ParamField body="amount" type="number">
+      Transaction amount.
+    </ParamField>
+    <ParamField body="reference" type="string">
+      Transaction reference.
+    </ParamField>
+    <ParamField body="currency" type="string">
+      ISO 4217 currency code.
+    </ParamField>
+    <ParamField body="description" type="string">
+      Narration of the transaction.
+    </ParamField>
+    <ParamField body="date" type="string">
+      RFC3339 timestamp. A missing value is stored as the zero time. A value that is not RFC3339 fails the request.
+    </ParamField>
+    <ParamField body="source" type="string">
+      Where the row came from. Instant reconciliation keeps this value.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="strategy" type="string" required>
+  How records are grouped before matching. See [Strategies](/reconciliations/strategies).
+
+  - `one_to_one`: one external record against one ledger transaction.
+  - `one_to_many`: one external record against a group of ledger transactions.
+  - `many_to_one`: a group of external records against one ledger transaction.
+
+  Any other value is accepted, and the run completes with zero counts.
+</ParamField>
+
+<ParamField body="matching_rule_ids" type="string[]" required>
+  Ids of the rules to apply. A record matches when every criterion in any one of these rules matches. An empty list returns `400` with `RECON_MATCHING_RULES_REQUIRED`.
+</ParamField>
+
+<ParamField body="grouping_criteria" type="string">
+  Field used to group the many side. Required for `one_to_many` and `many_to_one`. Leave it out for `one_to_one`. A value Core cannot group on does not fail this call, and the run finishes as `failed`.
+</ParamField>
+
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, the run stores the counts and does not write match rows or metadata on the ledger transactions. Defaults to `false`.
+</ParamField>
+
+### Response
+
+The run is created and continues in the background. This response does not include status or match counts. Poll [Get reconciliation](/reference/get-reconciliations) with `reconciliation_id`.
+
+<ResponseField name="reconciliation_id" type="string" required>
+  Id of the run.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "http://localhost:5001/reconciliation/start-instant" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_transactions": [
+      {
+        "id": "txn1a2b3c4d5e6f7g8h9i0",
+        "amount": 5.49,
+        "reference": "INV-2023-002",
+        "currency": "GBP",
+        "description": "Card payment",
+        "date": "2024-11-15T14:25:30Z",
+        "source": "bank-api"
+      }
+    ],
+    "strategy": "one_to_one",
+    "dry_run": false,
+    "matching_rule_ids": [
+      "rule_890bdbc4-467f-4670-8424-5667e41daf29"
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+}
+```
+
+```json 400 Missing records
+{
+  "error": "external_transactions is required",
+  "error_detail": {
+    "code": "RECON_EXTERNAL_TXNS_REQUIRED",
+    "message": "external_transactions is required"
+  }
+}
+```
+
+```json 400 Too many records
+{
+  "error": "too many external_transactions; max is 10000",
+  "error_detail": {
+    "code": "GEN_VALIDATION_ERROR",
+    "message": "too many external_transactions; max is 10000"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Start reconciliation", href: "/reference/start-reconciliation" },
+  ]}
+/>

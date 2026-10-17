@@ -1,0 +1,242 @@
+---
+title: "Matching rules"
+sidebarTitle: "Matching rules"
+icon: "git-compare"
+description: "Create rules that decide when a ledger transaction matches an external record."
+seoTitle: "Matching Rules • Blnk Developer Documentation"
+metaDescription: "Set rules that govern how your Ledger and external records are matched"
+---
+
+A matching rule is a list of criteria. Blnk compares each criterion on the external record with the ledger transaction, and every criterion in the rule has to match. 
+
+If you pass more than one rule on a run, the record matches when any one of those rules matches in full.
+
+## Create a matching rule
+
+### Using the API
+
+Call [Create matching rule](/reference/create-matching-rule).
+
+<Tabs>
+  <Tab title="Create matching rule">
+
+<CodeGroup>
+
+```bash cURL wrap expandable
+curl -X POST "http://localhost:5001/reconciliation/matching-rules" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Default matcher",
+    "description": "Amount with 1% drift matcher",
+    "criteria": [
+      {
+        "field": "amount",
+        "operator": "equals",
+        "allowable_drift": 0.01
+      },
+      {
+        "field": "currency",
+        "operator": "equals"
+      },
+      {
+        "field": "date",
+        "operator": "equals",
+        "allowable_drift": 1800
+      },
+      {
+        "field": "reference",
+        "operator": "contains"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Reconciliation.createMatchingRule({
+  name: 'Default matcher',
+  description: 'Amount with 1% drift matcher',
+  criteria: [
+    { field: 'amount', operator: 'equals', allowable_drift: 0.01 },
+    { field: 'currency', operator: 'equals' },
+    { field: 'date', operator: 'equals', allowable_drift: 1800 },
+    { field: 'reference', operator: 'contains' },
+  ],
+});
+```
+
+```go Go wrap
+rule, resp, err := client.Reconciliation.CreateMatchingRule(blnkgo.Matcher{
+    Name: "Default matcher",
+    Description: "Amount with 1% drift matcher",
+    Criteria: []blnkgo.Criteria{
+        {Field: blnkgo.CriteriaFieldAmount, Operator: blnkgo.ReconciliationOperatorEquals, AllowableDrift: 0.01},
+        {Field: blnkgo.CriteriaFieldCurrency, Operator: blnkgo.ReconciliationOperatorEquals},
+        {Field: blnkgo.CriteriaFieldDate, Operator: blnkgo.ReconciliationOperatorEquals, AllowableDrift: 1800},
+        {Field: blnkgo.CriteriaFieldReference, Operator: blnkgo.ReconciliationOperatorContains},
+    },
+})
+```
+
+```python Python wrap
+response = blnk.reconciliation.create_matching_rule({
+  "name": "Default matcher",
+  "description": "Amount with 1% drift matcher",
+  "criteria": [
+    {"field": "amount", "operator": "equals", "allowable_drift": 0.01},
+    {"field": "currency", "operator": "equals"},
+    {"field": "date", "operator": "equals", "allowable_drift": 1800},
+    {"field": "reference", "operator": "contains"},
+  ],
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().createMatchingRule(
+    Matcher.create()
+        .name("Default matcher")
+        .description("Amount with 1% drift matcher")
+        .criteria(List.of(
+            Criteria.create().field("amount").operator("equals").allowableDrift(0.01),
+            Criteria.create().field("currency").operator("equals"),
+            Criteria.create().field("date").operator("equals").allowableDrift(1800),
+            Criteria.create().field("reference").operator("contains")
+        ))
+);
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `name` | Name of the rule. | Yes |
+| `description` | What the rule is for. | No |
+| `criteria` | One or more comparisons. Each needs `field` and `operator`. | Yes |
+| `criteria.field` | `amount`, `currency`, `date`, `reference`, or `description`. | Yes |
+| `criteria.operator` | How the field is compared. See the table below. | Yes |
+| `criteria.allowable_drift` | Tolerance on `equals` for `amount` or `date`, and on `contains` when neither value includes the other. | No |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 201 Created wrap
+{
+  "rule_id": "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+  "name": "Default matcher",
+  "description": "Amount with 1% drift matcher",
+  "criteria": [
+    {
+      "field": "amount",
+      "operator": "equals",
+      "value": "",
+      "pattern": "",
+      "allowable_drift": 0.01
+    }
+  ],
+  "created_at": "2025-03-17T08:31:24.97610651Z",
+  "updated_at": "2025-03-17T08:31:24.976106635Z"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `rule_id` | Id to pass in `matching_rule_ids` when you start a run. |
+| `criteria.value` | Returned on every criterion. Matching does not read it. |
+| `criteria.pattern` | Returned on every criterion. Matching does not read it. |
+
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+<Steps titleSize="h3">
+<Step title="Open Create matching rule">
+
+On **Reconciliations**, open **Matching rules**, then click **Create matching rule**.
+
+![Create matching rule](img/reconciliations/create-matching-rule.png)
+
+</Step>
+
+<Step title="Set the criteria">
+
+Enter the name and description, then add the fields to compare. Click **Create matching rule**.
+
+- **Name:** a name you can pick later on a run.
+- **Description:** what the rule is for.
+- **Criteria:** the fields, operators, and any drift.
+
+![Allowable drift on a matching rule](img/reconciliations/allowable-drift.png)
+
+</Step>
+</Steps>
+
+Change the name, description, or criteria with [Update matching rule](/reference/update-matching-rule). Remove a rule you no longer want with [Delete matching rule](/reference/delete-matching-rule).
+
+## Fields and operators
+
+| Field | Operators | What it compares |
+| :--- | :--- | :--- |
+| `amount` | `equals`, `greater_than`, `less_than` | External amount against the ledger amount, or the sum of a group. On many-to-one, `greater_than` means the ledger amount is larger than that sum. |
+| `currency` | `equals`, `contains` | Currency code. A group with more than one currency is `MIXED`, and this criterion then passes. |
+| `date` | `equals`, `greater_than`, `less_than` | External `date` against the ledger `created_at`. On one-to-one and one-to-many, `greater_than` means the external date is later. On many-to-one, it means the ledger `created_at` is later. |
+| `reference` | `equals`, `contains` | External reference against the ledger reference. |
+| `description` | `equals`, `contains` | Narration. `contains` works the same way as reference. |
+
+`equals` and `contains` ignore case on `currency`, `reference`, and `description`.
+
+`contains` matches when one reference includes the other, whether the shared text starts the longer value or ends it. 
+
+An external reference of `ref_k7m4q2` matches a ledger reference of `ref_k7m4q2_provider-1` and of `provider-1_ref_k7m4q2`. `description` uses the same comparison.
+
+## Drifts
+
+`allowable_drift` on `equals` applies to `amount` and `date`. On `contains`, it applies when neither value includes the other.
+
+1. **Amount.** The value is a fraction from `0` to `1`. `0.01` allows a 1% difference. A ledger amount of \$100 with `0.01` matches an external amount from \$99 to \$101.
+2. **Date.** The value is seconds, and it cannot be negative. `3600` allows one hour either side of the ledger `created_at`.
+3. **Contains.** The value is divided by 100 and applied to the length of the longer string. `1` allows about 1% of the characters to differ. `0` leaves `contains` as a check that one value includes the other.
+
+Use amount drift for fees or a small rounding gap. On many-to-one the percentage is taken from the summed external amount. Use date drift when settlement or time zones move the timestamp.
+
+## Best practices
+
+<Steps titleSize="h3">
+<Step title="Put reference on every rule">
+
+It is the only field that identifies one external transfer. Amount and date can agree on many ledger transactions, and description is only narration.
+
+</Step>
+
+<Step title="Share a root reference">
+
+When you integrate Blnk, give the ledger and each external source the same root reference. 
+
+If three providers settle one transfer, the ledger can store `ref_k7m4q2_provider-1`, `ref_k7m4q2_provider-2`, and `ref_k7m4q2_provider-3`, while each provider file carries `ref_k7m4q2`. `contains` then matches that root linking all the three together per run.
+
+</Step>
+
+<Step title="Add currency and limit drift">
+
+Add currency when you post more than one currency. 
+
+Keep amount drift to fees or rounding, and date drift to the settlement window, so the reference stays what decides the match.
+
+</Step>
+
+<Step title="Run it from a job">
+
+Upload the file, call [Start reconciliation](/reference/start-reconciliation) with the rule ids, and poll [Get reconciliation](/reference/get-reconciliations) until the status is `completed` or `failed`. 
+
+Set `dry_run` to `true` on the first runs. The run stores the counts and does not write matches onto the ledger.
+
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Reconciliation overview", href: "/reconciliations/overview" },
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Create matching rule", href: "/reference/create-matching-rule" },
+  ]}
+/>

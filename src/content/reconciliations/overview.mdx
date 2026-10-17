@@ -1,0 +1,447 @@
+---
+title: "Overview"
+icon: "scale"
+description: "Match ledger transactions to external records and read the result."
+seoTitle: "About Reconciliation • Blnk Developer Documentation"
+metaDescription: "Explore how Blnk handles reconciliations, including matching logic, reconciliation workflows, and error handling for financial data"
+---
+
+<Version>Available in version 0.7.0 and later.</Version>
+
+Reconciliation compares transactions in your ledger with records from outside it, such as a bank statement or a processor report. 
+
+You send those records, choose how they should line up, and then read which ones matched.
+
+## Before you start
+
+A run needs three things in place:
+
+1. **External records** in Blnk's file format. See [External data](/reconciliations/external-data).
+2. **Matching rules** that say which fields must agree, and how much drift is allowed. See [Matching rules](/reconciliations/matching-rules).
+3. **A strategy** for whether one record on one side splits into many on the other. See [Strategies](/reconciliations/strategies).
+
+## Batch reconciliation
+
+Batch reconciliation matches a file you already uploaded. Use it for a scheduled job, such as a daily statement. Pass the `upload_id` from that upload, the rules, and the strategy.
+
+### Using the API
+
+Call [Start reconciliation](/reference/start-reconciliation).
+
+<Tabs>
+  <Tab title="Start reconciliation">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/reconciliation/start" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+    "strategy": "one_to_many",
+    "dry_run": false,
+    "grouping_criteria": "reference",
+    "matching_rule_ids": [
+      "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+      "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890"
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Reconciliation.run({
+  upload_id: 'upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3',
+  strategy: 'one_to_many',
+  dry_run: false,
+  grouping_criteria: 'reference',
+  matching_rule_ids: [
+    'rule_890bdbc4-467f-4670-8424-5667e41daf29',
+    'rule_a1b2c3d4-5678-90ef-abcd-ef1234567890',
+  ],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Reconciliation.Run(blnkgo.RunReconData{
+    UploadID: "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+    Strategy: blnkgo.ReconciliationStrategyOneToMany,
+    DryRun: false,
+    GroupingCriteria: "reference",
+    MatchingRuleIDs: []string{
+        "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+        "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.reconciliation.run({
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "strategy": "one_to_many",
+  "dry_run": False,
+  "grouping_criteria": "reference",
+  "matching_rule_ids": [
+    "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+    "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890",
+  ],
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().run(
+    RunReconData.create()
+        .uploadId("upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3")
+        .strategy("one_to_many")
+        .dryRun(false)
+        .groupingCriteria("reference")
+        .matchingRuleIds(List.of(
+            "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+            "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890"
+        ))
+);
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `upload_id` | Upload returned by [Upload external records](/reference/upload-data). | Yes |
+| `strategy` | `one_to_one`, `one_to_many`, or `many_to_one`. | Yes |
+| `matching_rule_ids` | Rules to apply. A record matches when every criterion in any one of these rules matches. | Yes |
+| `grouping_criteria` | Field that groups the many side. Required for `one_to_many` and `many_to_one`. | No |
+| `dry_run` | When `true`, the run stores the counts and does not write match rows or metadata. Defaults to `false`. | No |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `reconciliation_id` | Id of the run. Save it and poll [Get reconciliation](/reference/get-reconciliations) for status and counts. |
+
+  </Tab>
+</Tabs>
+
+<Tip>
+Set `dry_run` to `true` when you want the counts without writing matches onto the ledger.
+</Tip>
+
+### Using the Dashboard
+
+You can start the same batch run from the dashboard after the file and the rules exist.
+
+<Steps titleSize="h3">
+<Step title="Open Run reconciliation">
+
+On **Reconciliations**, click **Run reconciliation** in the top right.
+
+![Run reconciliation panel](img/reconciliations/run-recon.png)
+
+</Step>
+
+<Step title="Choose the file, rules, and strategy">
+
+Fill in the side panel, then click **Run reconciliation**.
+
+- **External data:** the upload you want to match.
+- **Matching rules:** one or more rules for this run.
+- **Strategy:** `one_to_one`, `one_to_many`, or `many_to_one`.
+- **Grouping criteria:** required unless the strategy is one-to-one. See [Strategies](/reconciliations/strategies).
+
+Blnk starts the run and opens the reconciliation table. A large file can take a few minutes.
+
+</Step>
+</Steps>
+
+## Instant reconciliation
+
+<Version>Available in version 0.10.1 and later.</Version>
+
+Instant reconciliation sends the external records in the request instead of uploading a file. Use it when the records should be matched as they arrive.
+
+<Note>
+One request can include at most 10,000 external transactions.
+</Note>
+
+<Tabs>
+  <Tab title="Reconcile instantly">
+
+Call the [Instant reconciliation](/reference/instant-reconciliation) endpoint.
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/reconciliation/start-instant" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_transactions": [
+      {
+        "id": "txn1a2b3c4d5e6f7g8h9i0",
+        "amount": 5.49,
+        "reference": "INV-2023-002",
+        "currency": "GBP",
+        "description": "Card payment",
+        "date": "2024-11-15T14:25:30Z",
+        "source": "bank-api"
+      }
+    ],
+    "strategy": "one_to_one",
+    "matching_rule_ids": [
+      "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Reconciliation.runInstant({
+  external_transactions: [
+    {
+      id: 'txn1a2b3c4d5e6f7g8h9i0',
+      amount: 5.49,
+      reference: 'INV-2023-002',
+      currency: 'GBP',
+      description: 'Card payment',
+      date: '2024-11-15T14:25:30Z',
+      source: 'bank-api',
+    },
+  ],
+  strategy: 'one_to_one',
+  matching_rule_ids: [
+    'rule_04c4a59e-08a1-423b-bfae-48feebe16473',
+  ],
+});
+```
+
+```go Go wrap
+txnDate, _ := time.Parse(time.RFC3339, "2024-11-15T14:25:30Z")
+instantResp, resp, err := client.Reconciliation.RunInstant(blnkgo.RunInstantReconData{
+    ExternalTransactions: []blnkgo.ExternalTransaction{
+        {
+            ID: "txn1a2b3c4d5e6f7g8h9i0",
+            Amount: 5.49,
+            Reference: "INV-2023-002",
+            Currency: "GBP",
+            Description: "Card payment",
+            Date: &txnDate,
+            Source: "bank-api",
+        },
+    },
+    Strategy: blnkgo.ReconciliationStrategyOneToOne,
+    MatchingRuleIDs: []string{
+        "rule_04c4a59e-08a1-423b-bfae-48feebe16473",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.reconciliation.run_instant({
+  "external_transactions": [
+    {
+      "id": "txn1a2b3c4d5e6f7g8h9i0",
+      "amount": 5.49,
+      "reference": "INV-2023-002",
+      "currency": "GBP",
+      "description": "Card payment",
+      "date": "2024-11-15T14:25:30Z",
+      "source": "bank-api",
+    },
+  ],
+  "strategy": "one_to_one",
+  "matching_rule_ids": [
+    "rule_04c4a59e-08a1-423b-bfae-48feebe16473",
+  ],
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().runInstant(
+    RunInstantReconData.create()
+        .externalTransactions(List.of(
+            ExternalTransaction.create()
+                .id("txn1a2b3c4d5e6f7g8h9i0")
+                .amount(5.49)
+                .reference("INV-2023-002")
+                .currency("GBP")
+                .description("Card payment")
+                .date("2024-11-15T14:25:30Z")
+                .source("bank-api")
+        ))
+        .strategy("one_to_one")
+        .matchingRuleIds(List.of(
+            "rule_04c4a59e-08a1-423b-bfae-48feebe16473"
+        ))
+);
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `external_transactions` | Records to match, at most 10,000. Each record can include `id`, `amount`, `reference`, `currency`, `description`, `date`, and `source`. A missing `date` is stored as the zero time. | Yes |
+| `strategy` | `one_to_one`, `one_to_many`, or `many_to_one`. Any other value is accepted, and the run completes with zero counts. | Yes |
+| `matching_rule_ids` | Rules to apply. A record matches when every criterion in any one of these rules matches. | Yes |
+| `grouping_criteria` | Field that groups the many side. Required for `one_to_many` and `many_to_one`. A value Core cannot group on does not fail this call, and the run finishes as `failed`. | No |
+| `dry_run` | When `true`, the run stores the counts and does not write match rows or metadata. Defaults to `false`. | No |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `reconciliation_id` | Id of the run. The match counts are on the get response, not here. |
+
+  </Tab>
+</Tabs>
+
+## Read a reconciliation
+
+Both start calls return only `reconciliation_id`. The run begins as `started`, moves to `in_progress`, and finishes as `completed` or `failed`.
+
+### Using the API
+
+Poll [Get reconciliation](/reference/get-reconciliations) until the status is `completed` or `failed`.
+
+<Tabs>
+  <Tab title="Get reconciliation">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET "http://localhost:5001/reconciliation/recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Reconciliation.get(
+  'recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c',
+);
+```
+
+```go Go wrap
+recon, resp, err := client.Reconciliation.Get(
+    "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
+)
+```
+
+```python Python wrap
+response = blnk.reconciliation.get(
+  "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.reconciliation().get(
+    "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+);
+```
+
+</CodeGroup>
+
+  </Tab>
+  <Tab title="Response">
+
+```json 200 OK wrap
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c",
+  "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+  "status": "completed",
+  "matched_transactions": 3,
+  "unmatched_transactions": 0,
+  "is_dry_run": false,
+  "started_at": "2025-03-15T17:43:26.463849Z",
+  "completed_at": "2025-03-15T17:43:26.508514Z"
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `status` | `started`, `in_progress`, `completed`, or `failed`. |
+| `matched_transactions` | For `one_to_one`, external records that matched. For `one_to_many`, ledger transactions inside matched groups. For `many_to_one`, external rows inside matched groups. |
+| `unmatched_transactions` | For `one_to_one` and `one_to_many`, external records that did not match. For `many_to_one`, ledger transactions that did not match. |
+| `is_dry_run` | Always `false`. Core does not store the dry-run flag. |
+| `upload_id` | The file for a batch run. An instant run uses a generated id. |
+| `started_at` | When the run was created. |
+| `completed_at` | When the run finished. Null until the status is `completed`. |
+
+An instant run can already be `completed` on the first poll. You still need this response to read the counts.
+
+  </Tab>
+</Tabs>
+
+### Using the Dashboard
+
+<Steps titleSize="h3">
+<Step title="Open the run">
+
+Open the run from the reconciliation table, then click **Full info** in the side panel.
+
+![Reconciliation summary](img/reconciliations/recon-summary.png)
+
+The summary shows the status, matched and unmatched counts, when the run started and finished, the reconciliation id, and the upload id.
+
+</Step>
+
+<Step title="Review matched transactions">
+
+**Matched transactions** lists the external records that found a ledger transaction. Click **View ledger transactions** to open them.
+
+![Matched transactions](img/reconciliations/recon-matched.png)
+
+</Step>
+
+<Step title="Review unmatched transactions">
+
+**Unmatched transactions** lists external records with no ledger match. Click **Export as CSV** to download that list.
+
+![Unmatched transactions](img/reconciliations/recon-unmatched.png)
+
+</Step>
+</Steps>
+
+## Check a matched transaction
+
+A match that is not a dry run writes reconciliation details onto the ledger transaction. Retrieve it with [Get transaction](/reference/get-transaction) and read `meta_data`.
+
+```json 200 OK wrap
+{
+  "meta_data": {
+    "external_txn_id": "txn9z8y7x6w5v4u3t2s1",
+    "reconciled": true,
+    "reconciled_at": "2025-03-15T18:11:52Z",
+    "reconciliation_amount": 12.75,
+    "reconciliation_id": "recon_9134cb8a-a3f6-47e9-b566-4fb93fa051e7"
+  }
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `external_txn_id` | Id of the external record that matched. |
+| `reconciled` | `true` when the transaction matched. |
+| `reconciled_at` | When the match was written. |
+| `reconciliation_amount` | The external amount for `one_to_one` and `many_to_one`. For `one_to_many`, each ledger transaction's own amount. |
+| `reconciliation_id` | Run that wrote the match. |
+
+On the transaction in the dashboard, the same keys appear in its reconciliation metadata.
+
+<RelatedTopics
+  items={[
+    { title: "External data", href: "/reconciliations/external-data" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Strategies", href: "/reconciliations/strategies" },
+    { title: "Start reconciliation", href: "/reference/start-reconciliation" },
+  ]}
+/>

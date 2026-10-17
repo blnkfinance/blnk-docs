@@ -1,0 +1,94 @@
+---
+title: "Start reconciliation"
+description: "Start a batch reconciliation against an uploaded file."
+seoTitle: "Start Reconciliation • Blnk API Reference"
+method: "POST"
+path: "/reconciliation/start"
+noindex: true
+---
+
+<Key />
+
+### Body
+
+<ParamField body="upload_id" type="string" required>
+  Id of the file to reconcile, from [Upload external records](/reference/upload-data).
+</ParamField>
+
+<ParamField body="strategy" type="string" required>
+  How records are grouped before matching. See [Strategies](/reconciliations/strategies).
+
+  - `one_to_one`: one external record against one ledger transaction.
+  - `one_to_many`: one external record against a group of ledger transactions.
+  - `many_to_one`: a group of external records against one ledger transaction.
+
+  Any other value is accepted, and the run completes with zero counts.
+</ParamField>
+
+<ParamField body="matching_rule_ids" type="string[]" required>
+  Ids of the rules to apply. A record matches when every criterion in any one of these rules matches. An empty list returns `400` with `RECON_MATCHING_RULES_REQUIRED`.
+</ParamField>
+
+<ParamField body="grouping_criteria" type="string">
+  Field used to group the many side. Required for `one_to_many` and `many_to_one`. Leave it out for `one_to_one`. A value Core cannot group on does not fail this call, and the run finishes as `failed`. See [Strategies](/reconciliations/strategies).
+</ParamField>
+
+<ParamField body="dry_run" type="boolean" default="false">
+  When `true`, the run stores the counts and does not write match rows or metadata on the ledger transactions. Defaults to `false`.
+</ParamField>
+
+### Response
+
+The run is created and continues in the background. This response does not include status or match counts. Poll [Get reconciliation](/reference/get-reconciliations) with `reconciliation_id`.
+
+<ResponseField name="reconciliation_id" type="string" required>
+  Id of the run.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "http://localhost:5001/reconciliation/start" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "upload_id": "upload_8c700d1b-09c0-4ef4-9ab1-a0decf3d0aa3",
+    "strategy": "one_to_many",
+    "dry_run": false,
+    "grouping_criteria": "reference",
+    "matching_rule_ids": [
+      "rule_890bdbc4-467f-4670-8424-5667e41daf29",
+      "rule_a1b2c3d4-5678-90ef-abcd-ef1234567890"
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "reconciliation_id": "recon_6e6feddd-930b-4e3a-8ba1-a3eee659bb3c"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "matching_rule_ids is required",
+  "error_detail": {
+    "code": "RECON_MATCHING_RULES_REQUIRED",
+    "message": "matching_rule_ids is required"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Reconciliation overview", href: "/reconciliations/overview" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Instant reconciliation", href: "/reference/instant-reconciliation" },
+  ]}
+/>
