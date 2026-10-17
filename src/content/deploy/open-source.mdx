@@ -6,23 +6,29 @@ seoTitle: "Open-source deployment • Blnk Developer Documentation"
 metaDescription: "Self-host the open-source Blnk Core on a single server, a platform, or Kubernetes."
 ---
 
-This deploys open-source Core on a server you run. [Quick start](/install) is the copy that runs on your computer. Here, Core uses Postgres and Redis that you keep for real traffic.
+This deploys open-source Core on a production server you manage. 
+
+You are responsible for deployment, upgrades, configuration, and day-to-day operations across each environment you maintain: dev, staging, production, and beyond.
 
 <Info>
 From 0.15.3, pull `ghcr.io/blnkfinance/blnk`. The current release is `0.15.6`. Releases through 0.15.2 use `jerryenebeli/blnk`.
 </Info>
 
-Choose where the server runs.
+## Deployment guides
 
 <Tabs>
 <Tab title="Single server">
 
-Use Docker Compose on a Linux VM you control, such as a Droplet, an EC2 instance, or a GCE or Azure VM. You need managed Postgres, managed Redis, Docker with Compose, and Ubuntu 20.04 LTS or newer.
+Use Docker Compose on a Linux VM you control, such as a Droplet, an EC2 instance, or a GCE or Azure VM. 
+
+Provision Postgres and Redis before you start these steps.
 
 <Steps titleSize="h3">
 <Step title="Write the configuration">
 
-Point Core at your Postgres and Redis, and set a secret key in `blnk.json` or in environment variables. More options are in [Configuration](/advanced/configuration/overview), and if you keep secrets in a manager, write them into `.env` on the VM before you start Compose.
+Point Core at your Postgres and Redis, and set a secret key in `blnk.json` or in environment variables. 
+
+More tuning options are in [Configuration](/advanced/configuration/overview), and if you keep secrets in a manager, write them into `.env` on the VM before you start Compose.
 
 <CodeGroup>
 
@@ -62,7 +68,9 @@ BLNK_QUEUE_MONITORING_PORT=5004
 
 <Step title="Add the Compose file">
 
-This file runs the server and the worker against the managed Postgres and Redis from the step above. The Compose file in the [Blnk repository](https://github.com/blnkfinance/blnk/blob/main/docker-compose.yaml) is the local stack, and it starts its own Postgres and Redis.
+This file runs the server and the worker against the managed Postgres and Redis from the step above. 
+
+<Note>The Compose file in the [Blnk repository](https://github.com/blnkfinance/blnk/blob/main/docker-compose.yaml) is the local stack, and it starts its own Postgres and Redis image.</Note>
 
 ```yaml docker-compose.yaml wrap
 version: "3.8"
@@ -110,23 +118,26 @@ docker compose up -d
 docker ps
 ```
 
+The server should be listening on port 5001, and `docker ps` lists the server and the worker.
+
 </Step>
 </Steps>
-
-The server is listening on port 5001, and `docker ps` lists the server and the worker.
-
 </Tab>
 
 <Tab title="PaaS">
 
-Deploy Core on a platform such as Railway, Render, or Fly.io. Provision managed Postgres and managed Redis in the project, or any databases the platform can reach.
+Deploy Core on a platform such as Railway, Render, or Fly.io. 
 
+Provision managed Postgres and managed Redis in the project, or any databases the platform can reach.
+
+<Tip>
 Use the provider's internal connection URL when Postgres and Redis run in the same project. Use the direct Postgres URL, not a pooled one, when the provider offers both.
+</Tip>
 
 <Steps titleSize="h3">
 <Step title="Set the environment variables">
 
-Add these to the project. More options are in [Configuration](/advanced/configuration/overview).
+Add these to the project. More tuning options are in [Configuration](/advanced/configuration/overview).
 
 ```bash .env
 BLNK_PROJECT_NAME=Blnk
@@ -142,13 +153,21 @@ BLNK_QUEUE_MONITORING_PORT=5004
 
 <Step title="Deploy the server">
 
-Create a service from `ghcr.io/blnkfinance/blnk:0.15.6`. The start command is `blnk migrate up && blnk start`, and the port is `5001`. Attach the environment variables from the previous step, publish port `5001`, and wait until the logs show that migrations finished.
+Create a service from `ghcr.io/blnkfinance/blnk:0.15.6`. 
+
+The start command is `blnk migrate up && blnk start`, and the port is `5001`. 
+
+Attach the environment variables from the previous step, publish port `5001`, and wait until the logs show that migrations finished.
 
 </Step>
 
 <Step title="Deploy the worker">
 
-Create a second service from the same image and the same environment variables. The start command is `blnk workers`. The worker does not need a public HTTP port.
+Create a second service from the same image and the same environment variables. 
+
+The start command is `blnk workers`. 
+
+The worker does not need a public HTTP port.
 
 </Step>
 
@@ -160,16 +179,17 @@ Send a request to the public URL:
 curl https://<your-server-url>/health
 ```
 
+A healthy response means Core is up. The worker should be running in its own logs.
 </Step>
 </Steps>
-
-A healthy response means Core is up. The worker should be running in its own logs.
 
 </Tab>
 
 <Tab title="Kubernetes">
 
-Blnk publishes Kubernetes manifests in the [repository](https://github.com/blnkfinance/blnk/tree/main/infrastructure/k8s-manifests). From a clone of that repository, with `kubectl` pointed at your cluster, apply them.
+Blnk publishes Kubernetes manifests in the [repository](https://github.com/blnkfinance/blnk/tree/main/infrastructure/k8s-manifests). 
+
+From a clone of that repository, with `kubectl` pointed at your cluster, apply the manifests.
 
 ```bash Apply manifests
 kubectl apply -f infrastructure/k8s-manifests/namespace.yaml

@@ -1,15 +1,19 @@
 ---
 title: "Enterprise"
 sidebarTitle: "Enterprise"
-description: "Deploy Enterprise on infrastructure you host."
+description: "Deploy the Enterprise version on infrastructure you host."
 seoTitle: "Enterprise deployment • Blnk Developer Documentation"
-metaDescription: "Run the Cloud dashboard on your own infrastructure with an Enterprise license, then connect Core."
+metaDescription: "Self-host the Enterprise version beside open-source Core, then connect them with an Enterprise license."
 enterprise: true
 ---
 
-Enterprise is every module on infrastructure you host: Core, the Cloud dashboard, Watch, and Insights. The license comes from [sales](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fenterprise), and the dashboard does not start without the key they send.
+Enterprise Core adds enterprise modules on top of the open-source Core: role-based access, Insights SQL, a data lake, alerts, audit logs, MCP, agents, and a dashboard with an extensible UI.
 
-Run Core first with the [open-source guide](/deploy/open-source). This page starts the Cloud dashboard beside it and connects the two with the query agent. The full environment reference is in [License configuration](/cloud/start/license/configuration).
+Deploy open-source Core first with the [open-source guide](/deploy/open-source). 
+
+This page deploys the enterprise modules beside it and connects them to that Core. The full environment reference is in [License configuration](/cloud/start/license/configuration).
+
+## Deploy Enterprise
 
 <Steps>
 <Step title="Contact sales">
@@ -20,23 +24,24 @@ Ask [sales](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=d
 
 <Step title="Create the database">
 
-Create a managed Postgres database named `blnk-cloud`, with TLS enabled. Save the connection URL for `ENTERPRISE_POSTGRES_URL`.
+In your managed Postgres, create a new database named `blnk-cloud`. Save the connection URL for `ENTERPRISE_POSTGRES_URL`.
 
 ```sql Create the database
 CREATE DATABASE "blnk-cloud";
 ```
 
+<Tip>We recommend using the same Postgres database for both open-source Core and Enterprise modules.</Tip>
+
 </Step>
 
 <Step title="Write the environment file">
-
-Leave `ENTERPRISE_SKIP_CORE` set to `true` so this container runs the dashboard and Core stays the instance you already deployed. Generate your own encryption key and JWT secret, and do not change the encryption key after the dashboard has stored data.
 
 ```bash .env wrap
 HOSTNAME=127.0.0.1
 ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/blnk-cloud?sslmode=require
 ENTERPRISE_LICENSE_B64=your_base64_license_string
 ENTERPRISE_SKIP_CORE=true
+ENTERPRISE_AUTO_PROVISION=false
 ENTERPRISE_PUBLIC_PORT=8080
 ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
 CORS_ORIGINS=http://localhost:8080,http://localhost:3001,https://ledger.yourdomain.com
@@ -44,32 +49,35 @@ BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
 JWT_SECRET=your_long_random_secret_here
 ```
 
+<Warning>Generate your own encryption key and JWT secret, and do not change the encryption key after these modules have stored data.</Warning>
+
 | Variable | What to set |
 | :--- | :--- |
 | `HOSTNAME` | `127.0.0.1`, so health checks stay on the container loopback. |
 | `ENTERPRISE_POSTGRES_URL` | Connection string for the Postgres instance that holds `blnk-cloud`. |
 | `ENTERPRISE_LICENSE_B64` | The base64 license key from sales. |
-| `ENTERPRISE_PUBLIC_PORT` | Port the dashboard listens on. The sample uses `8080`. |
-| `ENTERPRISE_PUBLIC_URL` | Public URL of the dashboard, including `https://`. |
-| `CORS_ORIGINS` | Browser origins allowed to call the dashboard, with no spaces. Include `ENTERPRISE_PUBLIC_URL`. |
+| `ENTERPRISE_AUTO_PROVISION` | `false`, so Enterprise does not create a managed instance or bootstrap the query agent. |
+| `ENTERPRISE_PUBLIC_PORT` | Port this deployment listens on. The sample uses `8080`. |
+| `ENTERPRISE_PUBLIC_URL` | Public URL of this deployment, including `https://`. |
+| `CORS_ORIGINS` | Browser origins allowed to call this deployment, with no spaces. Include `ENTERPRISE_PUBLIC_URL`. |
 | `BLNK_ENCRYPTION_KEY` | A unique 32-character key. It encrypts values such as instance connection keys. |
 | `JWT_SECRET` | A long random secret for authentication tokens. |
 
 </Step>
 
-<Step title="Start the dashboard">
+<Step title="Start the enterprise modules">
 
 Map the host port to `ENTERPRISE_PUBLIC_PORT`. With the file above, that is `8080`. If sales sent a different image name, use that tag instead.
 
-```bash Start the dashboard
+```bash Start Enterprise
 docker run -d \
   --name blnk-enterprise \
   --env-file .env \
   -p 8080:8080 \
-  ghcr.io/blnkfinance/blnk-enterprise:0.1.23
+  ghcr.io/blnkfinance/blnk-enterprise:latest
 ```
 
-The container name is `blnk-enterprise`, and the dashboard is at `ENTERPRISE_PUBLIC_URL`.
+The container name is `blnk-enterprise`, and the modules are available at `ENTERPRISE_PUBLIC_URL`.
 
 </Step>
 
@@ -93,14 +101,17 @@ Copy the **Connection key** from the instance details.
 
 <Step title="Run the query agent">
 
-Run the query agent on a host that can reach the Core database. `CONNECTION_URL` is the WebSocket form of `ENTERPRISE_PUBLIC_URL`, with the path `/ws/agent`.
+`CONNECTION_URL` is `ENTERPRISE_PUBLIC_URL` as a WebSocket URL with `/ws/agent` on the path. `https://` becomes `wss://`, and `http://` becomes `ws://`.
 
 | `ENTERPRISE_PUBLIC_URL` | `CONNECTION_URL` |
 | :--- | :--- |
 | `https://ledger.yourdomain.com` | `wss://ledger.yourdomain.com/ws/agent` |
 | `http://localhost:8080` | `ws://localhost:8080/ws/agent` |
 
-`DB_URL` is the Core Postgres URL, the same value as `data_source.dns` in the Core configuration. `CONNECTION_KEY` is the key you copied from the instance details.
+| Variable | What to set |
+| :--- | :--- |
+| `DB_URL` | `data_source.dns` from the Core configuration. |
+| `CONNECTION_KEY` | The connection key you copied from the instance details. |
 
 ```bash Run the query agent
 docker run -d \
@@ -110,12 +121,12 @@ docker run -d \
   blnkfinance/query-agent:latest
 ```
 
-</Step>
-</Steps>
-
-On the query agent setup, the status shows **Connected**.
+When the agent is running, the query agent setup shows **Connected**.
 
 ![Query agent status showing Connected](img/deploy/instance-connected.png)
+
+</Step>
+</Steps>
 
 <RelatedTopics
   items={[
