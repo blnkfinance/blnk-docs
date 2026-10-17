@@ -1,16 +1,52 @@
 ---
+import { updateSlug } from '../../lib/toc';
+
 interface Props {
 	label: string;
 	description?: string;
 }
 
+const months: Record<string, string> = {
+	Jan: 'January',
+	Feb: 'February',
+	Mar: 'March',
+	Apr: 'April',
+	May: 'May',
+	Jun: 'June',
+	Jul: 'July',
+	Aug: 'August',
+	Sep: 'September',
+	Oct: 'October',
+	Nov: 'November',
+	Dec: 'December',
+};
+
 const { label, description } = Astro.props;
+
+function formatDate(value: string): string {
+	const match = /^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/.exec(value.trim());
+	if (!match) return value;
+	const month = months[match[1]];
+	if (!month) return value;
+	return `${month} ${Number(match[2])}, ${match[3]}`;
+}
+
+const date = description ? formatDate(description) : '';
 ---
 
 <article class="update">
 	<header class="update-header">
-		<span class="update-label">{label}</span>
-		{description && <span class="update-description">{description}</span>}
+		{
+			date && (
+				<p class="update-date">
+					<span class="update-dot" aria-hidden="true" />
+					{date}
+				</p>
+			)
+		}
+		<h2 class="update-version" id={updateSlug(label)}>
+			{label}
+		</h2>
 	</header>
 	<div class="update-body"><slot /></div>
 </article>

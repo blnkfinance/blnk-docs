@@ -13,8 +13,10 @@ interface Props {
 }
 
 const { headings, markdown, sections = true } = Astro.props;
-const hasSections = sections && headings.some((heading) => heading.depth === 2);
 const groups = tocItems(headings, markdown);
+const changelog = markdown.includes('<Update ');
+const hasSections =
+	sections && groups.length > 0 && (changelog || headings.some((heading) => heading.depth === 2));
 
 const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 ---

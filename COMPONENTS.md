@@ -247,7 +247,7 @@ A 16:9 embed that fills the article column. `src` is the player URL. `title` is 
 
 ## Update
 
-A changelog entry. `label` is the version or the change name. `description` is the secondary line, usually a date.
+A changelog entry. `label` is the version. It is the heading, and the table of contents lists those versions. `description` is the date, shown beside the version.
 
 ```mdx
 <Update label="1.5.0" description="Sep 24, 2026">

@@ -24,6 +24,19 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `home/sdks`
 - `home/cli`
 - `changelog/blnk-core`
+- dropdown **Migration**
+  - dropdown **Core migrations**
+    - `migrations/core/upgrade`
+    - `migrations/core/v15-4-migration`
+    - `migrations/core/v15-1-migration`
+    - `migrations/core/v15-migration`
+    - `migrations/core/v14-3-migration`
+    - `migrations/core/v14-migration`
+    - `migrations/core/v13-2-migration`
+    - `migrations/core/v12-migration`
+    - `migrations/core/v11-migration`
+    - `migrations/core/v10-5-migration`
+  - `migrations/migrate-to-cloud`
 
 ### Ledgers
 
@@ -149,19 +162,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
   - `operating/balance-reconstruction`
 - `operating/error-codes`
 
-### Migration guides
-
-- `changelog/upgrade`
-- `changelog/v15-4-migration`
-- `changelog/v15-1-migration`
-- `changelog/v15-migration`
-- `changelog/v14-3-migration`
-- `changelog/v14-migration`
-- `changelog/v13-2-migration`
-- `changelog/v12-migration`
-- `changelog/v11-migration`
-- `changelog/v10-5-migration`
-
 ## Cloud source icon `cloud`
 
 ### Start Here
@@ -178,7 +178,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 - `cloud/instances/deploy`
 - `cloud/instances/create`
-- `cloud/instances/migration`
 - `cloud/instances/whitelist`
 
 ### Ledgers

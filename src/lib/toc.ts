@@ -19,8 +19,47 @@ function slugify(value: string): string {
 	return slug || 'section';
 }
 
-/** Headings from the page, with each tab title nested under the heading it follows. */
+/** Id for a changelog version. Dots stay so the hash matches the version label. */
+export function updateSlug(label: string): string {
+	const slug = label
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9.]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug || 'release';
+}
+
+function updateItems(markdown: string): TocItem[] {
+	const items: TocItem[] = [];
+	const used = new Set<string>();
+	let fence = false;
+
+	for (const line of markdown.split('\n')) {
+		if (line.trimStart().startsWith('```')) {
+			fence = !fence;
+			continue;
+		}
+		if (fence) continue;
+		const match = /<Update\b[^>]*\blabel="([^"]*)"/.exec(line);
+		if (!match) continue;
+		let slug = updateSlug(match[1]);
+		if (used.has(slug)) {
+			let n = 2;
+			while (used.has(`${slug}-${n}`)) n += 1;
+			slug = `${slug}-${n}`;
+		}
+		used.add(slug);
+		items.push({ text: match[1], slug, tab: false, children: [] });
+	}
+
+	return items;
+}
+
+/** Headings from the page, with each tab title nested under the heading it follows. Changelog pages list versions. */
 export function tocItems(headings: MarkdownHeading[], markdown: string): TocItem[] {
+	const updates = updateItems(markdown);
+	if (updates.length > 0) return updates;
+
 	const sections = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
 	const used = new Set(sections.map((heading) => heading.slug));
 

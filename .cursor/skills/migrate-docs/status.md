@@ -23,14 +23,14 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - pending — Cloud · Identities
 - done — Cloud · Reconciliation
 - pending — Cloud · Filters & Views
-- pending — Cloud · Alerts
+- done — Cloud · Alerts
 - pending — Cloud · Monitoring
-- pending — Cloud · Insights
-- pending — Cloud · Apps
-- pending — Cloud · Settings
-- pending — Watch · Start here
-- pending — Watch · Watch scripts
-- pending — Watch · Advanced
+- done — Cloud · Insights
+- done — Cloud · Apps
+- done — Cloud · Settings
+- done — Watch · Start here
+- done — Watch · Watch scripts
+- done — Watch · Advanced
 - pending — API Reference · Core APIs · Start Here
 - done — API Reference · Core APIs · Ledgers
 - done — API Reference · Core APIs · Ledger balances
@@ -39,8 +39,8 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — API Reference · Core APIs · Identities
 - done — API Reference · Core APIs · Search & metadata
 - done — API Reference · Core APIs · Transaction hooks
-- pending — API Reference · Core APIs · API keys
-- pending — API Reference · Core APIs · System
+- done — API Reference · Core APIs · API keys
+- done — API Reference · Core APIs · System
 - done — API Reference · Cloud APIs · Start Here
 - done — API Reference · Cloud APIs · Deployments
 - done — API Reference · Cloud APIs · Proxy & data
@@ -49,10 +49,10 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — API Reference · Cloud APIs · Audit
 - done — API Reference · Cloud APIs · Alerts
 - done — API Reference · Cloud APIs · Billing
-- pending — API Reference · Watch APIs · Start Here
-- pending — API Reference · Watch APIs · Transactions
-- pending — API Reference · Watch APIs · Instructions
-- pending — API Reference · Watch APIs · Git sync
+- done — API Reference · Watch APIs · Start Here
+- done — API Reference · Watch APIs · Transactions
+- done — API Reference · Watch APIs · Instructions
+- done — API Reference · Watch APIs · Git sync
 - done — SDKs & CLI · Blnk CLI · Start Here
 - done — SDKs & CLI · Blnk CLI · Resource commands
 - done — SDKs & CLI · Blnk CLI · Additional commands

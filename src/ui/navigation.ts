@@ -55,12 +55,16 @@ export type NavMenuItem = {
 type NavLinkTab = {
 	tab: string;
 	path: string;
+	/** Omit this tab from the header. The sidebar still uses it. */
+	hidden?: boolean;
 	groups: NavGroup[];
 };
 
 type NavMenuTab = {
 	tab: string;
 	path: string;
+	/** Omit this tab from the header. The sidebar still uses it. */
+	hidden?: boolean;
 	menu: NavMenuItem[];
 };
 
@@ -107,11 +111,13 @@ const navTab = z.union([
 	z.strictObject({
 		tab: z.string().min(1),
 		path: tabPath,
+		hidden: z.boolean().optional(),
 		groups: z.array(navGroup),
 	}),
 	z.strictObject({
 		tab: z.string().min(1),
 		path: tabPath,
+		hidden: z.boolean().optional(),
 		menu: z.array(navMenuItem).min(1),
 	}),
 ]);
