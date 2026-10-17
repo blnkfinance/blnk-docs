@@ -10,27 +10,15 @@ Blnk stores transaction amounts and balances as integers. Send the minor-unit am
 
 USD 25.34 is `precise_amount` `2534` at precision `100`, because a dollar is 100 cents. BTC 0.248917 is `24891700` satoshis at precision `100000000`. ETH uses wei the same way.
 
-You can instead pass a float in `amount` and let Blnk multiply it by `precision`. Prefer `precise_amount`, especially when working with amounts larger than 15 significant digits.
-
 [151 fiat currencies and their precision values](https://github.com/blnkfinance/blnk-assets).
 
 ## Applying precision
 
-You can apply precision to amounts in your ledger in one of two ways. 
+{/* <Version>Available in version 0.10.1 or later.</Version> */}
 
-1. Use **`precise_amount`** (recommended) to pass the smallest unit directly, or 
-2. Pass a float in **`amount`** and let Blnk convert it using `precision`.
+Pass the value in its smallest unit as `precise_amount`, and set `precision` to how many of those units make one major unit. Blnk stores `precise_amount` as the ledger integer.
 
-<Tabs>
-<Tab title="Using precise amount">
-
-<Version>Available in version 0.10.1 or later.</Version>
-
-Pass the amount in its smallest unit in `precise_amount`, and include the corresponding `precision` value. 
-
-Blnk stores `precise_amount` as the ledger integer and returns the human-readable `amount` in responses (`amount = precise_amount / precision`).
-
-* Convert the amount to its smallest unit. Precision is how many minor units make one major unit.
+* Convert the value to its smallest unit. Precision is how many minor units make one major unit.
 * Enter this value directly into the `precise_amount` field of your request.
 * Include the corresponding `precision` value.
 
@@ -143,93 +131,6 @@ Percentages (`"10%"`) and the remainder (`"left"`) still use `distribution`.
 ```
 
 See [Multiple sources](/transactions/split-transactions) and [Multiple destinations](/transactions/split-transactions) for more details.
-
-</Tab>
-
-<Tab title="Using amount">
-
-Pass the amount as a floating-point value in `amount` and specify its `precision` value. Blnk multiplies `amount` by `precision` to store `precise_amount`.
-
-<Warning>
-The `amount` field only supports up to 15 digits. Exceeding this will throw [a rounding error](/transactions/precision#more-than-15-digits-in-the-amount-field) or truncation; switch to `precise_amount` for accuracy with larger values.
-</Warning>
-
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "amount": 750.23,
-    "precision": 100,
-    "reference": "ref_001adcfgf",
-    "currency": "USD",
-    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-    "description": "Wallet funding"
-  }'
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Transactions.create({
-  amount: 750.23,
-  precision: 100,
-  reference: 'ref_001adcfgf',
-  currency: 'USD',
-  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
-  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
-  description: 'Wallet funding',
-});
-```
-
-```go Go wrap
-transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
-    ParentTransaction: blnkgo.ParentTransaction{
-        Amount: 750.23,
-        Precision: 100,
-        Reference: "ref_001adcfgf",
-        Currency: "USD",
-        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-        Description: "Wallet funding",
-    },
-})
-```
-
-```python Python wrap
-response = blnk.transactions.create({
-  "amount": 750.23,
-  "precision": 100,
-  "reference": "ref_001adcfgf",
-  "currency": "USD",
-  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
-  "description": "Wallet funding",
-})
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.transactions().create(
-    CreateTransactions.create()
-        .amount(750.23)
-        .precision(100)
-        .reference("ref_001adcfgf")
-        .currency("USD")
-        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
-        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
-        .description("Wallet funding"));
-```
-</CodeGroup>
-
-| Field | Description |
-| :-- | :-- |
-| `amount` | The transaction value as is. Cannot be negative. |
-| `precision` | The precision value (e.g. 100 converts USD to cents). Cannot be negative. `0` means not supplied. |
-
-The resulting `precise_amount` is stored and used to compute your ledger balances.
-
-</Tab>
-</Tabs>
 
 ## Important considerations
 
