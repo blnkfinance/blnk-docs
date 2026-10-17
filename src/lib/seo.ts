@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
+import { isDropdown, itemPath, labels, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
 export const siteTitle = 'Blnk Documentation';
@@ -63,8 +63,13 @@ export function markdownPath(href: string): string {
 	return href === '/' ? '/index.md' : `${href}.md`;
 }
 
-export function pageMarkdown(title: string, description: string, body: string | undefined): string {
-	return [`# ${title}`, description.trim(), body?.trim() ?? ''].filter(Boolean).join('\n\n');
+export function pageMarkdown(
+	title: string,
+	description: string,
+	body: string | undefined,
+	notice?: string,
+): string {
+	return [`# ${title}`, description.trim(), notice?.trim() ?? '', body?.trim() ?? ''].filter(Boolean).join('\n\n');
 }
 
 export type IndexablePage = {
@@ -85,7 +90,12 @@ function toPage(entry: CollectionEntry<'docs'>): IndexablePage {
 		markdownHref: markdownPath(href),
 		title: entry.data.title,
 		description,
-		markdown: pageMarkdown(entry.data.title, description, entry.body),
+		markdown: pageMarkdown(
+			entry.data.title,
+			description,
+			entry.body,
+			entry.data.enterprise ? labels.enterprise : undefined,
+		),
 	};
 }
 

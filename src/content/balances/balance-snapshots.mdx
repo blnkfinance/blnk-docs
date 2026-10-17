@@ -1,0 +1,86 @@
+---
+title: "Balance Snapshots"
+sidebarTitle: "Balance snapshots"
+description: "Capture a daily snapshot of your balances."
+seoTitle: "Balance Snapshots • Blnk Developer Documentation"
+metaDescription: "Capture and manage periodical balance snapshots for accurate financial reporting."
+---
+
+<Version>Available in version 0.8.4 and later.</Version>
+
+Blnk Finance offers a balance snapshotting feature that enables users to access historical balance data at any specific point in time.
+
+This ensures precise financial reporting and analysis while maintaining efficient storage and retrieval systems.
+
+## Quick overview
+
+* **Purpose:** Records a daily snapshot of each balance to preserve historical data, enabling users to review past financial states for auditing, reporting, or analytical purposes.
+
+* **Frequency:** Blnk takes one snapshot per day per balance when triggered.
+    * If the snapshot is called multiple times in a single day, it records only the first instance, capturing the state of all balances at that time.
+    * Subsequent calls on the same day will not create additional snapshots for balances already captured but will record snapshots for any new balances that lack a snapshot for that day.
+    * The next snapshot for all balances can only be captured on the following day.
+
+* **Recommended timing:** It’s best to take snapshots at midnight or at the user’s defined end-of-day period for consistency, as this minimizes disruptions and aligns with typical business closing times, providing a clear picture of daily financial positions.
+
+    <Note>Users have flexibility in determining when to trigger snapshots, but each balance is limited to one snapshot per day.</Note>
+
+## Triggering a snapshot
+
+Call the [Balance snapshots](/reference/balances-snapshots) endpoint. This action initiates a snapshot of all balances, capturing their current state at the time of the request for future reference.
+
+<Tabs>
+  <Tab title="Create snapshot">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/balances-snapshots" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.createSnapshot({});
+```
+
+```go Go wrap
+result, resp, err := client.LedgerBalance.CreateSnapshot(blnkgo.CreateBalanceSnapshotRequest{})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create_snapshot({})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().createSnapshot();
+```
+
+</CodeGroup>
+  </Tab>
+  <Tab title="Response">
+
+```json Response
+{
+  "message": "Snapshottings in progress. Should be completed shortly."
+}
+```
+
+  </Tab>
+</Tabs>
+
+<Card title="Historical balances" icon="clock" href="/balances/historical-balances">
+  Historical balances from stored snapshots.
+</Card>
+
+## Key considerations
+
+* **Daily snapshots and reconstruction:** Since snapshots are taken once per day per balance, balances between snapshots are reconstructed using transaction data.
+
+* **Optimal snapshot timing:** Choosing the right time to trigger snapshots is crucial for maintaining consistency and accuracy. Users should initiate snapshots at their preferred end-of-day period, such as midnight or another consistent business closing time.
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Historical balances", href: "/balances/historical-balances" },
+    { title: "Balance snapshots", href: "/reference/balances-snapshots" },
+  ]}
+/>

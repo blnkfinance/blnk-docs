@@ -4,7 +4,7 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 
 - pending — Core · Start here
 - done — Core · Ledgers
-- pending — Core · Ledger balances
+- done — Core · Ledger balances
 - pending — Core · Transactions
 - pending — Core · Reconciliation
 - pending — Core · Identities
@@ -34,7 +34,7 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - pending — Watch · Advanced
 - pending — API Reference · Core APIs · Start Here
 - done — API Reference · Core APIs · Ledgers
-- pending — API Reference · Core APIs · Ledger balances
+- done — API Reference · Core APIs · Ledger balances
 - pending — API Reference · Core APIs · Transactions
 - pending — API Reference · Core APIs · Reconciliation
 - pending — API Reference · Core APIs · Identities

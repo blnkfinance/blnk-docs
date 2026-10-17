@@ -1,0 +1,93 @@
+---
+title: "Balance from Source"
+sidebarTitle: "Balance from source"
+description: "Compute a balance from its transactions."
+seoTitle: "Balance from Source • Blnk Developer Documentation"
+metaDescription: "Compute balances directly from transactions in Blnk. Bypass balance snapshots and reconstruct balances from transaction history for accurate financial reporting."
+---
+
+<Version>Available in version 0.10.1 and later.</Version>
+
+The [Balance from source](/reference/balance-from-source) endpoint allows you to compute a balance directly from its transactions instead of using the default running balance.
+
+This is useful when you need to verify balance accuracy, perform audits, or ensure consistency by calculating balances independently from the stored balance values.
+
+<Tabs>
+  <Tab title="Compute balance">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?from_source=true" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.get(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    from_source: true,
+  },
+);
+```
+
+```go Go wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03+00:00")
+balance, resp, err := client.LedgerBalance.GetHistorical(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    at,
+    true,
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "from_source": True,
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().get(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    GetBalanceRequest.create().fromSource(true));
+```
+
+</CodeGroup>
+  </Tab>
+  <Tab title="Response">
+
+```json Response
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": ""
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+## How it works
+
+When you call the balance from source endpoint, Blnk reconstructs the balance by:
+
+1. **Getting all applied transactions:** Blnk retrieves all applied transactions for the balance and aggregates them together. As a result, it may take longer to process for balances with extensive transaction history.
+
+2. **Calculating credits and debits:** It aggregates all credit transactions (money moving into the balance) and debit transactions (money moving out of the balance) to compute the total credit balance, debit balance, and net balance.
+
+3. **Returning the computed balance:** The final computed balance, reflecting the exact state based on transaction history, is returned in the response.
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Balance reconstruction", href: "/advanced/balance-reconstruction" },
+    { title: "Balance from source", href: "/reference/balance-from-source" },
+  ]}
+/>

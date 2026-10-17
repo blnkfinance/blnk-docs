@@ -143,6 +143,9 @@ const palette = z.strictObject({
 });
 
 const docsSchema = z.strictObject({
+	labels: z.strictObject({
+		enterprise: z.string().min(1),
+	}),
 	colors: z.strictObject({
 		light: palette,
 		dark: palette,
@@ -151,6 +154,7 @@ const docsSchema = z.strictObject({
 });
 
 export type DocsColors = z.infer<typeof docsSchema>['colors'];
+export type DocsLabels = z.infer<typeof docsSchema>['labels'];
 
 function walk(pages: NavItem[], paths: string[]) {
 	for (const page of pages) {
@@ -365,5 +369,6 @@ export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string
 
 const parsed = docsSchema.parse(docs);
 
+export const labels: DocsLabels = parsed.labels;
 export const colors: DocsColors = parsed.colors;
 export const navigation: Navigation = { navigation: parsed.navigation };

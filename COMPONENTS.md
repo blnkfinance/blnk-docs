@@ -16,6 +16,7 @@ A snippet is compiled on its own. It imports each component it uses.
 | `Callout.astro` | | Shared layout for the five callouts. Not exported |
 | `Note.astro` | `Note` | Callout, tone `note`, icon `information` |
 | `Info.astro` | `Info` | Callout, tone `info`, icon `information` |
+| `Version.astro` | `Version` | Info callout with no label |
 | `Tip.astro` | `Tip` | Callout, tone `tip`, icon `bulb` |
 | `Warning.astro` | `Warning` | Callout, tone `warning`, icon `alert` |
 | `Check.astro` | `Check` | Callout, tone `check`, icon `check-circle` |
@@ -45,16 +46,19 @@ A snippet is compiled on its own. It imports each component it uses.
 | `RelatedTopics.astro` | `RelatedTopics` | Follow-up links |
 | `SchemaChart.astro` | `SchemaChart` | Fixed diagram of ledgers, balances, identity, and transactions |
 
-The page heading, description, and endpoint bar come from frontmatter. A page with `enterprise: true` shows a label under the title. The sentence is `labels.enterprise` in `src/content/docs.json`. See [README.md](README.md).
+The page heading, description, and endpoint bar come from frontmatter. See [README.md](README.md).
 
 ## Callouts
 
 `Note`, `Info`, `Tip`, `Warning`, and `Check` render `Callout`. The tone sets the color and the default icon. A label row appears when the label has any text. Omit `label` and the label is the tone name. Pass an empty `label` and the row is omitted.
 
+`Version` is that info callout with the label left off. Use it for a line that says a feature is available in a particular version. It takes no props.
+
 | Tag | Use for |
 | --- | --- |
 | `Note` | Extra context that stays in the article flow |
 | `Info` | Neutral background the reader should see before continuing |
+| `Version` | A feature is available in a particular version. No label |
 | `Tip` | A shorter path or a recommended starting point |
 | `Warning` | Something that will break or leak if ignored |
 | `Check` | A confirmed outcome |
@@ -71,6 +75,8 @@ Info is the same component with a different label.
 <Warning>
 Do not commit an API key in a public repository.
 </Warning>
+
+<Version>Available in version 0.8.4 and later.</Version>
 ```
 
 | Prop | Type | |

@@ -1,0 +1,202 @@
+---
+title: "Retrieving Historical Balances"
+sidebarTitle: "Historical balances"
+description: "Read a balance at a past point in time."
+seoTitle: "Historical Balances • Blnk Developer Documentation"
+metaDescription: "Access historical balances with Blnk. View past account snapshots, retrieve balance timelines, and analyze trends across time periods"
+---
+
+<Version>Available in version 0.8.4 and later.</Version>
+
+The [Historical balances](/reference/historical-balances) endpoint allows users to retrieve balances (identified by `balance_id`) at a particular historical point in time, specified by the timestamp parameter.
+
+It leverages Blnk's balance snapshot feature to provide accurate historical data for financial reporting, auditing, or analysis.
+
+## Using the API
+
+<Tabs>
+  <Tab title="Get historical balance">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-04-22T15:28:03.123456Z" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.getAt(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    timestamp: '2024-04-22T15:28:03.123456Z',
+  },
+);
+```
+
+```go Go wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03.123456Z")
+balance, resp, err := client.LedgerBalance.GetHistorical(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    at,
+    false,
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get_at(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "timestamp": "2024-04-22T15:28:03.123456Z",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().getAt(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    GetBalanceAtRequest.create()
+        .timestamp("2024-04-22T15:28:03.123456Z"));
+```
+
+</CodeGroup>
+
+<Tip>
+  Always format the date input as 'YYYY-MM-DDTHH:MM:SS+00:00' (e.g., 2024-04-22T15:28:03.123456Z).
+</Tip>
+  </Tab>
+  <Tab title="Reconstruct balance">
+<Version>Available on version 0.10.1 or later.</Version>
+
+You can choose to bypass balance snapshots and directly reconstruct your balances from their transactions alone.
+
+To do this, include the query parameter `from_source=true` in your request URL:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp=2024-04-22T15:28:03.123456Z&from_source=true" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.getAt(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    timestamp: '2024-04-22T15:28:03.123456Z',
+    from_source: true,
+  },
+);
+```
+
+```go Go wrap
+at, _ := time.Parse(time.RFC3339, "2024-04-22T15:28:03.123456Z")
+balance, resp, err := client.LedgerBalance.GetHistorical(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    at,
+    true,
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get_at(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "timestamp": "2024-04-22T15:28:03.123456Z",
+    "from_source": True,
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().getAt(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    GetBalanceAtRequest.create()
+        .timestamp("2024-04-22T15:28:03.123456Z")
+        .fromSource(true));
+```
+
+</CodeGroup>
+  </Tab>
+  <Tab title="Response">
+
+```json Example response
+{
+  "balance": {
+    "balance": 9620000,
+    "balance_id": "bin_be16c4a1-b5a6-4b64-a733-de2f6b24813d",
+    "credit_balance": 9620000,
+    "currency": "USD",
+    "debit_balance": 0,
+    "ledger_id": ""
+  },
+  "timestamp": "2025-02-24T08:55:26.976106Z"
+}
+```
+
+  </Tab>
+</Tabs>
+
+## How it works
+
+When querying for a balance at a specific timestamp, Blnk follows these steps to ensure accuracy and reliability:
+
+1. **Identify the most recent snapshot:** The system retrieves the most recent snapshot taken before the requested timestamp. Snapshots are daily records of balances, captured manually by users as described in the Balance Snapshots feature.
+
+    <Warning>If no snapshot is found, Blnk builds the historical balance from genesis (using transactions only).</Warning>
+
+2. **Apply intervening transactions:** It then applies all transactions that occurred between the time of the snapshot and the requested timestamp. This reconstructs the balance state by accounting for any credits, debits, or other financial activities that took place during that period.
+
+3. **Return the computed balance:** The final computed balance, reflecting the exact state at the requested timestamp, is returned in the response.
+
+## Using the Dashboard
+
+Historical balance stays on the balance details page. **Actions** opens a dialog, then the summary amounts on that page update to the past point in time.
+
+<Steps titleSize="h3">
+<Step title="Open the balance">
+
+On **Balances**, open the balance you want to inspect.
+
+![Balance details page showing the summary](img/balances/balance-details-summary.png)
+
+</Step>
+
+<Step title="Choose View historical balance">
+
+In the top right, click **Actions**, then select **View historical balance**. A dialog opens on the balance details page.
+
+![Actions menu with View historical balance](img/balances/view-historical-balance-action.png)
+
+</Step>
+
+<Step title="Pick a date and time">
+
+Choose the date and time, then click **View balance**.
+
+![View historical balance dialog with date and time](img/balances/historical-balance-datetime-picker.png)
+
+The dialog closes. **Balance**, **Credit balance**, and **Debit balance** on the same page update to that point in time.
+
+![Balance details showing amounts at the selected time](img/balances/historical-balance-result.png)
+
+You can copy the link and share it so a teammate sees the balance at that same point in time.
+
+</Step>
+
+<Step title="Return to the current balance">
+
+Click **Actions**, then select **View current balance**.
+
+![Actions menu with View current balance](img/balances/view-current-balance-action.png)
+
+The page shows live amounts again.
+
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Balance snapshots", href: "/balances/balance-snapshots" },
+    { title: "Historical balances", href: "/reference/historical-balances" },
+  ]}
+/>

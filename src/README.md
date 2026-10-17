@@ -10,4 +10,4 @@
 | [styles](styles/README.md) | CSS |
 | [ui](ui/README.md) | The page chrome and the MDX tags |
 
-`content.config.ts` is the frontmatter for a page: title, description, and the API method and path.
+`content.config.ts` is the frontmatter for a page: title, description, the API method and path, and `enterprise`.

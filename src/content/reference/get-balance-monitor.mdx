@@ -1,0 +1,95 @@
+---
+title: "View balance monitor details"
+description: "See the details of one or all balance monitors."
+seoTitle: "View Balance Monitors • Blnk API Reference"
+method: "GET"
+path: "/balance-monitors/{monitor_id}"
+noindex: true
+---
+
+<Key />
+
+### Path
+
+<ParamField path="monitor_id" type="string" required>
+  The unique id of the balance monitor you want to view. Leave empty to view all balance monitors in your Blnk Ledger.
+</ParamField>
+
+### Response
+
+<ResponseField name="balance_id" type="string">
+  Specifies the balance id of the ledger balance to be monitored.
+</ResponseField>
+
+<ResponseField name="condition" type="object">
+  Defines the criteria for monitoring a specific balance type.
+  <Expandable>
+    <ResponseField name="field" type="string">
+      Specifies the balance type to be monitored. Every ledger balance has 6 balance types - `balance`, `inflight_balance`, `credit_balance`, `inflight_credit_balance`, `debit_balance`, and `inflight_debit_balance`.
+    </ResponseField>
+    <ResponseField name="operator" type="string">
+      Defines the comparison operator to apply. Accepted values: **>** (greater than), **\<** (less than), or **=** (equal to).
+    </ResponseField>
+    <ResponseField name="value" type="integer">
+      The threshold amount that triggers the balance monitor.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="call_back_url" type="string">
+  Specifies the URL where notifications will be sent when the balance crosses the defined threshold.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  A brief explanation of the purpose of the monitor.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Date and time when the monitor was created.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "http://localhost:5001/balance-monitors/{monitor_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+  "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+  "condition": {
+    "field": "debit_balance",
+    "operator": ">",
+    "value": 100000
+  },
+  "call_back_url": "https://api.myapp.com/balancemonitor",
+  "description": "",
+  "created_at": "2024-02-20T05:56:58.257315054Z"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Monitor with ID 'mon_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30' not found",
+  "error_detail": {
+    "code": "BAL_MONITOR_NOT_FOUND",
+    "message": "Monitor with ID 'mon_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30' not found"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Balance monitoring", href: "/balances/balance-monitoring" },
+    { title: "Create balance monitor", href: "/reference/create-balance-monitor" },
+    { title: "Edit balance monitor", href: "/reference/edit-balance-monitor" },
+  ]}
+/>

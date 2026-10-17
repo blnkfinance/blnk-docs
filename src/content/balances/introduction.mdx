@@ -1,0 +1,379 @@
+---
+title: "Overview"
+icon: "wallet"
+description: "Create a balance and read the amounts it stores."
+seoTitle: "About Balances • Blnk Developer Documentation"
+metaDescription: "Introduction to Blnk balances. Learn how to create and use balances to represent store of value in Blnk."
+---
+
+Ledger balances (or balances, for short) are used to represent store of value in your Blnk Ledger, i.e., accounts, wallets, card balance, etc. They also represent the source or destination of a transaction record.
+
+All ledger balances in the Blnk Ledger each have 6 main balance attributes:
+
+| Attribute | Description |
+| :--- | :--- |
+| `balance` | The current value held in the ledger balance |
+| `credit_balance` | The total sum of all amounts received by a ledger balance |
+| `debit_balance` | The total sum of all amounts sent by a ledger balance |
+| `inflight_balance` | The net amount held inflight for a balance |
+| `inflight_credit_balance` | The total sum of all amounts waiting to be received by a ledger balance |
+| `inflight_debit_balance` | The total sum of all amounts waiting to be deducted from a ledger balance |
+
+<Warning>Blnk uses running balances, i.e. balances are updated as transactions are applied to them. We don't support or recommend altering a balance amount directly to ensure correctness.</Warning>
+
+## Creating a balance
+
+### Using the API
+
+To create a balance in Blnk, call the [Create balance](/reference/create-balance) endpoint:
+
+<Tabs>
+  <Tab title="Create balance">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "currency": "USD",
+    "meta_data": {
+        "first_name": "Alice",
+        "last_name": "Hart",
+        "account_number": "1234567890"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: 'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
+  currency: 'USD',
+  meta_data: {
+    first_name: 'Alice',
+    last_name: 'Hart',
+    account_number: '1234567890',
+  },
+});
+```
+
+```go Go wrap
+balance, _, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    Currency: "USD",
+    MetaData: blnkgo.MetaData{
+        "first_name": "Alice",
+        "last_name": "Hart",
+        "account_number": "1234567890",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Balance Created:", balance.BalanceID)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "currency": "USD",
+  "meta_data": {
+    "first_name": "Alice",
+    "last_name": "Hart",
+    "account_number": "1234567890",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc")
+        .currency("USD")
+        .metaData(Map.of(
+            "first_name", "Alice",
+            "last_name", "Hart",
+            "account_number", "1234567890"
+        )));
+```
+
+```bash Blnk CLI wrap
+blnk balances create
+? Ledger ID: <ledger-id>
+? Currency: <currency>
+? Metadata (JSON format): <metadata>
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `ledger_id` | [Ledger](/ledgers/introduction) to create the balance in. `general_ledger_id` makes an [internal balance](/balances/internal-balances). | Yes |
+| `currency` | Currency or asset class. | Yes |
+| `indicator` | `@` name for an [internal balance](/balances/internal-balances). No spaces. Only with `general_ledger_id`. | No |
+| `identity_id` | [Identity](/identities/introduction) to link. | No |
+| `track_fund_lineage` | Turn on [fund lineage](/transactions/lineage). Requires `identity_id`. | No |
+| `allocation_strategy` | `FIFO`, `LIFO`, or `PROPORTIONAL`. See [Fund lineage](/transactions/lineage). | No |
+| `meta_data` | Custom [metadata](/metadata/overview). | No |
+  </Tab>
+  <Tab title="Response">
+
+```json Response expandable
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "customer_internal_id": "1234",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `balance` | Current value. |
+| `version` | How many times this balance has changed. |
+| `inflight_balance` | Net amount held [inflight](/transactions/inflight/creating-inflight). |
+| `credit_balance` | Total received. |
+| `inflight_credit_balance` | Total waiting to be received. |
+| `debit_balance` | Total sent. |
+| `inflight_debit_balance` | Total waiting to be deducted. |
+| `ledger_id` | [Ledger](/ledgers/introduction) this balance belongs to. |
+| `identity_id` | Linked [identity](/identities/introduction). |
+| `balance_id` | Id of the new balance. Use it with [Get balance](/reference/get-balance). |
+| `indicator` | `@` name, set on an [internal balance](/balances/internal-balances). |
+| `currency` | Currency or asset class. |
+| `created_at` | When it was created. |
+| `meta_data` | Custom [metadata](/metadata/overview). |
+| `track_fund_lineage` | Whether [fund lineage](/transactions/lineage) is on. |
+| `allocation_strategy` | Spend order when lineage is on. |
+  </Tab>
+</Tabs>
+
+<Note>All newly created balances in the Blnk Ledger start from 0. You cannot create a ledger balance with a predefined balance amount.</Note>
+
+To create an organization-owned balance in the General Ledger, see [Internal balances](/balances/internal-balances).
+
+### Using the Dashboard
+
+You can also create a balance from the dashboard.
+
+<Steps titleSize="h3">
+<Step title="Open Create balance">
+
+On **Balances**, click **Create balance** in the top right. You can also press `⌥ B` (`Alt+B` on Windows).
+
+![Balances table with Create balance in the header](img/balances/create-balance-open.png)
+
+</Step>
+
+<Step title="Choose a ledger">
+
+Select the ledger where the balance should live. Type the ledger name and pick it from the dropdown, or paste the ledger ID.
+
+Application balances usually live in a ledger such as `Customer Wallets`, not the General Ledger.
+
+![Create balance form with the ledger field selected](img/balances/create-balance-ledger.png)
+
+</Step>
+
+<Step title="Enter the currency">
+
+Enter the currency for the balance:
+
+- **Fiat:** an ISO 4217 code
+- **Crypto:** the ticker symbol
+- **Custom asset:** a unique identifier
+
+![Create balance form with the currency field filled in](img/balances/create-balance-currency.png)
+
+</Step>
+
+<Step title="Enable lineage tracking">
+
+This step is optional. Under **Advanced options**, turn on **Enable lineage tracking** to tag incoming funds and track how they are spent.
+
+- **Allocation:** `FIFO`, `LIFO`, or `PROPORTIONAL`
+
+Enabling lineage turns on **Assign an owner to this balance**.
+
+![Create balance form with lineage tracking and allocation enabled](img/balances/create-balance-lineage.png)
+
+</Step>
+
+<Step title="Assign an owner">
+
+This step is optional, and required while lineage tracking is on. Turn on **Assign an owner to this balance**, then search by name or paste an identity ID.
+
+![Create balance form with an owner selected](img/balances/create-balance-assign-identity.png)
+
+</Step>
+
+<Step title="Create the balance">
+
+Click **Create balance**.
+
+![Balances table showing a newly created balance](img/balances/create-balance-result.png)
+
+</Step>
+</Steps>
+
+The new balance appears in the Balances table.
+
+To create a balance that is already linked to an identity, open the identity and click **New**, then **New balance**.
+
+## Currencies
+
+`currency` labels the kind of value a balance stores. That can be fiat, crypto, or a custom unit, e.g. `USD`, `BTC`, `POINTS`, etc.
+
+Blnk stores every balance amount as an integer. The [precision](/transactions/precision) that turns a decimal into that integer is set when you record a transaction on the balance, not when you create it.
+
+You can create a balance in any currency. Blnk accepts any ticker, including custom currencies.
+
+<Tip>
+Use the standard code for fiat and crypto in your application, such as `USD` or `BTC`.
+</Tip>
+
+## Queued balances
+
+<Version>Available in version 0.8.3 and later.</Version>
+
+You can track total transaction amounts in queue per balance via the `queued_credit_balance` and `queued_debit_balance` attributes. These attributes show the cumulative value of all queued transactions that will affect a balance once they're processed.
+
+When you query a balance, you'll see:
+
+1. **queued_credit_balance**: Total amount of incoming transactions waiting to be processed.
+2. **queued_debit_balance**: Total amount of outgoing transactions waiting to be processed.
+
+This helps you estimate the potential impact of queued transactions on your balance before they're processed.
+
+<Tip>
+Use queued balances to check if a balance has pending transactions. If either `queued_credit_balance` or `queued_debit_balance` is greater than 0, there are transactions waiting in the queue for that balance.
+</Tip>
+
+<Warning>
+Queued balances are estimates and may change as transactions are processed or if queue processing fails. Always verify final balances after queue processing completes.
+</Warning>
+
+To view the queued balances of a ledger balance:
+
+<Tabs>
+  <Tab title="View queued balances">
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
+  -H 'X-blnk-key: <api-key>'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.get(
+  'bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a',
+  {
+    with_queued: true,
+  },
+);
+```
+
+```go Go wrap
+balance, resp, err := client.LedgerBalance.Get(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    &blnkgo.GetBalanceRequest{WithQueued: true},
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get(
+  "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+  {"with_queued": True},
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().get(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    GetBalanceRequest.create().withQueued(true));
+```
+
+</CodeGroup>
+  </Tab>
+  <Tab title="Response">
+
+```json Response {9-10}
+{
+    "balance": 0,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 0,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": 0,
+    "queued_debit_balance": 0,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": {
+        "customer_internal_id": "1234",
+        "customer_name": "Jerry"
+    }
+}
+```
+
+  </Tab>
+</Tabs>
+
+### Calculating expected and available balances
+
+Use these formulas to understand your balance position:
+
+1. **Expected balance:** What your balance will be after all queued credits are processed
+
+    ```text Expected balance
+    expected_balance = current_balance + queued_credit_balance
+    ```
+
+2. **Available balance:** How much you can safely spend or transfer (accounting for pending debits)
+
+    ```text Available balance wrap
+    available_balance = current_balance - inflight_debit_balance - queued_debit_balance
+    ```
+
+**For example:** If your current balance is \$100, you have \$50 in queued credits, and \$20 in queued debits:
+
+- Expected balance: \$100 + \$50 = \$150
+- Available balance: \$100 - \$0 - \$20 = \$80
+
+## Balance overdrafts
+
+An overdraft occurs when a transaction reduces a ledger balance below zero, resulting in a negative balance. This means that the amount debited exceeds the available funds in the account. 
+
+While traditionally seen as a deficit, in Blnk, a negative balance is simply another balance state and can be used flexibly, especially depending on the type of financial product.
+
+In Blnk, implementing overdrafts is straightforward. By setting the `allow_overdraft` attribute when initiating a transaction, you can allow a ledger balance to fall below 0. 
+
+This feature is valuable as it provides insights and reflects the position of a balance, especially useful in certain product contexts, such as lending or line-of-credit services. See [Overdrafts](/transactions/overdrafts).
+
+<RelatedTopics
+  items={[
+    { title: "Internal balances", href: "/balances/internal-balances" },
+    { title: "Balance monitoring", href: "/balances/balance-monitoring" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Create balance", href: "/reference/create-balance" },
+  ]}
+/>

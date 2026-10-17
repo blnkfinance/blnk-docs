@@ -1,0 +1,86 @@
+---
+title: "View balance lineage"
+description: "See a balance’s provider breakdown (received, spent, available) when fund lineage is enabled."
+seoTitle: "View Balance Lineage • Blnk API Reference"
+method: "GET"
+path: "/balances/{balance_id}/lineage"
+noindex: true
+---
+
+<Key />
+
+### Path
+
+<ParamField path="balance_id" type="string" required>
+  Specifies the unique ID of the balance whose lineage you want to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="balance_id" type="string" required>
+  The ID of the balance being queried.
+</ResponseField>
+
+<ResponseField name="aggregate_balance_id" type="string" required>
+  The internal aggregate balance ID used to track combined provider funds.
+</ResponseField>
+
+<ResponseField name="total_with_lineage" type="string" required>
+  Total available funds tracked by lineage (in minor units, like `precise_amount`).
+</ResponseField>
+
+<ResponseField name="providers" type="array" required>
+  Provider-by-provider breakdown of received and spent funds.
+</ResponseField>
+
+<Info>
+All amounts are returned as **strings** in **minor units**.
+</Info>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "http://localhost:5001/balances/{balance_id}/lineage" \
+  -H "X-blnk-key: <api-key>"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  "aggregate_balance_id": "bln_aggregate_shadow_balance_id",
+  "total_with_lineage": "7500",
+  "providers": [
+    {
+      "provider": "stripe",
+      "amount": "10000",
+      "available": "7500",
+      "spent": "2500",
+      "shadow_balance_id": "bln_shadow_balance_id"
+    }
+  ]
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Balance with ID 'bln_a3f8c2e1-9d4b-4f7a-b6e2-1c8d5f0a7b3e' not found",
+  "error_detail": {
+    "code": "BAL_NOT_FOUND",
+    "message": "Balance with ID 'bln_a3f8c2e1-9d4b-4f7a-b6e2-1c8d5f0a7b3e' not found"
+  }
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Fund lineage", href: "/transactions/lineage" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Get balance", href: "/reference/get-balance" },
+  ]}
+/>

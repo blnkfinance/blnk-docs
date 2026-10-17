@@ -45,7 +45,7 @@ Landing pages, added only once that file exists:
 
 Read every source page in the chunk before posting. The message is the plan for this chunk only:
 
-- **Where it sits.** Tab, menu item when there is one, and group name. Page order, including dropdowns, matching sections.md. Name the groups already on the site so this one is placed against them.
+- **Where it sits.** Tab, menu item when there is one, and group name. Page order, including dropdowns, matching sections.md. On the API tab, list every page. Do not add a dropdown unless the user said to. Name the groups already on the site so this one is placed against them.
 - **Slugs.** One line per page: original path, `src/content/{path}.mdx`, and URL. These match unless a file is already at the destination.
 - **Icons.** A direct child of the group gets a Mingcute name in frontmatter. A page inside a dropdown does not. The sidenav reads `icon` only on those top-level pages. A name counts only if it is a file in `src/icons/line` or an alias in `src/icons/mingcute.ts`. When sections.md marks a source icon on this tab, menu, or dropdown, show `source → mingcute` for that node. For a top-level page, propose a Mingcute name. Brand images such as `/icons/node-js.svg` are menu marks, not page icons. Do not write a name that is not in the Mingcute set.
 - **What might break.** Only risks that are true for this chunk. For each one, say how this chunk will fix it. Do not list a risk with no fix.
@@ -60,6 +60,8 @@ Read every source page in the chunk before posting. The message is the plan for 
   - A folder shared with another group. Fix: add this group's pages in that folder. Do not move the other group's files.
   - An endpoint `method` or `path` that does not match `/openapi/openapi.json`. Fix: use the spec. A path placeholder uses the field name, such as `{ledger_id}`, not `{id}`.
   - A pasted `export const` block, or `<NeedHelp />`. Fix: delete it.
+  - A `<Card>` or `<CardGroup>`. Fix: drop it. A link to another page goes in RelatedTopics.
+  - A dropdown on the API tab. Fix: list the pages in the group. Add a dropdown only when the user said to.
   - An icon name that is not a Mingcute file or alias. Fix: propose a name that is, and show `source → mingcute`.
   - The prototype clear has not run. Fix: list the specimen pages and nav groups, delete them, then write this chunk.
 
@@ -73,7 +75,7 @@ Delete the specimen pages: `core/`, `enterprise/`, `learn/`, `api/`, the prototy
 
 Keep a minimal `index.mdx` so `/` builds, unless this chunk is Core · Start Here, which replaces it with the original home page.
 
-Rewrite `src/content/docs.json` navigation. Drop the Learn tab and the Open source / Enterprise labels. After the clear, only `/` exists, so the only tab is Core with path `/` and the groups this chunk adds. Add Cloud, Watch, API Reference, or SDKs & CLI when this chunk creates that landing page. Menu items use `label`, not Mintlify's `item`. A nested Mintlify `group` becomes a `dropdown`.
+Rewrite `src/content/docs.json` navigation. Drop the Learn tab and the Open source / Enterprise labels. After the clear, only `/` exists, so the only tab is Core with path `/` and the groups this chunk adds. Add Cloud, Watch, API Reference, or SDKs & CLI when this chunk creates that landing page. Menu items use `label`, not Mintlify's `item`. A nested Mintlify `group` becomes a `dropdown`, except on the API tab, where those pages are listed. Do not add an API dropdown unless the user said to.
 
 `tabPath` in `src/ui/navigation.ts` must allow `/`. An empty root must not steal `/` from the Core tab. When several tabs match, the longest matching tab or menu prefix wins, so `/cloud/reference/...` stays on API Reference and `/cloud/ledgers/...` stays on Cloud.
 
@@ -91,7 +93,7 @@ When a request sample and its response are followed by a `Tabs` pair of field ta
 
 Frontmatter `title` is the H1. `description` is the lede: one sentence about what the reader does on this page. If the source blockquote is a product slogan, rewrite it. Copy `sidebarTitle` when the source has one. The sidebar uses `sidebarTitle`, and uses `title` in sentence case when it is absent. Copy `og:title` to `seoTitle` and `og:description` to `metaDescription`. `seoTitle` is the full document title and `og:title`. It already includes the site name, and `documentTitle` does not append ` | Blnk Documentation` when it is set. `metaDescription` is the meta description and `og:description`. Drop the H1 and blockquote from the body. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
 
-Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Drop `<NeedHelp />`. It is not used on docs or API reference pages. Use the components registered in `src/ui/mdx/components.ts`. The reference is [COMPONENTS.md](../../../COMPONENTS.md). Registered tags: Note, Info, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Map, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, ApiKey.
+Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Drop `<NeedHelp />`. It is not used on docs or API reference pages. Do not import `<Card>` or `<CardGroup>` from the source. Drop them. A link to another page goes in RelatedTopics. Use the components in `src/ui/mdx/components.ts` and the snippets in `src/content/snippets`. The reference is [COMPONENTS.md](../../../COMPONENTS.md). Registered tags: Note, Info, Version, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Map, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, ApiKey.
 
 Keep internal links. They already use the original paths.
 
@@ -154,6 +156,14 @@ A path placeholder uses the field name from the spec, such as `{ledger_id}`, not
 
 A sentence that only confirms the result of a step is a paragraph after the step, not a Check callout.
 
+### Version
+
+A line that says a feature is available in a particular version is `<Version>`, not `<Info>`.
+
+```mdx
+<Version>Available in version 0.8.4 and later.</Version>
+```
+
 ### Images
 
 Screenshots live in `src/content/img/`, not `public/`. Write them as markdown images: `![alt](img/...)`. `img/file.png` resolves from `src/content` on any page. A JSX `<img src="img/...">` becomes a relative URL and 404s.
@@ -168,6 +178,14 @@ A `<Tab title="...">` is a table-of-contents child of the heading it follows. Cl
 - `.article .page-description` margin-bottom is `32px`.
 - When `<Steps>` is the first element in a tab, that `.steps` margin-top is `0` and the tab panel padding-top is the space above it. That padding is `24px`.
 - The endpoint path beside the method badge, `.endpoint-path`, is `14px`.
+
+### API navigation
+
+List every page on the API tab. Do not add a dropdown unless the user said to.
+
+### Cards
+
+Do not import `<Card>` or `<CardGroup>` from the source. Drop them. A link to another page goes in RelatedTopics.
 
 ### Need help
 

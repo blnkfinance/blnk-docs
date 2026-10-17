@@ -1,0 +1,102 @@
+---
+title: "Internal Balances"
+sidebarTitle: "Internal balances"
+icon: "share-3"
+description: "Create an internal balance in the General Ledger."
+seoTitle: "Internal Balances • Blnk Developer Documentation"
+metaDescription: "Learn how to create and use internal balances in your Blnk Ledger"
+---
+
+A customer deposits money into their wallet. That money comes from outside your system, from a bank or a payment provider. However, Blnk requires that transaction needs a source, so you need a balance that records where it came from.
+
+In your [ledger](/ledgers/introduction), that source is a system balance. A system balance is used by your system or organization to represent money that belongs outside the ledger.
+
+Blnk models a system balance as an internal balance, grouped in the [General Ledger](/ledgers/general-ledger). Any balance your app or organization owns or manages directly can be an internal balance. 
+
+These are also called General Ledger balances, or GL balances for short.
+
+## Creating an internal balance
+
+There are two ways to create an internal balance.
+
+<Tabs>
+  <Tab title="Create balance">
+
+<Version>Available in version 0.15.3 and later.</Version>
+
+Call [Create balance](/reference/create-balance) with `ledger_id` set to `general_ledger_id` and the `indicator` you want. 
+
+For the deposit above, you can create `@DepositsUSD` like this:
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "general_ledger_id",
+    "currency": "USD",
+    "indicator": "@DepositsUSD"
+  }'
+```
+
+The same indicator and currency can only exist once. Creating `@DepositsUSD` in USD again returns `409`:
+
+```json 409 Conflict wrap
+{
+  "error": "Balance already exists for indicator '@DepositsUSD' and 'USD'",
+  "error_detail": {
+    "code": "GEN_CONFLICT",
+    "message": "Balance already exists for indicator '@DepositsUSD' and 'USD'"
+  }
+}
+```
+
+  </Tab>
+  <Tab title="In a transaction">
+
+Use the `@` indicator as the `source` or `destination` of a [transaction](/transactions/introduction). 
+
+If that balance does not exist yet, Blnk automatically creates it and processes the transaction. The new internal balance uses the currency from the transaction.
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 100000,
+    "precision": 100,
+    "reference": "deposit_001",
+    "currency": "USD",
+    "source": "@DepositsUSD",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "Wallet deposit"
+  }'
+```
+
+  </Tab>
+</Tabs>
+
+## Naming conventions
+
+When choosing names for your internal balances, it's important to use consistent and descriptive naming schemes. This ensures easy recall and reduces the risk of errors when posting transactions.
+
+<Tip>
+A useful shape is `@{Purpose}{Currency}_{Tag}`, such as `@WorldUSD_Stripe` or `@RevenueEUR_Acme`. Purpose is what the balance is for, then the currency, then a tag for the provider or account type.
+</Tip>
+
+Here are some things to note when naming your internal balances:
+
+1. Always use the `@` prefix so the balance is stored in the General Ledger.
+2. Use names that clearly describe the balance's purpose, e.g., `@Revenue`, `@Fees`, `@World`, etc.
+3. Avoid using the same name for internal balances that serve the same function but represent different asset classes. For example, instead of naming two balances `@Revenue-one` in EUR and the other in USD, name them `@RevenueUSD` and `@RevenueEUR` for better clarity and easier reference in your integration.
+4. Use camel case (`@OnlineRevenue`) or underscores (`@online_revenue`) to separate words for better readability. Avoid including spaces to prevent formatting issues.
+5. Keep it short to facilitate easier referencing.
+
+<RelatedTopics
+  items={[
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Create balance", href: "/reference/create-balance" },
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Get balance by indicator", href: "/reference/get-balance-by-indicator" },
+  ]}
+/>
