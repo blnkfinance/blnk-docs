@@ -45,6 +45,9 @@ A split replaces one side of [Create transaction](/reference/create-transaction)
 <ParamField body="allow_overdraft" type="boolean" default="false">
   Specifies whether the transaction should proceed even if the source’s balance is insufficient. If enabled and the source has less than the required amount, the balance will become negative. See also: [Overdrafts](/transactions/overdrafts)
 </ParamField>
+<ParamField body="overdraft_limit" type="float" default="0">
+  How far below zero the source balance may go, in the same units as `amount`. Blnk multiplies it by `precision` before comparing. `0` with `allow_overdraft: true` means no cap, and a value above `0` rejects the transaction when the resulting balance would pass that cap ([Overdrafts](/transactions/overdrafts)).
+</ParamField>
 <ParamField body="inflight" type="boolean" default="false">
   Specifies that the transaction should be held until certain conditions are met. See also: [Create inflight](/transactions/inflight/create-inflight).
 </ParamField>
@@ -116,6 +119,15 @@ Fields from the request body mean the same thing in the response.
 
 <ResponseField name="precise_amount" type="integer">
   The amount stored in the ledger in its smallest unit. When you pass `amount`, Blnk computes this as `amount` x `precision`. See [Precision](/transactions/precision).
+</ResponseField>
+<ResponseField name="amount_string" type="string">
+  `amount` as a decimal string, so the value is not rounded. Present after Blnk applies precision. Omitted when empty.
+</ResponseField>
+<ResponseField name="sources" type="array">
+  Present when the request sent `sources`. Each item includes `transaction_id` for the leg Blnk created.
+</ResponseField>
+<ResponseField name="destinations" type="array">
+  Present when the request sent `destinations`. Each item includes `transaction_id` for the leg Blnk created.
 </ResponseField>
 <ResponseField name="transaction_id" type="string">
   Unique id of the transaction.
@@ -256,15 +268,18 @@ curl -X POST "http://localhost:5001/transactions" \
     "sources": [
       {
         "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-        "distribution": "10%"
+        "distribution": "10%",
+        "transaction_id": "txn_8f1c0a21-4b6e-4d11-9a55-1c0e7b2a91d4"
       },
       {
         "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-        "distribution": "5000"
+        "distribution": "5000",
+        "transaction_id": "txn_2aa91c44-0e17-4f63-8c20-6d5b9e1f04aa"
       },
       {
         "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-        "distribution": "left"
+        "distribution": "left",
+        "transaction_id": "txn_91de44b0-7c22-4a18-b6e1-3f08c5d27e60"
       }
     ],
     "destination": "@WorldUSD",
@@ -293,15 +308,18 @@ curl -X POST "http://localhost:5001/transactions" \
     "destinations": [
       {
         "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
-        "distribution": "10%"
+        "distribution": "10%",
+        "transaction_id": "txn_8f1c0a21-4b6e-4d11-9a55-1c0e7b2a91d4"
       },
       {
         "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
-        "distribution": "5000"
+        "distribution": "5000",
+        "transaction_id": "txn_2aa91c44-0e17-4f63-8c20-6d5b9e1f04aa"
       },
       {
         "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
-        "distribution": "left"
+        "distribution": "left",
+        "transaction_id": "txn_91de44b0-7c22-4a18-b6e1-3f08c5d27e60"
       }
     ],
     "reference": "ref_2ye281ewiu-1e17-dh17-eh18728hd245",

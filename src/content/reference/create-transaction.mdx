@@ -47,6 +47,9 @@ noindex: true
 <ParamField body="allow_overdraft" type="boolean" default="false">
   Specifies whether the transaction should proceed even if the source’s balance is insufficient. If enabled and the source has less than the required amount, the balance will become negative. See also: [Overdrafts](/transactions/overdrafts)
 </ParamField>
+<ParamField body="overdraft_limit" type="float" default="0">
+  How far below zero the source balance may go, in the same units as `amount`. Blnk multiplies it by `precision` before comparing. `0` with `allow_overdraft: true` means no cap, and a value above `0` rejects the transaction when the resulting balance would pass that cap ([Overdrafts](/transactions/overdrafts)).
+</ParamField>
 <ParamField body="inflight" type="boolean" default="false">
   Specifies that the transaction should be held until certain conditions are met. See also: [Create inflight](/transactions/inflight/create-inflight).
 </ParamField>
@@ -94,6 +97,9 @@ Fields from the request body mean the same thing in the response.
 
 <ResponseField name="precise_amount" type="integer">
   The amount stored in the ledger in its smallest unit. When you pass `amount`, Blnk computes this as `amount` x `precision`. See [Precision](/transactions/precision).
+</ResponseField>
+<ResponseField name="amount_string" type="string">
+  `amount` as a decimal string, so the value is not rounded. Present after Blnk applies precision. Omitted when empty.
 </ResponseField>
 <ResponseField name="transaction_id" type="string">
   Unique id of the transaction.
@@ -155,6 +161,7 @@ curl -X POST "http://localhost:5001/transactions" \
 ```json 201 Created
 {
     "amount": 1250.34,
+    "amount_string": "1250.34",
     "precision": 100,
     "precise_amount": 125034,
     "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
@@ -167,6 +174,7 @@ curl -X POST "http://localhost:5001/transactions" \
     "status": "QUEUED",
     "hash": "0b9c25fb5b00d6c71cb4ca87026bf6dc316e63353d3330deb588bd0b3d74dcc0",
     "allow_overdraft": false,
+    "overdraft_limit": 0,
     "inflight": false,
     "created_at": "2024-11-26T09:33:35.265582042Z",
     "scheduled_for": "0001-01-01T00:00:00Z",

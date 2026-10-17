@@ -25,8 +25,8 @@ noindex: true
 <ParamField body="precise_amount" type="integer">
   The commit amount in its smallest unit for a partial commit (recommended). Learn more: [Commit part of a transaction](/transactions/inflight/commit-inflight#partial-commits).
 </ParamField>
-<ParamField body="amount" type="integer">
-  Optional float amount to commit for a partial commit. Blnk converts it using the inflight transaction's `precision`. When both are set, `precise_amount` takes precedence over `amount`.
+<ParamField body="amount" type="float">
+  Amount to commit for a partial commit. Blnk converts it using the inflight transaction's `precision`. When both are set, `precise_amount` takes precedence over `amount`.
 </ParamField>
 
 <ParamField body="skip_queue" type="boolean" default="false">
@@ -42,7 +42,13 @@ noindex: true
 
 ### Response
 
-Same JSON structure as [Record a transaction](/reference/create-transaction#response)
+When `skip_queue` is `false`, the body is the still-inflight transaction plus `queued: true`. When `skip_queue` is `true`, the body is the applied or voided child and `queued` is absent. A dry run uses the [dry-run](/reference/dry-run#response) shape.
+
+<ResponseField name="queued" type="boolean">
+  `true` when the commit or void was accepted onto the queue and has not been applied. The transaction stays `INFLIGHT` until a worker finishes it.
+</ResponseField>
+
+The other fields match [Record a transaction](/reference/create-transaction#response).
 
 <RequestExample>
 ```bash cURL

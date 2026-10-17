@@ -12,11 +12,11 @@ noindex: true
 
 ### Body
 
-<ParamField body="atomic" type="boolean" required>  
-  When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently.
+<ParamField body="atomic" type="boolean" default="false">
+  When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. Omit it to use `false`.
 </ParamField>
-<ParamField body="inflight" type="boolean" required>  
-  When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are applied immediately.
+<ParamField body="inflight" type="boolean" default="false">
+  When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are applied immediately. Omit it to use `false`.
 </ParamField>
 <ParamField body="run_async" type="boolean" default="false">  
   When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response.
@@ -28,7 +28,7 @@ noindex: true
   When `true`, Blnk projects the batch without writing anything. `skip_queue` selects cumulative vs independent projection. `run_async` is ignored. See [Dry-run a transaction](/reference/dry-run).
 </ParamField>
 <ParamField body="transactions" type="object[]" required>
-  An array of transaction objects. Max number of transactions allowed is 10,000.
+  An array of transaction objects. Each item uses the fields on [Create new transaction](/reference/create-transaction), including `overdraft_limit`. Max number of transactions allowed is 10,000.
 
   ```json Sample transaction object
   {
@@ -46,6 +46,8 @@ noindex: true
 
 ### Response
 
+A write returns the batch fields below. `POST` with `dry_run: true` returns a projection instead, with HTTP `200`, and omits `batch_id`, `status`, `transaction_count`, and `message`.
+
 <ResponseField name="batch_id" type="string" required>
   Identifier for the bulk batch. Use this value as `parent_transaction` when [searching for child transactions](/transactions/bulk-transactions#retrieving-transactions-in-a-batch), or when [committing or voiding](/transactions/bulk-transactions#commit-or-void-bulk-inflight) an inflight batch.
 </ResponseField>
@@ -57,6 +59,27 @@ noindex: true
 </ResponseField>
 <ResponseField name="message" type="string">
   Human-readable status message. Included on the immediate response when `run_async` is `true` (for example, confirming that background processing started).
+</ResponseField>
+<ResponseField name="dry_run" type="boolean">
+  `true` on a projection. Present only when the request set `dry_run`.
+</ResponseField>
+<ResponseField name="would_apply" type="boolean">
+  `false` when any item in the batch would be rejected.
+</ResponseField>
+<ResponseField name="cumulative" type="boolean">
+  `true` when `skip_queue` is true and each item is projected after the previous item's effect. `false` when each item is projected on its own against current balances.
+</ResponseField>
+<ResponseField name="atomic" type="boolean">
+  The `atomic` value from the request, on a projection.
+</ResponseField>
+<ResponseField name="results" type="array">
+  One preview per item. Each item uses the [dry-run](/reference/dry-run#response) fields.
+</ResponseField>
+<ResponseField name="balances" type="array">
+  Combined effect per balance. Present only when `cumulative` is true. Each item uses the balance fields on [Dry-run a transaction](/reference/dry-run#response).
+</ResponseField>
+<ResponseField name="notes" type="array">
+  Advisory messages that are not rejections.
 </ResponseField>
 
 <RequestExample>
@@ -117,7 +140,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
 </RequestExample>
 
 <ResponseExample>
-```json 200 OK
+```json 201 Created
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "applied",
