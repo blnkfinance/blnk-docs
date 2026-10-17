@@ -16,7 +16,13 @@ An identity is a customer on your ledger, either an individual or an organizatio
 
 Blnk stores two identity types, `individual` and `organization`. Fields that are specific to your application go in `meta_data`.
 
+### Using the API
+
 Call [Create identity](/reference/create-identity):
+
+<Note>
+Leave `identity_id` out and Blnk generates one. Pass your own when it should match a holder reference you already have. It must start with `idt_` and a valid UUID, such as `idt_8cc22560-5ace-4989-8953-fcbad7947d48`. A duplicate returns `400` with `IDT_VALIDATION_ERROR`.
+</Note>
 
 <Tabs>
   <Tab title="Create identity">
@@ -168,7 +174,7 @@ ApiResponse<JsonNode> response = blnk.identity().create(
 | `post_code` | Postal code. | No |
 | `city` | City. | No |
 | `meta_data` | Custom metadata. | No |
-| `identity_id` | Your own id. See [Set your own identity id](#set-your-own-identity-id). | No |
+| `identity_id` | Your own id. Leave it out and Blnk generates one. | No |
 
   </Tab>
   <Tab title="Response">
@@ -268,72 +274,13 @@ Click **Create identity**.
 
 The new identity appears in the Identities table. Open it to see the full profile.
 
-## Set your own identity id
-
-Blnk generates an `identity_id` when you leave it out. Pass `identity_id` when the id should come from a holder reference you already have.
-
-The value must start with `idt_` and a valid UUID, for example `idt_8cc22560-5ace-4989-8953-fcbad7947d48`. A duplicate id returns `400` with `IDT_VALIDATION_ERROR`. See [Create identity](/reference/create-identity).
-
-<CodeGroup>
-
-```bash cURL wrap
-curl -X POST "http://localhost:5001/identities" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
-    "identity_type": "individual",
-    "first_name": "Alice",
-    "last_name": "Smith",
-    "email_address": "alice.smith@example.com"
-  }'
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Identity.create({
-  identity_id: 'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
-  identity_type: 'individual',
-  first_name: 'Alice',
-  last_name: 'Smith',
-  email_address: 'alice.smith@example.com',
-});
-```
-
-```go Go wrap
-identity, resp, err := client.Identity.Create(blnkgo.Identity{
-    IdentityID: "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
-    IdentityType: blnkgo.Individual,
-    FirstName: "Alice",
-    LastName: "Smith",
-    EmailAddress: "alice.smith@example.com",
-})
-```
-
-```python Python wrap
-response = blnk.identity.create({
-  "identity_id": "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
-  "identity_type": "individual",
-  "first_name": "Alice",
-  "last_name": "Smith",
-  "email_address": "alice.smith@example.com",
-})
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.identity().create(
-    IdentityData.create()
-        .identityId("idt_8cc22560-5ace-4989-8953-fcbad7947d48")
-        .identityType("individual")
-        .firstName("Alice")
-        .lastName("Smith")
-        .emailAddress("alice.smith@example.com"));
-```
-
-</CodeGroup>
-
 ## Update an identity
 
-Call [Edit identity](/reference/edit-identity) with the `identity_id`. Send only the fields you want to change. Blnk skips an empty string, so the stored value stays. When you send `meta_data`, it replaces the object stored on the identity.
+### Using the API
+
+Call [Edit identity](/reference/edit-identity) with the `identity_id`. 
+
+Send only the fields you want to change. Blnk skips an empty string, so the stored value stays. When you send `meta_data`, it replaces the object stored on the identity.
 
 <Tabs>
   <Tab title="Update identity">
@@ -405,48 +352,6 @@ ApiResponse<JsonNode> response = blnk.identity().update(
 Open the identity and click **Edit identity** in the top right. Update the profile, contact, or address fields, then save.
 
 ![Edit identity on the identity details page](img/identities/edit-identity-button.png)
-
-## Delete an identity
-
-Call [Delete identity](/reference/delete-identity). Blnk removes that identity record.
-
-<CodeGroup>
-
-```bash cURL wrap
-curl -X DELETE "http://localhost:5001/identities/{identity_id}" \
-  -H "X-blnk-key: <api-key>"
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Identity.delete(
-  'idt_8cc22560-5ace-4989-8953-fcbad7947d48',
-);
-```
-
-```go Go wrap
-deleted, resp, err := client.Identity.Delete(
-    "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
-)
-```
-
-```python Python wrap
-response = blnk.identity.delete(
-  "idt_8cc22560-5ace-4989-8953-fcbad7947d48",
-)
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.identity().delete(
-    "idt_8cc22560-5ace-4989-8953-fcbad7947d48");
-```
-
-</CodeGroup>
-
-```json 200 OK
-{
-  "message": "Identity deleted successfully"
-}
-```
 
 <RelatedTopics
   items={[

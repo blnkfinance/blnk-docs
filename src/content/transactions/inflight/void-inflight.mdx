@@ -1,0 +1,479 @@
+---
+title: "Void inflight transactions"
+sidebarTitle: "Void inflight"
+description: "Release one hold, many holds, or every leg in a split or batch."
+seoTitle: "Void inflight transactions • Blnk Developer Documentation"
+metaDescription: "Void inflight transactions, including bulk voids and automatic expiry in Blnk."
+---
+
+After you [create an inflight transaction](/transactions/inflight/create-inflight), void it when the transfer should not settle. Void releases whatever is still held and leaves settled balances unchanged. Blnk creates a child transaction with `VOID` status.
+
+Void takes no amount. If you [committed part of the hold](/transactions/inflight/commit-inflight#partial-commits) first, void releases only the leftover. It does not reverse amount already applied.
+
+Once voided, the hold cannot be committed again.
+
+<Note>By default, Blnk queues the void. The response stays `INFLIGHT` with `queued: true` until the worker finishes. Set `skip_queue: true` to apply the void in the same request.</Note>
+
+<Frame>
+![Scenarios when inflight transactions are finished processing](img/transactions/inflight-outcomes.png)
+</Frame>
+
+## Void one transaction
+
+<Tabs>
+<Tab title="Using the API">
+
+<Steps>
+<Step title="Void the transaction">
+
+Call [Update inflight](/reference/update-inflight) with the inflight transaction id and `"status": "void"`.
+
+```text Update inflight
+PUT /transactions/inflight/{transaction_id}
+```
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{transaction_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "void"
+  }'
+```
+
+```typescript TypeScript wrap {4}
+const response = await blnk.Transactions.updateStatus(
+  '{transaction_id}',
+  {
+    status: 'void',
+  },
+);
+```
+
+```go Go wrap {4}
+transaction, resp, err := client.Transaction.Update(
+    "{transaction_id}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusVoid,
+    },
+)
+```
+
+```python Python wrap {4}
+response = blnk.transactions.update_status(
+  "{transaction_id}",
+  {
+    "status": "void",
+  },
+)
+```
+
+```java Java wrap {4}
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("void"));
+```
+</CodeGroup>
+
+```json 200 Queued wrap {3,4}
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+`queued: true` means the void is waiting on a worker, not that the hold is already released. With `skip_queue: true`, the same call returns the `VOID` child and sets `parent_transaction` to the inflight id.
+
+Continuing from the [earlier example](/transactions/inflight/create-inflight#inflight-balance-tracking), a full void of the \$100 hold leaves balances like this:
+
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 200 | 0 | 0 | 0 |
+| `balance_B` | 0 | 0 | 0 | 0 |
+
+After a partial commit of \$40, voiding the remaining \$60 clears the leftover inflight amounts and keeps the \$40 already applied:
+
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 160 | 0 | 0 | 0 |
+| `balance_B` | 40 | 0 | 0 | 0 |
+
+</Step>
+</Steps>
+
+</Tab>
+<Tab title="Using the Dashboard">
+
+<Steps>
+<Step title="Void the transaction">
+
+Open the inflight transaction. **Void** cancels it and releases what is still held.
+
+![Commit and void on a transaction](img/transactions/inflight-actions.png)
+
+Select **Void transaction**, or press `V`, then confirm.
+
+![Void transaction confirmation](img/transactions/void-transaction.png)
+
+A new linked transaction is created with status `VOID`.
+
+</Step>
+</Steps>
+
+</Tab>
+</Tabs>
+
+## Void multiple inflights
+
+<Version>Available in version 0.14.2 and later.</Version>
+
+<Steps>
+<Step title="Void the holds">
+
+Use [Bulk void inflight](/reference/bulk-void-inflight) for holds you created one by one. Send `transaction_ids`, not the `transactions` array used by bulk commit. Each request accepts at most **100** ids.
+
+<Warning>This endpoint is not for a split or a bulk batch. Those use one parent id in [Void a split or a bulk batch](#void-a-split-or-a-bulk-batch).</Warning>
+
+```text Bulk void inflight
+POST /transactions/inflight/bulk/void
+```
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/bulk/void" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_ids": [
+      "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.bulkVoidInflight({
+  transaction_ids: [
+    'txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+    'txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30',
+  ],
+});
+```
+
+```go Go wrap
+result, resp, err := client.Transaction.BulkVoidInflight(blnkgo.BulkVoidInflightRequest{
+    TransactionIDs: []string{
+        "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+        "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.transactions.bulk_void_inflight({
+  "transaction_ids": [
+    "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+  ],
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().bulkVoidInflight(
+    BulkVoidInflightRequest.create()
+        .transactionIds(List.of(
+            "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+            "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30"
+        )));
+```
+</CodeGroup>
+
+</Step>
+<Step title="Read the result">
+
+<Version>From Blnk Core 0.15.0, bulk void goes through the queue by default. `queued` means the job was accepted. Parents stay `INFLIGHT` until workers create `VOID` children.</Version>
+
+One failed item does not block the rest.
+
+| Status | Code | Meaning |
+| :-- | :-- | :-- |
+| `queued` | `QUEUED` | New void job added. |
+| `queued` | `ALREADY_QUEUED` | Already queued. The duplicate is skipped. |
+
+```json 200 Queued wrap
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+      "status": "queued",
+      "code": "QUEUED"
+    },
+    {
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "status": "queued",
+      "code": "QUEUED"
+    }
+  ]
+}
+```
+
+`QUEUED` and `ALREADY_QUEUED` both count toward `succeeded`. Set `skip_queue: true` to process each item in the request. Those results use `succeeded` or `failed` instead of `queued`.
+
+</Step>
+</Steps>
+
+## Void a split or a bulk batch
+
+<Steps>
+<Step title="Choose the parent id">
+
+A split uses the root `transaction_id`. A bulk batch uses `batch_id`. That id voids every pending leg.
+
+<Tip>
+If you don't have the parent id, open any child transaction and copy `meta_data.QUEUED_PARENT_TRANSACTION`. Use that id to void the whole split or batch.
+
+If create skipped the queue, use the child's `parent_transaction` instead.
+</Tip>
+
+</Step>
+<Step title="Void the split or batch">
+
+Call [Update inflight](/reference/update-inflight) with that id and `"status": "void"`. Do not send that id to [Bulk void inflight](/reference/bulk-void-inflight).
+
+```text Update inflight
+PUT /transactions/inflight/{parent_id}
+```
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{parent_id}" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "void"
+  }'
+```
+
+```typescript TypeScript wrap {4}
+const response = await blnk.Transactions.updateStatus(
+  '{parent_id}',
+  {
+    status: 'void',
+  },
+);
+```
+
+```go Go wrap {4}
+transaction, resp, err := client.Transaction.Update(
+    "{parent_id}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusVoid,
+    },
+)
+```
+
+```python Python wrap {4}
+response = blnk.transactions.update_status(
+  "{parent_id}",
+  {
+    "status": "void",
+  },
+)
+```
+
+```java Java wrap {4}
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{parent_id}",
+    UpdateTransactionStatus.create()
+        .status("void"));
+```
+</CodeGroup>
+
+```json 200 Queued wrap
+{
+  "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+On the default queue, the response stays `INFLIGHT` with `queued: true`. Every leg and its later `VOID` child shares `meta_data.QUEUED_PARENT_TRANSACTION`.
+
+With `skip_queue: true`, the response reflects the first leg processed. Each leg's `VOID` child points at that leg through `parent_transaction`, so check each leg on its own.
+
+</Step>
+</Steps>
+
+## Verify the outcome
+
+Blnk sends `transaction.void` once a void is finalized. 
+
+Match the child the same way as a commit: `meta_data.QUEUED_PARENT_TRANSACTION` on the default queue, or `parent_transaction` when the void skipped the queue. The child `status` is `VOID`.
+
+The event payload and the filter are on [Verify the outcome](/transactions/inflight/commit-inflight#verify-with-webhooks).
+
+## Schedule inflight expiry
+
+A hold stays inflight until you commit it, void it, or it expires. 
+
+Set `inflight_expiry_date` when you create the transaction to cap how long funds can remain held.
+
+If the transaction is still `INFLIGHT` when that time passes, Blnk voids it. The outcome matches a manual void: a child with `VOID` status, and the held amount released without changing settled balances.
+
+<Note>
+If you also set `inflight_commit_date`, put the commit time before the expiry. Otherwise Blnk voids the hold before the scheduled commit can run. See [Schedule a commit](/transactions/inflight/commit-inflight#schedule-a-commit).
+</Note>
+
+<CodeGroup>
+```bash cURL wrap {13}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For vacation",
+    "inflight": true,
+    "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
+  }'
+```
+
+```typescript TypeScript wrap {10}
+const response = await blnk.Transactions.create({
+  precise_amount: 10000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'For vacation',
+  inflight: true,
+  inflight_expiry_date: '2024-12-21T01:36:46+01:00',
+});
+```
+
+```go Go wrap {12}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(10000),
+        Precision: 100,
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "For vacation",
+    },
+    Inflight: true,
+    InflightExpiryDate: "2024-12-21T01:36:46+01:00",
+})
+```
+
+```python Python wrap {10}
+response = blnk.transactions.create({
+  "precise_amount": 10000,
+  "precision": 100,
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "description": "For vacation",
+  "inflight": True,
+  "inflight_expiry_date": "2024-12-21T01:36:46+01:00",
+})
+```
+
+```java Java wrap {11}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("For vacation")
+        .inflight(true)
+        .inflightExpiryDate("2024-12-21T01:36:46+01:00"));
+```
+</CodeGroup>
+
+<Tip>
+Format `inflight_expiry_date` as `YYYY-MM-DDTHH:MM:SS+00:00` (for example, `2024-04-22T15:28:03+00:00`), where `+00:00` is the timezone offset.
+</Tip>
+
+```json 201 Created wrap {3}
+{
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "inflight": true,
+  "inflight_expiry_date": "2024-12-21T01:36:46+01:00"
+}
+```
+
+## Error handling
+
+<Version>Structured errors are available from Blnk Core 0.15.0 and later.</Version>
+
+[Update inflight](/reference/update-inflight) returns `400`, `404`, and `409` when a void fails validation or conflicts with the current state.
+
+On the default queue, Blnk rejects a second commit or void before enqueueing another job. With `skip_queue: true`, Blnk validates in the request and returns the error immediately.
+
+| Code | When it happens |
+| :-- | :-- |
+| `GEN_CONFLICT` | A commit or void is already queued for this inflight transaction. |
+| `TXN_ALREADY_COMMITTED` | You try to void a fully committed inflight transaction. |
+| `TXN_ALREADY_VOIDED` | The inflight transaction is already voided. |
+| `TXN_NOT_INFLIGHT` | The transaction is not `INFLIGHT`. |
+| `TXN_INVALID_STATUS_ACTION` | `status` is not `commit` or `void`. |
+| `TXN_NOT_FOUND` | The transaction id does not exist, or it is not the split or batch parent. |
+
+```json 409 Conflict wrap
+{
+  "error": "a commit or void is already queued for this transaction",
+  "error_detail": {
+    "code": "GEN_CONFLICT",
+    "message": "a commit or void is already queued for this transaction"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `GEN_CONFLICT` | Wait for the queued job to finish, or [verify the outcome](/transactions/inflight/commit-inflight#verify-with-webhooks) before sending another request. |
+| `TXN_ALREADY_COMMITTED` | Treat the hold as finished. To reverse it, [refund](/transactions/refunds) the applied transaction. |
+| `TXN_ALREADY_VOIDED` | Treat the hold as cancelled. Do not void it again. |
+| `TXN_NOT_INFLIGHT` | Use the original inflight id, not an `APPLIED` or `VOID` child. |
+| `TXN_INVALID_STATUS_ACTION` | Set `status` to `void`. |
+| `TXN_NOT_FOUND` | For a split or batch, use the parent id from create, not a leg or child id. |
+
+[Bulk void inflight](/reference/bulk-void-inflight) returns `400` before any item is processed when the body is invalid. Sending `transactions` instead of `transaction_ids` returns `TXN_BULK_EMPTY`, because unrecognized fields are dropped. 
+
+Per-item failures return `200` with `failed` entries in `results`. One failed item does not block the batch.
+
+| Code | When it happens |
+| :-- | :-- |
+| `TXN_BULK_EMPTY` | `transaction_ids` is missing, empty, or the wrong shape. |
+| `TXN_BULK_LIMIT_EXCEEDED` | More than 100 ids in one request. |
+
+With `skip_queue: true`, a failed item can return `NOT_FOUND`, `ALREADY_COMMITTED`, `ALREADY_VOIDED`, `NOT_INFLIGHT`, `LOCKED`, or `INTERNAL_ERROR`. See [API error codes](/advanced/error-codes).
+
+<RelatedTopics
+  items={[
+    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
+    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
+    { title: "Bulk void inflight", href: "/reference/bulk-void-inflight" },
+    { title: "Update inflight", href: "/reference/update-inflight" },
+    { title: "Refunds", href: "/transactions/refunds" },
+  ]}
+/>

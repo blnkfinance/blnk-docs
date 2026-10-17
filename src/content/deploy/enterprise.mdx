@@ -1,6 +1,6 @@
 ---
 title: "Enterprise"
-sidebarTitle: "Enterprise"
+sidebarTitle: "Enterprise Core"
 description: "Deploy the Enterprise version on infrastructure you host."
 seoTitle: "Enterprise deployment • Blnk Developer Documentation"
 metaDescription: "Self-host the Enterprise version beside open-source Core, then connect them with an Enterprise license."
@@ -16,9 +16,11 @@ This page deploys the enterprise modules beside it and connects them to that Cor
 ## Deploy Enterprise
 
 <Steps>
-<Step title="Contact sales">
+<Step title="Get your license">
 
-Ask [sales](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fenterprise) for a production license. The email contains a base64 license key, which you set as `ENTERPRISE_LICENSE_B64`.
+Get your Enterprise license by [contacting us](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fenterprise). 
+
+Once your order is confirmed, you'll receive an email with a base64 license key. Set it as `ENTERPRISE_LICENSE_B64`.
 
 </Step>
 
@@ -45,11 +47,11 @@ ENTERPRISE_AUTO_PROVISION=false
 ENTERPRISE_PUBLIC_PORT=8080
 ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
 CORS_ORIGINS=http://localhost:8080,http://localhost:3001,https://ledger.yourdomain.com
-BLNK_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
-JWT_SECRET=your_long_random_secret_here
+BLNK_ENCRYPTION_KEY=your_secure_32_character_key
+JWT_SECRET=your_long_random_secret
 ```
 
-<Warning>Generate your own encryption key and JWT secret, and do not change the encryption key after these modules have stored data.</Warning>
+<Warning>Generate a secure encryption key and JWT secret before these modules start. Use a random 32-character key and a long random secret.</Warning>
 
 | Variable | What to set |
 | :--- | :--- |
@@ -60,8 +62,8 @@ JWT_SECRET=your_long_random_secret_here
 | `ENTERPRISE_PUBLIC_PORT` | Port this deployment listens on. The sample uses `8080`. |
 | `ENTERPRISE_PUBLIC_URL` | Public URL of this deployment, including `https://`. |
 | `CORS_ORIGINS` | Browser origins allowed to call this deployment, with no spaces. Include `ENTERPRISE_PUBLIC_URL`. |
-| `BLNK_ENCRYPTION_KEY` | A unique 32-character key. It encrypts values such as instance connection keys. |
-| `JWT_SECRET` | A long random secret for authentication tokens. |
+| `BLNK_ENCRYPTION_KEY` | A secure random 32-character key. It encrypts values such as instance connection keys. |
+| `JWT_SECRET` | A long, secure random secret for authentication tokens. |
 
 </Step>
 
@@ -108,11 +110,6 @@ Copy the **Connection key** from the instance details.
 | `https://ledger.yourdomain.com` | `wss://ledger.yourdomain.com/ws/agent` |
 | `http://localhost:8080` | `ws://localhost:8080/ws/agent` |
 
-| Variable | What to set |
-| :--- | :--- |
-| `DB_URL` | `data_source.dns` from the Core configuration. |
-| `CONNECTION_KEY` | The connection key you copied from the instance details. |
-
 ```bash Run the query agent
 docker run -d \
   -e DB_URL="postgres://username:password@host:5432/blnk?sslmode=require" \
@@ -121,12 +118,48 @@ docker run -d \
   blnkfinance/query-agent:latest
 ```
 
-When the agent is running, the query agent setup shows **Connected**.
+| Variable | What to set |
+| :--- | :--- |
+| `DB_URL` | `data_source.dns` from the Core configuration. |
+| `CONNECTION_KEY` | The connection key you copied from the instance details. |
+
+When the agent is running, the query agent setup would update to **Connected**.
 
 ![Query agent status showing Connected](img/deploy/instance-connected.png)
 
 </Step>
 </Steps>
+
+## FAQs
+
+<AccordionGroup>
+  <Accordion title="The enterprise container exits">
+
+`docker logs blnk-enterprise` prints the reason. 
+
+A license failure is logged as `Server exited: verify enterprise license`. Confirm `ENTERPRISE_LICENSE_B64` is the base64 key from the email, with no spaces or line breaks.
+
+  </Accordion>
+  <Accordion title="The query agent does not show Connected">
+
+The agent logs `Failed to create agent` when `DB_URL` or `CONNECTION_KEY` is missing. 
+
+If `CONNECTION_URL` is empty, the agent connects to `wss://api.cloud.blnkfinance.com/ws/agent` instead of your deployment.
+
+  </Accordion>
+  <Accordion title="The agent is connected but ledger data is missing">
+
+`DB_URL` has to be the Core database, the same value as `data_source.dns`. 
+
+The `blnk-cloud` database on `ENTERPRISE_POSTGRES_URL` holds the enterprise modules, not the ledger.
+
+  </Accordion>
+  <Accordion title="Enterprise created an instance you did not add">
+
+Open the actions list on the instance Enterprise created and click **Delete instance**.
+
+  </Accordion>
+</AccordionGroup>
 
 <RelatedTopics
   items={[

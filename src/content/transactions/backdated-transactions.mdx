@@ -1,7 +1,6 @@
 ---
 title: "Backdated Transactions"
 sidebarTitle: "Backdated transactions"
-icon: "history"
 description: "Record a transaction as of a date in the past."
 seoTitle: "Backdated Transactions • Blnk Developer Documentation"
 metaDescription: "Learn to create backdated transactions in Blnk, use effective dates, and handle historical accounting scenarios with precision"
@@ -21,8 +20,12 @@ When `effective_date` isn't specified, it defaults to the same value as `created
 * `effective_date`: The actual financial date when the transaction occurred
 
 ## Create transaction with effective date
+### Using the API
 
 Call the [Record Transaction](/reference/create-transaction) endpoint:
+
+<Tabs>
+<Tab title="Backdate a transaction">
 
 <CodeGroup>
 ```bash cURL wrap
@@ -97,9 +100,8 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
 ```
 </CodeGroup>
 
-<Tip>
-  Use the `effective_date` field (optional, string) to specify the date a transaction financially occurred, formatted in ISO 8601 (e.g., "2023-01-15T10:30:00Z"). If left blank, `effective_date` defaults to the same value as `created_at`.
-</Tip>
+</Tab>
+<Tab title="Response">
 
 ```json 201 Created
 {
@@ -114,9 +116,20 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
 }
 ```
 
-<Info>
-From 0.15.5, queued apply keeps `effective_date` on the APPLIED transaction when `skip_queue` is false, including coalescing and stuck-queue recovery. `GET /transactions/:id` and `GET /transactions/reference/:reference` return the field when it is set.
-</Info>
+</Tab>
+</Tabs>
+
+<Tip>
+  Use the `effective_date` field (optional, string) to specify the date a transaction financially occurred, formatted in ISO 8601 (e.g., "2023-01-15T10:30:00Z"). If left blank, `effective_date` defaults to the same value as `created_at`.
+</Tip>
+
+### Using the Dashboard
+
+Turn on **Effective date** before you create the transaction, then set the date and time it happened. 
+
+An effective date cannot be in the future. Use **Schedule transaction** for a future time.
+
+![Effective date turned on](img/transactions/effective-date-option.png)
 
 ## Balance calculations
 
@@ -191,16 +204,9 @@ Invalid effective date error:
 }
 ```
 
-
-## Using the Dashboard
-
-Turn on **Effective date** before you create the transaction, then set the date and time it happened. An effective date cannot be in the future. Use **Schedule transaction** for a future time.
-
-![Effective date turned on](img/transactions/effective-date-option.png)
-
 <RelatedTopics
   items={[
-    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Record a transaction", href: "/transactions/single-transaction" },
     { title: "Historical balances", href: "/balances/historical-balances" },
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
   ]}

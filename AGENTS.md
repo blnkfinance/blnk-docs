@@ -22,6 +22,8 @@ Keep the original path. A tag that is not in `src/ui/mdx/components.ts` and not 
 
 Copy, samples, images, and spacing already decided for this site are in `.cursor/skills/migrate-docs/SKILL.md` under **Decisions already on the site**. Follow that section on any page edit, including ones that are not a migration.
 
+A paragraph is 2 or 3 sentences. Break a fourth sentence into the next paragraph. Do not stack one-line paragraphs unless that sentence is its own point.
+
 ## Skills
 
 **migrate-docs.** The user asked to migrate a chunk, a group, or a section, or said `next`. Read the skill, `status.md`, and `sections.md`. Post the plan and wait. Write nothing until they accept. One group, then stop.

@@ -1,6 +1,6 @@
 ---
 title: "Open-source"
-sidebarTitle: "Open-source"
+sidebarTitle: "Open-source Core"
 description: "Deploy open-source Core on a server you control."
 seoTitle: "Open-source deployment • Blnk Developer Documentation"
 metaDescription: "Self-host the open-source Blnk Core on a single server, a platform, or Kubernetes."
@@ -10,9 +10,9 @@ This deploys open-source Core on a production server you manage.
 
 You are responsible for deployment, upgrades, configuration, and day-to-day operations across each environment you maintain: dev, staging, production, and beyond.
 
-<Info>
+<Version>
 From 0.15.3, pull `ghcr.io/blnkfinance/blnk`. The current release is `0.15.6`. Releases through 0.15.2 use `jerryenebeli/blnk`.
-</Info>
+</Version>
 
 ## Deployment guides
 
@@ -201,9 +201,82 @@ Core comes up from those manifests, including the server and the worker.
 </Tab>
 </Tabs>
 
+## Connect to the dashboard
+
+Open-source Core does not include the dashboard. Connect this Core to a [Blnk Cloud](/deploy/blnk-cloud) workspace when you want one. 
+
+<Note>Your database stays on your network. Blnk Cloud reaches the ledger through the query agent that acts as an intermediary between your Core and the ledger.</Note>
+
+<Steps titleSize="h3">
+<Step title="Create an instance">
+
+In the workspace, go to **Settings → Instances** and click **Deploy an instance**.
+
+![Settings, Instances, with Deploy an instance](img/deploy/cloud-open-instance-form.gif)
+
+</Step>
+
+<Step title="Enter the Core details">
+
+- **Instance name:** a name you will recognize, such as Production
+- **Core URL:** the public URL of this Core, such as `https://api.yourcompany.com`
+- **Core secret key:** the `secret_key` from the Core configuration. Leave it empty and the dashboard can only read the ledger.
+
+The Core URL has to be reachable from Blnk Cloud. We recommend using a tunnel like ngrok or Cloudflare Tunnel to expose your Core to the internet.
+
+<Info>If your query agent is hosted on a private network, add our Cloud IP to your allowlist: `161.35.166.95` and `161.35.171.250`.</Info>
+
+![Instance form with name, Core URL, and secret key](img/deploy/cloud-instance-form.gif)
+
+Submit the form.
+
+</Step>
+
+<Step title="Run the query agent">
+
+Go to **Settings → Instances**, open the instance, and click **View setup details**. Copy the Docker command. It already includes the connection key. 
+
+Replace `<YOUR_DATABASE_URL>` with `data_source.dns` from the Core configuration, and set `sslmode` to match the database.
+
+![Query agent setup with the Docker command](img/deploy/query-agent-copy-command.gif)
+
+</Step>
+
+<Step title="Check the connection">
+
+When the query agent is running, the instance updates to **Connected**. 
+
+![Instance details after the connection is Connected](img/deploy/cloud-instance-details.gif)
+
+</Step>
+</Steps>
+
+## FAQs
+
+<AccordionGroup>
+  <Accordion title="What support is included?">
+
+Open-source Core includes community support and the documentation.
+
+If you want Blnk engineers to work with your team on ledger design, integration, and production issues, get [Pro Support](https://blnkfinance.com/contact/us?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=deploy%2Fopen-source). That includes a private Slack channel.
+
+  </Accordion>
+  <Accordion title="Should I use the Compose file in the repository?">
+
+No. That file is the local stack, and it starts its own Postgres and Redis. This guide expects Postgres and Redis you provision before the steps.
+
+  </Accordion>
+  <Accordion title="Does the dashboard connection move my database?">
+
+No. The database stays on your network. The query agent is the connection between that database and Blnk Cloud.
+
+  </Accordion>
+</AccordionGroup>
+
 <RelatedTopics
   items={[
     { title: "Configuration", href: "/advanced/configuration/overview" },
     { title: "Enterprise", href: "/deploy/enterprise" },
+    { title: "Blnk Cloud", href: "/deploy/blnk-cloud" },
   ]}
 />

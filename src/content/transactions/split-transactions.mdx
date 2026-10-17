@@ -1,7 +1,6 @@
 ---
 title: "Split transactions"
 sidebarTitle: "Split transactions"
-icon: "share-2"
 description: "Move money from several balances to one, or from one balance to several."
 seoTitle: "Split transactions • Blnk Developer Documentation"
 metaDescription: "Move money from multiple sources to one destination, or from one source to multiple destinations."
@@ -9,43 +8,40 @@ metaDescription: "Move money from multiple sources to one destination, or from o
 
 <Version>Available in version 0.6.0 and later.</Version>
 
-A split moves money in one request, with more than one balance on a single side. Send `sources` when several balances pay one destination. Send `destinations` when one balance pays several recipients.
+A split moves money in one request, with more than one balance on a single side. 
+
+Send `sources` when several balances pay one destination. Send `destinations` when one balance pays several recipients.
 
 <Warning>
 A split is one side only. A payload that includes both `sources` and `destinations` is rejected with `400 TXN_VALIDATION_ERROR`.
 </Warning>
 
-## Multiple sources
+## Record split
 
-Pooling contributions, topping up a wallet from multiple linked accounts, or settling an invoice from more than one internal pot are common use cases for multiple sources.
+Sarah's balance is `bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38`. Alice, Bob, and Charlie use the same balances in both scenarios. Alice's leg is a percentage, Bob's is a fixed amount, and Charlie's is `"left"`.
 
-For example, Sarah should receive **USD 30,000** **into** her balance. Alice contributes 10%, Bob sends a fixed \$20,000, and Charlie’s contribution uses `"left"` so whatever remains after the first two legs comes from Charlie automatically.
-
-Money movement would look like this:
-
-![Multiple sources transaction flow](img/transactions/multiple-sources-flow.png)
+**Several sources.** They pay Sarah **USD 30,000**. Alice sends 10%, Bob sends \$20,000, and Charlie sends the rest.
 
 <Map
   src="https://map.blnkfinance.xyz/GvPWMwzF3r"
   title="Multiple sources"
 />
 
-| | Balance ID | Amount |
-| :--- | :--- | :--- |
-| Alice | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | 10% (USD 3,000) |
-| Bob | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | USD 20,000 |
-| Charlie | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | Remaining amount (USD 7,000) |
-| **Sarah (Recipient)** | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | **Total: USD 30,000** |
+**Several destinations.** Sarah pays **USD 30,000** out. Alice receives 20%, Bob receives \$10,000, and Charlie receives the rest.
 
-<Warning>
-When sending from multiple sources, you can only send to one destination. A payload that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR`.
-</Warning>
+<Map
+  src="https://map.blnkfinance.xyz/2MmTXXT8tj"
+  title="Multiple destinations"
+/>
 
-### Create the transaction
+### Using the API
 
-Call [Create transaction](/reference/create-transaction) with these fields.
+Call [Create transaction](/reference/create-transaction). Send `sources` instead of `source`, or `destinations` instead of `destination`. To preview the split without writing it, set `dry_run` to `true`. See [Dry-run transactions](/transactions/dry-run).
 
-To preview the split without writing it, set `dry_run` to `true`. See [Dry-run transactions](/transactions/dry-run).
+Blnk returns one id for the split, and an id for each leg on the array you sent. With `inflight: true`, that split id commits or voids every leg. See [Record split inflight transaction](/transactions/inflight/create-inflight#record-split-inflight-transaction).
+
+<Tabs>
+<Tab title="Multiple sources">
 
 <CodeGroup>
 ```bash cURL wrap expandable
@@ -153,40 +149,6 @@ blnk transactions create
 ```
 </CodeGroup>
 
-| Field | Description | Required |
-| :--- | :--- | :--- |
-| `precise_amount` | Total amount to be received in its smallest unit. Send either `precise_amount` or `amount`, not both - see [Precision](/transactions/precision#using-both-precision-options-together). | Yes |
-| `amount` | Total amount to be received as a float. Blnk multiplies by `precision` to store `precise_amount`. | Yes |
-| `precision` | Precision for the transaction currency. See [Understanding precision](/transactions/precision) | No |
-| `reference` | Unique transaction reference | Yes |
-| `currency` | Asset class code. | Yes |
-| `sources` | Array of source objects with `identifier` and `distribution` fields | Yes |
-| `sources.identifier` | Balance ID of the source account | Yes |
-| `sources.distribution` | Amount to send from this source (specific amount, percentage, or "left") | Yes |
-| `destination` | Recipient's balance ID | Yes |
-| `atomic` | When `true`, all source legs succeed or the entire split fails. Default: `false`. | No |
-| `meta_data` | Custom transaction data | No |
-
-<Warning>
-    When sending from multiple sources, do not include the `source` field in your payload. Use the `sources` array to group the participating balances in your payload.
-</Warning>
-
-
-### Using the Dashboard
-
-On **Transactions**, open **Create transaction**. Under **Source**, click **Add another source** and set the balance and amount for each leg. The destination stays a single balance.
-
-![Create transaction form with multiple sources](img/transactions/create-transaction-multiple-sources.png)
-
-
-### API response structure
-
-When you create a multiple sources transaction, Blnk records one coordinated request and creates separate ledger movements per source-all credited to the single **destination**.
-
-Blnk returns a response containing:
-- A **main transaction ID** for the overall split transaction. If `inflight: true`, it can be used to commit or void all transactions at once.
-- A **sources array** with individual transaction IDs for each source. 
-
 ```json Response {7,23,28,33}
 {
     "precise_amount": 3000000,
@@ -232,110 +194,8 @@ Blnk returns a response containing:
 }
 ```
 
-### Retrieving child transactions
-
-You can retrieve all transactions in the split by searching for the main transaction ID in the `meta_data.QUEUED_PARENT_TRANSACTION` field:
-
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://localhost:5001/search/transactions" \
-  -H "X-Blnk-Key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
-  }'
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Search.search(
-  {
-    q: 'txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab',
-    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
-  },
-  'transactions',
-);
-```
-
-```go Go wrap
-results, resp, err := client.Search.SearchDocument(
-    blnkgo.SearchParams{
-        Q: "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-        QueryBy: "meta_data.QUEUED_PARENT_TRANSACTION",
-    },
-    blnkgo.Transactions,
-)
-```
-
-```python Python wrap
-response = blnk.search.search(
-  {
-    "q": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION",
-  },
-  "transactions",
-)
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.search().search(
-    SearchParams.create()
-        .q("txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab")
-        .queryBy("meta_data.QUEUED_PARENT_TRANSACTION"),
-    "transactions");
-```
-</CodeGroup>
-
-```json Response
-{
-  "hits": [
-    {
-      "document": {
-        "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3",
-        "parent_transaction": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-        "status": "APPLIED"
-      }
-    }
-  ],
-  "found": 3
-}
-```
-
-This will return all individual transactions that were created as part of the multiple sources transaction, allowing you to track and manage the complete set of related transactions.
-
-## Multiple destinations
-
-**One sender, many recipients** is pretty common: a payroll run, a marketplace split, or a refund that returns funds to several customer wallets at once.
-
-For example, Sarah is sending **USD 30,000** **out** of her balance. She routes 20% to Alice, a fixed \$10,000 to Bob, and assigns `"left"` to Charlie so whatever remains after the first two legs goes to Charlie automatically.
-
-Money movement would look like this:
-
-![Multiple destinations transaction flow](img/transactions/multiple-destinations-flow.png)
-
-<Map
-  src="https://map.blnkfinance.xyz/2MmTXXT8tj"
-  title="Multiple destinations"
-/>
-
-| | Balance ID | Amount |
-| :--- | :--- | :--- |
-| Alice | bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f | 20% (USD 6,000) |
-| Bob | bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d | USD 10,000 |
-| Charlie | bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b | Remaining amount (USD 14,000) |
-| **Sarah (Sender)** | bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38 | **Total: USD 30,000** |
-
-From a product perspective, that usually maps to one user-facing action (“Send \$30k”) while your ledger still exposes each recipient line for reporting, disputes, or partial reversals.
-
-<Warning>
-When sending to multiple destinations, you can only send from one source. A payload that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR`.
-</Warning>
-
-### Create the transaction
-
-Call [Create transaction](/reference/create-transaction) with these fields.
-
-To preview the split without writing it, set `dry_run` to `true`. See [Dry-run transactions](/transactions/dry-run).
+</Tab>
+<Tab title="Multiple destinations">
 
 <CodeGroup>
 ```bash cURL wrap expandable
@@ -443,40 +303,6 @@ blnk transactions create
 ```
 </CodeGroup>
 
-| Field | Description | Required |
-| :--- | :--- | :--- |
-| `precise_amount` | Total amount to be sent in its smallest unit. Send either `precise_amount` or `amount`, not both - see [Precision](/transactions/precision#using-both-precision-options-together). | Yes |
-| `amount` | Total amount to be sent as a float. Blnk multiplies by `precision` to store `precise_amount`. | Yes |
-| `precision` | Precision for the transaction currency. See [Understanding precision](/transactions/precision) | No |
-| `reference` | Unique transaction reference | Yes |
-| `currency` | Asset class code. | Yes |
-| `source` | Sender's balance ID | Yes |
-| `destinations` | Array of destination objects with `identifier` and `distribution` fields | Yes |
-| `destinations.identifier` | Balance ID of the destination account | Yes |
-| `destinations.distribution` | Amount to send to this destination (specific amount, percentage, or "left") | Yes |
-| `atomic` | When `true`, all destination legs succeed or the entire split fails. Default: `false`. | No |
-| `meta_data` | Custom transaction data | No |
-
-<Warning>
-    When sending to multiple destinations, do not include the `destination` field in your payload. Use the `destinations` array to group the participating balances in your payload.
-</Warning>
-
-
-### Using the Dashboard
-
-On **Transactions**, open **Create transaction**. Under **Destination**, click **Add another destination** and set the balance and amount, or distribution, for each leg. The source stays a single balance.
-
-![Create transaction form with multiple destinations](img/transactions/create-transaction-multiple-destinations.png)
-
-
-### API response structure
-
-When you create a multiple destinations transaction, Blnk creates separate transaction records for each destination.
-
-Blnk returns a response containing:
-- A **main transaction ID** for the overall split transaction. If `inflight: true`, it can be used to commit or void all transactions at once.
-- A **destinations array** with individual transaction IDs for each destination.
-
 ```json Response {7,23,28,33}
 {
     "precise_amount": 3000000,
@@ -521,79 +347,24 @@ Blnk returns a response containing:
 }
 ```
 
-### Retrieving child transactions
+</Tab>
+</Tabs>
 
-You can retrieve all transactions in the split by searching for the main transaction ID in the `meta_data.QUEUED_PARENT_TRANSACTION` field:
+### Using the Dashboard
 
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://localhost:5001/search/transactions" \
-  -H "X-Blnk-Key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
-  }'
-```
+On **Transactions**, open **Create transaction**.
 
-```typescript TypeScript wrap
-const response = await blnk.Search.search(
-  {
-    q: 'txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab',
-    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
-  },
-  'transactions',
-);
-```
+For several sources, click **Add another source** under **Source** and set the balance and amount for each leg. The destination stays one balance.
 
-```go Go wrap
-results, resp, err := client.Search.SearchDocument(
-    blnkgo.SearchParams{
-        Q: "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-        QueryBy: "meta_data.QUEUED_PARENT_TRANSACTION",
-    },
-    blnkgo.Transactions,
-)
-```
+![Create transaction form with multiple sources](img/transactions/create-transaction-multiple-sources.png)
 
-```python Python wrap
-response = blnk.search.search(
-  {
-    "q": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION",
-  },
-  "transactions",
-)
-```
+For several destinations, click **Add another destination** under **Destination**. The source stays one balance.
 
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.search().search(
-    SearchParams.create()
-        .q("txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab")
-        .queryBy("meta_data.QUEUED_PARENT_TRANSACTION"),
-    "transactions");
-```
-</CodeGroup>
+![Create transaction form with multiple destinations](img/transactions/create-transaction-multiple-destinations.png)
 
-```json Response
-{
-  "hits": [
-    {
-      "document": {
-        "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3",
-        "parent_transaction": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
-        "status": "APPLIED"
-      }
-    }
-  ],
-  "found": 3
-}
-```
+## How it works
 
-This will return all individual transactions that were created as part of the multiple destinations transaction, allowing you to track and manage the complete set of related transactions.
-
-
-## Distribution
+### Distribution
 
 You can specify distribution amounts in three ways. The same rules apply to `sources` and to `destinations`.
 
@@ -606,8 +377,6 @@ You can specify distribution amounts in three ways. The same rules apply to `sou
 <Warning>
 You can only use `"left"` once per transaction, and all distributions must sum to the total amount.
 </Warning>
-
-### Using `precise_distribution` with `precise_amount`
 
 When a transaction uses `precise_amount`, use `precise_distribution` instead of `distribution` only for legs that specify an exact value. Percentages (`"10%"`) and the remainder (`"left"`) still use `distribution`.
 
@@ -631,46 +400,106 @@ When a transaction uses `precise_amount`, use `precise_distribution` instead of 
 For how `precise_amount` and `precision` work, see [Precision](/transactions/precision).
 </Tip>
 
-## Atomic processing
+### Transaction references
+
+Blnk generates a unique reference for each leg by appending a counter to your reference, starting at `1`. 
+
+From version `0.15.4` the suffix follows the order of the array you sent, `sources` or `destinations`, and stays stable across retries.
+
+If your reference is `ref_001adcfgf`, the legs are `ref_001adcfgf_1`, `ref_001adcfgf_2`, and `ref_001adcfgf_3`.
+
+### Retrieving child transactions
+
+Blnk records one coordinated request and a separate ledger movement for each leg. Filter on `meta_data.QUEUED_PARENT_TRANSACTION` to retrieve those movements.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      {
+        "field": "meta_data.QUEUED_PARENT_TRANSACTION",
+        "operator": "eq",
+        "value": "<queued_parent_transaction_id>"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'meta_data.QUEUED_PARENT_TRANSACTION',
+        operator: 'eq',
+        value: '<queued_parent_transaction_id>',
+      },
+    ],
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {
+            Field: "meta_data.QUEUED_PARENT_TRANSACTION",
+            Operator: blnkgo.OpEqual,
+            Value: "<queued_parent_transaction_id>",
+        },
+    },
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "meta_data.QUEUED_PARENT_TRANSACTION",
+        "operator": "eq",
+        "value": "<queued_parent_transaction_id>",
+      },
+    ],
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("meta_data.QUEUED_PARENT_TRANSACTION")
+            .operator("eq")
+            .value("<queued_parent_transaction_id>")
+        )),
+    "transactions");
+```
+</CodeGroup>
+
+The filter returns every transaction created as part of the split.
+
+### Atomic processing
 
 By default, Blnk processes a split with `atomic: false`. Each leg is evaluated on its own. Legs that pass are marked `APPLIED`, and legs that fail are marked `REJECTED`. That can leave a partial split.
 
-Set `atomic: true` for all-or-nothing processing. Every leg must succeed. If any leg fails, Blnk rolls back legs that already applied or went inflight. A failed source leg reverses the debits. A failed destination leg reverses the credits. The split is cancelled and no partial state remains.
+Set `atomic: true` for all-or-nothing processing. Every leg must succeed. If one leg fails, Blnk refunds the legs that already processed. Each refund cancels that movement, so the split does not leave a partial result.
 
 <Tip>
 Use `atomic: true` when a partial result is not acceptable, such as settling an invoice where every contributor must cover its share, or paying out a split where every recipient must succeed.
 </Tip>
 
-## Retrieving the child transactions
-
-Blnk records one coordinated request and a separate ledger movement for each leg. Retrieve those movements by searching for the main transaction ID in `meta_data.QUEUED_PARENT_TRANSACTION`.
-
-<CodeGroup>
-```bash cURL wrap
-curl -X POST "http://localhost:5001/search/transactions" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "<queued_parent_transaction_id>",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
-  }'
-```
-</CodeGroup>
-
-The search returns every transaction created as part of the split.
-
-## Transaction references
-
-Blnk generates a unique reference for each leg by appending a counter to your reference, starting at `1`. From version 0.15.4 the suffix follows the order of the array you sent, `sources` or `destinations`, and stays stable across retries.
-
-If your reference is `ref_001adcfgf`, the legs are `ref_001adcfgf_1`, `ref_001adcfgf_2`, and `ref_001adcfgf_3`.
-
-
 <RelatedTopics
   items={[
     { title: "Dry-run transactions", href: "/transactions/dry-run" },
-    { title: "Split inflight", href: "/transactions/inflight/split-inflight" },
-    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Create inflight", href: "/transactions/inflight/create-inflight#record-split-inflight-transaction" },
+    { title: "Record a transaction", href: "/transactions/single-transaction" },
     { title: "Split transactions", href: "/reference/split-transactions" },
     { title: "Precision", href: "/transactions/precision" },
   ]}

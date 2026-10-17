@@ -88,7 +88,7 @@ Read the source from `blnkfinance/blnk-docs` at the same path (the docs filesyst
 
 Remove dividers from the body. A divider is a horizontal rule on its own line, `---`, between sections. Leave the frontmatter fences.
 
-When a Core page explains an action you can also do in the dashboard, put the steps and screenshots on that page. Do not link to a Cloud page for those steps. Do not add a separate Cloud page that only repeats them.
+When a Core page explains an action you can also do in the dashboard, put the steps and screenshots on that page. Do not link to a Cloud page for those steps. Do not add a separate Cloud page that only repeats them. That section uses `### Using the API` and `### Using the Dashboard`. See **Using the API and the dashboard** under Decisions already on the site.
 
 When a request sample and its response are followed by a `Tabs` pair of field tables, keep the tabs. The request tab holds the code group, then its field table. The response tab holds the response sample, then its field table. Code groups stay code groups.
 
@@ -124,7 +124,7 @@ Do not number headings. `## 1: Installation Guide` becomes `## Install Blnk`.
 
 The opening says what the thing is and what the reader does. It does not list the headings on the page. The page does not close with a line that says the reader has finished.
 
-Name a tab by the choice the reader is making, such as `On your machine`, `Using API`, or `Using the Dashboard`.
+Name a tab by the choice the reader is making, such as `On your machine` or `Using Blnk Cloud`. On a guide, `Using the API` and `Using the Dashboard` are h3s, not tab titles. See **Using the API and the dashboard**.
 
 A step title is the action. Two source steps that are one action, such as clone and then start, become one step. A shortcut is `⌥ L` (`Alt+L` on Windows`). The control name is bold.
 
@@ -151,7 +151,11 @@ A module, command, image tag, env var, or port is a claim. Trace it to the curre
 
 A step changes the outcome the page promises. Prerequisites are what block the first command. A step that does not move the reader there belongs on another page.
 
-Two or three sentences that share a point stay in one paragraph. Do not stack one-line paragraphs. Do not let a paragraph run to four lines or more. A list is for parallel items. A sentence that only restates the heading does not get its own paragraph.
+A paragraph is 2 or 3 sentences. Break a fourth sentence into the next paragraph. Do not stack one-line paragraphs unless that sentence is its own point. A list is for parallel items. A sentence that only restates the heading does not get its own paragraph.
+
+A callout that states a version uses `Version`. That includes when a feature shipped, which Core release a behavior starts in, and which SDK release targets a Core version. Do not use `Info`, `Note`, `Tip`, `Warning`, or `Check` for that line.
+
+A callout that states a version uses `Version`. That includes "available in version", "from Blnk Core", and which release a package targets. Do not use `Info`, `Note`, `Tip`, `Warning`, or `Check` for that line.
 
 Before the page is done, check it as someone who did not write it:
 
@@ -193,9 +197,33 @@ A line that says a feature is available in a particular version is `<Version>`, 
 
 Screenshots live in `src/content/img/`, not `public/`. Write them as markdown images: `![alt](img/...)`. `img/file.png` resolves from `src/content` on any page. A JSX `<img src="img/...">` becomes a relative URL and 404s.
 
+### Using the API and the dashboard
+
+When one section shows the same action in the API and in the dashboard, both are h3s under that section's h2. Do this on every guide that has both, including identities.
+
+```md
+## Create an identity
+
+### Using the API
+
+Call the endpoint, then the request and response tabs.
+
+### Using the Dashboard
+
+The steps and screenshots.
+```
+
+The request and response tabs sit under `### Using the API`. Do not put those tabs directly under the h2. Do not hang the dashboard steps on a later section.
+
+When the dashboard covers more than one API section, such as tokenizing one field and several fields, `## Using the Dashboard` is its own h2 after those sections. Do not nest it under the last one.
+
+An action that exists only in the API stays under the h2. Do not add `### Using the API` with no dashboard sibling.
+
+`Using API` and `Using the Dashboard` as tab titles is the quick start only, where both choices are steps. On a guide, those words are the h3s above.
+
 ### Outline
 
-A `<Tab title="...">` is a table-of-contents child of the heading it follows. Clicking that item opens the tab and scrolls to it. Do not add a heading only to list a tab.
+A `<Tab title="...">` is a table-of-contents child of the heading it follows. Clicking that item opens the tab and scrolls to it. Do not add a heading only to list a tab. Under `### Using the API`, the request and response tabs nest under that h3.
 
 ### Spacing and type
 

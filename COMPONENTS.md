@@ -26,7 +26,7 @@ A snippet is compiled on its own. It imports each component it uses.
 | `Card.astro` | `Card` | Link or static tile |
 | `Tabs.astro` | `Tabs` | Tab set. The bar is built in the browser |
 | `Tab.astro` | `Tab` | One panel |
-| `AccordionGroup.astro` | `AccordionGroup` | Shared top border around accordions |
+| `AccordionGroup.astro` | `AccordionGroup` | Border around a set of accordions |
 | `Accordion.astro` | `Accordion` | One disclosure. More than one can be open |
 | `Expandable.astro` | `Expandable` | Single disclosure |
 | `Frame.astro` | `Frame` | Figure and optional caption |
@@ -158,7 +158,7 @@ A `Tab` title is a table-of-contents child of the `h2` or `h3` it follows. `src/
 
 ## Accordions
 
-`AccordionGroup` draws the shared top border. Each `Accordion` starts closed. More than one can be open at once.
+`AccordionGroup` draws a border around the set, with a divider between items. A single `Accordion` has its own border. Each `Accordion` starts closed. More than one can be open at once.
 
 ```mdx
 <AccordionGroup>

@@ -26,6 +26,7 @@ For inflight or split transactions, the ID you pass matters. Use the table below
 | `SCHEDULED`, `REJECTED` | No | Not refundable. |
 
 ## Applying refunds
+### Using the API
 
 <Steps>
 <Step title="Request a refund">
@@ -164,6 +165,34 @@ ApiResponse<JsonNode> response = blnk.transactions().refund(
 </Step>
 </Steps>
 
+### Using the Dashboard
+
+Refunding sends the funds back to the source and creates a linked refund record.
+
+<Steps titleSize="h3">
+<Step title="Open Refund transaction">
+
+Open the transaction, then click **Refund transaction** or press `R`.
+
+![Transaction details with Refund transaction](img/transactions/refund-transaction-step-1-action.png)
+
+</Step>
+<Step title="Confirm the refund">
+
+In the confirmation, click **Refund transaction**.
+
+![Refund transaction confirmation](img/transactions/refund-transaction-step-2-modal.png)
+
+</Step>
+<Step title="Read the result">
+
+A new linked refund record is created with status `APPLIED`.
+
+![Transactions table showing the refund](img/transactions/refund-transaction-step-3-result.png)
+
+</Step>
+</Steps>
+
 ## Description and metadata
 
 <Version>Available in version 0.15.3 and later.</Version>
@@ -201,7 +230,7 @@ If the original transaction has `{"type": "deposit", "channel": "card"}` and you
 
 ## Refunding inflight transactions
 
-Only [inflight](/transactions/inflight/creating-inflight) transactions that have been committed or voided can be refunded. Active inflight holds cannot be refunded. 
+Only [inflight](/transactions/inflight/create-inflight) transactions that have been committed or voided can be refunded. Active inflight holds cannot be refunded. 
 
 Always pass the original `INFLIGHT` transaction ID to the API, not the ID of its `APPLIED` or `VOID` child.
 
@@ -379,9 +408,7 @@ Blnk refunds every `APPLIED` child from its destination back to its source. The 
 
 ## Error handling
 
-<Info>
-Structured errors are available from Blnk Core 0.15.0 and later.
-</Info>
+<Version>Structured errors are available from Blnk Core 0.15.0 and later.</Version>
 
 Refunds that cannot be applied return `404 Not Found` or `409 Conflict`.
 
@@ -412,36 +439,6 @@ To resolve the error:
 | `GEN_CONFLICT` | Inspect the failed legs. Retry only legs that are still refundable. |
 
 See [API error codes](/advanced/error-codes) for the full catalogue. If you upgrade from 0.15.3 or earlier, review the [0.15.4 migration guide](/changelog/v15-4-migration).
-
-
-## Using the Dashboard
-
-Refunding sends the funds back to the source and creates a linked refund record.
-
-<Steps titleSize="h3">
-<Step title="Open Refund transaction">
-
-Open the transaction, then click **Refund transaction** or press `R`.
-
-![Transaction details with Refund transaction](img/transactions/refund-transaction-step-1-action.png)
-
-</Step>
-<Step title="Confirm the refund">
-
-In the confirmation, click **Refund transaction**.
-
-![Refund transaction confirmation](img/transactions/refund-transaction-step-2-modal.png)
-
-</Step>
-<Step title="Read the result">
-
-A new linked refund record is created with status `APPLIED`.
-
-![Transactions table showing the refund](img/transactions/refund-transaction-step-3-result.png)
-
-</Step>
-</Steps>
-
 
 <RelatedTopics
   items={[

@@ -1,7 +1,6 @@
 ---
 title: "Bulk Transactions"
 sidebarTitle: "Bulk transactions"
-icon: "package"
 description: "Record many transactions in one request."
 seoTitle: "Bulk Transactions • Blnk Developer Documentation"
 metaDescription: "Process multiple transactions at once using Blnk bulk API, speed up operations, and ensure efficient batch handling of payments"
@@ -22,9 +21,7 @@ To preview a batch without writing anything, set `dry_run` to `true`. See [Dry-r
 
 Call the [Bulk Transactions API](/reference/bulk-transactions). 
 
-<Note>
-From Blnk Core **0.10.5**, bulk create defaults to `skip_queue: false` and enqueues each item. Before 0.10.5, every item was processed synchronously in the request.
-</Note>
+<Version>From Blnk Core **0.10.5**, bulk create defaults to `skip_queue: false` and enqueues each item. Before 0.10.5, every item was processed synchronously in the request.</Version>
 
 <CodeGroup>
 ```bash cURL wrap expandable
@@ -438,58 +435,11 @@ Replace `<batch-id>` with the `batch_id` from the create response. Use the filte
 
 ## Handling inflight bulk transactions
 
-To create inflight bulk transactions, set `inflight: true` in the request body. Blnk ignores any `inflight` flag passed in the transaction objects and respects the root inflight flag. 
+Set `inflight: true` on the bulk request. Blnk ignores an `inflight` flag on child objects and holds every transaction in the batch. See [Record bulk inflight transaction](/transactions/inflight/create-inflight#record-bulk-inflight-transaction).
 
-When set, all transactions in the batch will be processed as `INFLIGHT`.
+Commit or void the batch with `batch_id`. See [Commit a split or a bulk batch](/transactions/inflight/commit-inflight#commit-a-split-or-a-bulk-batch) and [Void a split or a bulk batch](/transactions/inflight/void-inflight#void-a-split-or-a-bulk-batch).
 
-To commit or void all inflight transactions in a batch, use the `batch_id`. For independently-created inflight holds, see [Bulk commit & void](/transactions/inflight/bulk-update-inflight).
-
-<CodeGroup>
-```bash cURL wrap
-curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{batch_id}" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "status": "commit"
-  }'
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Transactions.updateStatus('{batch_id}', {
-  status: 'commit',
-});
-```
-
-```go Go wrap
-txn, resp, err := client.Transaction.Update("{batch_id}", blnkgo.UpdateStatus{
-    Status: blnkgo.InflightStatusCommit,
-})
-```
-
-```python Python wrap
-response = blnk.transactions.update_status(
-  "{batch_id}",
-  {
-    "status": "commit",
-  },
-)
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
-    "{batch_id}",
-    UpdateTransactionStatus.create()
-        .status("commit"));
-```
-</CodeGroup>
-
-```json Response
-{
-  "transaction_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-  "status": "APPLIED",
-  "parent_transaction": "bulk_c62f200b-905f-4983-a349-cadd279234aa"
-}
-```
+Holds created one by one use [Commit multiple inflights](/transactions/inflight/commit-inflight#commit-multiple-inflights) and [Void many transactions](/transactions/inflight/void-inflight#void-many-transactions).
 
 ## Webhook notifications
 
@@ -1014,50 +964,7 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
 </Step>
 <Step title="Commit the batch">
 
-Use the returned `batch_id` to commit every inflight transaction in the batch:
-
-<CodeGroup>
-```bash cURL wrap
-curl -X PUT "http://localhost:5001/transactions/inflight/bulk_c62f200b-905f-4983-a349-cadd279234aa" \
-  -H "X-blnk-key: <api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "status": "commit"
-  }'
-```
-
-```typescript TypeScript wrap
-const response = await blnk.Transactions.updateStatus(
-  'bulk_c62f200b-905f-4983-a349-cadd279234aa',
-  { status: 'commit' },
-);
-```
-
-```go Go wrap
-txn, resp, err := client.Transaction.Update(
-    "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-    blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusCommit,
-    },
-)
-```
-
-```python Python wrap
-response = blnk.transactions.update_status(
-  "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-  {
-    "status": "commit",
-  },
-)
-```
-
-```java Java wrap
-ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
-    "bulk_c62f200b-905f-4983-a349-cadd279234aa",
-    UpdateTransactionStatus.create()
-        .status("commit"));
-```
-</CodeGroup>
+Use `batch_id` to commit every hold in the batch. See [Commit a split or a bulk batch](/transactions/inflight/commit-inflight#commit-a-split-or-a-bulk-batch).
 
 </Step>
 </Steps>
@@ -1067,9 +974,7 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
 
 ## Error handling
 
-<Info>
-Structured errors are available from Blnk Core 0.15.0 and later.
-</Info>
+<Version>Structured errors are available from Blnk Core 0.15.0 and later.</Version>
 
 Bulk endpoints return structured `error_detail` objects for validation failures. For duplicate references and batch rollbacks, behaviour depends on `skip_queue`. See [API error codes](/advanced/error-codes) for the full catalogue.
 
@@ -1147,12 +1052,12 @@ For atomic batches, previously applied items in the same request are refunded vi
 3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
 4. For large transaction batches, using `run_async: true` is recommended to avoid timeout issues.
 5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
-6. On the default queued path, `status: "applied"` means the bulk request was accepted - search by `parent_transaction` or `meta_data.QUEUED_PARENT_TRANSACTION` to verify final child statuses.
+6. On the default queued path, `status: "applied"` means the bulk request was accepted. Filter on `parent_transaction` or `meta_data.QUEUED_PARENT_TRANSACTION` to verify final child statuses.
 
 <RelatedTopics
   items={[
     { title: "Dry-run transactions", href: "/transactions/dry-run" },
-    { title: "Bulk commit & void", href: "/transactions/inflight/bulk-update-inflight" },
+    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
     { title: "Handling hot balances", href: "/guides/hot-balances" },
     { title: "0.10.5 migration", href: "/changelog/v10-5-migration" },
     { title: "Bulk transactions", href: "/reference/bulk-transactions" },

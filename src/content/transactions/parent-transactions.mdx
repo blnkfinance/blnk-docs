@@ -54,59 +54,86 @@ Consider an inflight transaction of \$100. Its lifecycle looks like this:
 
 6. The `INFLIGHT` transaction becomes the parent of the `APPLIED` and/or `VOID` transactions.
 
-With the `INFLIGHT` record as the parent, you can retrieve the complete outcome of that transaction by querying for all transactions whose `parent_transaction` field matches the `INFLIGHT` transaction ID:
+With the `INFLIGHT` record as the parent, you can retrieve the complete outcome of that transaction by filtering for every transaction whose `parent_transaction` matches the `INFLIGHT` transaction ID:
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: <api-key>" \
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "q": "<inflight_transaction_id>",
-    "query_by": "parent_transaction"
+    "filters": [
+      {
+        "field": "parent_transaction",
+        "operator": "eq",
+        "value": "<inflight_transaction_id>"
+      }
+    ]
   }'
 ```
 
 ```typescript TypeScript wrap
-const response = await blnk.Search.search(
-  { q: '<inflight_transaction_id>', query_by: 'parent_transaction' },
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'parent_transaction',
+        operator: 'eq',
+        value: '<inflight_transaction_id>',
+      },
+    ],
+  },
   'transactions',
 );
 ```
 
 ```go Go wrap
-results, resp, err := client.Search.SearchDocument(
-    blnkgo.SearchParams{Q: "<inflight_transaction_id>", QueryBy: "parent_transaction"},
-    blnkgo.Transactions,
-)
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {
+            Field: "parent_transaction",
+            Operator: blnkgo.OpEqual,
+            Value: "<inflight_transaction_id>",
+        },
+    },
+})
 ```
 
 ```python Python wrap
-response = blnk.search.search(
-  {"q": "<inflight_transaction_id>", "query_by": "parent_transaction"},
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "parent_transaction",
+        "operator": "eq",
+        "value": "<inflight_transaction_id>",
+      },
+    ],
+  },
   "transactions",
 )
 ```
 
 ```java Java wrap
-ApiResponse<JsonNode> response = blnk.search().search(
-    SearchParams.create()
-        .q("<inflight_transaction_id>")
-        .queryBy("parent_transaction"),
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("parent_transaction")
+            .operator("eq")
+            .value("<inflight_transaction_id>")
+        )),
     "transactions");
 ```
 </CodeGroup>
 
 ```json 200 OK
 {
-  "found": 1,
-  "hits": [
+  "data": [
     {
-      "document": {
-        "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
-        "parent_transaction": "<inflight_transaction_id>",
-        "status": "APPLIED"
-      }
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+      "parent_transaction": "<inflight_transaction_id>",
+      "status": "APPLIED"
     }
   ]
 }
@@ -118,70 +145,88 @@ A queued parent transaction refers to the very first transaction in a chain - th
 
 In most cases, this initial transaction starts in the `QUEUED` state, serving as the root from which all subsequent transactions (like `INFLIGHT` or `APPLIED`) are derived.
 
-Blnk records the ID of this initial transaction in the `meta_data.QUEUED_PARENT_TRANSACTION` field of every subsequent transaction. You can use this ID to query and retrieve all transactions that belong to the same lifecycle chain:
+Blnk records the ID of this initial transaction in the `meta_data.QUEUED_PARENT_TRANSACTION` field of every subsequent transaction. Filter on that field to retrieve every transaction in the same lifecycle chain:
 
 <CodeGroup>
 ```bash cURL wrap
-curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/transactions" \
-  -H "X-Blnk-Key: <api-key>" \
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
-    "q": "<queued_parent_transaction_id>",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION"
+    "filters": [
+      {
+        "field": "meta_data.QUEUED_PARENT_TRANSACTION",
+        "operator": "eq",
+        "value": "<queued_parent_transaction_id>"
+      }
+    ]
   }'
 ```
 
 ```typescript TypeScript wrap
-const response = await blnk.Search.search(
+const response = await blnk.Search.filter(
   {
-    q: '<queued_parent_transaction_id>',
-    query_by: 'meta_data.QUEUED_PARENT_TRANSACTION',
+    filters: [
+      {
+        field: 'meta_data.QUEUED_PARENT_TRANSACTION',
+        operator: 'eq',
+        value: '<queued_parent_transaction_id>',
+      },
+    ],
   },
   'transactions',
 );
 ```
 
 ```go Go wrap
-results, resp, err := client.Search.SearchDocument(
-    blnkgo.SearchParams{
-        Q: "<queued_parent_transaction_id>",
-        QueryBy: "meta_data.QUEUED_PARENT_TRANSACTION",
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {
+            Field: "meta_data.QUEUED_PARENT_TRANSACTION",
+            Operator: blnkgo.OpEqual,
+            Value: "<queued_parent_transaction_id>",
+        },
     },
-    blnkgo.Transactions,
-)
+})
 ```
 
 ```python Python wrap
-response = blnk.search.search(
+response = blnk.search.filter(
   {
-    "q": "<queued_parent_transaction_id>",
-    "query_by": "meta_data.QUEUED_PARENT_TRANSACTION",
+    "filters": [
+      {
+        "field": "meta_data.QUEUED_PARENT_TRANSACTION",
+        "operator": "eq",
+        "value": "<queued_parent_transaction_id>",
+      },
+    ],
   },
   "transactions",
 )
 ```
 
 ```java Java wrap
-ApiResponse<JsonNode> response = blnk.search().search(
-    SearchParams.create()
-        .q("<queued_parent_transaction_id>")
-        .queryBy("meta_data.QUEUED_PARENT_TRANSACTION"),
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("meta_data.QUEUED_PARENT_TRANSACTION")
+            .operator("eq")
+            .value("<queued_parent_transaction_id>")
+        )),
     "transactions");
 ```
 </CodeGroup>
 
 ```json 200 OK
 {
-  "found": 2,
-  "hits": [
+  "data": [
     {
-      "document": {
-        "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3",
-        "meta_data": {
-          "QUEUED_PARENT_TRANSACTION": "<queued_parent_transaction_id>"
-        },
-        "status": "APPLIED"
-      }
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3",
+      "meta_data": {
+        "QUEUED_PARENT_TRANSACTION": "<queued_parent_transaction_id>"
+      },
+      "status": "APPLIED"
     }
   ]
 }
@@ -212,7 +257,7 @@ Instead you'll need to query by the `meta_data.QUEUED_PARENT_TRANSACTION` field,
 <RelatedTopics
   items={[
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
-    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Record a transaction", href: "/transactions/single-transaction" },
     { title: "Refunds", href: "/transactions/refunds" },
   ]}
 />

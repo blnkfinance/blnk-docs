@@ -1,0 +1,552 @@
+---
+title: "Create inflight transactions"
+sidebarTitle: "Create inflight"
+description: "Hold a single transfer, a split, or a bulk batch until you commit or void it."
+seoTitle: "Create inflight transactions • Blnk Developer Documentation"
+metaDescription: "Record an inflight transaction and understand how pending amounts affect balances in Blnk."
+---
+
+<Version>Available in version 0.6.0 and later.</Version>
+
+An inflight transaction reserves funds until you [commit](/transactions/inflight/commit-inflight) or [void](/transactions/inflight/void-inflight) it. When you set `inflight: true`, Blnk tracks the pending amount on inflight fields. The main balance amount does not move yet.
+
+Use inflight when you need authorization, verification, or external confirmation before applying a transfer.
+
+## Use cases
+
+Useful applications for `inflight` include:
+
+- **KYC limits:** Hold deposits inflight until the user's KYC tier is updated.
+- **[Escrow](/tutorials/quick-start/escrow-payments):** Show users an amount being held without making it spendable.
+- **Card payouts:** Hold funds until the payment processor authorizes the charge.
+- **External payouts:** Hold funds while a provider processes the payout; commit or void based on the outcome.
+
+## How it works
+
+<span id="inflight-balance-tracking" />
+
+The main balance amount does not move yet.
+
+Blnk records the pending amount on three fields: `inflight_debit_balance` (reserved to leave), `inflight_credit_balance` (pending in), and `inflight_balance` (credit minus debit).
+
+For example, \$100 is held from `balance_A` to `balance_B`. `balance_A` starts at \$200. `balance_B` starts at \$0.
+
+| `balance_id` | **Main balance** | **Inflight balance** | **Inflight credit** | **Inflight debit** |
+| :-- | :-- | :-- | :-- | :-- |
+| `balance_A` | 200 | -100 | 0 | 100 |
+| `balance_B` | 0 | 100 | 100 | 0 |
+
+`balance_A` can still spend up to \$100 (`balance - inflight_debit_balance`). `balance_B` shows \$100 incoming, and that amount is not spendable.
+
+[Commit](/transactions/inflight/commit-inflight) moves the \$100 into the main balances. [Void](/transactions/inflight/void-inflight) drops the inflight amounts and leaves the main balances at 200 and 0.
+
+<Frame>
+![How a transaction is processed in inflight](img/transactions/inflight-processing.png)
+</Frame>
+
+## Record one inflight transaction
+
+<Tabs>
+<Tab title="Using the API">
+
+<Steps>
+<Step title="Create an inflight transaction">
+
+Set `inflight: true` on a [Create transaction](/reference/create-transaction) request:
+
+<CodeGroup>
+```bash cURL wrap {12}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 10000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "description": "For vacation",
+    "inflight": true
+  }'
+```
+
+```typescript TypeScript wrap {9}
+const response = await blnk.Transactions.create({
+  precise_amount: 10000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_28edb3e5-c168-4127-a1c4-16274e7a28d3',
+  destination: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  description: 'For vacation',
+  inflight: true,
+});
+```
+
+```go Go wrap {11}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(10000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+        Destination: "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+        Description: "For vacation",
+    },
+    Inflight: true,
+})
+```
+
+```python Python wrap {9}
+response = blnk.transactions.create({
+  "precise_amount": 10000,
+  "precision": 100,
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "description": "For vacation",
+  "inflight": True,
+})
+```
+
+```java Java wrap {10}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .description("For vacation")
+        .inflight(true)
+);
+```
+</CodeGroup>
+
+```json 201 Created wrap {4,5}
+{
+  "amount": 100,
+  "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "status": "INFLIGHT",
+  "inflight": true,
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+Save `transaction_id`. You commit or void this id.
+
+With the default queue, Blnk first records the transaction as `QUEUED`, then moves it to `INFLIGHT` when the worker processes it. 
+
+Set `skip_queue: true` to apply the hold in the same request. See [Transaction lifecycle](/transactions/transaction-lifecycle).
+
+</Step>
+</Steps>
+
+</Tab>
+<Tab title="Using the Dashboard">
+
+<Steps titleSize="h3">
+<Step title="Turn on Apply inflight">
+
+Turn on **Apply inflight** before you create the transaction. The amount stays on hold until you commit or void it.
+
+![Apply inflight turned on](img/transactions/inflight-option.png)
+
+</Step>
+</Steps>
+
+</Tab>
+</Tabs>
+
+## Record split inflight transaction
+
+A split inflight is a [split transaction](/transactions/split-transactions) with `inflight` set to `true`. 
+
+Several sources pay one destination, or one source pays several destinations, and each leg stays on hold.
+
+<Steps>
+<Step title="Record the split">
+
+Call [Create transaction](/reference/create-transaction) with `inflight: true` and one side of the split. This example pays three destinations from Sarah's balance.
+
+<CodeGroup>
+```bash cURL wrap {11}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 3000000,
+    "precision": 100,
+    "reference": "ref_001adcfgf",
+    "currency": "USD",
+    "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+    "description": "Payment from Sarah",
+    "inflight": true,
+    "destinations": [
+      {
+        "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+        "distribution": "20%"
+      },
+      {
+        "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+        "precise_distribution": "1000000"
+      },
+      {
+        "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+        "distribution": "left"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {8}
+const response = await blnk.Transactions.create({
+  precise_amount: 3000000,
+  precision: 100,
+  reference: 'ref_001adcfgf',
+  currency: 'USD',
+  source: 'bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38',
+  description: 'Payment from Sarah',
+  inflight: true,
+  destinations: [
+    {
+      identifier: 'bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f',
+      distribution: '20%',
+    },
+    {
+      identifier: 'bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d',
+      precise_distribution: '1000000',
+    },
+    {
+      identifier: 'bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b',
+      distribution: 'left',
+    },
+  ],
+});
+```
+
+```go Go wrap {24}
+transaction, resp, err := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(3000000),
+        Reference: "ref_001adcfgf",
+        Currency: "USD",
+        Precision: 100,
+        Source: "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+        Description: "Payment from Sarah",
+        Destinations: []blnkgo.Source{
+            {
+                Identifier: "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+                Distribution: "20%",
+            },
+            {
+                Identifier: "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+                PreciseDistribution: "1000000",
+            },
+            {
+                Identifier: "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+                Distribution: "left",
+            },
+        },
+    },
+    Inflight: true,
+})
+```
+
+```python Python wrap {8}
+response = blnk.transactions.create({
+  "precise_amount": 3000000,
+  "precision": 100,
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "description": "Payment from Sarah",
+  "inflight": True,
+  "destinations": [
+    {"identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f", "distribution": "20%"},
+    {"identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d", "precise_distribution": "1000000"},
+    {"identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b", "distribution": "left"},
+  ],
+})
+```
+
+```java Java wrap {9}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(3000000)
+        .precision(100)
+        .reference("ref_001adcfgf")
+        .currency("USD")
+        .source("bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38")
+        .description("Payment from Sarah")
+        .inflight(true)
+        .destinations(List.of(
+            MultipleSourcesT.create()
+            .identifier("bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f")
+            .distribution("20%"),
+            MultipleSourcesT.create()
+            .identifier("bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d")
+            .preciseDistribution("1000000"),
+            MultipleSourcesT.create()
+            .identifier("bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b")
+            .distribution("left")
+        )));
+```
+</CodeGroup>
+
+</Step>
+<Step title="Save the parent id">
+
+Blnk records each leg as its own inflight transaction.
+
+On the default queue, the create response is `QUEUED` and every leg shares `meta_data.QUEUED_PARENT_TRANSACTION`. Save that id.
+
+```json 201 Queued wrap {28}
+{
+  "amount": 30000,
+  "precision": 100,
+  "transaction_id": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab",
+  "status": "QUEUED",
+  "source": "bln_92e4b9b6-0b85-4ef4-87a2-682c31500d38",
+  "reference": "ref_001adcfgf",
+  "currency": "USD",
+  "description": "Payment from Sarah",
+  "destinations": [
+    {
+      "identifier": "bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f",
+      "distribution": "20%",
+      "transaction_id": "txn_59347177-aa7e-d8ad-9f4f-d09628b32ec3"
+    },
+    {
+      "identifier": "bln_64c50fb5-32d5-4f78-9f4a-e8b01aaf025d",
+      "distribution": "10000",
+      "transaction_id": "txn_7ddc8d4f-3b77-4b7d-a37f-240216ab074c"
+    },
+    {
+      "identifier": "bln_7d98dfe9-5c3e-4c9b-b96a-65f6d9f7b89b",
+      "distribution": "left",
+      "transaction_id": "txn_5aad04dd-ed53-4f77-9f01-4916d31fac5f"
+    }
+  ],
+  "meta_data": {
+    "QUEUED_PARENT_TRANSACTION": "txn_0b59f6e6-6c4a-4efa-915c-526f77ef61ab"
+  }
+}
+```
+
+If you set `skip_queue: true` on create, the response status is `INFLIGHT` and the legs share the root `transaction_id` as `parent_transaction`. Save that root id instead.
+
+Use this parent id, not a leg id from `destinations` or `sources`, when you [commit](/transactions/inflight/commit-inflight#commit-a-split-or-a-bulk-batch) or [void](/transactions/inflight/void-inflight#void-a-split-or-a-bulk-batch) the split.
+
+</Step>
+</Steps>
+
+## Record bulk inflight transaction
+
+<Version>Available in version 0.9.0 and later.</Version>
+
+A [bulk transaction](/transactions/bulk-transactions) records many transfers in one request. Each object in `transactions` is its own transfer. The batch shape, `atomic`, and `run_async` stay on that page.
+
+<Steps>
+<Step title="Record the batch">
+
+Set `inflight: true` on the [bulk request](/reference/bulk-transactions), not on each child. Blnk ignores an `inflight` flag inside `transactions` and holds every transfer in the batch.
+
+<CodeGroup>
+```bash cURL wrap {5}
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions/bulk" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inflight": true,
+    "transactions": [
+      {
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "tx_003",
+        "description": "First transaction",
+        "currency": "NGN",
+        "source": "@account1",
+        "destination": "@account2"
+      },
+      {
+        "precise_amount": 5000,
+        "precision": 100,
+        "reference": "tx_004",
+        "description": "Second transaction",
+        "currency": "NGN",
+        "source": "@account2",
+        "destination": "@account3"
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap {3}
+const response = await blnk.Transactions.createBulk({
+  inflight: true,
+  transactions: [
+    {
+      precise_amount: 10000,
+      precision: 100,
+      reference: 'tx_003',
+      description: 'First transaction',
+      currency: 'NGN',
+      source: '@account1',
+      destination: '@account2',
+    },
+    {
+      precise_amount: 5000,
+      precision: 100,
+      reference: 'tx_004',
+      description: 'Second transaction',
+      currency: 'NGN',
+      source: '@account2',
+      destination: '@account3',
+    },
+  ],
+});
+```
+
+```go Go wrap {3}
+batch, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+    Inflight: true,
+    Transactions: []blnkgo.CreateTransactionRequest{
+        {
+            PreciseAmount: big.NewInt(10000),
+            Precision: 100,
+            Reference: "tx_003",
+            Description: "First transaction",
+            Currency: "NGN",
+            Source: "@account1",
+            Destination: "@account2",
+        },
+        {
+            PreciseAmount: big.NewInt(5000),
+            Precision: 100,
+            Reference: "tx_004",
+            Description: "Second transaction",
+            Currency: "NGN",
+            Source: "@account2",
+            Destination: "@account3",
+        },
+    },
+})
+```
+
+```python Python wrap {3}
+response = blnk.transactions.create_bulk({
+  "inflight": True,
+  "transactions": [
+    {
+      "precise_amount": 10000,
+      "precision": 100,
+      "reference": "tx_003",
+      "description": "First transaction",
+      "currency": "NGN",
+      "source": "@account1",
+      "destination": "@account2",
+    },
+    {
+      "precise_amount": 5000,
+      "precision": 100,
+      "reference": "tx_004",
+      "description": "Second transaction",
+      "currency": "NGN",
+      "source": "@account2",
+      "destination": "@account3",
+    },
+  ],
+})
+```
+
+```java Java wrap {3}
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .inflight(true)
+        .transactions(List.of(
+            CreateTransactions.create()
+            .preciseAmount(10000)
+            .precision(100)
+            .reference("tx_003")
+            .description("First transaction")
+            .currency("NGN")
+            .source("@account1")
+            .destination("@account2"),
+            CreateTransactions.create()
+            .preciseAmount(5000)
+            .precision(100)
+            .reference("tx_004")
+            .description("Second transaction")
+            .currency("NGN")
+            .source("@account2")
+            .destination("@account3")
+        )));
+```
+</CodeGroup>
+
+</Step>
+<Step title="Save the batch id">
+
+```json 201 Created wrap {2}
+{
+  "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
+  "status": "inflight",
+  "transaction_count": 2
+}
+```
+
+Save `batch_id`. With the default queue, `status: "inflight"` means the batch was accepted. Children move to `INFLIGHT` as workers process them.
+
+Use this batch id, not a child id, when you [commit](/transactions/inflight/commit-inflight#commit-a-split-or-a-bulk-batch) or [void](/transactions/inflight/void-inflight#void-a-split-or-a-bulk-batch) the batch.
+
+</Step>
+</Steps>
+
+## Error handling
+
+<Version>Structured errors are available from Blnk Core 0.15.0 and later.</Version>
+
+Create transaction returns `400` when the request body fails validation before Blnk records an inflight transaction.
+
+| Code | When it happens |
+| :-- | :-- |
+| `TXN_VALIDATION_ERROR` | Required fields are missing or invalid (for example both `amount` and `precise_amount`). |
+| `GEN_MALFORMED_REQUEST` | The JSON body is malformed or exceeds the JSON request size limit. Oversized reconciliation file uploads return `413 GEN_PAYLOAD_TOO_LARGE`. |
+
+```json 400 Bad Request wrap
+{
+  "error_detail": {
+    "code": "TXN_VALIDATION_ERROR",
+    "message": "amount: cannot be blank."
+  },
+  "errors": "amount: cannot be blank."
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `TXN_VALIDATION_ERROR` | Fix the field named in the error message. See [Create transaction](/reference/create-transaction). |
+| `GEN_MALFORMED_REQUEST` | Check JSON syntax and request size limits in [Server security](/advanced/configuration/server-security). |
+
+When the source balance has insufficient funds, the result depends on whether you used the queue. See [Managing insufficient funds](/transactions/introduction#managing-insufficient-funds).
+
+Commit and void errors are covered on [Commit inflight transactions](/transactions/inflight/commit-inflight#error-handling) and [Void inflight transactions](/transactions/inflight/void-inflight#error-handling). 
+
+See [API error codes](/advanced/error-codes) for the full catalogue.
+
+<RelatedTopics
+  items={[
+    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
+    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
+    { title: "Split transactions", href: "/transactions/split-transactions" },
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+  ]}
+/>
