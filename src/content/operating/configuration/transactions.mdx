@@ -1,0 +1,181 @@
+---
+title: "Transaction Configuration"
+sidebarTitle: "Transactions"
+description: "Configure transaction processing, batching, locking, and coalescing in Blnk."
+seoTitle: "Transaction Configuration • Blnk Developer Documentation"
+metaDescription: "Configure transaction processing, batching, locking, and coalescing in Blnk."
+---
+
+This page covers the settings that control how Blnk executes, batches, and locks transactions.
+
+For queue names, sharding, retries, and hot-lane routing, see [Queue configuration](/operating/configuration/queue).
+
+## Transaction settings
+
+Use these settings to control transaction batching, worker behavior, and queued validation.
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_MAX_QUEUE_SIZE=1000
+BLNK_TRANSACTION_MAX_WORKERS=10
+BLNK_TRANSACTION_INDEX_QUEUE_PREFIX=transactions
+BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS=false
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "batch_size": 1000,
+    "max_queue_size": 1000,
+    "max_workers": 10,
+    "index_queue_prefix": "transactions",
+    "enable_queued_checks": false
+  }
+}
+```
+</CodeGroup>
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BLNK_TRANSACTION_MAX_QUEUE_SIZE` | `1000` | In-memory **channel buffer size** for the batch worker used by `ProcessTransactionInBatches` (not a Redis queue depth limit). |
+| `BLNK_TRANSACTION_MAX_WORKERS` | `10` | Concurrency for **batch and reconciliation** transaction workers. For the main Redis-backed **queued** transaction pool, use `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` and [hot-lane settings](/operating/configuration/queue#hot-lane-routing-settings) instead. |
+| `BLNK_TRANSACTION_INDEX_QUEUE_PREFIX` | `transactions` | **Collection / index name prefix** for **transaction search** documents (e.g. Typesense), not a Redis transaction queue name. |
+| `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` | `false` | Includes queued debits when loading balances for pre-transaction validation. |
+
+## Coalescing settings
+
+Use Coalescing settings to improve performance and throughput under load when working with [hot balances](/guides/hot-balances#coalescing).
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_BATCH_SIZE=1000
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK=false
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "batch_size": 1000,
+    "enable_coalescing": true,
+    "disable_batch_reference_check": false
+  }
+}
+```
+</CodeGroup>
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BLNK_TRANSACTION_BATCH_SIZE` | `1000` | Maximum number of compatible queued transactions Blnk tries to process in one coalesced batch. |
+| `BLNK_TRANSACTION_ENABLE_COALESCING` | `true` | Enables coalesced execution for normal queued transaction processing. |
+| `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK` | `false` | Skips the bulk reference lookup during coalesced batch processing. References are still validated per transaction. When `false`, the bulk check stays enabled. |
+
+### `BLNK_TRANSACTION_ENABLE_COALESCING`
+
+When Coalescing is enabled, Blnk identifies the queued transactions based on if they share the same source, destination, and currency, batches them in-memory, and applies them in a single commit.
+
+This works best when queued traffic arrives in bursts and many transactions overlap on the same balances.
+
+<Card title="Coalescing for hot balances" icon="flame" href="/guides/hot-balances#coalescing">
+  Higher throughput on contended balances.
+</Card>
+
+### `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK`
+
+During coalesced batch processing, Blnk can look up all transaction references in the batch with one bulk query before commit. That prefetch lets validation compare each reference against known usage without a separate lookup per transaction.
+
+Set this to `true` to turn off that bulk lookup. Reference validation does not stop. With no prefetched set, Blnk falls back to validating each transaction individually.
+
+<Note>
+The default (`false`) keeps the bulk check enabled. Set `true` only when you want to trade the bulk lookup for per-transaction reference checks during coalesced execution.
+</Note>
+
+## Lock settings
+
+Use these settings to control [distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) for direct and queued transaction processing, including coalesced batch execution.
+
+<Note>
+Upgrade to Blnk Core **0.15.1 or later** before setting `BLNK_TRANSACTION_LOCK_DURATION` manually. Earlier versions (0.10.3–0.15.0) can misapply Go duration values such as `1m`. See the [0.15.1 migration guide](/changelog/v15-1-migration).
+</Note>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_LOCK_DURATION=1m
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3s
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "lock_duration": 60,
+    "lock_wait_timeout": 3
+  }
+}
+```
+</CodeGroup>
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BLNK_TRANSACTION_LOCK_DURATION` | `60` | How long a distributed balance lock can live once acquired, in **seconds** (non-zero values). |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | `3` | How long Blnk waits when acquiring **transaction balance locks** (shared path for direct and queued processing, including coalesced batch execution), in **seconds**. |
+
+### `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT`
+
+This controls how long a transaction should wait when [acquiring a lock](/guides/concurrency#distributed-redis-balance-locks) before the transaction fails with a lock error.
+
+If locks are not acquired in time, the **operation fails with a lock error**. For a **direct** (`skip_queue=true`) request, that is typically returned to the client. For **queued** work, workers may retry or reject depending on [queue settings](/operating/configuration/queue#queue-settings), e.g.  `BLNK_QUEUE_REJECT_LOCK_CONTENTION_IMMEDIATELY` and `BLNK_QUEUE_MAX_RETRY_ATTEMPTS`.
+
+<Tip>
+**Tip:** Keep the default value unless transactions regularly outlive the lock window. This config is especially important for transactions that bypass the queue.
+</Tip>
+
+## Hash chain settings
+
+<Info>Available in version 0.15.0 and later.</Info>
+
+The optional [transaction hash chain](/transactions/hash) seals applied transactions into a global tamper-evident sequence. It is **disabled by default**. When enabled, a background processor backfills unchained rows and appends new transactions after a trailing delay. 
+
+Run `blnk verify-chain` from your Core deployment to check chain integrity.
+
+In `blnk.json`, `poll_interval` and `trailing_delay` are **integer seconds**. Environment variables accept Go duration format (for example `5s`, `30s`).
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TRANSACTION_HASHCHAIN_ENABLED=false
+BLNK_TRANSACTION_HASHCHAIN_POLL_INTERVAL=5s
+BLNK_TRANSACTION_HASHCHAIN_BATCH_SIZE=1000
+BLNK_TRANSACTION_HASHCHAIN_TRAILING_DELAY=30s
+```
+
+```json blnk.json
+{
+  "transaction": {
+    "hash_chain": {
+      "enabled": false,
+      "poll_interval": 5,
+      "batch_size": 1000,
+      "trailing_delay": 30
+    }
+  }
+}
+```
+</CodeGroup>
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BLNK_TRANSACTION_HASHCHAIN_ENABLED` | `false` | Enables the background hash-chain processor. |
+| `BLNK_TRANSACTION_HASHCHAIN_POLL_INTERVAL` | `5s` / `5` | How often the processor polls for unchained transactions. Env: Go duration (for example `5s`). JSON: seconds. |
+| `BLNK_TRANSACTION_HASHCHAIN_BATCH_SIZE` | `1000` | Maximum transactions sealed per processor batch. |
+| `BLNK_TRANSACTION_HASHCHAIN_TRAILING_DELAY` | `30s` / `30` | Wait time before sealing the newest transactions, so in-flight writes can settle. Env: Go duration (for example `30s`). JSON: seconds. |
+
+<Card title="Transaction hashing" icon="link" href="/transactions/hash">
+  Per-row hashes, chain verification, and sealed fields.
+</Card>
+
+<RelatedTopics
+  items={[
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Queue configuration", href: "/operating/configuration/queue" },
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+  ]}
+/>

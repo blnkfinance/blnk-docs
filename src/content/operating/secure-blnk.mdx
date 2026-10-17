@@ -1,0 +1,149 @@
+---
+title: "Secure Your Blnk Server"
+sidebarTitle: "Master key"
+description: "Enable secure mode, manage secret keys, and follow best practices for a secure environment."
+seoTitle: "Secure Blnk • Blnk Developer Documentation"
+metaDescription: "Enable secure mode, manage secret keys, and follow best practices for a secure environment."
+---
+
+This guide walks you through running your Blnk server in secure mode and protecting your master key. For day-to-day API access, create [scoped API keys](/operating/api-keys/overview).
+
+Before you start, ensure you have a working instance of Blnk Core:
+
+<Card title="Deploy Blnk" icon="sparkles" href="/install">
+Local install or Blnk Cloud.
+</Card>
+
+## Enable authentication
+
+Enable secure mode by setting `server.secure` to `true` and providing a strong `server.secret_key`:
+
+<CodeGroup>
+```bash blnk.env
+BLNK_SERVER_SECURE=true
+BLNK_SERVER_SECRET_KEY=your_strong_secret_key
+```
+
+```json blnk.json
+{
+  "server": {
+    "secure": true,
+    "secret_key": "your_strong_secret_key"
+  }
+}
+```
+
+</CodeGroup>
+
+When secure mode is enabled, every API request must include a valid key in the `X-Blnk-Key` header. Requests without a key are rejected.
+
+<Note>Secure mode authenticates callers. It does not encrypt traffic. For TLS, set `server.ssl` to `true`. See [Enable HTTPS](/operating/enable-https).</Note>
+
+The `secret_key` value becomes your **master key**. It has full access to every endpoint on the server, so use it only for administrative tasks and initial setup. For regular service traffic, create scoped API keys.
+
+Pass the master key in the `X-Blnk-Key` header:
+
+```bash cURL wrap
+curl -X GET "http://localhost:5001/ledgers" \
+  -H "X-Blnk-Key: <master-key>"
+```
+
+<Warning>
+Do not commit the master key to version control. In production, store it in a secret manager or inject it through environment variables.
+</Warning>
+
+## About the master key
+
+The master key is the `secret_key` from your configuration. Unlike [scoped API keys](/operating/api-keys/overview), it is not bound to an owner or scopes, and it can call any endpoint on the server. Blnk also uses it to sign outbound [webhook](/webhooks/global-webhooks) and [transaction hook](/webhooks/transaction-hooks) deliveries.
+
+We recommend using the master key only for initial setup and administrative tasks listed below. For regular API calls, use the scoped keys you create.
+
+1. **Create scoped keys.** Create your first scoped keys with `POST /api-keys`. After that, services should use scoped keys, not the master key.
+
+2. **Manage keys across owners.** List, create, and revoke keys for any owner by passing `owner` in the request. Scoped keys can manage keys only within their own `owner_id`. See [Owner context](/operating/api-keys/owner-context).
+
+3. **Manage hooks.** Register, update, list, and delete [transaction hooks](/webhooks/transaction-hooks). Hook management rejects scoped keys, even with `hooks:*` scopes.
+
+4. **Verify webhooks.** Blnk signs outbound deliveries with `X-Blnk-Signature` using `server.secret_key`. Use the same secret on your receiver to verify authenticity. See [Webhook security](/webhooks/overview#webhook-security-signature-verification).
+
+## Security check list
+
+Enabling secure mode is only the start. Work through this checklist to protect your master key, keep configuration out of version control, and limit API access to what each service needs.
+
+<Steps>
+<Step title="Master key management">
+- Use a strong, randomly generated master key
+- Never share or commit it to version control
+- Store it in environment variables or a secret management tool
+- Rotate it on a regular schedule
+</Step>
+
+<Step title="Configuration management">
+- Exclude `blnk.json` from version control (`.gitignore`)
+- Store sensitive configuration in environment variables
+- Implement secure secret rotation procedures
+- In production, enable HTTPS with `server.ssl`. See [Enable HTTPS](/operating/enable-https)
+</Step>
+
+<Step title="Access control">
+- Follow the principle of least privilege: use scoped keys for services, not the master key
+- Regularly review API key permissions. See [Manage API keys](/operating/api-keys/manage-keys)
+- Register and manage [transaction hooks](/webhooks/transaction-hooks) with the master key only
+</Step>
+
+<Step title="Monitoring and auditing">
+- Track failed authentication attempts
+- Monitor API key usage patterns
+- Set up alerts for suspicious activity
+- Regularly review access logs
+</Step>
+
+<Step title="Regular updates">
+- Keep all components up to date
+- Monitor security advisories
+- Schedule regular maintenance windows
+</Step>
+</Steps>
+
+## Error handling
+
+<Info>
+Structured errors are available from Blnk Core 0.15.0 and later.
+</Info>
+
+When authentication fails, Blnk returns `401 Unauthorized`. These errors apply whether you use the master key or a scoped key.
+
+| Code | When it happens |
+| :-- | :-- |
+| `AUTH_MISSING_API_KEY` | No `X-Blnk-Key` header was sent with the request. |
+| `AUTH_INVALID_API_KEY` | The key value is unknown or malformed. |
+| `AUTH_EXPIRED_API_KEY` | The key has expired or has been revoked. |
+
+```json 401 Unauthorized wrap
+{
+  "error": "Authentication required. Use X-Blnk-Key header",
+  "error_detail": {
+    "code": "AUTH_MISSING_API_KEY",
+    "message": "Authentication required. Use X-Blnk-Key header"
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `AUTH_MISSING_API_KEY` | Add the `X-Blnk-Key` header to your request. |
+| `AUTH_INVALID_API_KEY` | Verify the key value wasn't truncated or swapped with another environment's key. |
+| `AUTH_EXPIRED_API_KEY` | Create a replacement key before revoking the old one. See [Manage API keys](/operating/api-keys/manage-keys). |
+
+Permission errors for missing scopes are covered in [Scopes](/operating/api-keys/scopes#error-handling). Owner and delegation errors are covered in [Owner context](/operating/api-keys/owner-context#error-handling).
+
+<RelatedTopics
+  items={[
+    { title: "API keys overview", href: "/operating/api-keys/overview" },
+    { title: "Enable HTTPS", href: "/operating/enable-https" },
+    { title: "Server & security", href: "/operating/configuration/server-security" },
+    { title: "Scopes", href: "/operating/api-keys/scopes" },
+  ]}
+/>

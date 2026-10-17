@@ -6,15 +6,15 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — Core · Ledgers
 - done — Core · Ledger balances
 - done — Core · Transactions
-- pending — Core · Reconciliation
+- done — Core · Reconciliation
 - done — Core · Identities
 - pending — Core · Metadata
 - pending — Core · Search
 - pending — Core · Webhooks
-- pending — Core · API keys
+- done — Core · API keys
 - pending — Core · Guides
-- pending — Core · Configuration
-- pending — Core · Advanced
+- done — Core · Configuration
+- done — Core · Advanced
 - pending — Core · Migration guides
 - pending — Cloud · Start Here
 - pending — Cloud · Instances
@@ -22,7 +22,7 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - pending — Cloud · Balances
 - pending — Cloud · Transactions
 - pending — Cloud · Identities
-- pending — Cloud · Reconciliation
+- done — Cloud · Reconciliation
 - pending — Cloud · Filters & Views
 - pending — Cloud · Alerts
 - pending — Cloud · Monitoring
@@ -36,7 +36,7 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — API Reference · Core APIs · Ledgers
 - done — API Reference · Core APIs · Ledger balances
 - done — API Reference · Core APIs · Transactions
-- pending — API Reference · Core APIs · Reconciliation
+- done — API Reference · Core APIs · Reconciliation
 - done — API Reference · Core APIs · Identities
 - pending — API Reference · Core APIs · Metadata
 - pending — API Reference · Core APIs · Search

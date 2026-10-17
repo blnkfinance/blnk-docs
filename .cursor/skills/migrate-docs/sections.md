@@ -106,13 +106,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `webhooks/transaction-hooks`
 - `webhooks/events`
 
-### API keys
-
-- `api-keys/overview`
-- `api-keys/scopes`
-- `api-keys/owner-context`
-- `api-keys/manage-keys`
-
 ### Guides
 
 - `guides/double-entry`
@@ -124,33 +117,47 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `guides/closing-balances`
 - `guides/migration`
 
-### Configuration
+### Operating
 
-- `advanced/configuration/overview`
-- `advanced/configuration/server-security`
-- `advanced/configuration/data-stores`
-- `advanced/configuration/transactions`
-- `advanced/configuration/queue`
-- `advanced/configuration/reconciliations`
-- `advanced/configuration/webhooks`
-- `advanced/configuration/observability`
-- `advanced/configuration/backup`
-- `advanced/configuration/reference`
-
-### Advanced
-
-- `advanced/balance-reconstruction`
-- `advanced/secure-blnk`
-- `advanced/enable-https`
-- `advanced/error-codes`
-- `advanced/monitoring`
-- `advanced/metrics-reference`
-- `advanced/monitoring-port`
-- `advanced/benchmarks`
-- `advanced/load-testing`
-- `advanced/backup-disk`
-- `advanced/backup-s3`
-- `advanced/queue-recovery`
+- dropdown **Configuration**
+  - `operating/configuration/overview`
+  - `operating/configuration/server-security`
+  - `operating/configuration/data-stores`
+  - `operating/configuration/transactions`
+  - `operating/configuration/queue`
+  - `operating/configuration/reconciliations`
+  - `operating/configuration/webhooks`
+  - `operating/configuration/observability`
+  - `operating/configuration/backup`
+  - dropdown **Enterprise**
+    - `operating/configuration/enterprise/launcher`
+    - `operating/configuration/enterprise/branding`
+    - `operating/configuration/enterprise/security`
+    - `operating/configuration/enterprise/email`
+    - `operating/configuration/enterprise/data-lake`
+    - `operating/configuration/enterprise/monitoring`
+- dropdown **API keys and security**
+  - `operating/secure-blnk`
+  - `operating/enable-https`
+  - dropdown **Scoped keys**
+    - `operating/api-keys/overview`
+    - `operating/api-keys/scopes`
+    - `operating/api-keys/owner-context`
+    - `operating/api-keys/manage-keys`
+- dropdown **Backups**
+  - `operating/backup-disk`
+  - `operating/backup-s3`
+- dropdown **Monitoring**
+  - `operating/monitoring`
+  - `operating/metrics-reference`
+  - `operating/monitoring-port`
+- dropdown **Performance**
+  - `operating/benchmarks`
+  - `operating/load-testing`
+- dropdown **Recovery**
+  - `operating/queue-recovery`
+  - `operating/balance-reconstruction`
+- `operating/error-codes`
 
 ### Migration guides
 
@@ -173,7 +180,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `cloud/start/guide`
 - dropdown **Enterprise license** source icon `badge-check`
   - `cloud/start/license/start`
-  - `cloud/start/license/configuration`
 - `cloud/start/definitions`
 - `cloud/start/shortcuts`
 - `changelog/blnk-cloud`

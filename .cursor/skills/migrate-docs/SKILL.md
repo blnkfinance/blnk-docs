@@ -16,13 +16,13 @@ A chunk is one group: `Core · Ledgers`, or `API Reference · Core APIs · Ledge
 
 The URL is the original path. `ledgers/introduction` is `/ledgers/introduction`. Do not add `/core`, `/enterprise`, `/api/core`, or `/api/enterprise`.
 
-- **Core** stays at the top level: `home/`, `ledgers/`, `balances/`, `transactions/`, `reconciliations/`, `identities/`, `metadata/`, `search/`, `webhooks/`, `api-keys/`, `guides/`, `advanced/`, `tutorials/`, `changelog/`, and `index`.
+- **Core** stays at the top level: `home/`, `ledgers/`, `balances/`, `transactions/`, `reconciliations/`, `identities/`, `metadata/`, `search/`, `webhooks/`, `operating/`, `guides/`, `tutorials/`, `changelog/`, and `index`. API key guides live in `operating/api-keys/`.
 - **Cloud** stays in `cloud/`. That is the enterprise product. There is no `/enterprise` folder.
 - **Watch** stays in `watch/`. It is its own tab.
 - **API Reference** stays in `reference/`, `cloud/reference/`, and `watch/reference/`.
 - **SDKs & CLI** stay in `cli/` and `sdks/{typescript,go,python,java}/`.
 
-No page is listed in more than one tab. `advanced/` is shared by Configuration and Advanced. `changelog/` is shared by the product changelog pages and Migration guides. Do not move a file to give a group its own folder.
+No page is listed in more than one tab. Operating pages live in `operating/`. `changelog/` is shared by the product changelog pages and Migration guides. Do not move a file to give a group its own folder.
 
 Landing pages, added only once that file exists:
 

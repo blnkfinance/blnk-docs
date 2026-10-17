@@ -1,0 +1,145 @@
+---
+title: "Balance Reconstruction"
+sidebarTitle: "Balance reconstruction"
+description: "Reconstruct and correct discrepancies in your ledger balances."
+seoTitle: "Balance Reconstruction • Blnk Developer Documentation"
+metaDescription: "Reconstruct and correct discrepancies in your ledger balances"
+---
+
+<Info>Available on version 0.10.1 or later.</Info>
+
+Balance Reconstruction helps you solve situations where your balances go out of sync and you have to rebuild the balance from the ground up. It does this by recalculating a balance from its transactions to ensure it correctly reflects all recorded activity.
+
+## Reconstructing a balance
+
+To reconstruct a balance, call the [Update Metadata](/reference/update-metadata) endpoint with the balance ID and set `BLNK_RUN_RECONCILIATION` to `SOURCE`:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/{balance_id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "BLNK_RUN_RECONCILIATION": "SOURCE"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Metadata.update(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+  {
+    meta_data: {
+      BLNK_RUN_RECONCILIATION: 'SOURCE',
+    },
+  },
+);
+```
+
+```go Go wrap
+meta, resp, err := client.Metadata.UpdateMetadata(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    blnkgo.UpdateMetaDataRequest{
+        MetaData: blnkgo.MetaData{
+            "BLNK_RUN_RECONCILIATION": "SOURCE",
+        },
+    },
+)
+```
+
+```python Python wrap
+response = blnk.metadata.update(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+  {
+    "meta_data": {
+      "BLNK_RUN_RECONCILIATION": "SOURCE",
+    },
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.metadata().update(
+    "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+    UpdateMetadataData.create()
+        .metaData(Map.of("BLNK_RUN_RECONCILIATION", "SOURCE")));
+```
+</CodeGroup>
+
+```json Response
+{
+  "meta_data": {
+    "BLNK_RUN_RECONCILIATION": "SOURCE"
+  }
+}
+```
+
+## Verifying the results
+
+To check the results, retrieve the balance details with the [Get Balance](/reference/get-balance) endpoint:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.get(
+  'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+);
+```
+
+```go Go wrap
+balance, resp, err := client.LedgerBalance.Get("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f")
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get(
+  "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().get("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f");
+```
+</CodeGroup>
+
+The results will be available in the `meta_data` object:
+
+```json Response
+{
+  "meta_data": {
+    "BLNK_RECONCILIATION_RESULT": {
+      "difference": "103842",
+      "executed_at": "2025-03-16 22:55:34.281624+00",
+      "previous_balance": "600",
+      "previous_credit": "1200",
+      "previous_debit": "600",
+      "recalculated_balance": "104442",
+      "recalculated_credit": "119600",
+      "recalculated_debit": "15158"
+    }
+  }
+}
+```
+
+| Field | Description |
+| :-- | :-- |
+| `difference` | The discrepancy between the previous balance and the recalculated balance. |
+| `executed_at` | The timestamp when the reconstruction was performed. |
+| `previous_balance` | The balance recorded before reconstruction. |
+| `previous_credit` | The total credit amount recorded before reconstruction. |
+| `previous_debit` | The total debit amount recorded before reconstruction. |
+| `recalculated_balance` | The corrected balance after reconstruction. |
+| `recalculated_credit` | The total credit amount after recalculating from transactions. |
+| `recalculated_debit` | The total debit amount after recalculating from transactions. |
+
+<RelatedTopics
+  items={[
+    { title: "Balance from source", href: "/balances/balance-from-source" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Balance from source API", href: "/reference/balance-from-source" },
+  ]}
+/>

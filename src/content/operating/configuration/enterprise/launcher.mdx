@@ -1,0 +1,45 @@
+---
+title: "Enterprise launcher"
+sidebarTitle: "Enterprise launcher"
+description: "The enterprise launcher starts and coordinates the services in your production stack."
+seoTitle: "Enterprise launcher • Blnk Developer Documentation"
+metaDescription: "The enterprise launcher starts and coordinates the services in your production stack."
+enterprise: true
+---
+
+<Tip>Set these values in your runtime `.env` or `enterprise.env` file before starting the deployment.</Tip>
+
+The enterprise launcher starts and coordinates the services in your production stack. Use these variables to connect the launcher to shared infrastructure and provide the license used at startup.
+
+```dotenv .env wrap
+ENTERPRISE_POSTGRES_URL=postgres://user:password@host:5432/postgres?sslmode=require
+ENTERPRISE_REDIS_URL=redis://host:6379/0
+ENTERPRISE_LICENSE_B64=your_base64_license_string
+ENTERPRISE_LICENSE_FILE=/run/secrets/blnk-enterprise.lic
+
+# Core and Cloud use separate databases on the Postgres instance above
+# Defaults: blnk (Core ledger) and blnk-cloud (Cloud Dashboard)
+ENTERPRISE_CORE_DB_NAME=blnk
+ENTERPRISE_PLANE_DB_NAME=blnk-cloud
+ENTERPRISE_PUBLIC_PORT=8080
+ENTERPRISE_PUBLIC_URL=https://ledger.yourdomain.com
+```
+
+| Environment variable | Default | Description |
+| :-- | :-- | :-- |
+| `ENTERPRISE_POSTGRES_URL` | — | Postgres connection string used by the launcher to derive the Core and Plane database connections. Point this at the Postgres server that hosts both databases. |
+| `ENTERPRISE_REDIS_URL` | — | Redis connection string passed to Core for queueing, caching, and other Redis-backed runtime work. |
+| `ENTERPRISE_LICENSE_B64` | — | Base64-encoded license string from your onboarding email. Takes precedence over `ENTERPRISE_LICENSE_FILE` when both are set. |
+| `ENTERPRISE_LICENSE_FILE` | — | Path to your `.lic` license file mounted into the container. Use this instead of `ENTERPRISE_LICENSE_B64` when you mount the license as a file. |
+| `ENTERPRISE_CORE_DB_NAME` | `blnk` | Name of the Postgres database the launcher assigns to Blnk Core ledger data. |
+| `ENTERPRISE_PLANE_DB_NAME` | `blnk-cloud` | Name of the Postgres database the launcher assigns to Plane, which powers the Cloud Dashboard. |
+| `ENTERPRISE_PUBLIC_PORT` | `8080` | Port the launcher exposes for the public Plane gateway. Map your host or load balancer to this port when running the deployment. |
+| `ENTERPRISE_PUBLIC_URL` | — | Public URL where users open the Cloud Dashboard, including the scheme such as `https://`. Use the same origin in `CORS_ORIGINS`. |
+
+<RelatedTopics
+  items={[
+    { title: "Installation", href: "/cloud/start/license/start" },
+    { title: "Watch quick start", href: "/watch/quick-start" },
+    { title: "Getting started", href: "/cloud/start/guide" },
+  ]}
+/>

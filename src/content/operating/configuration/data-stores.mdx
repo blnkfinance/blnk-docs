@@ -1,0 +1,190 @@
+---
+title: "Data Store Configuration"
+sidebarTitle: "Data stores"
+description: "Set up PostgreSQL, Redis, and Typesense for your Blnk deployment."
+seoTitle: "Data Store Configuration • Blnk Developer Documentation"
+metaDescription: "Set up PostgreSQL, Redis, and Typesense for your Blnk deployment."
+---
+
+Blnk relies on PostgreSQL and Redis to run core ledger operations, and can optionally use TypeSense for search and indexing. This page explains the settings used to connect and tune each service.
+
+## Database settings
+
+Use these settings to configure Blnk’s PostgreSQL connection and connection pool.
+
+<Note>
+**Note:** Blnk only supports PostgreSQL as its database engine. You cannot use other database engines like MySQL or SQLite with Blnk.
+</Note>
+
+<Note>
+In `blnk.json`, `conn_max_lifetime` and `conn_max_idle_time` are integer seconds. Environment variables accept Go duration format (e.g. `30m`, `5m`).
+</Note>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_DATA_SOURCE_DNS="postgres://user:pass@postgres:5432/blnk?sslmode=disable"
+BLNK_DATABASE_MAX_OPEN_CONNS=50
+BLNK_DATABASE_MAX_IDLE_CONNS=25
+BLNK_DATABASE_CONN_MAX_LIFETIME=30m
+BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
+```
+```json blnk.json
+{
+  "data_source": {
+    "dns": "postgres://user:pass@postgres:5432/blnk?sslmode=disable",
+    "max_open_conns": 50,
+    "max_idle_conns": 25,
+    "conn_max_lifetime": 1800,
+    "conn_max_idle_time": 300
+  }
+}
+```
+</CodeGroup>
+
+|                                    | Description                                                                       | Default |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ------- |
+| `BLNK_DATA_SOURCE_DNS`             | PostgreSQL connection string used by Blnk. This is required.                      | None    |
+| `BLNK_DATABASE_MAX_OPEN_CONNS`     | Maximum number of open database connections in the pool.                          | `50`    |
+| `BLNK_DATABASE_MAX_IDLE_CONNS`     | Maximum number of idle database connections kept ready.                           | `25`    |
+| `BLNK_DATABASE_CONN_MAX_LIFETIME`  | Maximum amount of time a database connection can be reused before it is recycled. | `30m`   |
+| `BLNK_DATABASE_CONN_MAX_IDLE_TIME` | Maximum amount of time an idle database connection is kept before it is recycled. | `5m`    |
+
+### `BLNK_DATA_SOURCE_DNS`
+
+This is the PostgreSQL connection string Blnk uses to connect to its database. **This setting is required.** Blnk will not start without it.
+
+From 0.15.4, Blnk retries the initial database connection instead of exiting on the first failure.
+
+1. Make sure the database is reachable from the environment where Blnk is running. This includes verifying the hostname, port, credentials, and network access rules before starting the server.
+
+2. You should also make sure the `sslmode` in the connection string matches what your database provider expects. If this is set incorrectly, Blnk may fail to connect even when the rest of the connection string is valid.
+
+<Tip>
+Some hosted PostgreSQL providers expose more than one connection URL. For application workloads, use the direct PostgreSQL connection string that is intended for normal client connections.
+</Tip>
+
+### Best practices
+
+1. Always set `BLNK_DATA_SOURCE_DNS` explicitly.
+2. Start with the default pool settings unless you already know your database limits.
+3. Increase `BLNK_DATABASE_MAX_OPEN_CONNS` only if your PostgreSQL instance can handle more concurrent connections. 
+4. Use the connection lifetime and idle time settings to recycle stale connections in long-running deployments.
+
+## Redis configuration
+
+<Note>
+In `blnk.json`, `conn_max_idle_time` is a duration in nanoseconds (for example `120000000000` for 2m). Environment variables accept Go duration format (for example `2m`).
+</Note>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_REDIS_DNS=redis://:password@redis:6379/0
+BLNK_REDIS_SKIP_TLS_VERIFY=false
+BLNK_REDIS_POOL_SIZE=100
+BLNK_REDIS_MIN_IDLE_CONNS=20
+BLNK_REDIS_CONN_MAX_IDLE_TIME=2m
+```
+
+```json blnk.json
+{
+  "redis": {
+    "dns": "redis://:password@redis:6379/0",
+    "skip_tls_verify": false,
+    "pool_size": 100,
+    "min_idle_conns": 20,
+    "conn_max_idle_time": 120000000000
+  }
+}
+```
+</CodeGroup>
+
+|                                | Description                                                                                         | Default |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | ------- |
+| `BLNK_REDIS_DNS`               | Redis address or connection URL used by Blnk. This is required.                                     | None    |
+| `BLNK_REDIS_SKIP_TLS_VERIFY`   | Disables TLS certificate verification for Redis connections.                                        | `false` |
+| `BLNK_REDIS_POOL_SIZE`         | Maximum connections in the Redis pool.                                                              | `100`   |
+| `BLNK_REDIS_MIN_IDLE_CONNS`    | Idle connections kept ready in the pool.                                                            | `20`    |
+| `BLNK_REDIS_CONN_MAX_IDLE_TIME` | How long a pooled connection may sit idle before Blnk discards it. Env: Go duration (`2m`). JSON: nanoseconds. From 0.15.5. | `2m`    |
+
+### `BLNK_REDIS_DNS`
+
+`BLNK_REDIS_DNS` is the Redis address or connection URL Blnk uses for queueing and coordination. **This setting is required.**
+
+Why? Because Blnk uses Redis for distributed balance locks, transaction and webhook queues, hot-pair state, and other worker coordination. If Redis is unavailable, queue processing and lock coordination are affected even if PostgreSQL is healthy.
+
+<Tip>
+Use a full Redis URL when authentication or TLS is involved. For TLS-enabled Redis connections, make sure the URL starts with `rediss://`.
+</Tip>
+
+### `BLNK_REDIS_SKIP_TLS_VERIFY`
+
+This disables certificate verification for TLS Redis connections.
+
+Only set to `true` when you are working in a controlled environment and understand the risk. Disabling certificate verification weakens transport security and should not be the default for production deployments.
+
+### `BLNK_REDIS_CONN_MAX_IDLE_TIME`
+
+Available in version 0.15.5 and later.
+
+How long a pooled Redis or Asynq connection may sit idle before Blnk discards it instead of reusing it. Applies to Redis cache clients and Asynq queue workers. The default is `2m`. Leave it unset unless your Redis, Valkey, or proxy idle timeout is shorter than that.
+
+Set this **below** the server or proxy idle timeout (managed services often use about 300 seconds). If a connection stays idle longer than the remote timeout, the next command can fail with `write: broken pipe`.
+
+## Typesense configuration
+
+Use these settings to enable Blnk search and indexing via Typesense.
+
+<Note>
+In `blnk.json`, `backpressure_retry_interval` is a duration in **nanoseconds** (for example `5000000000` for 5s). The environment variable accepts Go duration format (for example `5s`). Omit the field to use the default.
+</Note>
+
+<CodeGroup>
+```bash blnk.env
+BLNK_TYPESENSE_DNS=http://typesense:8108
+BLNK_TYPESENSE_KEY=blnk-api-key
+BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL=5s
+```
+
+```json blnk.json
+{
+  "typesense": {
+    "dns": "http://typesense:8108",
+    "backpressure_retry_interval": 5000000000
+  },
+  "type_sense_key": "blnk-api-key"
+}
+```
+</CodeGroup>
+
+| | Description | Default |
+| :-- | :-- | :-- |
+| `BLNK_TYPESENSE_DNS` | TypeSense server address. If unset, Blnk disables search and indexing features via Typesense. | Disabled when unset |
+| `BLNK_TYPESENSE_KEY` | API key used to connect to TypeSense. | `blnk-api-key` |
+| `BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL` | How long Blnk waits before retrying indexing or reindex work after Typesense reports a memory limit error. | `5s` |
+| `TYPESENSE_MEMORY_USED_MAX_PERCENTAGE` | Typesense container setting. Caps Typesense memory usage as a percentage of available memory before it rejects writes. | `85` |
+
+Set Typesense memory limits on the Typesense service itself, not in Blnk:
+
+```bash typesense.env
+TYPESENSE_MEMORY_USED_MAX_PERCENTAGE=85
+```
+
+### When to use Typesense
+
+TypeSense is optional. If it is not configured, Blnk starts just fine, but search and indexing features via Typesense are disabled.
+
+For most search use cases, start with the [Direct DB filter API](/search/db/filtering). It is a better fit when you need precise database-backed filtering, sorting, and pagination without running a separate search service.
+
+Use Typesense when you need full-text search, faceted filtering, faster queries across very large datasets, or search-oriented workflows that benefit from a dedicated index.
+
+<Tip>
+**Tip:** If you are using TypeSense, we recommend `BLNK_TYPESENSE_KEY` explicitly instead of relying on the default key.
+</Tip>
+
+<RelatedTopics
+  items={[
+    { title: "Configuration overview", href: "/operating/configuration/overview" },
+    { title: "Backup", href: "/operating/configuration/backup" },
+    { title: "Observability", href: "/operating/configuration/observability" },
+  ]}
+/>
