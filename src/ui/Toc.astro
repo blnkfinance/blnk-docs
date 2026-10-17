@@ -56,16 +56,29 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		});
 	}
 
-	function showTab(panel: HTMLElement) {
-		const tabs = panel.closest('[data-tabs]');
-		if (!(tabs instanceof HTMLElement)) return;
+	function selectTab(tabs: HTMLElement, index: number) {
 		const panels = [...tabs.querySelectorAll(':scope > .tab')];
-		const index = panels.indexOf(panel);
+		if (index < 0 || index >= panels.length) return;
 		panels.forEach((item, itemIndex) => {
 			if (item instanceof HTMLElement) item.hidden = itemIndex !== index;
 		});
 		tabs.querySelectorAll(':scope > .tab-bar .tab-button').forEach((button, itemIndex) => {
 			button.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+		});
+	}
+
+	function showTab(panel: HTMLElement) {
+		const tabs = panel.closest('[data-tabs]');
+		if (!(tabs instanceof HTMLElement)) return;
+		const panels = [...tabs.querySelectorAll(':scope > .tab')];
+		const index = panels.indexOf(panel);
+		const id = tabs.dataset.sync;
+		if (!id) {
+			selectTab(tabs, index);
+			return;
+		}
+		document.querySelectorAll(`[data-tabs][data-sync="${CSS.escape(id)}"]`).forEach((other) => {
+			if (other instanceof HTMLElement) selectTab(other, index);
 		});
 	}
 

@@ -1,8 +1,39 @@
-<div class="tabs" data-tabs>
+---
+interface Props {
+	/** Tab groups that share this value keep the same position selected. */
+	sync?: string;
+}
+
+const { sync } = Astro.props;
+---
+
+<div class="tabs" data-tabs data-sync={sync}>
 	<slot />
 </div>
 
 <script>
+	function selectTab(root: HTMLElement, index: number) {
+		const panels = [...root.querySelectorAll(':scope > .tab')];
+		if (index < 0 || index >= panels.length) return;
+		panels.forEach((item, itemIndex) => {
+			if (item instanceof HTMLElement) item.hidden = itemIndex !== index;
+		});
+		root.querySelectorAll(':scope > .tab-bar .tab-button').forEach((button, itemIndex) => {
+			button.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
+		});
+	}
+
+	function selectSyncedTabs(root: HTMLElement, index: number) {
+		const id = root.dataset.sync;
+		if (!id) {
+			selectTab(root, index);
+			return;
+		}
+		document.querySelectorAll(`[data-tabs][data-sync="${CSS.escape(id)}"]`).forEach((other) => {
+			if (other instanceof HTMLElement) selectTab(other, index);
+		});
+	}
+
 	function initTabs() {
 		document.querySelectorAll('[data-tabs]').forEach((root) => {
 			if (!(root instanceof HTMLElement) || root.dataset.ready) return;
@@ -25,14 +56,7 @@
 				const selected = index === 0;
 				button.setAttribute('aria-selected', selected ? 'true' : 'false');
 				panel.hidden = !selected;
-				button.addEventListener('click', () => {
-					panels.forEach((item, itemIndex) => {
-						if (item instanceof HTMLElement) item.hidden = itemIndex !== index;
-					});
-					bar.querySelectorAll('.tab-button').forEach((item, itemIndex) => {
-						item.setAttribute('aria-selected', itemIndex === index ? 'true' : 'false');
-					});
-				});
+				button.addEventListener('click', () => selectSyncedTabs(root, index));
 				bar.append(button);
 			});
 			root.prepend(bar);

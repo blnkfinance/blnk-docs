@@ -149,10 +149,11 @@ The first tab is selected. Each `Tab` needs a `title`. An optional `icon` sits i
 
 | Component | Prop | Type | |
 | --- | --- | --- | --- |
+| `Tabs` | `sync` | `string` | Optional. Groups with the same value keep the same tab index selected |
 | `Tab` | `title` | `string` | Required. Shown on the tab button |
 | `Tab` | `icon` | `string` | Optional icon name |
 
-`Tabs` takes no props. The tab bar is built on the client from the `Tab` children. The first panel is shown.
+The tab bar is built on the client from the `Tab` children. The first panel is shown. A `sync` value links two or more `Tabs` on the page: choosing a tab in one selects the tab at the same index in the others.
 
 A `Tab` title is a table-of-contents child of the `h2` or `h3` it follows. `src/lib/toc.ts` reads `title="..."` from the markdown. Clicking that item opens the tab and scrolls to it. The tab's id is the slug of its title. A second tab with the same title gets `-2`, then `-3`.
 

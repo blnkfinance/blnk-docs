@@ -1,0 +1,44 @@
+---
+description: When the user says publish, commit this chat's work, push main, and confirm the Brimble deploy
+alwaysApply: true
+---
+
+# Publish
+
+When the user says `publish`, commit the work from this chat, push it to `main`, and confirm the Brimble deploy. Do that in this turn. Do not stop after printing a commit title.
+
+## Commit
+
+Commit only files this chat changed. Leave other dirty files unstaged.
+
+Follow the git commit format: lowercase `scope(area): short summary.` with a period. The message is the subject line only. Do not add a body. Do not add `Co-authored-by`.
+
+If this chat changed nothing, say so and stop. Do not create an empty commit, and do not push.
+
+## Push
+
+The branch must be `main`. If it is not, stop and say so. Do not merge, rebase, or force-push.
+
+Push with `git push origin main`.
+
+## Deploy
+
+The site is the Brimble project `docs` (`blnkfinance/docs-v2` on `main`). The push starts the deploy. Do not run `brimble deploy`. That starts a second one.
+
+Follow the deploy the push started:
+
+```bash
+brimble logs build docs
+```
+
+Wait until it finishes. The deploy succeeded when that commit's status is `ACTIVE`. `FAILED` means it is not published. Say the result, including the failure when it failed.
+
+```text
+# ❌ BAD — title only, or a second deploy
+docs(core): update the quick start tabs.
+brimble deploy
+
+# ✅ GOOD — commit, push, then follow the git deploy
+git push origin main
+brimble logs build docs
+```

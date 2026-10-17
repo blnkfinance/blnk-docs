@@ -29,3 +29,5 @@ A paragraph is 2 or 3 sentences. Break a fourth sentence into the next paragraph
 **migrate-docs.** The user asked to migrate a chunk, a group, or a section, or said `next`. Read the skill, `status.md`, and `sections.md`. Post the plan and wait. Write nothing until they accept. One group, then stop.
 
 **expert.** The user tagged the prompt with `expert`. It does not run on its own.
+
+**publish.** The user said `publish`. Commit this chat's work, push `main`, then confirm the Brimble deploy. Follow `.cursor/rules/publish.mdc`.
