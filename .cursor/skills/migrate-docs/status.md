@@ -53,9 +53,9 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - pending — API Reference · Watch APIs · Transactions
 - pending — API Reference · Watch APIs · Instructions
 - pending — API Reference · Watch APIs · Git sync
-- pending — SDKs & CLI · Blnk CLI · Start Here
-- pending — SDKs & CLI · Blnk CLI · Resource commands
-- pending — SDKs & CLI · Blnk CLI · Additional commands
+- done — SDKs & CLI · Blnk CLI · Start Here
+- done — SDKs & CLI · Blnk CLI · Resource commands
+- done — SDKs & CLI · Blnk CLI · Additional commands
 - done — SDKs & CLI · Typescript SDK · Start Here
 - done — SDKs & CLI · Typescript SDK · Ledgers
 - done — SDKs & CLI · Typescript SDK · Ledger balances

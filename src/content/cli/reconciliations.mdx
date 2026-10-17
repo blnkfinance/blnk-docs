@@ -1,0 +1,75 @@
+---
+title: "Reconciliation"
+sidebarTitle: "Reconciliation"
+description: "Use the Blnk CLI to list reconciliations on your Core instance."
+seoTitle: "Reconciliation • Blnk Developer Documentation"
+metaDescription: "Use the Blnk CLI to list reconciliations on your Core instance."
+icon: "balance"
+---
+
+Use the `reconciliations` command to list reconciliation runs and their status against upload batches on Core. Use it after imports or scheduled jobs to confirm a batch finished or to find runs still in progress.
+
+| Command | Alias | Description |
+| :-- | :-- | :-- |
+| list | l | Browse reconciliation jobs with filters |
+
+## `list`
+
+Review reconciliation jobs and their status in a paginated table, including upload batch IDs. Filter with `--status` or `--upload-id` when you are tracking a specific import or confirming a run completed.
+
+```bash blnk reconciliations list
+blnk reconciliations list [options]
+```
+
+<SectionLabel icon="settings-2">Options</SectionLabel>
+
+| Option | Type | Default | Description |
+| :-- | :-- | :-- | :-- |
+| `--{field}` | string | - | Filter by any indexed field (for example `--status COMPLETED`, `--upload-id upl_abc123`). |
+| `-p, --page` | integer | `1` | Page number. |
+| `--per-page` | integer | `10` | Results per page. |
+| `-h, --help` | boolean | - | Show help for this command. |
+
+<SectionLabel icon="list-ordered">Usage</SectionLabel>
+
+<Steps>
+<Step title="List all reconciliations">
+Run the command to view reconciliations on your Core instance:
+
+```bash List reconciliations wrap
+blnk reconciliations list
+```
+
+Filter and paginate:
+
+```bash Filter and paginate wrap
+blnk reconciliations list --page 2 --per-page 20
+blnk reconciliations list --status COMPLETED --upload-id upl_abc123
+```
+
+<CodeGroup>
+```text 200 Success icon="check-circle"
+┌────────────────   ────────────────   ──────────   ───────   ─────────   ───────────────────────────   ───────────────────────────┐
+│ Reconciliation ID │ Upload ID        │ Status     │ Matched │ Unmatched │ Started At                  │ Completed At                │
+| ---------------- | ---------------- | ---------- | ------- | --------- | --------------------------- | --------------------------- |
+│ rec_a8f2c91d...  │ upl_7b3e4f12...  │ COMPLETED  │     142 │         3 │ 2026-05-23T17:05:12.441201Z │ 2026-05-23T17:05:18.902331Z │
+│ rec_2d19e0a4...  │ upl_7b3e4f12...  │ COMPLETED  │      98 │         0 │ 2026-05-22T09:14:01.120000Z │ 2026-05-22T09:14:06.558442Z │
+│ rec_f31b8c67...  │ upl_c4a91e55...  │ RUNNING    │      45 │        12 │ 2026-06-04T14:22:33.000000Z │ N/A                         │
+└────────────────   ────────────────   ──────────   ───────   ─────────   ───────────────────────────   ───────────────────────────┘
+3 results found
+Page 1/1
+```
+```text No results icon="close-circle"
+No results found.
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Reconciliation overview", href: "/reconciliations/overview" },
+    { title: "Matching rules", href: "/reconciliations/matching-rules" },
+    { title: "Start reconciliation", href: "/reference/start-reconciliation" },
+  ]}
+/>
