@@ -62,6 +62,8 @@ export default defineConfig({
 		'/metadata/overview': '/metadata',
 		'/metadata/create-metadata': '/metadata',
 		'/metadata/update-metadata': '/metadata',
+		'/reference/proxy-api': '/reference/enterprise#proxy',
+		'/reference/api-keys': '/reference/enterprise-api-key',
 	},
 	integrations: [mdx(), pagefind()],
 	markdown: {

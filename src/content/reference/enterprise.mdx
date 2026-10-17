@@ -1,0 +1,188 @@
+---
+title: "Enterprise API"
+description: "Call the Enterprise API on Blnk Cloud or a self-hosted Enterprise deployment."
+seoTitle: "Enterprise API • Blnk API Reference"
+enterprise: true
+noindex: true
+---
+
+The Enterprise API is the HTTP API for Blnk Cloud and for a self-hosted Enterprise deployment. It covers deployments, the audit log, the data lake, alerts, agents, and billing. It can also forward a Core request to a connected instance.
+
+Use it when one credential and one host should reach every instance, instead of storing each Core key in your app.
+
+## How it works with Core
+
+The Enterprise API sits between your application and your Core instances. It does not replace the [Core API](/reference/core). It authenticates the caller, picks the instance, and records the call.
+
+You have an internal back-office UI, and you want to know who performed each action. With open-source Core, you build and maintain the audit log and the role-based access (RBAC) yourself.
+
+The Enterprise API handles the routing, the role-based access, and the audit log for you. You build your back office with the [Proxy API](#proxy), and anyone on your dashboard can handle the rest. 
+
+You can also seamlessly switch between connected instances and keep that same access on every one.
+
+## How to use it
+
+On Blnk Cloud the host is `https://api.cloud.blnkfinance.com`. On a self-hosted Enterprise deployment the host is `ENTERPRISE_PUBLIC_URL`. 
+
+Send an [Enterprise API key](/reference/enterprise-api-key) or an [OAuth access token](/reference/oauth) in `X-blnk-key`.
+
+<Steps>
+<Step title="Connect your Core instances">
+Connect each Core instance to the workspace. Each connection gets an `instance_id`. Later calls use that id to choose the instance.
+</Step>
+<Step title="Create an Enterprise API key">
+Create a key for each user of the tool. The key authenticates that user on Enterprise API calls.
+
+<Note>
+An Enterprise API key is issued by the workspace. A Core API key is issued by the Core instance. Calling Core directly still uses the Core key.
+</Note>
+
+![How the Enterprise API authenticates a call](img/cloud/cloud-api.png)
+</Step>
+<Step title="Call Core through the proxy">
+Send Core requests through the [proxy](#proxy). The Enterprise API checks the key, writes the audit log, and forwards the request.
+
+<Tabs>
+<Tab title="Through the Enterprise API">
+The request goes to the proxy. The workspace checks the key, logs the action, and routes it to the instance.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: YOUR_API_KEY"
+```
+
+Read that user's actions in the workspace audit log, or call [List audit logs](/reference/list-audit-logs).
+</Tab>
+<Tab title="Directly on Core">
+The request goes straight to Core. You handle routing, authentication, and the audit log.
+
+```bash cURL
+curl -X POST "https://YOUR_CORE_INSTANCE_URL/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94" \
+  -H "X-blnk-key: YOUR_SECRET_KEY"
+```
+</Tab>
+</Tabs>
+</Step>
+</Steps>
+
+## Enterprise Proxy
+
+The proxy forwards a Core request to a connected instance. You send the same method, path, and body you would send to Core. Prefix the path with `/proxy`, send your Enterprise API key or an OAuth access token, and add `instance_id`.
+
+The workspace forwards the request and returns the Core response unchanged. Use [Create new query](/reference/create-new-query) for historical reporting. Alerts, deployments, and the other Cloud routes stay on their own paths.
+
+### How it works
+
+1. Your app sends the request to `https://api.cloud.blnkfinance.com/proxy/...` with the Core method. On a self-hosted Enterprise deployment, use `ENTERPRISE_PUBLIC_URL` instead.
+2. The workspace authenticates the Enterprise API key or OAuth access token.
+3. It uses `instance_id` to choose the Core instance.
+4. It forwards the request.
+5. It returns the Core response unchanged.
+
+Field shapes match the [Core API](/reference/core). Send that payload to the proxy URL with an Enterprise API key and `instance_id`.
+
+```bash Base URLs
+Core:   {METHOD} http://CORE_INSTANCE_URL/{path}
+Proxy:  {METHOD} https://api.cloud.blnkfinance.com/proxy/{path}?instance_id=YOUR_INSTANCE_ID
+```
+
+### URL format and headers
+
+<ParamField path="path" type="string" required>
+Core path after `/proxy`. Use the same path you would call on Core.
+</ParamField>
+
+<ParamField query="instance_id" type="string" required>
+Instance to target. Required on every proxy request. Read it from [Get instance](/reference/get-instance) (`instance_...`). Do not send `deployment_id` here.
+</ParamField>
+
+<ParamField header="X-blnk-key" type="string" required>
+Enterprise API key, or an OAuth access token.
+</ParamField>
+
+<ParamField header="Content-Type" type="string">
+Required when the request has a body. Use `application/json`, or `multipart/form-data` for a reconciliation upload.
+</ParamField>
+
+### Calling Core endpoints
+
+Prefix the Core path with `/proxy` and keep the HTTP method. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
+
+| Method | Core path | Proxy path |
+| --- | --- | --- |
+| GET | `/ledgers` | `/proxy/ledgers` |
+| GET | `/ledgers/{ledger_id}` | `/proxy/ledgers/{ledger_id}` |
+| POST | `/ledgers` | `/proxy/ledgers` |
+| PUT | `/ledgers/{ledger_id}` | `/proxy/ledgers/{ledger_id}` |
+| DELETE | `/reconciliation/matching-rules/{rule_id}` | `/proxy/reconciliation/matching-rules/{rule_id}` |
+
+Every Core route follows the same pattern. When you create a transaction and omit `precision` or `reference`, Cloud sets `precision` to `100` and generates a `reference`.
+
+### Response
+
+When the workspace can reach Core, the status code and body match that Core endpoint. If `instance_id` is missing, the response is a JSON error.
+
+<CodeGroup>
+
+```bash POST
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Integration Ledger",
+    "meta_data": {
+      "description": "Ledger for integration test"
+    }
+  }'
+```
+
+```bash GET
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/ledgers/ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN"
+```
+
+```bash PUT
+curl -X PUT "https://api.cloud.blnkfinance.com/proxy/ledgers/ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Customer Savings Ledger"
+  }'
+```
+
+```bash DELETE
+curl -X DELETE "https://api.cloud.blnkfinance.com/proxy/reconciliation/matching-rules/rule_6e6feddd-930b-4e13-8ba1-1a3eee659bb3?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN"
+```
+
+</CodeGroup>
+
+<CodeGroup>
+
+```json 201 Created
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "My Integration Ledger",
+  "created_at": "2024-02-20T05:28:03.558281542Z",
+  "meta_data": {
+    "description": "Ledger for integration test"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "instance_id is required"
+}
+```
+
+</CodeGroup>
+
+<RelatedTopics
+  items={[
+    { title: "Enterprise API keys", href: "/reference/enterprise-api-key" },
+    { title: "Enterprise OAuth", href: "/reference/oauth" },
+    { title: "Core API", href: "/reference/core" },
+    { title: "Get instance", href: "/reference/get-instance" },
+  ]}
+/>

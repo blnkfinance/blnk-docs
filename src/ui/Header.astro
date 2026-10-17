@@ -20,7 +20,7 @@ function tabCurrent(tab: NavTab): boolean {
 }
 ---
 
-<header class="header">
+<header class="header" transition:persist="site-header" transition:animate="none">
 	<button class="nav-open" type="button" aria-label="Menu" aria-controls="docs-nav" aria-expanded="false" data-nav-open>
 		<span class="nav-glyph" data-glyph="menu"><Fragment set:html={menuIcon} /></span>
 		<span class="nav-glyph" data-glyph="close"><Fragment set:html={closeIcon} /></span>
@@ -97,9 +97,23 @@ function tabCurrent(tab: NavTab): boolean {
 	</div>
 </header>
 
-<button class="nav-backdrop" type="button" aria-label="Close menu" hidden data-nav-backdrop></button>
+<button
+	class="nav-backdrop"
+	type="button"
+	aria-label="Close menu"
+	hidden
+	data-nav-backdrop
+	transition:persist="nav-backdrop"
+	transition:animate="none"
+></button>
 
-<dialog class="search-dialog" aria-label="Search" data-search-dialog>
+<dialog
+	class="search-dialog"
+	aria-label="Search"
+	data-search-dialog
+	transition:persist="search-dialog"
+	transition:animate="none"
+>
 	<div class="search-row">
 		<Fragment set:html={searchIcon} />
 		<input
@@ -120,6 +134,9 @@ function tabCurrent(tab: NavTab): boolean {
 </dialog>
 
 <script is:inline>
+	(() => {
+	if (globalThis.__docsSearchBound) return;
+	globalThis.__docsSearchBound = true;
 	const openButton = document.querySelector('[data-search-open]');
 	const dialog = document.querySelector('[data-search-dialog]');
 	const input = document.querySelector('[data-search-input]');
@@ -477,7 +494,7 @@ function tabCurrent(tab: NavTab): boolean {
 			items[active].click();
 		}
 	});
-
+	})();
 </script>
 
 <script>
@@ -540,6 +557,30 @@ function tabCurrent(tab: NavTab): boolean {
 
 	document.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') closeTabMenus(null);
+	});
+
+	function syncTabs(next: Document) {
+		const currentNav = document.querySelector('.tabs');
+		const nextNav = next.querySelector('.tabs');
+		if (!(currentNav instanceof HTMLElement) || !(nextNav instanceof HTMLElement)) return;
+		const currentItems = [...currentNav.querySelectorAll('a, [data-tab-button]')];
+		const nextItems = [...nextNav.querySelectorAll('a, [data-tab-button]')];
+		currentItems.forEach((item, index) => {
+			const incoming = nextItems[index];
+			if (!(item instanceof HTMLElement) || !(incoming instanceof HTMLElement)) return;
+			const value = incoming.getAttribute('aria-current');
+			if (value) item.setAttribute('aria-current', value);
+			else item.removeAttribute('aria-current');
+		});
+	}
+
+	document.addEventListener('astro:before-swap', (event) => {
+		const next = (event as Event & { newDocument?: Document }).newDocument;
+		if (!next) return;
+		syncTabs(next);
+		closeTabMenus(null);
+		const dialog = document.querySelector('[data-search-dialog]');
+		if (dialog instanceof HTMLDialogElement && dialog.open) dialog.close();
 	});
 </script>
 

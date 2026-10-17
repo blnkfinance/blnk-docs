@@ -28,9 +28,11 @@ export function isDropdown(item: NavItem): item is NavDropdown {
 	return typeof item !== 'string' && 'dropdown' in item;
 }
 
-/** Sidebar and endpoint label. DELETE is shortened so the column stays tight. */
-export function methodLabel(method: string): string {
-	return method === 'DELETE' ? 'DEL' : method;
+/** Method badge label. DELETE is DEL in both places. PATCH is PAT in the sidebar so the column stays as wide as POST. */
+export function methodLabel(method: string, sidebar = false): string {
+	if (method === 'DELETE') return 'DEL';
+	if (sidebar && method === 'PATCH') return 'PAT';
+	return method;
 }
 
 /** Content path for a link or for a dropdown that is also a page. */
@@ -146,6 +148,7 @@ const docsSchema = z.strictObject({
 	labels: z.strictObject({
 		enterprise: z.string().min(1),
 		license: z.string().min(1),
+		cloud: z.string().min(1),
 	}),
 	colors: z.strictObject({
 		light: palette,
@@ -372,9 +375,10 @@ const parsed = docsSchema.parse(docs);
 
 export const labels: DocsLabels = parsed.labels;
 
-/** `true` uses the Cloud label. `license` is Enterprise only. */
-export function enterpriseNotice(value: boolean | 'license' | undefined): string | undefined {
+/** `true` is Enterprise or Cloud. `license` is Enterprise only. `cloud` is Blnk Cloud only. */
+export function enterpriseNotice(value: boolean | 'license' | 'cloud' | undefined): string | undefined {
 	if (value === 'license') return labels.license;
+	if (value === 'cloud') return labels.cloud;
 	if (value === true) return labels.enterprise;
 	return undefined;
 }

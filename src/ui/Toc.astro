@@ -44,8 +44,6 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 
 <script>
 	const root = document.documentElement;
-	const copyButton = document.querySelector('[data-copy-page]');
-	const copySource = document.querySelector('[data-page-markdown]');
 
 	function assignTabIds() {
 		const links = [...document.querySelectorAll('.toc a[data-toc-tab]')];
@@ -124,17 +122,35 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		revealTarget(id, false);
 	}
 
-	assignTabIds();
+	document.addEventListener(
+		'click',
+		(event) => {
+			if (!(event.target instanceof Element)) return;
+			const link = event.target.closest('.toc a[data-toc-tab]');
+			if (!(link instanceof HTMLAnchorElement)) return;
+			const id = decodeURIComponent(link.hash.slice(1));
+			if (!document.getElementById(id)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			history.pushState(history.state, '', `#${id}`);
+			revealTarget(id, true);
+		},
+		true,
+	);
 
-	document.querySelector('.toc nav')?.addEventListener('click', (event) => {
+	document.addEventListener('click', (event) => {
 		if (!(event.target instanceof Element)) return;
-		const link = event.target.closest('a[data-toc-tab]');
-		if (!(link instanceof HTMLAnchorElement)) return;
-		const id = decodeURIComponent(link.hash.slice(1));
-		if (!document.getElementById(id)) return;
-		event.preventDefault();
-		history.pushState(null, '', `#${id}`);
-		revealTarget(id, true);
+		const copyButton = event.target.closest('[data-copy-page]');
+		if (!(copyButton instanceof HTMLButtonElement)) return;
+		const copySource = document.querySelector('[data-page-markdown]');
+		if (!copySource?.textContent) return;
+		const label = copyButton.querySelector('[data-copy-label]');
+		void navigator.clipboard.writeText(JSON.parse(copySource.textContent)).then(() => {
+			if (label) label.textContent = 'Copied';
+			window.setTimeout(() => {
+				if (label) label.textContent = 'Copy page';
+			}, 2000);
+		});
 	});
 
 	document.addEventListener('click', (event) => {
@@ -147,27 +163,21 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 		const panels = [...tabs.querySelectorAll(':scope > .tab')];
 		const panel = panels[buttons.indexOf(button)];
 		if (!(panel instanceof HTMLElement) || !panel.id) return;
-		history.replaceState(null, '', `#${panel.id}`);
+		history.replaceState(history.state, '', `#${panel.id}`);
 		window.setTimeout(markCurrentHeading, 0);
 	});
 
-	if (tocEntries().length) {
-		document.addEventListener('scroll', markCurrentHeading, { passive: true });
-	}
-
-	revealHash();
-	window.addEventListener('load', revealHash);
+	document.addEventListener('scroll', markCurrentHeading, { passive: true });
 	window.addEventListener('hashchange', revealHash);
 
-	copyButton?.addEventListener('click', async () => {
-		if (!copySource?.textContent) return;
-		const label = copyButton.querySelector('[data-copy-label]');
-		await navigator.clipboard.writeText(JSON.parse(copySource.textContent));
-		if (label) label.textContent = 'Copied';
-		window.setTimeout(() => {
-			if (label) label.textContent = 'Copy page';
-		}, 2000);
-	});
+	function bootToc() {
+		assignTabIds();
+		markCurrentHeading();
+		revealHash();
+	}
+
+	bootToc();
+	document.addEventListener('astro:page-load', bootToc);
 </script>
 
 <style>

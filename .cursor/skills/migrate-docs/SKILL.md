@@ -31,9 +31,9 @@ Landing pages, added only once that file exists:
 | Core | `/` | `index` |
 | Cloud | `/cloud` | `cloud/index` |
 | Watch | `/watch/quick-start` | `watch/quick-start` |
-| API Reference | `/reference/overview` | `reference/overview` |
-| Core APIs | `/reference/overview` | `reference/overview` |
-| Cloud APIs | `/reference/cloud-overview` | `reference/cloud-overview` |
+| API Reference | `/reference/core` | `reference/core` |
+| Core APIs | `/reference/core` | `reference/core` |
+| Enterprise APIs | `/reference/enterprise` | `reference/enterprise` |
 | Watch APIs | `/watch/reference/overview` | `watch/reference/overview` |
 | Blnk CLI | `/cli/install` | `cli/install` |
 | Typescript SDK | `/sdks/typescript/start/quick-start` | `sdks/typescript/start/quick-start` |

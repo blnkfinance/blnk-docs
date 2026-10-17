@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content';
 import { renderIcon } from '../icons/mingcute';
 import { sidebarLabel } from '../lib/seo';
-import { activeTab, navigation, sidebarGroups } from './navigation';
+import { activeMenu, activeTab, navigation, sidebarGroups } from './navigation';
 import Pages from './Pages.astro';
 
 const sun = await renderIcon('sun', 16);
@@ -11,7 +11,10 @@ const system = await renderIcon('computer', 16);
 const check = await renderIcon('check', 14);
 
 const pathname = Astro.url.pathname;
-const navScope = activeTab(navigation, pathname).path;
+const tab = activeTab(navigation, pathname);
+const menu = 'menu' in tab ? activeMenu(tab, pathname) : undefined;
+const navScope = menu?.path ?? ('tab' in tab ? tab.tab : 'home');
+const sidebarKey = `sidebar-${navScope.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'home'}`;
 const groups = sidebarGroups(navigation, pathname);
 const docs = await getCollection('docs');
 const titles = new Map(
@@ -25,7 +28,14 @@ const methods = new Map(
 );
 ---
 
-<nav class="sidebar" id="docs-nav" aria-label="Documentation" data-nav-scope={navScope}>
+<nav
+	class="sidebar"
+	id="docs-nav"
+	aria-label="Documentation"
+	data-nav-scope={navScope}
+	transition:persist={sidebarKey}
+	transition:animate="none"
+>
 	<div class="sidebar-body">
 		{
 			groups.map((group, index) => (
@@ -127,10 +137,9 @@ const methods = new Map(
 
 <script>
 	const root = document.documentElement;
-	const themeRoot = document.querySelector('[data-theme-root]');
-	const themeButtonQuery = document.querySelector('[data-theme-button]');
-	const themeButton = themeButtonQuery instanceof HTMLElement ? themeButtonQuery : null;
-	const themeMenu = document.querySelector('[data-theme-menu]');
+	const boundSidebars = new WeakSet<HTMLElement>();
+	const navEase = 'cubic-bezier(0.23, 1, 0.32, 1)';
+	const navAnimations = new WeakMap<HTMLElement, Animation>();
 
 	function appearance(theme: string) {
 		if (theme === 'dark') return 'dark';
@@ -140,8 +149,10 @@ const methods = new Map(
 
 	function syncThemeUi() {
 		const theme = root.dataset.theme ?? 'system';
-		if (themeButton) themeButton.setAttribute('aria-label', `Theme, ${theme}`);
-		themeMenu?.querySelectorAll('[data-theme-value]').forEach((item) => {
+		document.querySelectorAll('[data-theme-button]').forEach((themeButton) => {
+			if (themeButton instanceof HTMLElement) themeButton.setAttribute('aria-label', `Theme, ${theme}`);
+		});
+		document.querySelectorAll('[data-theme-menu] [data-theme-value]').forEach((item) => {
 			if (!(item instanceof HTMLElement)) return;
 			item.setAttribute('aria-checked', String(item.dataset.themeValue === theme));
 		});
@@ -155,40 +166,110 @@ const methods = new Map(
 	}
 
 	function closeThemeMenu() {
-		if (!(themeMenu instanceof HTMLElement) || themeMenu.hidden) return;
-		themeMenu.hidden = true;
-		themeButton?.setAttribute('aria-expanded', 'false');
+		document.querySelectorAll('[data-theme-menu]').forEach((themeMenu) => {
+			if (!(themeMenu instanceof HTMLElement) || themeMenu.hidden) return;
+			themeMenu.hidden = true;
+			themeMenu
+				.closest('[data-theme-root]')
+				?.querySelector('[data-theme-button]')
+				?.setAttribute('aria-expanded', 'false');
+		});
 	}
 
-	themeButton?.addEventListener('click', () => {
-		if (!(themeMenu instanceof HTMLElement) || !themeButton) return;
-		const willOpen = themeMenu.hidden;
-		themeMenu.hidden = !willOpen;
-		themeButton.setAttribute('aria-expanded', String(willOpen));
-	});
+	function saveOpen(sidebar: HTMLElement) {
+		const key = `nav-open:${sidebar.dataset.navScope ?? ''}`;
+		const open: string[] = [];
+		sidebar.querySelectorAll('[data-nav-toggle][aria-expanded="true"]').forEach((item) => {
+			const id = item.getAttribute('aria-controls');
+			if (id) open.push(id);
+		});
+		try {
+			sessionStorage.setItem(key, JSON.stringify(open));
+		} catch {
+			/* storage can be unavailable */
+		}
+	}
 
-	themeMenu?.addEventListener('click', (event) => {
-		const item = event.target instanceof Element ? event.target.closest('[data-theme-value]') : null;
-		if (!(item instanceof HTMLElement) || !item.dataset.themeValue) return;
-		applyTheme(item.dataset.themeValue);
-		closeThemeMenu();
-		themeButton?.focus();
-	});
+	function normalizePath(pathname: string) {
+		return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+	}
 
-	document.addEventListener('click', (event) => {
-		if (!(event.target instanceof Node) || themeRoot?.contains(event.target)) return;
-		closeThemeMenu();
-	});
+	function markSidebar(sidebar: HTMLElement) {
+		const path = normalizePath(location.pathname);
+		sidebar.querySelectorAll('a.nav-item').forEach((link) => {
+			if (!(link instanceof HTMLAnchorElement)) return;
+			if (normalizePath(link.pathname) === path) link.setAttribute('aria-current', 'page');
+			else link.removeAttribute('aria-current');
+		});
 
-	matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-		if (root.dataset.theme === 'system') applyTheme('system');
-	});
+		let expanded = false;
+		sidebar.querySelectorAll('button.nav-item[data-nav-toggle]').forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) return;
+			const panelId = button.getAttribute('aria-controls');
+			const panel = panelId ? document.getElementById(panelId) : null;
+			if (!(panel instanceof HTMLElement)) return;
+			const selected = panel.querySelector('a.nav-item[aria-current="page"]') != null;
+			button.classList.toggle('is-current', selected);
+			if (!selected || button.getAttribute('aria-expanded') === 'true') return;
+			button.setAttribute('aria-expanded', 'true');
+			panel.hidden = false;
+			expanded = true;
+		});
+		if (expanded) saveOpen(sidebar);
 
-	syncThemeUi();
+		const body = sidebar.querySelector('.sidebar-body');
+		const current = sidebar.querySelector('a.nav-item[aria-current="page"]');
+		if (!(body instanceof HTMLElement) || !(current instanceof HTMLElement)) return;
+		const showCurrent = () => {
+			if (body.clientHeight === 0) return;
+			const item = current.getBoundingClientRect();
+			const top = item.top - body.getBoundingClientRect().top;
+			const bottom = top + item.height;
+			if (top >= 0 && bottom <= body.clientHeight) return;
+			body.scrollTop = Math.max(0, body.scrollTop + top - (body.clientHeight - item.height) / 2);
+		};
+		showCurrent();
+		requestAnimationFrame(showCurrent);
+	}
 
-	const sidebar = document.querySelector('.sidebar');
-	const navEase = 'cubic-bezier(0.23, 1, 0.32, 1)';
-	const navAnimations = new WeakMap<HTMLElement, Animation>();
+	function bindSidebar(sidebar: HTMLElement) {
+		if (boundSidebars.has(sidebar)) return;
+		boundSidebars.add(sidebar);
+		const themeButtonQuery = sidebar.querySelector('[data-theme-button]');
+		const themeButton = themeButtonQuery instanceof HTMLElement ? themeButtonQuery : null;
+		const themeMenu = sidebar.querySelector('[data-theme-menu]');
+
+		themeButton?.addEventListener('click', () => {
+			if (!(themeMenu instanceof HTMLElement) || !themeButton) return;
+			const willOpen = themeMenu.hidden;
+			themeMenu.hidden = !willOpen;
+			themeButton.setAttribute('aria-expanded', String(willOpen));
+		});
+
+		themeMenu?.addEventListener('click', (event) => {
+			const item = event.target instanceof Element ? event.target.closest('[data-theme-value]') : null;
+			if (!(item instanceof HTMLElement) || !item.dataset.themeValue) return;
+			applyTheme(item.dataset.themeValue);
+			closeThemeMenu();
+			themeButton?.focus();
+		});
+
+		sidebar.addEventListener('click', (event) => {
+			const button = event.target instanceof Element ? event.target.closest('[data-nav-toggle]') : null;
+			if (!(button instanceof HTMLButtonElement)) return;
+			const panelId = button.getAttribute('aria-controls');
+			const panel = panelId ? document.getElementById(panelId) : null;
+			if (!(panel instanceof HTMLElement)) return;
+			toggleNav(button, panel);
+			saveOpen(sidebar);
+		});
+	}
+
+	function bootSidebar() {
+		const sidebar = document.getElementById('docs-nav');
+		if (sidebar instanceof HTMLElement) bindSidebar(sidebar);
+		syncThemeUi();
+	}
 
 	function toggleNav(button: HTMLButtonElement, panel: HTMLElement) {
 		const open = button.getAttribute('aria-expanded') !== 'true';
@@ -234,24 +315,36 @@ const methods = new Map(
 		};
 	}
 
-	sidebar?.addEventListener('click', (event) => {
-		const button = event.target instanceof Element ? event.target.closest('[data-nav-toggle]') : null;
-		if (!(button instanceof HTMLButtonElement)) return;
-		const panelId = button.getAttribute('aria-controls');
-		const panel = panelId ? document.getElementById(panelId) : null;
-		if (!(panel instanceof HTMLElement)) return;
-		toggleNav(button, panel);
-		const key = `nav-open:${sidebar?.getAttribute('data-nav-scope') ?? ''}`;
-		const open: string[] = [];
-		sidebar?.querySelectorAll('[data-nav-toggle][aria-expanded="true"]').forEach((item) => {
-			const id = item.getAttribute('aria-controls');
-			if (id) open.push(id);
-		});
+	document.addEventListener('click', (event) => {
+		if (!(event.target instanceof Node)) return;
+		if (event.target instanceof Element && event.target.closest('[data-theme-root]')) return;
+		closeThemeMenu();
+	});
+
+	matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+		if (root.dataset.theme === 'system') applyTheme('system');
+	});
+
+	bootSidebar();
+	document.addEventListener('astro:page-load', bootSidebar);
+	document.addEventListener('astro:before-swap', (event) => {
+		closeThemeMenu();
+		const next = 'newDocument' in event && event.newDocument instanceof Document ? event.newDocument.documentElement : null;
+		if (!next) return;
+		let stored: string | null = null;
 		try {
-			sessionStorage.setItem(key, JSON.stringify(open));
+			stored = localStorage.getItem('theme');
 		} catch {
 			/* storage can be unavailable */
 		}
+		const theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : root.dataset.theme;
+		if (!theme) return;
+		next.dataset.theme = theme;
+		next.dataset.appearance = appearance(theme);
+	});
+	document.addEventListener('astro:after-swap', () => {
+		const sidebar = document.getElementById('docs-nav');
+		if (sidebar instanceof HTMLElement) markSidebar(sidebar);
 	});
 </script>
 
@@ -394,12 +487,12 @@ const methods = new Map(
 </style>
 
 <script>
-	const nav = document.getElementById('docs-nav');
-	const openButton = document.querySelector('[data-nav-open]');
-	const backdrop = document.querySelector('[data-nav-backdrop]');
 	const mobile = matchMedia('(max-width: 1023px)');
 
 	function setOpen(open: boolean, restoreFocus: boolean) {
+		const nav = document.getElementById('docs-nav');
+		const openButton = document.querySelector('[data-nav-open]');
+		const backdrop = document.querySelector('[data-nav-backdrop]');
 		const small = mobile.matches;
 		const next = small && open;
 		document.documentElement.dataset.nav = next ? 'open' : 'closed';
@@ -420,15 +513,18 @@ const methods = new Map(
 
 	setOpen(false, false);
 
-	openButton?.addEventListener('click', () => {
-		setOpen(document.documentElement.dataset.nav !== 'open', false);
-	});
-
-	backdrop?.addEventListener('click', () => setOpen(false, true));
-
-	nav?.addEventListener('click', (event) => {
-		const link = event.target instanceof Element ? event.target.closest('a') : null;
-		if (link) setOpen(false, false);
+	document.addEventListener('click', (event) => {
+		if (!(event.target instanceof Element)) return;
+		if (event.target.closest('[data-nav-open]')) {
+			setOpen(document.documentElement.dataset.nav !== 'open', false);
+			return;
+		}
+		if (event.target.closest('[data-nav-backdrop]')) {
+			setOpen(false, true);
+			return;
+		}
+		const link = event.target.closest('a[href]');
+		if (link instanceof HTMLAnchorElement && link.origin === location.origin) setOpen(false, false);
 	});
 
 	document.addEventListener('keydown', (event) => {
@@ -437,4 +533,5 @@ const methods = new Map(
 	});
 
 	mobile.addEventListener('change', () => setOpen(false, false));
+	document.addEventListener('astro:after-swap', () => setOpen(false, false));
 </script>

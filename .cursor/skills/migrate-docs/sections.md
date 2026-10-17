@@ -390,11 +390,17 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 Pages live in `reference/`, with `enterprise: true`. There is no `reference/cloud/` folder.
 
-#### Start Here
+#### Start here
 
-- `reference/cloud-overview`
-- `reference/api-keys`
-- `reference/oauth`
+The API tab opens with this group. Authentication and Introduction are dropdowns.
+
+- dropdown **Introduction** source icon `book-2`
+  - `reference/core`
+  - `reference/enterprise`
+- dropdown **Authentication** source icon `lock`
+  - `reference/core-api-key`
+  - `reference/enterprise-api-key`
+  - `reference/oauth`
 
 #### Deployments
 
@@ -407,9 +413,7 @@ Pages live in `reference/`, with `enterprise: true`. There is no `reference/clou
 - `reference/upgrade-deployment`
 - `reference/destroy-deployment`
 
-#### Proxy & data
-
-- `reference/proxy-api`
+The proxy is a section on `reference/enterprise`. There is no `reference/proxy-api` page.
 
 #### Data lake
 
