@@ -59,6 +59,7 @@ Read every source page in the chunk before posting. The message is the plan for 
   - A file already at the destination. Fix: edit that file in place. Do not add a second path.
   - A folder shared with another group. Fix: add this group's pages in that folder. Do not move the other group's files.
   - An endpoint `method` or `path` that does not match `/openapi/openapi.json`. Fix: use the spec. A path placeholder uses the field name, such as `{ledger_id}`, not `{id}`.
+  - A field or behavior Blnk Core does not have or does not use. Fix: leave it out. Confirm in `blnkfinance/blnk`. A value that is only stored, and never read, stays out.
   - A pasted `export const` block, or `<NeedHelp />`. Fix: delete it.
   - A `<Card>` or `<CardGroup>`. Fix: drop it. A link to another page goes in RelatedTopics.
   - A dropdown on the API tab. Fix: list the pages in the group. Add a dropdown only when the user said to.
@@ -153,6 +154,12 @@ Several fences inside one `RequestExample` or `ResponseExample` stay siblings. T
 A guide that pairs a request and a response uses tabs. The request tab title is the action, such as `Create ledger` or `Update ledger`, not `Request`. That tab holds the code group, then the field table. The response tab is `Response` and holds the sample, then its table. Those tables have no Type column. Request columns are Field, Description, and Required. Response columns are Field and Description.
 
 A path placeholder uses the field name from the spec, such as `{ledger_id}`, not `{id}`.
+
+Group request fields under `### Path`, `### Query`, `### Body`, or `### Header`. A path field is `required`.
+
+Do not document a field, parameter, or behavior that Blnk Core does not have or does not use. Confirm it in `blnkfinance/blnk` before adding it. A value that is accepted or stored, and never read, stays out.
+
+An `<Info>` under `### Response` on an API reference page is an intro paragraph for that section, not a callout.
 
 A sentence that only confirms the result of a step is a paragraph after the step, not a Check callout.
 
