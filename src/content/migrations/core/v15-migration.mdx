@@ -1,0 +1,203 @@
+---
+title: "0.15.0 Migration Guide"
+sidebarTitle: "Migration to 0.15.0"
+description: "Review error codes, removed response fields, and queued inflight commit and void before you upgrade to v0.15.0."
+seoTitle: "0.15.0 migration • Blnk Developer Documentation"
+metaDescription: "Migration guide for upgrading to v0.15.0, covering error codes, HTTP statuses, removed response fields, and bulk inflight commit/void."
+---
+
+This guide covers the changes you need to review when upgrading to Blnk v0.15.0. Most integrations can upgrade without major changes. Review this guide carefully if your app:
+
+- Branches on HTTP status codes
+- Parses error message text
+- Reads `rate`, `currency_multiplier`, or `modification_ref` from API responses
+- Sends `rate` on create-transaction requests for cross-currency FX
+- Expects inflight commit or void requests to return `APPLIED` or `VOID` immediately
+- Reads reconciliation status directly from the start response
+
+## At a glance
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| Structured `error_detail` added | Most integrations are not affected | Error responses now include `error_detail.code`, `error_detail.message`, and `error_detail.details`. The existing `error` field is still returned. |
+| HTTP status codes corrected | Integrations that branch on old HTTP statuses | Some errors now return more specific statuses, such as `404`, `409`, `423`, and `500`. |
+| `NOT_FOUND:` message prefix removed | Integrations that parse error message text | Error messages no longer include the `NOT_FOUND:` prefix. |
+| `rate`, `currency_multiplier`, and `modification_ref` removed | Integrations that read these fields or use request `rate` for FX | Response fields are gone. Request `rate` no longer applies an exchange rate. Destination credit equals source debit. |
+| Inflight commit and void are queued by default | Integrations that expect immediate `APPLIED` or `VOID` responses | Commit and void requests now return a queued response by default. |
+| Reconciliation start response changed | Integrations that read reconciliation status from the start response | Start endpoints return only `reconciliation_id`. Handle `reconciliation.completed` and `reconciliation.failed` webhooks for results. |
+| Per-endpoint item limits | Integrations that send large bulk or reconciliation requests | Bulk create and instant reconciliation: max **10,000** items per request. Bulk commit and void: max **100** transactions. |
+| Request and upload size caps | Integrations with large JSON bodies or file uploads | Configurable caps apply to JSON request bodies and multipart uploads. See [Server and security configuration](/operating/configuration/server-security#request-and-payload-limits). |
+| Transaction hash chain (optional) | Operators who want ledger-wide tamper detection | New opt-in global hash chain; disabled by default. Enable in config and run `blnk verify-chain`. See [Transaction hashing](/transactions/hash). |
+
+## Structured `error_detail` added
+
+Error responses now include a structured `error_detail` object. The existing `error` field is still returned, so existing integrations that read error continue to work.
+
+```json Error response
+{
+  "error": "transaction not found",
+  "error_detail": {
+    "code": "TXN_NOT_FOUND",
+    "message": "transaction not found",
+    "details": {}
+  }
+}
+```
+
+For new error handling logic, branch on `error_detail.code`. Do not branch on `error`, `errors`, or `error_detail.message`. These fields are human-readable and may change between releases. See [API error codes](/operating/error-codes) for the errors catalog.
+
+## HTTP status codes corrected
+
+Several errors that previously returned `400` now return more specific HTTP statuses. The response body still includes `error` and `error_detail`. The main change is the HTTP status code returned with the response.
+
+Review any logic that:
+
+- Treats every failed request as `400`
+- Branches only on HTTP status codes
+- Does not read `error_detail.code`
+
+| Condition | Before | Now |
+| :-- | :-- | :-- |
+| Resource not found | 400 | 404 |
+| Duplicate transaction reference | 400 | 409 |
+| Inflight already committed or already voided | 400 | 409 |
+| Identity field already tokenized | 400 | 409 |
+| Tokenization disabled | 400 | 403 |
+| API key create or list request missing `owner` when using the master key | 401 | 400 |
+| Hook infrastructure failures | 400 | 500 |
+| Database backup failures | 400 | 500 |
+| Lock contention | 400 | 423 |
+| Unclassified internal failures | 400 | 500 (sanitized message) |
+
+## `NOT_FOUND:` message prefix removed
+
+Error messages no longer include the `NOT_FOUND:` prefix. If your integration checks for this prefix, update it to use `error_detail.code`.
+
+<CodeGroup>
+```javascript Before
+if (error.message.startsWith("NOT_FOUND:")) {
+  // handle not found
+}
+```
+
+```javascript Now
+if (body.error_detail?.code === "TXN_NOT_FOUND") {
+  // handle not found
+}
+```
+</CodeGroup>
+
+This is safer because `error_detail.code` is stable. Message text is meant for display and may change between releases.
+
+## `rate`, `currency_multiplier`, and `modification_ref` removed
+
+Blnk no longer stores or returns these fields:
+
+| Field | Where it appeared | What to do |
+| :-- | :-- | :-- |
+| `rate` | Transaction request and response | Stop sending `rate`. Stop reading it from responses. |
+| `currency_multiplier` | Balance responses | Stop reading it from responses. |
+| `modification_ref` | Balance responses | Stop reading it from responses. |
+
+Request `rate` no longer converts amounts between currencies. The destination is credited the same precise amount as the source debit. If you need multi-currency movement, model FX explicitly with separate balances and legs. See [Currency exchange](/tutorials/digital-banking/currency-exchange).
+
+## Inflight commit and void are queued by default
+
+Single and bulk inflight commit and void requests now go through the queue by default. This means the action is processed asynchronously instead of being applied immediately in the request cycle.
+
+By default, the response returns the transaction with:
+
+```json Queued response
+{
+  "transaction_id": "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "status": "INFLIGHT",
+  "queued": true
+}
+```
+
+The transaction remains `INFLIGHT` until the worker processes the queued commit or void. A second queued commit or void for the same transaction returns `409 Conflict`. To keep the previous synchronous behavior, send `skip_queue: true` in the request body. Use this when your app needs the request to return an immediate `APPLIED` or `VOID` response.
+
+<CodeGroup>
+```bash cURL {6}
+curl -X PUT "http://YOUR_BLNK_INSTANCE_URL/transactions/inflight/{transaction_id}" \
+  -H "X-Blnk-Key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit",
+    "skip_queue": true
+  }'
+```
+
+```typescript TypeScript {3}
+const response = await blnk.Transactions.updateStatus('{transaction_id}', {
+  status: 'commit',
+  skip_queue: true,
+});
+```
+
+```go Go {3}
+transaction, resp, err := client.Transaction.Update("{transaction_id}", blnkgo.UpdateStatus{
+    Status: blnkgo.InflightStatusCommit,
+    SkipQueue: true,
+})
+```
+
+```python Python {3}
+response = blnk.transactions.update_status("{transaction_id}", {
+  "status": "commit",
+  "skip_queue": True,
+})
+```
+
+```java Java
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{transaction_id}",
+    UpdateTransactionStatus.create()
+        .status("commit")
+        .skipQueue(true));
+```
+</CodeGroup>
+
+## Reconciliation response changed
+
+[Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) no longer return run status, match counts, or timestamps in the start response. Both endpoints now return only `reconciliation_id`.
+
+Here's the new flow:
+
+1. Start the reconciliation and save the returned `reconciliation_id`.
+2. Handle `reconciliation.completed` or `reconciliation.failed` on your webhook endpoint.
+3. Read status, match counts, and timestamps from the webhook payload.
+
+See [Reconciliations](/reconciliations/overview) and [Supported events](/webhooks/events#reconciliations).
+
+## Request and item limits
+
+Blnk Core 0.15.0 adds per-endpoint item limits and configurable request size caps:
+
+| Endpoint | Max per request |
+| :-- | :-- |
+| [Bulk transactions](/reference/bulk-transactions) | 10,000 transactions |
+| [Instant reconciliation](/reference/instant-reconciliation) | 10,000 external transactions |
+| [Bulk commit inflight](/reference/bulk-commit-inflight) / [Bulk void inflight](/reference/bulk-void-inflight) | 100 transactions |
+
+Configurable JSON body and upload size caps are documented in [Server and security configuration](/operating/configuration/server-security#request-and-payload-limits).
+
+## Recommended upgrade checklist
+
+Before upgrading to v0.15.0:
+
+- Replace message-text parsing with `error_detail.code`.
+- Review any logic that depends on HTTP status codes.
+- Remove reads of `rate`, `currency_multiplier`, and `modification_ref`. Stop using request `rate` for FX; use [currency exchange](/tutorials/digital-banking/currency-exchange) instead.
+- Update inflight commit and void flows to handle queued responses or use `skip_queue: true` to keep existing synchronous behavior.
+- Update reconciliation flows to handle `reconciliation.completed` and `reconciliation.failed` webhooks instead of reading status from the start response.
+
+<RelatedTopics
+  items={[
+    { title: "Upgrade Core", href: "/migrations/core/upgrade" },
+    { title: "0.15.4 migration", href: "/migrations/core/v15-4-migration" },
+    { title: "0.15.1 migration", href: "/migrations/core/v15-1-migration" },
+    { title: "Currency exchange", href: "/tutorials/digital-banking/currency-exchange" },
+    { title: "Error codes", href: "/operating/error-codes" },
+  ]}
+/>

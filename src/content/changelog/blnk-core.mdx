@@ -1,0 +1,1017 @@
+---
+title: "Blnk Core"
+sidebarTitle: "Changelog"
+description: "See what shipped in each Blnk Core release before you upgrade."
+seoTitle: "Changelog • Blnk Core"
+metaDescription: "Explore the Blnk Core changelog. Track releases, fixes, enhancements, and version history for Blnk Core."
+icon: "history"
+---
+
+<Update label="0.15.5" description="Sep 24, 2026">
+  ## Metadata update webhooks
+
+  You can now receive a webhook when you update metadata on a ledger, balance, identity, or transaction. After a successful public update, Blnk sends `ledger.metadata.updated`, `balance.metadata.updated`, `identity.metadata.updated`, or `transaction.metadata.updated`.
+
+  [Supported events →](/webhooks/events#metadata)
+
+  ## Fixes & improvements
+
+  1. **Queued effective date:** Applied transactions now keep `effective_date` when the request went through the queue. GET by id and by reference also return the field. [Backdated transactions →](/transactions/backdated-transactions)
+  2. **Redis idle connections:** Pooled Redis connections now recycle before managed Redis or Valkey close them. Set `BLNK_REDIS_CONN_MAX_IDLE_TIME` if you need a different idle window (default 2 minutes). [Redis configuration →](/operating/configuration/data-stores#redis-configuration)
+  3. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.4" description="Sep 4, 2026">
+  ## HTTPS (`server.ssl`)
+
+  `ssl: true` now starts HTTPS on `server.port` again. If a certificate cannot be issued, the server fails to start.
+
+  <Warning>
+    If you left `ssl: true` while talking HTTP, set it to `false` before you upgrade, or follow [Enable HTTPS](/operating/enable-https).
+  </Warning>
+
+  [0.15.4 migration guide →](/migrations/core/v15-4-migration#serverssl-starts-https)
+
+  ## Fixes & improvements
+
+  1. **Split validation:** A transaction that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR` instead of a misleading `404`. [0.15.4 migration guide →](/migrations/core/v15-4-migration)
+  2. **Missing balance on a transaction route:** A source or destination that does not exist now returns `404 BAL_NOT_FOUND` instead of `TXN_NOT_FOUND`.
+  3. **Already-refunded:** A second refund of the same transaction returns `409 TXN_ALREADY_REFUNDED` instead of `GEN_CONFLICT`, and no longer reverses the original refund.
+  4. **Mixed refund batches:** When some legs of a parent refund fail for reasons other than already-refunded, the batch returns `409 GEN_CONFLICT`.
+  5. **Split attribution:** Multi-source and multi-destination legs keep a stable `transaction_id` and reference suffix that match the order you sent.
+  6. **Database connect:** Blnk retries the initial Postgres connection instead of exiting on the first failure.
+  7. **Balance snapshots:** The snapshot bound and the caller's cutoff now use the same clock as the columns they bound.
+  8. **Queue recovery:** Zero-amount transactions stuck in `QUEUED` can be recovered.
+  9. **Error messages:** Not-found errors name the resource that was missing. Request decode errors no longer leak Go type names.
+  10. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.3" description="Aug 25, 2026">
+  ## Docker image update
+
+  The official Core image is now published at `ghcr.io/blnkfinance/blnk`. 
+  
+  We recommend using this registry for new deployments starting from **0.15.3**. For **0.15.2 and earlier**, keep using `jerryenebeli/blnk`.
+
+  ## Internal balances
+
+  You can now create General Ledger balances yourself with an explicit `indicator`. To create, send `ledger_id: "general_ledger_id"` and your **@** `indicator` on `POST /balances`. 
+
+  ## Fixes & improvements
+
+  1. **Dry-run transactions:** You can now preview a transaction's effect on balances without writing anything to the ledger. Set `dry_run: true` on create, bulk create, refund, and inflight update.
+  2. **Refund description and metadata:** You can now pass `description` and `meta_data` when you [create a refund](/transactions/refunds). 
+  3. **Hooks:** Listing hooks without a type now returns all hooks.
+  4. **Validation:** Negative amount or precision, and source equal to destination, are now rejected before processing.
+  5. **Scoped keys can update metadata:** You can now use a scoped key with `metadata:write` to update metadata.
+  6. **Inflight metadata:** Committed and voided transactions no longer keep `inflight: true` in their response metadata.
+  7. **Balance search metadata:** After a transaction, Typesense no longer wipes balance `meta_data`. The search index now keeps the same metadata stored in Postgres.
+  8. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.2" description="Jul 31, 2026">
+  ## Fixes & improvements
+
+  1. **Queue backpressure:** Blnk now rejects new queue enqueues when Redis memory usage or pending task count exceeds configured limits. Affected requests return `503 Service Unavailable` with `error_detail.code` set to `QUEUE_BACKPRESSURE`. Backpressure is enabled by default. [Learn more →](/operating/configuration/queue)
+  2. **Typesense memory backpressure:** Reindex and search indexing now retry gracefully when Typesense hits memory limits instead of failing immediately. [Reindex Typesense →](/search/typesense/reindex)
+  3. **Typesense reindex:** `effective_date` is now preserved when rebuilding the Typesense index from Postgres.
+  4. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.1" description="Jul 17, 2026">
+  ## Fixes & improvements
+
+  1. **Transaction lock duration:** Fixed an overflow bug when applying `BLNK_TRANSACTION_LOCK_DURATION`. [0.15.1 migration guide →](/migrations/core/v15-1-migration)
+  2. **Transaction filter:** `POST /transactions/filter` now returns `parent_transaction` instead of an empty string.
+  3. **Queued inflight commits:** Committing against a multi-leg parent transaction id now works when the request goes through the queue.
+  4. **Search/reindex:** Transaction search and reindex now include `parent_transaction`, `precise_amount`, and `precision`.
+  5. **Reconciliation uploads:** Improved reconciliation file upload handling and cleaned up file-handle closing.
+  6. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.0" description="Jun 23, 2026">
+  ## Structured API errors
+
+  Error responses include a structured `error_detail` object with a stable code and clear messages. The response also includes the `error` field.
+
+  ```json Error response
+  {
+    "error": "transaction not found",
+    "error_detail": {
+      "code": "TXN_NOT_FOUND",
+      "message": "transaction not found",
+      "details": { }
+    }
+  }
+  ```
+
+  <Warning>
+    If your app checks status codes or error message text, review the [0.15.0 migration guide](/migrations/core/v15-migration) before upgrading.
+  </Warning>
+
+  [API error codes →](/operating/error-codes)
+
+  ## Removed `rate`, `currency_multiplier`, and `modification_ref`
+
+  Transaction and balance responses no longer include `rate`, `currency_multiplier`, or `modification_ref`. Request `rate` no longer applies an exchange rate; destination credit equals source debit.
+
+  <Warning>
+    If your app reads these fields or uses request `rate` for FX, review the [0.15.0 migration guide](/migrations/core/v15-migration#rate-currency_multiplier-and-modification_ref-removed) before upgrading.
+  </Warning>
+
+  ## Queued inflight commit and void
+
+  Commit and void for inflight transactions now go through the queue by default. Bulk commit and void also follow the same default. 
+  
+  Enable `skip_queue` in the request body when you need the previous synchronous behavior.
+
+  [Commit & void inflight →](/transactions/inflight/commit-inflight)
+
+  ## Transaction hash chain
+
+  Blnk now supports an optional global hash chain to detect tampering in your transaction history and confirm ledger integrity on demand. 
+  
+  It is disabled by default; enable it in config and run `blnk verify-chain` from your Core deployment.
+
+  [Transaction hashing →](/transactions/hash)
+
+  ## Fixes & improvements
+
+  1. Added DELETE endpoints for balance monitors and [identities](/reference/delete-identity).
+  2. **Reconciliation webhooks:** Blnk now sends `reconciliation.completed` and `reconciliation.failed` webhooks when a run completes or fails. [Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) now return only `reconciliation_id` in the start response. [0.15.0 migration guide →](/migrations/core/v15-migration#reconciliation-response-changed) · [Supported events →](/webhooks/events#reconciliations)
+  3. Added a `system.error` webhook for internal failures during async processing.
+  4. Increased default worker and database pool limits. 
+  5. Added configurable [request and upload size caps](/operating/configuration/server-security#request-and-payload-limits). 
+  6. [Bulk create](/reference/bulk-transactions) and [instant reconciliation](/reference/instant-reconciliation) now enforce max **10,000** items per request.
+  7. General bug fixes and performance improvements.
+</Update>
+
+<Update label="0.14.5" description="Jun 8, 2026">
+  ## Fixes & improvements
+
+  1. **Bulk transaction validation:** The [Create bulk transactions](/reference/bulk-transactions) endpoint now validates each item in the `transactions` array before processing. Invalid fields return `400 Bad Request` with indexed error messages.
+  2. **Logging levels:** Transaction processing, reconciliation progress, and search indexing messages that reflect normal workflow progress are now logged at **info** level instead of **error**, so operational logs are easier to filter and alert on.
+</Update>
+
+<Update label="0.14.4" description="Jun 6, 2026">
+  ## Remote monitoring exporter
+
+  Blnk now supports optional remote export of logs, traces, and metrics through a Cloud DSN. Set **`BLNK_CLOUD_DSN`** to forward observability data to your Blnk Cloud monitoring project. Exported logs have sensitive values redacted.
+
+  [Monitoring in Blnk →](/operating/monitoring)
+
+  ## Fixes & improvements
+
+  1. **Scheduled inflight commits:** Fixed a bug where [scheduled inflight commits](/transactions/inflight/commit-inflight#schedule-a-commit) did not commit at the time you set. Transactions with `inflight_commit_date` now commit automatically as expected.
+  2. **Typesense search:** Fixed a bug that prevented transactions from reliably indexing into [Typesense search](/search/typesense/introduction), so recorded transactions could not be found when searching.
+</Update>
+
+<Update label="0.14.3" description="May 26, 2026">
+  ## Security hardening
+
+  When you manage API keys with a non-master key, Blnk now limits you to your own `owner_id`: you can create, list, and revoke keys for that owner only, and you cannot grant scopes you don't already have. 
+  
+  The master key still has full access to create, list, and revoke keys for any owner.
+
+  Hook management (create, update, view, list, and delete) now requires the master key. Regular API keys return `403 Forbidden`.
+
+  <Warning>
+    These auth rules can break integrations that manage hooks or cross-owner API keys with a scoped key. Review the [0.14.3 migration guide](/migrations/core/v14-3-migration) before upgrading.
+  </Warning>
+
+  [Owner context →](/operating/api-keys/owner-context) · [Transaction hooks →](/webhooks/transaction-hooks)
+</Update>
+
+<Update label="0.14.2" description="May 18, 2026">
+  ## Bulk inflight updates
+
+  Blnk Core now supports bulk commit and bulk void operations for independently-created inflight transactions.
+
+  Use the [**Bulk commit endpoint**](/reference/bulk-commit-inflight) to commit multiple inflight transactions in one request, including partial commits with `amount` or `precise_amount` per transaction. Use the [**Bulk void endpoint**](/reference/bulk-void-inflight) to void multiple inflight transactions in one request.
+
+  Bulk requests accept up to **100** items and return per-transaction results, so one failed transaction does not stop the rest of the batch. The response includes `succeeded`, `failed`, and a `results` array with each transaction's status, error code, and message when applicable.
+
+  ## Fixes & improvements
+
+  1. **Synchronous refunds:** The [Refund transaction](/reference/refund-transaction) endpoint now accepts an optional `{"skip_queue": true}` body to process refunds synchronously. Requests without a body keep the existing queued behavior.
+  2. **Deterministic identity creation:** The [Create new identity](/reference/create-identity) endpoint now honors caller-supplied `identity_id` values when they use the `idt_` prefix and a valid UUID suffix. Duplicate deterministic identity ids now return a conflict response, making concurrent create flows easier to handle.
+  3. **Filter validation:** [Search via Direct DB](/search/db/filtering) now rejects unknown filter operators instead of silently dropping those filters and running a broader query.
+</Update>
+
+<Update label="0.14.1" description="May 6, 2026">
+  ## Scheduled inflight commits
+
+  You can now set **`inflight_commit_date`** when recording an inflight transaction (**`inflight: true`**). This lets Blnk reserve funds immediately like a normal inflight transaction and automatically commit at the date and time you specify, without committing the transaction yourself.
+
+  [Schedule inflight commits →](/transactions/inflight/commit-inflight#schedule-a-commit)
+</Update>
+
+<Update label="0.14.0" description="Apr 9, 2026">
+  ## Performance improvements
+
+  This release focuses on improving how Blnk performs under high-traffic. 
+  
+  In internal benchmarks under heavy contention and burst load, processing throughput improved by **up to about 5×**; your results depend on workload shape, how much traffic overlaps on the same balances, and how you configure the server.
+
+  [Handling hot balances →](/guides/hot-balances)
+
+  [Transaction configuration →](/operating/configuration/transactions) 
+  
+  [Queue configuration →](/operating/configuration/queue)
+
+  ## Fixes & improvements
+
+  1. **Update Metadata response:** The [Update Metadata](/reference/update-metadata) endpoint now returns **`meta_data`** in the response instead of `metadata`. [View migration guide →](/migrations/core/v14-migration)
+</Update>
+
+<Update label="0.13.5" description="Mar 9, 2026">
+  ## Fixes & improvements
+
+  1. **Transaction filter bug fix:** Fixed transaction filters to return precision.
+  2. **Edit and delete matching rules:** You can now edit and delete matching rules for your reconciliation workflows.
+</Update>
+
+<Update label="0.13.4" description="Mar 6, 2026">
+  ## Fixes & improvements
+
+  - Reconciliation improvements and bug fixes.
+  - Introduced logical operators to direct DB filters.
+</Update>
+
+<Update label="0.13.3" description="Feb 24, 2026">
+  ## Fixes & improvements
+
+  - Fixed a bug where the `balance_id` filter returned an internal server error when you [search via Direct DB](/search/db/filtering).
+</Update>
+
+<Update label="0.13.2" description="Feb 12, 2026">
+  ## Search via Database
+
+  Filter ledgers, balances, transactions, and identities directly from your database using the new Filter API. To use, just send POST requests to `/{collection}/filter` with JSON filters, sorting, and pagination; no Typesense setup required.
+  
+  [Read docs](/search/db/filtering)
+
+  ## Fixes & improvements
+
+  1. **Unique reference constraint:** Blnk now enforces a unique database index on `transactions.reference` (`idx_transactions_reference_unique`), strengthening idempotency guarantees at the storage layer.
+
+  <Warning>
+    This release includes a breaking database change: transaction `reference` values must be unique. Upgrade fails if your database already contains duplicate references. 
+    
+    Review the [0.13.2 migration guide](/migrations/core/v13-2-migration) before upgrading.
+  </Warning>
+</Update>
+
+<Update label="0.13.1" description="Feb 5, 2026">
+  ## Reindex Typesense
+
+  Populate a new or empty Typesense instance using data from your existing database. Useful when deploying a fresh Typesense instance, migrating to a new cluster, or recovering from Typesense data loss.
+  
+  [Read docs](/search/typesense/reindex)
+</Update>
+
+<Update label="0.13.0" description="Jan 29, 2026">
+  ## Introducing Lineage
+
+  You can now track the source of funds on balances (“fund lineage”) and control how debits are allocated across sources (FIFO, LIFO, or proportional). This improves traceability for reporting and audits. 
+  
+  [Read docs](/transactions/lineage)
+  
+  ## Fixes & improvements
+
+  1. **Webhook request signing**: Outbound webhook deliveries now include `X-Blnk-Signature` and `X-Blnk-Timestamp` headers (HMAC-SHA256), so you can verify webhook authenticity.
+  2. **Improved graceful shutdown**: Enhanced graceful shutdown to ensure pending transactions finish before the server stops.
+  3. **Fixed PII secret key requirement**: Fixed a bug to ensure that PII only works when you set a PII secret key in your config.
+  4. General bug fixes and performance improvements.
+</Update>
+
+<Update label="0.12.2" description="Jan 14, 2026">
+  ## Fixes & improvements
+
+  1. **Applied Cloud indexes** to the Core database to improve speed and performance when retrieving data on your Cloud dashboard.
+
+  2. **Fixed Search date field updates**: Resolved an issue where date fields were incorrectly updated in the [Search](/search/typesense/introduction) index when metadata was modified.
+
+  3. **Precise distribution support**: [Multiple sources](/transactions/split-transactions) and [multiple destinations](/transactions/split-transactions) now support passing precise amounts in the distribution array using the `precise_distribution` parameter. This enables accurate distribution when working with `precise_amount` values.
+</Update>
+
+<Update label="0.12.1" description="Jan 12, 2026">
+  ## Fixes & improvements
+
+  1. **Fixed Typesense index errors**: Resolved issues with Typesense indexing for transaction records, ensuring reliable search functionality.
+
+  2. **Effective date search and sorting**: You can now search and sort transactions by `effective_date`. When `effective_date` is not set, it automatically defaults to the same value as `created_at`, ensuring consistent date handling across all transactions.
+
+  <Warning>
+    **Reindexing required**: Old transactions that were not previously indexed in Typesense will need to be reindexed to take advantage of these improvements. 
+    
+    You can check out this [reindexing script](https://github.com/stkegoul/blnk-reindex) from a community member.
+  </Warning>
+</Update>
+
+<Update label="0.12.0" description="Dec 8, 2025">
+  ## Enhanced API key security
+
+  API keys are now hashed using SHA-256 before storage, significantly improving security posture. Plain text API keys can only be retrieved during creation-they are never stored or returned in list responses.
+  
+  <Warning>
+    This release includes breaking changes related to API key security. Existing API keys will stop working after upgrading. Please review the [migration guide](/migrations/core/v12-migration) before upgrading.
+  </Warning>
+
+  ## Fixes & improvements
+
+  1. **Enhanced reconciliation support**: Reconciliation now supports amounts with more than 2 decimal places and currency codes longer than 3 characters.
+
+  2. **System error webhooks**: We now send system errors (e.g. duplicate reference) as webhooks, making it easier to monitor and troubleshoot system issues.
+
+  3. General bug fixes and performance improvements.
+</Update>
+
+<Update label="0.11.6" description="Nov 29, 2025">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.11.5" description="Nov 28, 2025">
+  ## Fixes & improvements
+
+  1. Improved webhook delivery performance for faster and more reliable concurrent webhook delivery.
+  2. You can now tune webhook processing performance with the new [`webhook_concurrency`](/operating/configuration/queue#queue-settings) configuration.
+</Update>
+
+<Update label="0.11.4" description="Nov 26, 2025">
+  ## Fixes & improvements
+
+  1. Improved reconciliation performance for faster processing of large reconciliation batches.
+</Update>
+
+<Update label="0.11.3" description="Nov 20, 2025">
+  ## Typesense JOINs support
+
+  You can now query related data across collections in a single search. For example, this makes it easier to fetch balances with their associated identity details, or filter identities based on their balance information. 
+  
+  <CodeGroup>
+  ```bash cURL
+  curl -X POST "http://YOUR_BLNK_INSTANCE_URL/search/balances" \
+    -H "X-blnk-key: YOUR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "q": "*",
+      "include_fields": "$identities(*)" // Fetch identity details for each balance
+    }'
+  ```
+  ```json Response {15-18}
+  {
+    "facet_counts": [],
+    "found": 145,
+    "hits": [
+      {
+        "document": {
+          "balance": "-13166600",
+          "balance_id": "bln_0c2f1ab7-a40d-4e23-a5dc-daad54ddf3c1",
+          "created_at": 1763641569,
+          "credit_balance": "34461100",
+          "currency": "EUR",
+          "currency_multiplier": 0,
+          "debit_balance": "47627700",
+          "id": "bln_0c2f1ab7-a40d-4e23-a5dc-daad54ddf3c1",
+          "identities": {
+            "first_name": "Debra",
+            "last_name": "Barrett"
+          },
+          "identity_id": "idt_4dd12897-f085-41f2-955f-790ed3c0a7fb",
+          "indicator": "",
+          "inflight_balance": "0",
+          "inflight_credit_balance": "0",
+          "inflight_debit_balance": "0",
+          "inflight_expires_at": 1763641569,
+          "ledger_id": "ldg_6dc543d3-1138-4ea8-8072-844398c735a1",
+          "meta_data": {
+            "created_by": "system-api"
+          },
+          "version": 19
+        },
+        "highlight": {},
+        "highlights": []
+      }
+    ],
+    "out_of": 148,
+    "page": 1,
+    "request_params": {
+      "collection_name": "balances",
+      "per_page": 1,
+      "q": "*"
+    },
+    "search_cutoff": false,
+    "search_time_ms": 8
+  }
+  ```
+  </CodeGroup>
+  
+  This returns balance records with their full identity details joined automatically, reducing the need for multiple API calls.
+
+  ## Fixes & improvements
+
+  1. **Enhanced transaction precision validation**: The system now rejects transactions with non-integer precision values to prevent database failures and balance inconsistencies.
+
+  2. **Default general ledger indexing**: The system now automatically ensures the default general ledger exists in Typesense search index during initialization.
+
+  3. **API key tracking improvements**: Fixed an issue where API key usage tracking (`UpdateLastUsed`) was not correctly updating records by `api_key_id`, ensuring accurate API key activity monitoring.
+</Update>
+
+<Update label="0.11.2" description="Oct 8, 2025">
+  ## Fixes & improvements
+
+  1. You can now commit inflight bulk transactions created with the queue (i.e. `skip_queue: false`) using their batch IDs.
+
+  2. [Queued balances](/balances/introduction#queued-balances) now omit inflight transactions. 
+</Update>
+
+<Update label="0.11.1" description="Sep 30, 2025">
+  ## Fixes & improvements
+
+  1. **Fixed metadata update bug**: Resolved issue where Typesense search index wasn't being updated when existing records' metadata was modified.
+
+  2. **[Get transaction by reference](/reference/get-transaction-by-reference)**: You can now retrieve transactions using their `reference` number. See also: [Verifying transactions](/transactions/single-transaction#verifying-transactions).
+
+  3. **[Update ledger name](/reference/update-ledger-name)**: You can now rename existing ledgers in your Blnk Core. 
+
+  4. **[Link existing balance to identity](/reference/update-balance-identity)**: You can update the identity linked to a balance or attach an existing balance to an identity.
+</Update>
+
+<Update label="0.11.0" description="Aug 27, 2025">
+  <Info>
+    This release includes breaking changes related to Typesense/Search functionality. Please review the [migration guide](/migrations/core/v11-migration) before upgrading.
+  </Info>
+
+  ## Search with metadata
+
+  We have improved searching transactions, balances, and identities with metadata. 
+  
+  Use your own tags, customer IDs, categories, or nested fields to filter and retrieve exactly what you need, making it easier to organize data around your business context.
+
+  ## Fixes & improvements
+
+  1. Insufficient balance checks now include inflight transactions, giving a more accurate view of available funds and helping prevent unintentional overdrafts.
+  2. Improved handling of inflight transactions during commit and void operations in high-concurrency environments.
+  3. The system now properly excludes rejected inflight transactions from commit operations to prevent errors.
+  4. Enhanced search performance and memory usage optimizations.
+  5. Updated Typesense client library with security patches and improved API compatibility.
+  6. General bug fixes and performance improvements.
+</Update>
+
+<Update label="0.10.8" description="Jul 31, 2025">
+  ## Fixes & improvements
+
+  1. **Enhanced PII tokenization**: Strengthened PII tokenization functionality to properly handle international characters, emojis, and special symbols without corruption during tokenization and detokenization processes.
+</Update>
+
+<Update label="0.10.7" description="Jul 24, 2025">
+  ## Fixes & improvements
+
+  1. **Fixed telemetry configuration bug**: Resolved issue where `BLNK_ENABLE_TELEMETRY=false` would still default to enabled. Telemetry and observability concerns are now properly separated with independent feature flags.
+
+  2. **Enhanced transaction concurrency**: Introduced robust locking mechanism for inflight transactions to prevent race conditions during commit and void operations, ensuring data consistency in high-concurrency scenarios.
+
+  3. **Improved transaction reference management**: Updated transaction references to use UUID suffixes for unique identification instead of simple "-commit" suffixes, providing better transaction traceability and preventing reference collisions.
+
+  4. **Enhanced error handling**: Improved error handling for "reference already used" errors to provide better transaction flow management.
+
+  5. **Added TypeSense DNS validation**: Enhanced indexing reliability by ensuring TypeSense operations only occur when properly configured, preventing potential indexing failures.
+
+  6. **Added connection pooling support**: Improved database performance and reliability through enhanced connection management.
+</Update>
+
+<Update label="0.10.6" description="Jul 8, 2025">
+  ## Redis TLS verification control
+
+  The Redis configuration now supports a `skip_tls_verify` option. This allows you to connect to Redis instances with self-signed or untrusted certificates by skipping TLS certificate verification.
+
+  ```json blnk.json
+  {
+    "redis": {
+      "dns": "rediss://<user>:<password>@<host>:<port>",
+      "skip_tls_verify": false
+    }
+  }
+  ```
+
+  [See configuration docs →](/operating/configuration/data-stores#redis-configuration)
+</Update>
+
+<Update label="0.10.5" description="Jul 4, 2025">
+  ## Bulk transaction queue processing
+
+  Bulk transactions now use the queue system by default for improved performance and reliability. Learn more: [Why we use queueing](/guides/concurrency#queuing-transactions).
+
+  1. Bulk transactions default to `skip_queue: false`.
+  2. Users can add `"skip_queue": true` to bypass the queue for immediate processing.
+
+  <Warning>
+  This is a breaking change if your app expects bulk create to finish synchronously. See the [0.10.5 migration guide](/migrations/core/v10-5-migration).
+  </Warning>
+
+  ## Other improvements
+
+  1. Enhanced balance creation to prevent duplicate entries with the same indicator and currency.
+
+</Update>
+
+<Update label="0.10.4" description="Jun 25, 2025">
+  ## Fixes & improvements
+
+  1. **Security**: Added authentication bypass for `/health` endpoint to enable health checks without authentication.
+</Update>
+
+<Update label="0.10.3" description="Jun 21, 2025">
+  ## New features
+  
+  This release brings significant improvements to transaction processing, balance management, and system reliability with enhanced locking mechanisms and better webhook handling.
+
+  1. **GetBalanceByIndicator functionality**  
+      You can now retrieve balances using custom indicators, providing more flexible balance querying capabilities for your applications.
+
+  2. **Zero-amount transaction handling**  
+      The system now properly handles zero-amount transactions, ensuring consistent behavior across all transaction types and edge cases.
+
+  3. **Update balance identity endpoint**  
+      Added new endpoint to update the identity associated with a balance, allowing for better customer data management and account linking.
+
+  4. **Kubernetes deployment support**  
+      Added comprehensive Kubernetes manifests for streamlined deployment and management in containerized environments.
+
+  ## Major improvements
+ 
+  1. Enhanced transaction precision for better handling of large financial values.
+  2. Refunding transactions is now idempotent: you can no longer refund a transaction more than once.
+  3. Improved balance creation reliability to prevent race conditions.
+  4. Enhanced commit functionality using queue system for better transaction flow management.
+  5. Improved webhook processing for better reliability.
+  6. Enhanced webhook delivery consistency.
+  7. Improved webhook error handling and retry mechanisms.
+  8. Added comprehensive [health check endpoints](/reference/get-health) for better system monitoring.
+  9. Added [queue monitoring port](/operating/monitoring-port) for real-time queue metrics and dashboard monitoring.
+  10. Enhanced system observability with improved logging and status tracking.
+  11. Better configuration handling for transaction lock duration.
+  12. Fixed API key revocation to properly bind to owner ID, preventing unauthorized access bypass.
+  13. Enhanced reconciliation testing framework for better financial accuracy validation.
+  14. Improved bulk transaction cleanup processes.
+  15. Enhanced Docker workflow with multi-platform support for broader deployment compatibility.
+  16. Streamlined deployment processes with better containerization.
+
+</Update>
+
+<Update label="0.10.2" description="Apr 14, 2025">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.10.1" description="Mar 22, 2025">
+  ## Granular access controls
+
+  You can now create API keys with specific permissions to enforce granular access control in your ledger. 
+
+  ```json Create API key
+  {
+    "name": "Balance Management",
+    "owner": "balance_management",
+    "scopes": ["balances:write", "search:write"],
+    "expires_at": "2026-03-11T00:00:00Z"
+  }
+  ```
+
+  [Set your API keys →](/operating/api-keys/overview)
+
+  ## Overdraft limits
+
+  Set a maximum overdraft threshold using the `overdraft_limit` parameter when you enable overdrafts for a transaction: 
+
+  ```json Overdraft limit {10}
+  {
+    "amount": 400.23,
+    "precision": 100,
+    "currency": "USD",
+    "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    "source": "bln_546df224-d7a8-4a20-8e27-399938cb3ead",
+    "destination": "bln_8de42141-059f-42ea-9340-00394285620a",
+    "description": "Wallet funding",
+    "allow_overdraft": true,
+    "overdraft_limit": 500
+  }
+  ```
+  
+  For example, setting `overdraft_limit` to 500.00 ensures the balance does not drop below -\$500.00, providing a safeguard against excessive overdrafts.
+
+  [Set Overdraft Limits →](/transactions/overdrafts#setting-overdraft-limits)
+
+  ## Use historical balances without balance snapshots
+
+  You now have the option to bypass balance snapshots when utilizing the [historical balances](/balances/historical-balances#reconstruct-balance) feature, allowing your balances to be reconstructed with their transactions only.
+
+  To do this, include the query parameter `from_source=true` in your request URL:
+
+  ```http Request
+  GET https://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}/at?timestamp={timestamp}&from_source=true
+  ```
+
+  ## Apply precision with `precise_amount`
+
+  Accurately record amounts exceeding 15 digits with full precision using the `precise_amount` field:
+
+  1. Convert the amount to its smallest unit.
+  2. Enter this value directly into the `precise_amount` field of your request.
+  3. Include the corresponding `precision` value.
+
+  ```json Example {2}
+  {
+    "precise_amount": 189207535698279000,
+    "precision": 1000000000000000000,
+    "currency": "ETH",
+    ...
+  }
+  ```
+
+  [Applying precision with `precise_amount` →](/transactions/precision#applying-precision)
+
+  ## Balance reconstruction
+
+  Correct ledger discrepancies by recalculating your balance directly from transactions. To use this feature, [update your balance metadata](/metadata/update-metadata) with the following key:
+
+  ```json Update metadata
+  {
+    "meta_data": {
+      "BLNK_RUN_RECONCILIATION": "SOURCE"
+    }
+  }
+  ```
+
+  See [How Balance Reconstruction Works](/operating/balance-reconstruction) for more details.
+
+  ## Instant reconciliation
+
+  You can now instantly match transactions and mark them as reconciled, with reconciliation details stored in the transaction's metadata for easy tracking.
+
+  See [Instant Reconciliation](/reconciliations/overview#instant-reconciliation) for more details.
+
+  ## Other improvements
+  
+  1. Added database protections to prevent unauthorized changes to transactions and balance snapshots.
+  2. Introduced a transaction journal featuring a comprehensive audit log to track all activities within the transactions table.
+  3. Enabled metadata updates for multiple transactions using the `parent_transaction` ID,
+  4. Upgraded Redis connectivity with TLS support.
+  5. General bug fixes and performance improvements
+</Update>
+
+<Update label="0.9.1" description="Mar 5, 2025">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.9.0" description="Mar 3, 2025">
+  ## Bulk transactions
+
+  The Bulk Transaction API enables you to process multiple transactions within a single request. It offers two processing options: atomic processing, where all transactions either succeed or fail as a unit, and independent processing, where each transaction is handled separately.
+
+  Additionally, the API supports asynchronous processing to efficiently manage large batches of transactions.
+
+  [Bulk Transactions →](/transactions/bulk-transactions)
+  
+  ## Backdated transactions
+
+  Introducing the `effective_date` feature for recording transactions with a financial date different from their system entry date.
+
+  This capability ensures seamless [migration](/guides/migration), accurate financial reporting, [reconciliation](/reconciliations/overview), and [historical balance](/balances/historical-balances) calculations.
+
+  [Backdated Transactions →](/transactions/backdated-transactions)
+</Update>
+
+<Update label="0.8.8" description="Feb 26, 2025">
+  ## PII tokenization
+  
+  We've introduced a PII tokenization feature allowing you to replace sensitive customer data with non-sensitive tokens while maintaining the ability to use the data for business operations. 
+
+  This enhances security, reduces compliance scope, and maintains full functionality within your applications.
+
+  [PII Tokenization →](/identities/pii-tokenization)
+</Update>
+
+<Update label="0.8.7" description="Feb 25, 2025">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+  2. Added environment variables for Blnk configuration parameters.
+</Update>
+
+<Update label="0.8.5" description="Feb 24, 2025">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.8.4" description="Feb 24, 2025">
+  ## Balance snapshots & historical balances
+
+  Introduced the Balance Snapshots feature, enabling users to retrieve historical balance data at any specific point in time. This enhances accurate financial reporting and analysis while maintaining efficient storage and retrieval mechanisms for optimal performance and scalability.
+
+  [Balance Snapshots →](/balances/balance-snapshots)
+
+  [Historical Balances →](/balances/historical-balances)
+</Update>
+
+<Update label="0.8.3" description="Feb 22, 2025">
+  ## New configuration for handling insufficient funds
+
+  Added configuration parameters to control how the ledger processes transactions when funds are insufficient.
+
+  1. `insufficient_fund_retries`: Determines whether the ledger should automatically retry transactions that fail due to insufficient funds.
+
+  2. `max_retry_attempts`: Specifies the maximum number of retry attempts before the transaction is rejected.
+
+  ## Added queued balances
+
+  [Queued balances](/balances/introduction#queued-balances) help estimate the available or expected balance of a ledger. Unlike [inflight balances](/transactions/inflight/create-inflight#inflight-balance-tracking), which require certain conditions to be met (commit or void) before being applied, queued balances simply represent the total amount of transactions waiting in the queue, regardless of conditions.
+
+  To view the queued balances of a ledger balance, call the [Get Balance](/reference/get-balance) endpoint:
+
+  ```http Request
+  GET http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true
+  ```
+  ```json Response {9-10}
+  {
+      "balance": 0,
+      "version": 0,
+      "inflight_balance": 0,
+      "credit_balance": 0,
+      "inflight_credit_balance": 0,
+      "debit_balance": 0,
+      "inflight_debit_balance": 0,
+      "queued_credit_balance": 0,
+      "queued_debit_balance": 0,
+      "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "identity_id": "",
+      "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+      "indicator": "",
+      "currency": "USD",
+      "created_at": "2024-07-05T08:13:18.882616461Z",
+      "meta_data": {
+          "customer_internal_id": "1234",
+          "customer_name": "Jerry"
+      }
+  }
+  ```
+</Update>
+
+<Update label="0.8.2" description="Feb 7, 2025">
+  ## Direct transaction processing (skip queue)
+
+  Added `skip_queue` option to allow transactions to bypass the queue system and process immediately. When enabled:
+
+  1. Transactions act directly on balances without entering the queued state
+  2. System maintains data consistency through Redis distributed locks
+  3. Optimistic locking at database level ensures transaction integrity
+
+  To implement, add `"skip_queue": true` to your transaction request body when posting a transaction to your ledger.
+
+  ```json Skip queue {4}
+  {
+    ...
+    "inflight": true,
+    "skip_queue": true
+  }
+  ```
+</Update>
+
+<Update label="0.8.1" description="Jan 18, 2025">
+  ## Updates to transactions
+  
+  The `QUEUED` state is now stored in your Ledger to enhance organisation and traceability in your financial data.
+  
+  When a queued transaction is processed, we maintain a clear link to its origin:
+  
+  1. Each queued transaction maintains two connections to its parent:
+      1. Direct link via `parent_transaction` field
+      2. Modified reference with `_q` suffix
+  
+  This ensures:
+
+  1. Clear audit trail of transaction flow
+  2. Easy tracking of transaction history
+  3. Prevention of reference collisions
+  4. Ability to trace complete transaction lifecycle
+
+  ## Configuration file
+
+  Blnk Finance now provides granular control over transaction and queue behaviors. This allows you to fine-tune system performance and behavior according to your needs.
+
+  ## Metadata update
+  
+  The metadata update feature allows you to attach and modify additional information to different financial items (ledger, balance, transaction or identities) without altering their core attributes. This provides flexibility for storing custom data, tags, or references.
+
+  ## Bug fixes & improvements
+  
+  1. Enhanced distribution calculations with rounding support
+  2. Improved transaction processing and metadata handling
+  3. Enhanced configuration options for transaction and queue management
+  4. General bug fixes and improvements
+</Update>
+
+<Update label="0.7.42" description="Dec 23, 2024">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.7.41" description="Dec 23, 2024">
+  ## Bug fixes & improvements
+
+  1. Improved URL parsing for managed and Docker Redis connections.
+</Update>
+
+<Update label="0.7.4" description="Nov 12, 2024">
+  ## Bug fixes & improvements
+
+  1. `indicator` not returning for [internal balances](/balances/internal-balances) on the `GET /balances` endpoint is now fixed.
+</Update>
+
+<Update label="0.7.3" description="Oct 11, 2024">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.7.2" description="Sep 10, 2024">
+  ## Bug fixes & improvements
+  
+  1. General bug fixes and improvements.
+</Update>
+
+<Update label="0.7.1" description="Sep 9, 2024">
+  ## Bug fixes & improvements
+
+  1. Improved transaction processing speed through optimized reference checking.
+</Update>
+
+<Update label="0.7.0" description="Sep 9, 2024">
+  ## Reconciliation
+
+  We're excited to announce Reconciliation, a powerful new module that helps developers seamlessly compare and reconcile external records with your Blnk Ledger. This feature ensures data consistency, simplifies auditing processes, and reduces errors by automatically flagging mismatches.
+
+  To learn more: [Reconciliation overview](/reconciliations/overview).
+
+  ## Parent transactions
+
+  We added `parent_transaction` for transactions with parent ids, e.g., inflight transactions, multiple sources/destinations, scheduled transactions, etc.
+
+  For example, when an inflight transaction is committed, a new transaction is created in your ledger. This new transaction includes the `parent_transaction` field, which references the original inflight transaction.  
+
+  Other related improvements include:
+  1. Added pagination support for fetching transactions by `parent_transaction`.
+
+  ## Bug fixes & improvements
+
+  1. Add identity and reconciliation collections to Search.
+  2. Added new tools for system monitoring to provide better visibility and faster detection of performance issues.
+  3. Added rate-limiting to ensure fair usage and maintain system reliability during high traffic periods.
+  4. Resolved issues with backups to Amazon S3.
+  5. Improved error handling to deliver clearer feedback and make debugging more efficient.
+</Update>
+
+<Update label="0.6.4" description="Jun 10, 2024">
+  ## Bug fixes & improvements
+  
+  1. Fixed dates not being returned correctly.
+  2. Improved Search
+  3. `created_at` is now set before queuing transactions.
+</Update>
+
+<Update label="0.6.3" description="Jun 9, 2024">
+  ## Bug fixes & improvements
+
+  1. Added `precision` to balance monitor.
+  2. Added restart policy to migration.
+  3. Directus service and `.env` parameters added in **docker-compose** by [vebera](https://github.com/vebera).
+</Update>
+
+<Update label="0.6.2" description="May 3, 2024">
+  ## Rates
+
+  We've introduced Rates, a feature that allows you to record transactions between balances of different currencies. 
+
+  ```json Applying rates {5}
+  {
+    ...
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "rate": 0.92
+  }
+  ```
+
+  ## Bug fixes & improvements
+  1. Added `inflight_expiry_date` for specifying when an inflight transaction should expire and be automatically voided.
+  2. Added new balance fields and `operator` field to balance monitors.
+  3. You can now only commit up to the total amount of the original inflight transaction. 
+</Update>
+
+<Update label="0.6.1" description="Apr 12, 2024">
+  ## Added search
+
+  Search gives you full control and flexibility over how you fetch your transaction data from your Blnk Ledger. You can use Search to retrieve any data - ledgers, ledger balances, and transactions - from your Blnk Ledger.
+
+  ## Transaction precision
+
+  `precision` is now a transaction parameter. Blnk uses `precision` to convert transaction amounts to the lowest unit possible, e.g., converting naira to kobo, to ensure that your balances are correctly computed. 
+
+  <Tip>The lowest unit for an asset class is a value that has no decimal point regardless of what amount is passed.</Tip>
+
+  ## Partial commits for inflight transactions
+
+  You can now commit transactions in `INFLIGHT` in bits, i.e., you can release the amount being held by your system in batches based on the conditions you've set for the transaction or participating balance. 
+
+  ## Bug fixes & improvements
+  1. Fixed typos in the payloads for `inflight` and `allow_overdraft`.
+  2. General bug and performance improvements.
+</Update>
+
+<Update label="0.6.0" description="Apr 8, 2024">
+  ## Multiple sources & destinations
+
+  ![A transaction with several sources paying one destination](img/changelog/multiple-sources.png)
+
+  You can now process transactions from [multiple sources](/transactions/split-transactions) to one destination or from one source to [multiple destinations](/transactions/split-transactions). Multiple sources/destinations help you link similar transactions into one single request payload and making the process a lot more efficient for you. 
+
+  ## Inflight transactions
+
+  We've introduced Inflight Transactions, a feature that allows you to hold a transaction until specific conditions are met.
+
+  ```json Enable inflight {7}
+  {
+    "amount": 12992.12,
+    "reference": "ref_1234",
+    "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+    "destination": "@World",
+    "description": "Card payment",
+    "inflight": true
+  }
+  ```
+
+  ## Overdrafts
+
+  With the new Overdrafts feature, you can process transactions even if the ledger balance doesn't have sufficient funds. When overdraft is enabled, your balance can go negative, signifying that more money has been spent than received.
+
+  ```json Enable overdraft
+  {
+    "allow_overdraft": true
+  }
+  ```
+
+  ## Enhanced concurrency control
+
+  Improved transaction processing to ensure that multiple transactions can be seamlessly processed simultaneously at scale. Learn more: [How Blnk handles concurrency](/resources/concurrency).
+
+  ## Bug fixes & improvements
+
+  1. The `precision` value for a ledger balance is now automatically applied to the amounts of all transactions that the balance is part of. This ensures that your balance is correctly computed and no amount is lost to approximation.
+  2. General bug and performance improvement.
+</Update>
+
+<Update label="0.5.0" description="Mar 25, 2024">
+  ## Welcome to our first release
+
+  Blnk Core is live and available for download. 
+
+  Fintech developers now have access to an open-source ledger database (a reliable source of truth) and fintech backend infrastructure for building their financial products at scale.
+
+  ## Ledgers and ledger balances
+
+  You can now model your customers' accounts, wallets, and all kinds of balances with our ledger and ledger balances features. You can also implement [balance monitoring](/balances/balance-monitoring) in one place.
+
+  You can also represent your organization's chart of accounts in your Ledger with our [General Ledger](/ledgers/general-ledger) feature.
+
+  ## Transactions
+
+  You can accurately record and track transactions between balances in your Ledger. Blnk transactions feature also allows you to model and implement complex money movement within your system.
+
+  You can also toggle on [refunds](/transactions/refunds), and [scheduling](/transactions/scheduling).
+
+  ## Identities
+
+  You can create and manage identities for your customers (individuals and organizations) within your Ledger. Learn more: [Identities](/identities/introduction)
+
+  ## Advanced
+
+  1. Added https configuration for running your Blnk server in [secure mode](/operating/enable-https).
+  2. Added k6 for [load testing](/operating/load-testing).
+</Update>
+
+<RelatedTopics
+  items={[
+    { title: "Install", href: "/install" },
+    { title: "Upgrade Core", href: "/migrations/core/upgrade" },
+    { title: "0.15.4 migration", href: "/migrations/core/v15-4-migration" },
+    { title: "Transactions", href: "/transactions/introduction" },
+    { title: "Configuration overview", href: "/advanced/configuration/overview" },
+  ]}
+/>

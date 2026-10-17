@@ -1,0 +1,229 @@
+---
+title: "Building Your App Logic"
+sidebarTitle: "App development"
+description: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
+seoTitle: "Building Your App Logic | Blnk Cloud Guide"
+metaDescription: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
+enterprise: cloud
+---
+
+After installation, your app now has what it needs to work with the selected Cloud instance. The important values come from the install record you saved earlier:
+
+- `api_key`
+- `instance_id`
+- `granted_permissions`
+
+Your backend should use those values to decide which instance to call, what key to use, and what actions the app is allowed to perform. **For our Stripe Sync app,** this is where the backend starts doing the work: importing pay-ins from Stripe, sending them to Blnk as transactions, and saving the sync details locally.
+
+## Choose the right Cloud API
+
+Custom Apps usually use these Cloud APIs.
+
+| API | When to use it |
+| :-- | :-- |
+| Data Lake API | Query historical ledger data with SQL. |
+| Proxy API | Call any Core endpoint through Cloud. |
+| Other Cloud features | Use Cloud features that are not Core endpoints, such as alerts. |
+
+All requests use the Cloud base URL:
+
+```bash Base URL
+https://api.cloud.blnkfinance.com
+```
+
+The installed app API key goes in the `X-blnk-key` header:
+
+```bash API key
+X-blnk-key: CLOUD_API_KEY
+```
+
+For Proxy API requests, include the selected `instance_id` in the URL:
+
+```bash Instance id
+?instance_id=<instance_id>
+```
+
+For Data Lake API requests, send `instance_id` in the JSON body.
+
+## Quick reference
+
+<Tabs>
+  <Tab title="Using the Proxy API">
+    Use the proxy when your app wants to call Core through Cloud. The format is:
+
+    ```bash Proxy URL wrap
+    https://api.cloud.blnkfinance.com/proxy/<core-path>?instance_id=<instance_id>
+    ```
+
+    Use the same HTTP method and path you would call on Core. GET, POST, PUT, DELETE, and other Core routes all go through `/proxy`. For historical reporting, use the Data Lake API.
+
+    For example, creating a transaction on Core:
+
+    ```bash Core path wrap
+    POST http://localhost:5001/transactions
+    ```
+
+    becomes:
+
+    ```bash Proxy path wrap
+    POST https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_...
+    ```
+
+    A complete request via the Cloud Proxy looks like:
+
+    ```bash cURL wrap
+    curl -X POST "https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_..." \
+      -H "X-blnk-key: CLOUD_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "amount": 100.50,
+        "currency": "USD",
+        "precision": 100,
+        "reference": "ref_app-transfer-001",
+        "source": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        "destination": "bln_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+        "description": "Transfer from Balance A to Balance B",
+        "allow_overdraft": true
+      }'
+    ```
+  </Tab>
+  <Tab title="Using the Data Lake API">
+    Use the Data Lake API when your app needs historical reporting over a date range.
+
+    The format is:
+
+    ```bash Data Lake URL wrap
+    https://api.cloud.blnkfinance.com/data/lake/query
+    ```
+
+    Send `instance_id` in the JSON body with your SQL:
+
+    ```bash cURL wrap
+    curl -X POST "https://api.cloud.blnkfinance.com/data/lake/query" \
+      -H "X-blnk-key: CLOUD_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "instance_id": "inst_...",
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-31",
+        "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
+      }'
+    ```
+  </Tab>
+  <Tab title="Other Cloud features">
+    Use other Cloud endpoints for features that belong to Cloud itself.
+
+    Alerts are a good example. You do not call alerts through `/proxy` or the data lake. You call the Alerts API directly.
+
+    ```bash Flag resource wrap
+    https://api.cloud.blnkfinance.com/alerts/flag/<resource_id>
+    ```
+  </Tab>
+</Tabs>
+
+## Example application
+
+Let's apply this to build the [Stripe Sync workflow](/apps/define-workflow#map-your-workflow) we mapped earlier.
+
+<Steps>
+  <Step title="Fetch pay-ins from Stripe">
+    First, we'll list pay-ins from Stripe and keep only the ones that have actually settled (`status === "succeeded"`):
+
+    ```typescript fetchStripePayIns.ts wrap
+    import Stripe from "stripe";
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+    async function fetchStripePayIns() {
+      const paymentIntents = await stripe.paymentIntents.list({ limit: 100 });
+
+      return paymentIntents.data
+        .filter((pi) => pi.status === "succeeded")
+        .map((pi) => ({
+          id: pi.id,
+          amount: pi.amount_received,
+          currency: pi.currency.toUpperCase(),
+          customer: pi.customer as string,
+          created_at: new Date(pi.created * 1000).toISOString(),
+        }));
+    }
+    ```
+
+    Filtering on `status === "succeeded"` ensures we only import pay-ins that have actually settled into your Stripe balance. Anything still pending, requiring action, or canceled is skipped.
+  </Step>
+  <Step title="Send the pay-in to Blnk">
+    Next, we'll mirror the Stripe pay-in as a transaction in the selected Blnk Cloud instance through the Proxy API:
+
+    ```typescript sendPayInToBlnk.ts wrap
+    async function sendPayInToBlnk(instance_id: string, payIn) {
+      const headers = {
+        "X-blnk-key": api_key,
+        "Content-Type": "application/json",
+      };
+
+      const response = await axios.post(
+        `https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=${instance_id}`,
+        {
+          precise_amount: payIn.amount,
+          precision: 100,
+          reference: payIn.id,
+          currency: payIn.currency,
+          source: "@stripe",
+          destination: `@${payIn.customer}`,
+          description: "Imported pay-in from Stripe",
+          effective_date: payIn.created_at,
+          meta_data: {
+            stripe_payment_intent_id: payIn.id,
+            stripe_customer_id: payIn.customer,
+          },
+        },
+        { headers }
+      );
+
+      return response.data;
+    }
+    ```
+
+    We'll use the Stripe payment intent ID directly as the `reference` in Blnk. Re-syncing the same payment intent will not create a duplicate transaction in Blnk because Blnk handles idempotency internally.
+  </Step>
+  <Step title="Save the sync details in your app">
+    Finally, we'll record the sync run in the app's local database so we know when the sync ran, how many pay-ins it processed, and whether it succeeded:
+
+    ```typescript saveSyncRecord.ts wrap
+    async function saveSyncRecord(payIns, started_at) {
+      await db.run(
+        `INSERT INTO stripe_syncs (
+          sync_id,
+          records_found,
+          started_at,
+          completed_at
+        ) VALUES (?, ?, ?, ?, ?)`,
+        [
+          crypto.randomUUID(),
+          payIns.length,
+          started_at,
+          new Date().toISOString(),
+        ]
+      );
+    }
+    ```
+
+    Call this once per sync run (after Step 2 completes for the whole batch) so each row represents one end-to-end sync, not each individual pay-in. The link back to specific Blnk transactions is already preserved by the `meta_data.stripe_payment_intent_id` written in Step 2.
+  </Step>
+</Steps>
+
+<Tip>
+Before you ship, review [Best practices](/apps/best-practices) for securing API keys, portal embedding, and permissions.
+</Tip>
+
+<RelatedTopics
+  items={[
+    { title: "Codebase setup", href: "/apps/codebase-setup" },
+    { title: "Best practices", href: "/apps/best-practices" },
+    { title: "Launch app", href: "/apps/launch-app" },
+    { title: "Using the proxy", href: "/reference/proxy-api" },
+    { title: "Using the Data Lake API", href: "/reference/create-new-query" },
+    { title: "Alerts API", href: "/reference/create-alert" },
+    { title: "Run the example Stripe Sync app", href: "https://github.com/blnkfinance/apps-demo" },
+  ]}
+/>

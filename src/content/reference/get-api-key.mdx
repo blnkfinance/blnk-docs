@@ -1,0 +1,115 @@
+---
+title: "List API keys"
+sidebarTitle: "List API keys"
+description: "List all API keys for the authenticated owner."
+seoTitle: "List API Keys • Blnk API Reference"
+method: "GET"
+path: "/api-keys"
+noindex: true
+---
+
+List all API keys for a specific owner. Use this endpoint to audit and manage your API keys. Note that the actual API key value is not returned for security reasons.
+
+<Version>Available on version 0.10.1 or later.</Version>
+
+<Warning>
+Requires the master key or an API key with `api-keys:read` scope.
+</Warning>
+
+<Key />
+
+### Query
+
+<ParamField query="owner" type="string">
+  Unique identifier of the owner whose keys you want to list.
+</ParamField>
+
+### Response
+
+Returns an array of API key objects. Note that the actual `key` value is not returned for security reasons.
+
+<ResponseField name="api_key_id" type="string">
+  Unique identifier for the API key.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the API key.
+</ResponseField>
+
+<ResponseField name="owner_id" type="string">
+  The owner identifier associated with the API key.
+</ResponseField>
+
+<ResponseField name="scopes" type="array">
+  List of permissions granted to the API key.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  The expiration date and time for the API key in ISO 8601 format.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was created.
+</ResponseField>
+
+<ResponseField name="last_used_at" type="string">
+  ISO 8601 formatted timestamp of when the API key was last used for authentication.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "http://localhost:5001/api-keys?owner=owner_id" \
+  -H "X-blnk-key: <api-key>"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+[
+  {
+    "api_key_id": "key_abc123def456",
+    "name": "Service Account",
+    "owner_id": "owner_id",
+    "scopes": ["ledgers:read", "balances:write"],
+    "expires_at": "2026-03-11T00:00:00Z",
+    "created_at": "2024-01-15T10:30:00Z",
+    "last_used_at": "2024-01-20T14:30:00Z"
+  },
+  {
+    "api_key_id": "key_xyz789uvw012",
+    "name": "Production API",
+    "owner_id": "owner_id",
+    "scopes": ["*:*"],
+    "expires_at": "0001-01-01T00:00:00Z",
+    "created_at": "2024-01-10T08:20:00Z",
+    "last_used_at": "2024-01-19T10:15:00Z"
+  }
+]
+```
+
+```json 400 Bad Request
+{
+  "error": "owner is required",
+  "error_detail": {
+    "code": "APIKEY_OWNER_REQUIRED",
+    "message": "owner is required"
+  }
+}
+```
+
+</ResponseExample>
+
+<Note>
+The actual `api_key` value is not returned for security reasons. If you need to view or regenerate the key value, you'll need to create a new API key.
+</Note>
+
+<RelatedTopics
+  items={[
+    { title: "Manage keys", href: "/operating/api-keys/manage-keys" },
+    { title: "API keys overview", href: "/operating/api-keys/overview" },
+    { title: "Create API key", href: "/reference/create-api-key" },
+  ]}
+/>

@@ -1,0 +1,90 @@
+---
+title: "Get Git status"
+sidebarTitle: "Get Git status"
+description: "Check the configured Git repository state for Watch script sync."
+seoTitle: "Get Git Status • Watch API Reference"
+method: "GET"
+path: "/git/status"
+noindex: true
+---
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Use this endpoint to inspect the Git repository Watch uses for rule scripts. It is only meaningful when `WATCH_SCRIPT_GIT_REPO` is configured in your [Watch configuration](/watch/configuration).
+
+<Info>
+When Git sync is not configured, the response returns `"configured": false` with an error message.
+</Info>
+
+### Request
+
+This endpoint has no path, query, or body parameters.
+
+<RequestExample>
+```bash cURL
+curl http://localhost:8081/git/status
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "configured": true,
+  "repo_url": "https://github.com/user/watch-scripts.git",
+  "branch": "main",
+  "local_path": "watch_scripts",
+  "current_commit": "abc123def456",
+  "remote_commit": "abc123def456",
+  "up_to_date": true
+}
+```
+
+```json 200 OK, not configured
+{
+  "configured": false,
+  "error": "Git repository not configured"
+}
+```
+</ResponseExample>
+
+### Response
+
+<ResponseField name="configured" type="boolean">
+  Whether a Git repository is configured for Watch script sync.
+</ResponseField>
+
+<ResponseField name="repo_url" type="string">
+  Git repository URL from `WATCH_SCRIPT_GIT_REPO`.
+</ResponseField>
+
+<ResponseField name="branch" type="string">
+  Branch name Watch tracks. Defaults to `main` when not set.
+</ResponseField>
+
+<ResponseField name="local_path" type="string">
+  Local directory where Watch stores cloned scripts.
+</ResponseField>
+
+<ResponseField name="current_commit" type="string">
+  Current local commit hash.
+</ResponseField>
+
+<ResponseField name="remote_commit" type="string">
+  Latest commit hash on the remote branch, when available.
+</ResponseField>
+
+<ResponseField name="up_to_date" type="boolean">
+  Whether the local and remote commits match.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message when Git is not configured or status lookup fails.
+</ResponseField>
+
+<RelatedTopics
+  items={[
+    { title: "Sync git repository", href: "/watch/reference/sync-git-repository" },
+    { title: "Deployment", href: "/watch/deployment" },
+    { title: "Configuration", href: "/watch/configuration" },
+  ]}
+/>

@@ -1,0 +1,59 @@
+---
+title: "Health check"
+sidebarTitle: "Health check"
+description: "Check whether the Blnk server and worker processes are running and responsive."
+seoTitle: "Health Check • Blnk API Reference"
+method: "GET"
+path: "/health"
+noindex: true
+---
+
+The **Health check** endpoint reports process health for liveness and readiness probes. It is always available and does not require authentication.
+
+Blnk runs the **server** and **worker** as separate processes. Each registers its own `GET /health` endpoint on a different port. Probe both processes in production.
+
+| Endpoint | Process | Port setting | Default URL |
+| :-- | :-- | :-- | :-- |
+| `GET /health` | Server | `server.port` | `http://localhost:5001/health` |
+| `GET /health` | Worker | `queue.monitoring_port` | `http://localhost:5004/health` |
+
+See [Metrics](/reference/get-metrics) for the same server/worker split on `GET /metrics`.
+
+<Version>Available in version 0.10.3 and later. Public access (no authentication required) in v0.10.4.</Version>
+
+<RequestExample>
+
+```bash Server
+curl -X GET "http://localhost:5001/health"
+```
+
+```bash Worker
+curl -X GET "http://localhost:5004/health"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Server 200 OK
+{
+  "status": "UP"
+}
+```
+
+```json Worker 200 OK
+{
+  "status": "UP",
+  "service": "worker"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Monitoring", href: "/operating/monitoring" },
+    { title: "Get metrics", href: "/reference/get-metrics" },
+    { title: "Deploy", href: "/deploy" },
+  ]}
+/>

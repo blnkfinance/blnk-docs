@@ -1,0 +1,97 @@
+---
+title: "Schema"
+sidebarTitle: "Schema"
+description: "Read the four lake tables and how they connect."
+seoTitle: "Schema | Blnk Cloud Guide"
+metaDescription: "Ledgers and identities connect to balances. Transactions connect to balances as source and destination."
+icon: "mind-map"
+enterprise: cloud
+---
+
+The **Schema** tab lists the tables and columns in your instance [data lake](/insights/lake). There are four tables: `transactions`, `balances`, `ledgers`, and `identity`.
+
+They connect on shared IDs, so a transaction can be read with the balance it touched, the ledger that balance belongs to, and the identity that owns it. Confirm column names and types with [Get lake schema](/reference/get-lake-schema).
+
+## How they connect
+
+Balances sit in the middle. Each balance belongs to one ledger and can belong to one identity. Each transaction points at two balances: **source** is where money leaves, and **destination** is where money arrives.
+
+<SchemaChart />
+
+A transaction row stores balance IDs, not names. The identity name lives on `identity`, and the ledger name lives on `ledgers`. Follow `destination` or `source` to the balance, then to the identity or the ledger.
+
+A balance, ledger, or identity keeps one ID for its lifetime. The lake can store more than one copy of that ID across days. See [Data Lake](/insights/lake).
+
+A lake transaction row has one source and one destination. For transactions that split across many balances, see [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+## Tables and columns
+
+<Tabs>
+  <Tab title="transactions">
+    | Column | What it is |
+    | :-- | :-- |
+    | `transaction_id` | Primary key. Unique ID for this transaction row |
+    | `reference` | Your external or idempotency ID |
+    | `status` | Lifecycle state. Each state is its own row. See [Transaction lifecycle](/transactions/transaction-lifecycle). |
+    | `source` | Balance ID money left |
+    | `destination` | Balance ID money entered |
+    | `precise_amount` | Amount in the smallest unit (cents, satoshi) |
+    | `precision` | How many smallest units make one whole unit |
+    | `amount` | Human-readable amount Blnk derives |
+    | `currency` | Currency code |
+    | `description` | Optional note on the transaction |
+    | `parent_transaction` | ID of a related parent transaction |
+    | `scheduled_for` | When a scheduled transaction should run |
+    | `created_at` | When this row was created |
+    | `meta_data` | Custom JSON you attached |
+  </Tab>
+  <Tab title="balances">
+    | Column | What it is |
+    | :-- | :-- |
+    | `balance_id` | Primary key. Unique balance ID |
+    | `ledger_id` | Ledger this balance belongs to |
+    | `identity_id` | Identity this balance belongs to |
+    | `balance` | Amount in smallest units as copied that day. Not a live holding. See the [Ledger API](/reference/get-balance). |
+    | `credit_balance` | Credits in smallest units as copied that day |
+    | `debit_balance` | Debits in smallest units as copied that day |
+    | `inflight_balance` | Inflight amount in smallest units as copied that day |
+    | `inflight_credit_balance` | Inflight credits in smallest units as copied that day |
+    | `inflight_debit_balance` | Inflight debits in smallest units as copied that day |
+    | `currency` | Balance currency |
+    | `indicator` | Balance indicator or alias, when set |
+    | `created_at` | When the balance was created |
+    | `meta_data` | Custom JSON you attached |
+  </Tab>
+  <Tab title="ledgers">
+    | Column | What it is |
+    | :-- | :-- |
+    | `ledger_id` | Primary key. Unique ledger ID |
+    | `name` | Ledger display name |
+    | `created_at` | When the ledger was created |
+    | `meta_data` | Custom JSON you attached |
+  </Tab>
+  <Tab title="identity">
+    | Column | What it is |
+    | :-- | :-- |
+    | `identity_id` | Primary key. Unique person or org ID |
+    | `identity_type` | Person or organization |
+    | `first_name` / `last_name` / `other_names` | Person name fields |
+    | `organization_name` | Org display name |
+    | `email_address` / `phone_number` | Contact fields |
+    | `category` | Your category label |
+    | `street` / `city` / `state` / `country` / `post_code` | Address fields |
+    | `gender` / `dob` / `nationality` | Profile fields, when you store them |
+    | `created_at` | When the identity was created |
+    | `meta_data` | Custom JSON you attached |
+  </Tab>
+</Tabs>
+
+<RelatedTopics
+  items={[
+    { title: "Data Lake", href: "/insights/lake" },
+    { title: "Queries", href: "/insights/queries" },
+    { title: "Templates", href: "/insights/templates" },
+    { title: "Get lake schema", href: "/reference/get-lake-schema" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+  ]}
+/>

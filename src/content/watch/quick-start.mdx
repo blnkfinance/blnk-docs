@@ -1,0 +1,154 @@
+---
+title: "Getting Started with Blnk Watch"
+sidebarTitle: "Quick start"
+description: "Install Watch, write a rule, and send a transaction to see the risk verdict."
+seoTitle: "Getting Started with Blnk Watch"
+metaDescription: "Learn how to install, configure, and run Blnk Watch to monitor transactions with custom risk rules."
+icon: "rocket"
+---
+
+<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
+
+Blnk Watch is a lightweight, rule-based transaction monitoring engine. Watch evaluates transactions using rules written in a simple domain specific language (DSL) called WatchScript `.ws`. Here's how it works: you send transactions to Watch, and it returns a risk verdict, so you can enforce limits, detect fraud, and stay compliant without running heavy infrastructure.
+
+In this quick start, you start the Watch service, write a rule, send a transaction for evaluation, and see the risk decision.
+
+<Steps titleSize="h3">
+<Step title="Install Blnk Watch">
+
+<Tabs>
+<Tab title="Direct download" icon="download">
+Install Watch with direct download (no repo or Go required), then start the service:
+
+```bash Install and start
+curl -fsSL https://blnkfinance.xyz/install/watch | bash
+blnk-watch start
+```
+</Tab>
+<Tab title="Build from source" icon="terminal">
+Download Watch from the repository and run it:
+
+```bash Clone the repository
+git clone https://github.com/blnkfinance/watch && cd watch
+```
+
+<CodeGroup>
+```bash macOS/Linux
+make start
+```
+
+```bash Windows
+go build -o blnk-watch ./cmd/blnk-watch
+./blnk-watch start
+```
+</CodeGroup>
+</Tab>
+</Tabs>
+
+By default Watch listens on port 8081. The service is ready when it starts listening on the port.
+</Step>
+
+<Step title="Create your first rule">
+
+Create a rules directory and add a rule file:
+
+```bash Create the rule file
+mkdir -p watch_scripts && cd watch_scripts
+touch HighValueUSD.ws
+```
+
+Add this rule to `HighValueUSD.ws`:
+
+```bash HighValueUSD.ws
+rule HighValueUSD {
+  description "Flag USD transactions over 4,000 for review"
+
+  when amount > 4000 and currency == "USD"
+
+  then review
+       score   0.5
+       reason  "USD transaction exceeds 4,000"
+}
+```
+
+This rule triggers for any USD transaction above \$4,000.
+
+</Step>
+
+<Step title="Send a transaction">
+
+Use the [inject endpoint](/watch/reference/inject-transaction) to send a transaction to Watch.
+
+```bash cURL {5,6}
+curl -X POST http://localhost:8081/inject \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_id": "txn_quickstart_001",
+    "amount": 5000,
+    "currency": "USD",
+    "source": "acct_sender",
+    "destination": "acct_receiver",
+    "reference": "ref_001",
+    "description": "Sample transfer"
+  }'
+```
+
+If successful (200), Watch queues the transaction for evaluation.
+
+```json 200 OK
+{
+    "message": "Call GET /transactions/{id} to fetch the processed transaction or set ALERT_WEBHOOK_URL to get webhooks when a rule triggers for the transaction.",
+    "transaction_id": "txn_quickstart_001"
+}
+```
+</Step>
+
+<Step title="Check the result">
+
+Fetch the processed transaction:
+
+```bash cURL
+curl http://localhost:8081/transactions/txn_quickstart_001
+```
+
+You should see a response similar to:
+
+```json 200 OK
+{
+    "meta_data": {
+        "consolidated_risk_assessment": {
+            "final_reason": "USD transaction exceeds 4,000",
+            "final_risk_score": 0.5,
+            "final_verdict": "review",
+            "source_count": 1
+        },
+        "dsl_verdicts": [
+            {
+                "name": "highValueTransfer",
+                "reason": "USD transaction exceeds 4,000",
+                "rule_id": 0,
+                "score": 0.5,
+                "verdict": "review"
+            }
+        ],
+        "evaluation_status": "completed",
+        "risk_evaluation_timestamp": "2026-03-15T22:12:00.99813+01:00"
+    }
+}
+```
+
+The verdict appears because the transaction amount, 5000 USD, triggered the rule. Try sending another transaction with a smaller amount, such as 3000 USD. Because it does not meet the rule condition, the rule will not trigger.
+
+You can also experiment with different amounts or currencies to see how the rule behaves.
+
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "How Watch works", href: "/watch/mental-model" },
+    { title: "Rule structure", href: "/watch/rules/rule-structure" },
+    { title: "Deployment", href: "/watch/deployment" },
+    { title: "Integration", href: "/watch/integration" },
+  ]}
+/>
