@@ -11,9 +11,10 @@ Use `client.Transaction.CreateBulk` to create many [transactions](/transactions/
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Create batch">
 
-```go client.Transaction.CreateBulk
+```go client.Transaction.CreateBulk wrap
 result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
 	Atomic: true,
 	Transactions: []blnkgo.CreateTransactionRequest{
@@ -43,7 +44,21 @@ result, resp, err := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionR
 })
 ```
 
-```go client.Transaction.CreateBulkDryRun
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Transactions` | `[]blnkgo.`<br />`CreateTransactionRequest` | Transaction objects to create; up to **10,000** per request (`blnkgo.MaxBulkCreateItems`). References must be unique within the batch. |
+| `Atomic` | `bool` | When `true`, every transaction succeeds or fails together. |
+| `Inflight` | `bool` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. Use `CreateBulkDryRun`. `SkipQueue` selects cumulative vs independent projection. `RunAsync` is ignored. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.CreateBulkDryRun wrap
 preview, resp, err := client.Transaction.CreateBulkDryRun(blnkgo.CreateBulkTransactionRequest{
 	SkipQueue: false,
 	Transactions: []blnkgo.CreateTransactionRequest{
@@ -73,27 +88,9 @@ preview, resp, err := client.Transaction.CreateBulkDryRun(blnkgo.CreateBulkTrans
 })
 ```
 
-</RequestExample>
-
-<Tabs>
-<Tab title="Create batch">
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `Transactions` | `[]blnkgo.`<br />`CreateTransactionRequest` | Transaction objects to create; up to **10,000** per request (`blnkgo.MaxBulkCreateItems`). References must be unique within the batch. |
-| `Atomic` | `bool` | When `true`, every transaction succeeds or fails together. |
-| `Inflight` | `bool` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
-| `RunAsync` | `bool` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
-| `SkipQueue` | `bool` | When `true`, transactions bypass the queue and process synchronously. |
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview the batch without writing anything. Use `CreateBulkDryRun`. `SkipQueue` selects cumulative vs independent projection. `RunAsync` is ignored. See [Dry-run transactions](/transactions/dry-run).
-
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Save the batch ID">
@@ -106,9 +103,11 @@ A dry run has no `BatchID`. Check `WouldApply` and `Results`.
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Create batch">
 
-```json Sync
+<CodeGroup>
+```json Sync wrap
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "applied",
@@ -116,15 +115,29 @@ A dry run has no `BatchID`. Check `WouldApply` and `Results`.
 }
 ```
 
-```json Async (RunAsync: true)
+```json Async (RunAsync: true) wrap
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "queued",
   "message": "Bulk transaction processing started"
 }
 ```
+</CodeGroup>
 
-```json 200 OK expandable {2-3}
+#### Go response (`*blnkgo.CreateBulkTransactionResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `BatchID` | `string` | Identifier for the batch. Use as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch. |
+| `Status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
+| `TransactionCount` | `int` | Number of transactions when processed synchronously. |
+| `Message` | `string` | Status message when `RunAsync` is `true`. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -155,32 +168,12 @@ A dry run has no `BatchID`. Check `WouldApply` and `Results`.
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
-<CodeGroup>
-
-</CodeGroup>
-
-#### Go response (`*blnkgo.CreateBulkTransactionResponse`)
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `BatchID` | `string` | Identifier for the batch. Use as `ParentTransactionID` to find child transactions, or with `Update` to commit or void an inflight batch. |
-| `Status` | `string` | `applied`, `inflight`, or `queued` depending on the batch. |
-| `TransactionCount` | `int` | Number of transactions when processed synchronously. |
-| `Message` | `string` | Status message when `RunAsync` is `true`. |
 </Step>
 </Steps>
 
 <Note>
 The Go SDK validates batch size before sending the request. If `len(Transactions)` exceeds `blnkgo.MaxBulkCreateItems` (10,000), `CreateBulk` returns a client-side validation error without calling the API.
 </Note>
-
-<RelatedTopics
-  items={[
-    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
-    { title: "Bulk transactions API", href: "/reference/bulk-transactions" },
-  ]}
-/>

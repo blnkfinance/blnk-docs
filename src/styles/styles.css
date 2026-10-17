@@ -45,6 +45,24 @@ html[data-appearance='dark'] {
 	color-scheme: dark;
 }
 
+html {
+	scrollbar-color: color-mix(in oklch, var(--fg) 5%, transparent) transparent;
+}
+
+html::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+html::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+	background: color-mix(in oklch, var(--fg) 5%, transparent);
+	border-radius: 999px;
+}
+
 body {
 	margin: 0;
 	background: var(--bg);
@@ -132,8 +150,7 @@ pre {
 	min-height: 0;
 }
 
-.shell:has(.has-examples) .toc,
-.shell:has(.sdk-stream) .toc {
+.shell:has(.has-examples) .toc {
 	display: none;
 }
 
@@ -443,26 +460,6 @@ main {
 	margin: 0;
 }
 
-.shell:has(.sdk-stream) main {
-	grid-column: 2 / -1;
-	display: grid;
-	grid-template-columns: subgrid;
-	align-items: start;
-	padding: 0;
-}
-
-.article.sdk-stream {
-	display: contents;
-	max-width: none;
-}
-
-.sdk-section {
-	grid-column: 1 / -1;
-	display: grid;
-	grid-template-columns: subgrid;
-	align-items: start;
-}
-
 @media (max-width: 1279px) {
 	.shell {
 		grid-template-columns: minmax(calc(16rem + 16px), 272px) minmax(0, 1fr);
@@ -531,27 +528,6 @@ main {
 		max-height: none;
 	}
 
-	.shell:has(.sdk-stream) main {
-		grid-column: 2;
-		grid-template-columns: minmax(0, 1fr);
-		row-gap: 2.5rem;
-		padding: 2.5rem var(--article-gutter) 4rem;
-	}
-
-	.sdk-section {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-	}
-
-	.sdk-section .article-copy,
-	.sdk-section .article-examples {
-		grid-column: auto;
-		width: 100%;
-		max-width: var(--article-width);
-		margin-inline: auto;
-		padding: 0;
-	}
 }
 
 .article h1,
@@ -581,6 +557,7 @@ main {
 
 .article .endpoint {
 	display: flex;
+	flex-wrap: nowrap;
 	align-items: center;
 	gap: 0.6rem;
 	width: 100%;
@@ -593,6 +570,7 @@ main {
 }
 
 .article .endpoint .method {
+	flex: none;
 	width: max-content;
 	padding: 0.28rem 0.4rem;
 	border-radius: 4px;
@@ -603,11 +581,14 @@ main {
 .article .endpoint > .endpoint-path {
 	flex: 1;
 	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
 	padding: 0;
 	border-radius: 0;
 	background: none;
 	color: var(--fg);
 	font-size: 14px;
+	white-space: nowrap;
 }
 
 .article .endpoint-path .endpoint-param {
@@ -623,6 +604,7 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 
 .endpoint-try {
 	display: inline-flex;
+	flex: none;
 	align-items: center;
 	gap: 0.35rem;
 	margin-left: auto;
@@ -761,11 +743,6 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 }
 
 .article :where(td, th) code {
-	overflow-wrap: anywhere;
-	white-space: normal;
-}
-
-.article :where(td, th):first-child code {
 	overflow-wrap: normal;
 	white-space: nowrap;
 }
@@ -817,8 +794,7 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 	}
 
 	main,
-	.shell:has(.has-examples) main,
-	.shell:has(.sdk-stream) main {
+	.shell:has(.has-examples) main {
 		grid-column: 1;
 		grid-row: 1;
 	}
@@ -853,14 +829,7 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 		overflow-wrap: break-word;
 	}
 
-	a.nav-item,
-	button.nav-item {
-		min-height: 44px;
-		padding-block: 0.45rem;
-	}
-
-	.shell:has(.has-examples) .toc,
-	.shell:has(.sdk-stream) .toc {
+	.shell:has(.has-examples) .toc {
 		display: flex;
 	}
 
@@ -885,13 +854,11 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 	}
 
 	main,
-	.shell:has(.has-examples) main,
-	.shell:has(.sdk-stream) main {
+	.shell:has(.has-examples) main {
 		padding: 32px var(--article-gutter) max(48px, env(safe-area-inset-bottom));
 	}
 
-	.article-copy,
-	.sdk-section .article-copy {
+	.article-copy {
 		padding: 0;
 	}
 
@@ -923,16 +890,12 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 	}
 
 	.article .endpoint {
-		flex-wrap: wrap;
 		gap: 8px;
 		margin-bottom: 24px;
 		padding: 8px;
 	}
 
 	.article .endpoint > .endpoint-path {
-		flex: 1 1 100%;
-		order: 1;
-		overflow-x: auto;
 		font-size: 13px;
 	}
 
@@ -943,15 +906,33 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 
 	.article table {
 		display: block;
+		width: max-content;
+		min-width: 100%;
 		max-width: 100%;
 		overflow-x: auto;
+		overflow-y: hidden;
 	}
+}
 
-	.article th:first-child,
-	.article td:first-child,
-	.article :where(td, th):first-child code {
-		width: auto;
-		white-space: normal;
-		overflow-wrap: anywhere;
-	}
+.sdk-page th:not(:last-child),
+.sdk-page td:not(:last-child) {
+	width: 1%;
+	white-space: nowrap;
+}
+
+.sdk-page :where(td, th):not(:last-child) code {
+	overflow-wrap: normal;
+	white-space: nowrap;
+}
+
+.sdk-page th:last-child,
+.sdk-page td:last-child {
+	width: 100%;
+	white-space: normal;
+	overflow-wrap: break-word;
+}
+
+.sdk-page :where(td, th):last-child code {
+	white-space: normal;
+	overflow-wrap: break-word;
 }

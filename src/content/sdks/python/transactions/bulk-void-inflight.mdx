@@ -11,9 +11,10 @@ Use `blnk.transactions.bulk_void_inflight` to void multiple inflight transaction
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Queued void">
 
-```python Queued void
+```python blnk.transactions.bulk_void_inflight wrap
 response = blnk.transactions.bulk_void_inflight({
   "transaction_ids": [
     "txn_11111111-1111-4111-8111-111111111111",
@@ -22,7 +23,13 @@ response = blnk.transactions.bulk_void_inflight({
 })
 ```
 
-```python Synchronous void
+</Tab>
+
+<Tab title="Synchronous void">
+
+Pass `skip_queue: True` to process each void synchronously instead of queuing.
+
+```python blnk.transactions.bulk_void_inflight wrap
 response = blnk.transactions.bulk_void_inflight({
   "skip_queue": True,
   "transaction_ids": [
@@ -32,7 +39,13 @@ response = blnk.transactions.bulk_void_inflight({
 })
 ```
 
-```python Dry run {2}
+</Tab>
+
+<Tab title="Dry run">
+
+Preview every void without releasing any hold. See [Dry-run transactions](/transactions/dry-run).
+
+```python blnk.transactions.bulk_void_inflight wrap {2}
 preview = blnk.transactions.bulk_void_inflight({
   "dry_run": True,
   "transaction_ids": [
@@ -42,20 +55,6 @@ preview = blnk.transactions.bulk_void_inflight({
 })
 ```
 
-</RequestExample>
-
-<Tabs>
-
-<Tab title="Synchronous void">
-
-Pass `skip_queue: True` to process each void synchronously instead of queuing.
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview every void without releasing any hold. See [Dry-run transactions](/transactions/dry-run).
-
 </Tab>
 </Tabs>
 
@@ -63,6 +62,7 @@ Preview every void without releasing any hold. See [Dry-run transactions](/trans
 | :-- | :-- | :-- |
 | `transaction_ids` | `string[]` | Up to 100 inflight transaction IDs to void. |
 | `skip_queue` | `bool` | When `True`, process synchronously instead of queuing. |
+
 </Step>
 
 <Step title="Review per-item results">
@@ -73,9 +73,7 @@ Check `response.data["results"]` for each transaction's outcome. Failed items in
 
 <Step title="Response">
 
-<ResponseExample>
-
-```json 200 OK expandable
+```json 200 OK wrap expandable
 {
   "succeeded": 2,
   "failed": 1,
@@ -98,8 +96,6 @@ Check `response.data["results"]` for each transaction's outcome. Failed items in
 }
 ```
 
-</ResponseExample>
-
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `succeeded` | `number` | Number voided successfully. |
@@ -109,13 +105,6 @@ Check `response.data["results"]` for each transaction's outcome. Failed items in
 | `results[].status` | `str` | `succeeded`, `failed`, or `queued` (when `skip_queue` is `False`). |
 | `results[].code` | `str` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
 | `results[].message` | `str` | Human-readable failure message. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Bulk Void Inflight", href: "/reference/bulk-void-inflight" },
-  ]}
-/>

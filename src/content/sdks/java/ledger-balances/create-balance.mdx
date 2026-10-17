@@ -11,28 +11,16 @@ Use `blnk.ledgerBalances().create` for this operation.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```java Ledger balance
+```java wrap
 ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
     CreateLedgerBalance.create()
         .ledgerId("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc")
         .currency("USD")
         .metaData(Map.of()));
 ```
-
-```java General Ledger indicator
-ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
-    CreateLedgerBalance.create()
-        .ledgerId("general_ledger_id")
-        .currency("USD")
-        .indicator("@Revenue"));
-```
-
-</RequestExample>
-
-<Tabs>
-<Tab title="Ledger balance">
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -49,6 +37,14 @@ ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
 
 Create an internal balance yourself instead of waiting for the first `@` reference on a transaction. See [Internal balances](/balances/internal-balances).
 
+```java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("general_ledger_id")
+        .currency("USD")
+        .indicator("@Revenue"));
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `ledgerId("general_ledger_id")` | `String` | Must be the General Ledger. `indicator` is only allowed on this ledger. |
@@ -56,6 +52,7 @@ Create an internal balance yourself instead of waiting for the first `@` referen
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Save the balance ID">
@@ -66,9 +63,10 @@ Use `response.data().get("balance_id").asText()` as the `source` or `destination
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```json Ledger balance
+```json 201 Created wrap
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -85,7 +83,11 @@ Use `response.data().get("balance_id").asText()` as the `source` or `destination
 }
 ```
 
-```json General Ledger indicator {7}
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+```json 201 Created wrap {7}
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -103,7 +105,8 @@ Use `response.data().get("balance_id").asText()` as the `source` or `destination
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -113,12 +116,6 @@ Use `response.data().get("balance_id").asText()` as the `source` or `destination
 | `currency` | `String` | Currency you passed in the request. |
 | `balance` | `Number` | Current net amount in the balance. |
 | `created_at` | `String` | Date and time the balance was created. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "View balance docs", href: "/balances/introduction" },
-    { title: "Create new balance", href: "/reference/create-balance" },
-  ]}
-/>

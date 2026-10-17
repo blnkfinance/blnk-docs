@@ -11,9 +11,12 @@ Use `blnk.transactions().create` to post a [transaction](/transactions/introduct
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```java Single transaction
+Move money from one source balance to one destination in a single call.
+
+```java blnk.transactions().create wrap
 ApiResponse<JsonNode> response = blnk.transactions().create(
     CreateTransactions.create()
         .preciseAmount(125034)
@@ -27,7 +30,26 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
         .skipQueue(false));
 ```
 
-```java Inflight transaction {10-12}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `precise_amount` | `Number` | Amount in minor units. Use with `precision`. |
+| `amount` | `Number` | Float amount. Blnk applies `precision`. Use one of `amount` or `precise_amount`. |
+| `precision` | `Number` | Precision for the currency (for example `100` for cents). |
+| `currency` | `String` | Currency of the transaction. |
+| `reference` | `String` | Unique reference for the transaction. |
+| `source` | `String` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `destination` | `String` | Balance receiving the amount. |
+| `description` | `String` | Narration of the transaction. |
+| `allow_overdraft` | `boolean` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `skip_queue` | `boolean` | Bypass the transaction queue and process directly. |
+
+</Tab>
+
+<Tab title="Inflight transaction">
+
+Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
+
+```java blnk.transactions().create wrap {10-12}
 ApiResponse<JsonNode> response = blnk.transactions().create(
     CreateTransactions.create()
         .preciseAmount(10000)
@@ -42,7 +64,22 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
         .inflightCommitDate("2025-02-28T12:00:00Z"));
 ```
 
-```java Multiple sources {1-11,20-22}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `inflight` | `boolean` | Hold the transaction until you commit or void it. |
+| `inflight_expiry_date` | `String` | When the inflight transaction expires and rolls back. ISO 8601 format. |
+| `inflight_commit_date` | `String` | When Core auto-commits the inflight transaction. ISO 8601 format. |
+
+See [Update inflight](/sdks/java/transactions/update-inflight) to commit or void.
+
+</Tab>
+
+<Tab title="Split transaction">
+
+Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+<CodeGroup>
+```java Multiple sources wrap {1-11,20-22}
 MultipleSourcesT partnerShare = MultipleSourcesT.create()
     .identifier("bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f")
     .distribution("10%");
@@ -67,7 +104,7 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
         .atomic(true));
 ```
 
-```java Multiple destinations {1-11,21-22}
+```java Multiple destinations wrap {1-11,21-22}
 MultipleSourcesT partnerShare = MultipleSourcesT.create()
     .identifier("bln_f2073f6b-905a-4e3e-b5a2-8d1b3dc2fb7f")
     .distribution("20%");
@@ -91,93 +128,6 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
         .destinations(List.of(partnerShare, fixedAmount, remainder))
         .atomic(true));
 ```
-
-```java Scheduled transaction {14}
-Map<String, Object> meta = Map.of(
-    "sender_name", "John Doe",
-    "sender_account", "00000000000");
-
-ApiResponse<JsonNode> response = blnk.transactions().create(
-    CreateTransactions.create()
-        .preciseAmount(10000000)
-        .precision(100)
-        .currency("USD")
-        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
-        .destination("@fees")
-        .reference("ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
-        .description("Monthly fee")
-        .scheduledFor("2024-12-21T01:36:46+01:00")
-        .metaData(meta));
-```
-
-```java Backdated transaction {10}
-ApiResponse<JsonNode> response = blnk.transactions().create(
-    CreateTransactions.create()
-        .preciseAmount(35890)
-        .precision(100)
-        .currency("NGN")
-        .source("@source_account")
-        .destination("@destination_account")
-        .reference("ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
-        .description("Backdated transaction")
-        .effectiveDate("2025-02-15T10:30:00Z"));
-```
-
-```java Dry run {11}
-ApiResponse<JsonNode> preview = blnk.transactions().create(
-    CreateTransactions.create()
-        .preciseAmount(12000)
-        .precision(100)
-        .currency("USD")
-        .source("bln_source-bal-001")
-        .destination("bln_dest-bal-001")
-        .reference("ref_card_settle_4821")
-        .description("Card settlement")
-        .dryRun(true));
-```
-
-</RequestExample>
-
-<Tabs>
-<Tab title="Single transaction">
-
-Move money from one source balance to one destination in a single call.
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `precise_amount` | `Number` | Amount in minor units. Use with `precision`. |
-| `amount` | `Number` | Float amount. Blnk applies `precision`. Use one of `amount` or `precise_amount`. |
-| `precision` | `Number` | Precision for the currency (for example `100` for cents). |
-| `currency` | `String` | Currency of the transaction. |
-| `reference` | `String` | Unique reference for the transaction. |
-| `source` | `String` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
-| `destination` | `String` | Balance receiving the amount. |
-| `description` | `String` | Narration of the transaction. |
-| `allow_overdraft` | `boolean` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
-| `skip_queue` | `boolean` | Bypass the transaction queue and process directly. |
-
-</Tab>
-
-<Tab title="Inflight transaction">
-
-Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `inflight` | `boolean` | Hold the transaction until you commit or void it. |
-| `inflight_expiry_date` | `String` | When the inflight transaction expires and rolls back. ISO 8601 format. |
-| `inflight_commit_date` | `String` | When Core auto-commits the inflight transaction. ISO 8601 format. |
-
-See [Update inflight](/sdks/java/transactions/update-inflight) to commit or void.
-
-</Tab>
-
-<Tab title="Split transaction">
-
-Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
-
-<CodeGroup>
-
 </CodeGroup>
 
 | Field | Type | Description |
@@ -196,6 +146,24 @@ Debit multiple sources or credit multiple destinations in one transaction. See [
 
 Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
 
+```java blnk.transactions().create wrap {14}
+Map<String, Object> meta = Map.of(
+    "sender_name", "John Doe",
+    "sender_account", "00000000000");
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(10000000)
+        .precision(100)
+        .currency("USD")
+        .source("bln_28edb3e5-c168-4127-a1c4-16274e7a28d3")
+        .destination("@fees")
+        .reference("ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+        .description("Monthly fee")
+        .scheduledFor("2024-12-21T01:36:46+01:00")
+        .metaData(meta));
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `scheduled_for` | `String` | Date and time to post the transaction. ISO 8601 format. |
@@ -207,6 +175,19 @@ Post the transaction at a future date and time. See [Scheduling](/transactions/s
 
 Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
 
+```java blnk.transactions().create wrap {10}
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(35890)
+        .precision(100)
+        .currency("NGN")
+        .source("@source_account")
+        .destination("@destination_account")
+        .reference("ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")
+        .description("Backdated transaction")
+        .effectiveDate("2025-02-15T10:30:00Z"));
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `effective_date` | `String` | Actual date the transaction occurred. ISO 8601 format. |
@@ -217,19 +198,34 @@ Record a transaction with a financial date in the past. See [Backdated transacti
 
 Preview whether a transaction would apply and how it would change balances without writing anything. See [Dry-run transactions](/transactions/dry-run).
 
+```java blnk.transactions().create wrap {11}
+ApiResponse<JsonNode> preview = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(12000)
+        .precision(100)
+        .currency("USD")
+        .source("bln_source-bal-001")
+        .destination("bln_dest-bal-001")
+        .reference("ref_card_settle_4821")
+        .description("Card settlement")
+        .dryRun(true));
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `dryRun(true)` | `boolean` | Return a preview without creating a transaction or consuming the reference. |
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```json Single transaction expandable
+```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -252,7 +248,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Inflight transaction expandable
+</Tab>
+
+<Tab title="Inflight transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100,
   "precision": 100,
@@ -275,7 +275,12 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple sources expandable
+</Tab>
+
+<Tab title="Split transaction">
+
+<CodeGroup>
+```json 201 Created Multiple sources wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -316,7 +321,7 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple destinations expandable
+```json 201 Created Multiple destinations wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -355,8 +360,13 @@ Preview whether a transaction would apply and how it would change balances witho
   "inflight_commit_date": "0001-01-01T00:00:00Z"
 }
 ```
+</CodeGroup>
 
-```json Scheduled transaction expandable
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100000,
   "precision": 100,
@@ -383,7 +393,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Backdated transaction expandable
+</Tab>
+
+<Tab title="Backdated transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 358.9,
   "precision": 100,
@@ -407,7 +421,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 200 OK expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -420,11 +438,8 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-</ResponseExample>
-
-<CodeGroup>
-
-</CodeGroup>
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -435,12 +450,6 @@ Preview whether a transaction would apply and how it would change balances witho
 | `destination` | `String` | Resolved destination balance. |
 | `hash` | `String` | [Hash](/transactions/hash) of the transaction details. |
 | `created_at` | `String` | Date and time the transaction was created. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "How transactions work", href: "/transactions/introduction" },
-    { title: "Create new transaction", href: "/reference/create-transaction" },
-  ]}
-/>

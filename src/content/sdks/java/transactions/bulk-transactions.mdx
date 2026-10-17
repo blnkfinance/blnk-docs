@@ -11,9 +11,10 @@ Use `blnk.transactions().createBulk` for this operation.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Create batch">
 
-```java Create batch
+```java wrap
 CreateTransactions payment1 = CreateTransactions.create()
     .amount(1000)
     .precision(100)
@@ -38,7 +39,21 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
         .transactions(List.of(payment1, payment2)));
 ```
 
-```java Dry run
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transactions` | `List<`<br />`CreateTransactions>` | Transaction objects to create; references must be unique within the batch. |
+| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
+| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
+| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
+| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the batch without writing anything. See [Dry-run transactions](/transactions/dry-run).
+
+```java wrap
 CreateTransactions item = CreateTransactions.create()
     .preciseAmount(45000)
     .precision(100)
@@ -54,27 +69,9 @@ ApiResponse<JsonNode> preview = blnk.transactions().createBulk(
         .transactions(List.of(item)));
 ```
 
-</RequestExample>
-
-<Tabs>
-<Tab title="Create batch">
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `transactions` | `List<`<br />`CreateTransactions>` | Transaction objects to create; references must be unique within the batch. |
-| `atomic` | `boolean` | When `true`, every transaction succeeds or fails together. |
-| `inflight` | `boolean` | When `true`, transactions are created in `INFLIGHT` status for a later commit or void. |
-| `run_async` | `boolean` | When `true`, Core processes the batch in the background and returns `status: "queued"`. |
-| `skip_queue` | `boolean` | When `true`, transactions bypass the queue and process synchronously. |
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview the batch without writing anything. See [Dry-run transactions](/transactions/dry-run).
-
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Save the batch ID">
@@ -87,9 +84,11 @@ A dry run has no `batch_id`. Check `would_apply` and `results`.
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Create batch">
 
-```json Sync
+<CodeGroup>
+```json Sync wrap
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "applied",
@@ -97,15 +96,20 @@ A dry run has no `batch_id`. Check `would_apply` and `results`.
 }
 ```
 
-```json Async (run_async: true)
+```json Async (run_async: true) wrap
 {
   "batch_id": "bulk_c62f200b-905f-4983-a349-cadd279234aa",
   "status": "queued",
   "message": "Bulk transaction processing started"
 }
 ```
+</CodeGroup>
 
-```json 200 OK expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -126,11 +130,8 @@ A dry run has no `batch_id`. Check `would_apply` and `results`.
 }
 ```
 
-</ResponseExample>
-
-<CodeGroup>
-
-</CodeGroup>
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -138,12 +139,6 @@ A dry run has no `batch_id`. Check `would_apply` and `results`.
 | `status` | `String` | `applied`, `inflight`, or `queued` depending on the batch. |
 | `transaction_count` | `Number` | Number of transactions when processed synchronously. |
 | `message` | `String` | Status message when `run_async` is `true`. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Bulk transactions guide", href: "/transactions/bulk-transactions" },
-    { title: "Bulk transactions", href: "/reference/bulk-transactions" },
-  ]}
-/>

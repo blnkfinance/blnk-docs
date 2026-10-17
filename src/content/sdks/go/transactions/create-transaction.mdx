@@ -11,9 +11,12 @@ Use `client.Transaction.Create` to post a [transaction](/transactions/introducti
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```go Single transaction
+Move money from one source balance to one destination in a single call.
+
+```go client.Transaction.Create wrap
 transaction, resp, err := client.Transaction.Create(
 	blnkgo.CreateTransactionRequest{
 		ParentTransaction: blnkgo.ParentTransaction{
@@ -31,7 +34,26 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go Inflight transaction {15-17}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `PreciseAmount` | `*big.Int` | Amount in minor units. Use with `Precision`. |
+| `Amount` | `float64` | Float amount. Blnk applies `Precision`. Use one of `Amount` or `PreciseAmount`. |
+| `Precision` | `int64` | Precision for the currency (for example `100` for cents). |
+| `Currency` | `string` | Currency of the transaction. |
+| `Reference` | `string` | Unique reference for the transaction. |
+| `Source` | `string` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `Destination` | `string` | Balance receiving the amount. |
+| `Description` | `string` | Narration of the transaction. |
+| `AllowOverdraft` | `bool` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `SkipQueue` | `bool` | Bypass the transaction queue and process directly. |
+
+</Tab>
+
+<Tab title="Inflight transaction">
+
+Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
+
+```go client.Transaction.Create wrap {15-17}
 expiry, _ := time.Parse(time.RFC3339, "2025-03-01T00:00:00Z")
 commit, _ := time.Parse(time.RFC3339, "2025-02-28T12:00:00Z")
 
@@ -53,7 +75,22 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go Multiple sources {9-24}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Inflight` | `bool` | Hold the transaction until you commit or void it. |
+| `InflightExpiryDate` | `*time.Time` | When the inflight transaction expires and rolls back. ISO 8601 format. |
+| `InflightCommitDate` | `*time.Time` | When Core auto-commits the inflight transaction. ISO 8601 format. |
+
+See [Update inflight](/sdks/go/transactions/update-inflight) to commit or void.
+
+</Tab>
+
+<Tab title="Split transaction">
+
+Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+<CodeGroup>
+```go Multiple sources wrap {9-24}
 transaction, resp, err := client.Transaction.Create(
  blnkgo.CreateTransactionRequest{
 	ParentTransaction: blnkgo.ParentTransaction{
@@ -83,7 +120,7 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go Multiple destinations {10-24}
+```go Multiple destinations wrap {10-24}
 transaction, resp, err := client.Transaction.Create(
  blnkgo.CreateTransactionRequest{
 	ParentTransaction: blnkgo.ParentTransaction{
@@ -112,8 +149,25 @@ transaction, resp, err := client.Transaction.Create(
  },
 )
 ```
+</CodeGroup>
 
-```go Scheduled transaction {18}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Sources` | `[]blnkgo.Source` | Source legs when debiting more than one balance. |
+| `Destinations` | `[]blnkgo.Source` | Destination legs when crediting more than one balance. |
+| `Sources.`<br />`[].Identifier` | `string` | Balance ID or `@` internal name for a source leg. |
+| `Destinations.`<br />`[].Identifier` | `string` | Balance ID or `@` internal name for a destination leg. |
+| `Distribution` | `blnkgo.Distribution` | Percentage, fixed amount, or `left` for a split leg. |
+| `PreciseDistribution` | `string` | Fixed split-leg amount in minor units. |
+| `Atomic` | `bool` | When `true`, every leg succeeds together or the entire split fails. |
+
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
+
+```go client.Transaction.Create wrap {18}
 scheduledFor, _ := time.Parse(time.RFC3339, "2024-12-21T01:36:46+01:00")
 
 transaction, resp, err := client.Transaction.Create(
@@ -136,7 +190,18 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go Backdated transaction {13}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `ScheduledFor` | `*time.Time` | Date and time to post the transaction. ISO 8601 format. |
+| `MetaData` | `MetaData` | Optional metadata stored on the scheduled transaction. |
+
+</Tab>
+
+<Tab title="Backdated transaction">
+
+Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
+
+```go client.Transaction.Create wrap {13}
 effectiveDate, _ := time.Parse(time.RFC3339, "2025-02-15T10:30:00Z")
 
 transaction, resp, err := client.Transaction.Create(
@@ -155,7 +220,17 @@ transaction, resp, err := client.Transaction.Create(
 )
 ```
 
-```go client.Transaction.CreateDryRun
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `EffectiveDate` | `*time.Time` | Actual date the transaction occurred. ISO 8601 format. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+Preview whether a transaction would apply and how it would change balances without writing anything. Use `CreateDryRun`. Do not set `DryRun: true` on `Create`. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.CreateDryRun wrap
 preview, resp, err := client.Transaction.CreateDryRun(
 	blnkgo.CreateTransactionRequest{
 		ParentTransaction: blnkgo.ParentTransaction{
@@ -171,100 +246,21 @@ preview, resp, err := client.Transaction.CreateDryRun(
 )
 ```
 
-</RequestExample>
-
-<Tabs>
-<Tab title="Single transaction">
-
-Move money from one source balance to one destination in a single call.
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `PreciseAmount` | `*big.Int` | Amount in minor units. Use with `Precision`. |
-| `Amount` | `float64` | Float amount. Blnk applies `Precision`. Use one of `Amount` or `PreciseAmount`. |
-| `Precision` | `int64` | Precision for the currency (for example `100` for cents). |
-| `Currency` | `string` | Currency of the transaction. |
-| `Reference` | `string` | Unique reference for the transaction. |
-| `Source` | `string` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
-| `Destination` | `string` | Balance receiving the amount. |
-| `Description` | `string` | Narration of the transaction. |
-| `AllowOverdraft` | `bool` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
-| `SkipQueue` | `bool` | Bypass the transaction queue and process directly. |
-
-</Tab>
-
-<Tab title="Inflight transaction">
-
-Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `Inflight` | `bool` | Hold the transaction until you commit or void it. |
-| `InflightExpiryDate` | `*time.Time` | When the inflight transaction expires and rolls back. ISO 8601 format. |
-| `InflightCommitDate` | `*time.Time` | When Core auto-commits the inflight transaction. ISO 8601 format. |
-
-See [Update inflight](/sdks/go/transactions/update-inflight) to commit or void.
-
-</Tab>
-
-<Tab title="Split transaction">
-
-Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
-
-<CodeGroup>
-
-</CodeGroup>
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `Sources` | `[]blnkgo.Source` | Source legs when debiting more than one balance. |
-| `Destinations` | `[]blnkgo.Source` | Destination legs when crediting more than one balance. |
-| `Sources.`<br />`[].Identifier` | `string` | Balance ID or `@` internal name for a source leg. |
-| `Destinations.`<br />`[].Identifier` | `string` | Balance ID or `@` internal name for a destination leg. |
-| `Distribution` | `blnkgo.Distribution` | Percentage, fixed amount, or `left` for a split leg. |
-| `PreciseDistribution` | `string` | Fixed split-leg amount in minor units. |
-| `Atomic` | `bool` | When `true`, every leg succeeds together or the entire split fails. |
-
-</Tab>
-
-<Tab title="Scheduled transaction">
-
-Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `ScheduledFor` | `*time.Time` | Date and time to post the transaction. ISO 8601 format. |
-| `MetaData` | `MetaData` | Optional metadata stored on the scheduled transaction. |
-
-</Tab>
-
-<Tab title="Backdated transaction">
-
-Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `EffectiveDate` | `*time.Time` | Actual date the transaction occurred. ISO 8601 format. |
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview whether a transaction would apply and how it would change balances without writing anything. Use `CreateDryRun`. Do not set `DryRun: true` on `Create`. See [Dry-run transactions](/transactions/dry-run).
-
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | Method | `CreateDryRun` | Returns `*TransactionPreview`. Nothing is written and the reference is still free. |
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```json Single transaction expandable
+```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -287,7 +283,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Inflight transaction expandable
+</Tab>
+
+<Tab title="Inflight transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100,
   "precision": 100,
@@ -310,7 +310,12 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple sources expandable
+</Tab>
+
+<Tab title="Split transaction">
+
+<CodeGroup>
+```json 201 Created Multiple sources wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -351,7 +356,7 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple destinations expandable
+```json 201 Created Multiple destinations wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -390,8 +395,13 @@ Preview whether a transaction would apply and how it would change balances witho
   "inflight_commit_date": "0001-01-01T00:00:00Z"
 }
 ```
+</CodeGroup>
 
-```json Scheduled transaction expandable
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100000,
   "precision": 100,
@@ -418,7 +428,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Backdated transaction expandable
+</Tab>
+
+<Tab title="Backdated transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 358.9,
   "precision": 100,
@@ -442,7 +456,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 200 OK expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -491,11 +509,8 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-</ResponseExample>
-
-<CodeGroup>
-
-</CodeGroup>
+</Tab>
+</Tabs>
 
 #### Go response (`*blnkgo.Transaction`)
 
@@ -515,15 +530,6 @@ Preview whether a transaction would apply and how it would change balances witho
 | `EffectiveDate` | `*time.Time` | Actual date the transaction occurred, for backdated transactions. |
 | `CreatedAt` | `time.Time` | Date and time the transaction was created. |
 | `MetaData` | `MetaData` | Optional metadata object. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Overdrafts", href: "/transactions/overdrafts" },
-    { title: "Precision", href: "/transactions/precision" },
-    { title: "Create transaction", href: "/reference/create-transaction" },
-  ]}
-/>

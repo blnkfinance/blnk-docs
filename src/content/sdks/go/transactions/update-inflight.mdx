@@ -11,9 +11,10 @@ Use `client.Transaction.Update` to commit or void an [inflight](/transactions/in
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Commit">
 
-```go Commit
+```go client.Transaction.Update wrap
 transaction, resp, err := client.Transaction.Update(
 	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 	blnkgo.UpdateStatus{
@@ -22,7 +23,11 @@ transaction, resp, err := client.Transaction.Update(
 )
 ```
 
-```go Partial commit
+</Tab>
+
+<Tab title="Partial commit">
+
+```go client.Transaction.Update wrap
 transaction, resp, err := client.Transaction.Update(
 	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 	blnkgo.UpdateStatus{
@@ -32,7 +37,11 @@ transaction, resp, err := client.Transaction.Update(
 )
 ```
 
-```go Void
+</Tab>
+
+<Tab title="Void">
+
+```go client.Transaction.Update wrap
 transaction, resp, err := client.Transaction.Update(
 	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 	blnkgo.UpdateStatus{
@@ -41,7 +50,13 @@ transaction, resp, err := client.Transaction.Update(
 )
 ```
 
-```go Synchronous update
+</Tab>
+
+<Tab title="Synchronous update">
+
+Pass `SkipQueue: true` to process the commit or void synchronously instead of queuing.
+
+```go client.Transaction.Update wrap
 transaction, resp, err := client.Transaction.Update(
 	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 	blnkgo.UpdateStatus{
@@ -51,7 +66,13 @@ transaction, resp, err := client.Transaction.Update(
 )
 ```
 
-```go client.Transaction.UpdateDryRun
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the commit or void without settling the hold. Use `UpdateDryRun`. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.UpdateDryRun wrap
 preview, resp, err := client.Transaction.UpdateDryRun(
 	"txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
 	blnkgo.UpdateStatus{
@@ -59,20 +80,6 @@ preview, resp, err := client.Transaction.UpdateDryRun(
 	},
 )
 ```
-
-</RequestExample>
-
-<Tabs>
-
-<Tab title="Synchronous update">
-
-Pass `SkipQueue: true` to process the commit or void synchronously instead of queuing.
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview the commit or void without settling the hold. Use `UpdateDryRun`. See [Dry-run transactions](/transactions/dry-run).
 
 </Tab>
 </Tabs>
@@ -84,6 +91,7 @@ Preview the commit or void without settling the hold. Use `UpdateDryRun`. See [D
 | `Amount` | `float64` | Partial commit amount. See [Partial commits](/transactions/inflight/commit-inflight#partial-commits). |
 | `PreciseAmount` | `*big.Int` | Precision-applied partial commit amount. Takes precedence over `Amount`. |
 | `SkipQueue` | `bool` | When `true`, process synchronously instead of queuing. |
+
 </Step>
 
 <Step title="Confirm the outcome">
@@ -96,9 +104,10 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Commit">
 
-```json Commit expandable
+```json 200 OK wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -116,7 +125,11 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 }
 ```
 
-```json Partial commit expandable
+</Tab>
+
+<Tab title="Partial commit">
+
+```json 200 OK wrap expandable
 {
   "amount": 500,
   "precision": 100,
@@ -134,7 +147,11 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 }
 ```
 
-```json Void expandable
+</Tab>
+
+<Tab title="Void">
+
+```json 200 OK wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -152,7 +169,11 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 }
 ```
 
-```json Dry run expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -166,7 +187,8 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
 #### Go response (`*blnkgo.Transaction`)
 
@@ -181,15 +203,6 @@ A dry run has no transaction ID. Check `WouldApply` instead.
 | `Destination` | `string` | Destination balance. |
 | `Reference` | `string` | Reference for the commit or void transaction. |
 | `CreatedAt` | `time.Time` | Date and time the transaction was created. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
-    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
-    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Update inflight", href: "/reference/update-inflight" },
-  ]}
-/>

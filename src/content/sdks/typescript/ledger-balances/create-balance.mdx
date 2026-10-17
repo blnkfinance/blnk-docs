@@ -11,27 +11,15 @@ Use `blnk.LedgerBalances.create` to create a balance on an existing ledger.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```typescript Ledger balance
+```typescript blnk.LedgerBalances.create wrap
 const response = await blnk.LedgerBalances.create({
   ledger_id: 'ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb',
   currency: 'USD',
 });
 ```
-
-```typescript General Ledger indicator {2,4}
-const response = await blnk.LedgerBalances.create({
-  ledger_id: 'general_ledger_id',
-  currency: 'USD',
-  indicator: '@Revenue',
-});
-```
-
-</RequestExample>
-
-<Tabs>
-<Tab title="Ledger balance">
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -48,6 +36,14 @@ const response = await blnk.LedgerBalances.create({
 
 Create an internal balance yourself instead of waiting for the first `@` reference on a transaction. See [Internal balances](/balances/internal-balances).
 
+```typescript blnk.LedgerBalances.create wrap {2,4}
+const response = await blnk.LedgerBalances.create({
+  ledger_id: 'general_ledger_id',
+  currency: 'USD',
+  indicator: '@Revenue',
+});
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `ledger_id` | `"general_ledger_id"` | Must be the General Ledger. `indicator` is only allowed on this ledger. |
@@ -57,6 +53,7 @@ Needs Core **0.15.3**. A duplicate returns `409`.
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Save the balance ID">
@@ -67,9 +64,10 @@ Use `response.data.balance_id` as the `source` or `destination` on transactions,
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```json Ledger balance
+```json 201 Created wrap
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -86,7 +84,11 @@ Use `response.data.balance_id` as the `source` or `destination` on transactions,
 }
 ```
 
-```json General Ledger indicator {7}
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+```json 201 Created wrap {7}
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -104,9 +106,10 @@ Use `response.data.balance_id` as the `source` or `destination` on transactions,
 }
 ```
 
-</ResponseExample>
-
 You can now use `@Revenue` as `source` or `destination`.
+
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -116,14 +119,6 @@ You can now use `@Revenue` as `source` or `destination`.
 | `currency` | `string` | Currency you passed in the request. |
 | `balance` | `number` | Current net amount in the balance. |
 | `created_at` | `string` | Date and time the balance was created. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Balances overview", href: "/balances/introduction" },
-    { title: "Internal balances", href: "/balances/internal-balances" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Create balance", href: "/reference/create-balance" },
-  ]}
-/>

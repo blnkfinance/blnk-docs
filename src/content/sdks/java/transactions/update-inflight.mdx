@@ -11,9 +11,10 @@ Use `blnk.transactions().updateStatus` for this operation.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Commit">
 
-```java Commit
+```java wrap
 String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
 
 ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
@@ -21,7 +22,11 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
     UpdateTransactionStatus.create().status("commit"));
 ```
 
-```java Partial commit
+</Tab>
+
+<Tab title="Partial commit">
+
+```java wrap
 String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
 
 ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
@@ -31,7 +36,11 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
         .amount(500));
 ```
 
-```java Void
+</Tab>
+
+<Tab title="Void">
+
+```java wrap
 String transactionId = "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94";
 
 ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
@@ -39,7 +48,13 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
     UpdateTransactionStatus.create().status("void"));
 ```
 
-```java Dry run
+</Tab>
+
+<Tab title="Dry run">
+
+Preview the commit or void without settling the hold. See [Dry-run transactions](/transactions/dry-run).
+
+```java wrap
 ApiResponse<JsonNode> preview = blnk.transactions().updateStatus(
     "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
     UpdateTransactionStatus.create()
@@ -47,9 +62,8 @@ ApiResponse<JsonNode> preview = blnk.transactions().updateStatus(
         .dryRun(true));
 ```
 
-</RequestExample>
-
-Preview the commit or void without settling the hold. See [Dry-run transactions](/transactions/dry-run).
+</Tab>
+</Tabs>
 
 | Java builder | Wire field | Type | Description |
 | :-- | :-- | :-- | :-- |
@@ -57,6 +71,7 @@ Preview the commit or void without settling the hold. See [Dry-run transactions]
 | `status()` | `status` | `String` | `commit` to apply funds, or `void` to cancel and roll back. |
 | `amount()` | `amount` | `Number` | Partial commit amount. See [Partial commits](/transactions/inflight/commit-inflight#partial-commits). |
 | `preciseAmount()` | `precise_amount` | `Number` | Precision-applied partial commit amount. Takes precedence over `amount()`. |
+
 </Step>
 
 <Step title="Confirm the outcome">
@@ -69,9 +84,10 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Commit">
 
-```json Commit expandable
+```json 200 OK wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -89,7 +105,11 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 }
 ```
 
-```json Partial commit expandable
+</Tab>
+
+<Tab title="Partial commit">
+
+```json 200 OK wrap expandable
 {
   "amount": 500,
   "precision": 100,
@@ -107,7 +127,11 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 }
 ```
 
-```json Void expandable
+</Tab>
+
+<Tab title="Void">
+
+```json 200 OK wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -125,7 +149,11 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 }
 ```
 
-```json Dry run expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -139,7 +167,8 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -147,13 +176,6 @@ A dry run has no `transaction_id`. Check `would_apply` instead.
 | `parent_transaction` | `String` | Original inflight transaction this resolves. |
 | `status` | `String` | `APPLIED` or `VOID`. |
 | `precise_amount` | `Number` | Amount applied (amount × precision). |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
-    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
-    { title: "Update inflight", href: "/reference/update-inflight" },
-  ]}
-/>

@@ -11,9 +11,12 @@ Use `blnk.transactions.create` to post a [transaction](/transactions/introductio
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```python Single transaction
+Move money from one source balance to one destination in a single call.
+
+```python blnk.transactions.create wrap
 response = blnk.transactions.create({
   "precise_amount": 125034,
   "precision": 100,
@@ -27,7 +30,26 @@ response = blnk.transactions.create({
 })
 ```
 
-```python Inflight transaction {9-11}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `precise_amount` | `number` | Amount in minor units. Use with `precision`. |
+| `amount` | `number` | Float amount. Blnk applies `precision`. Use one of `amount` or `precise_amount`. |
+| `precision` | `number` | Precision for the currency (for example `100` for cents). |
+| `currency` | `str` | Currency of the transaction. |
+| `reference` | `str` | Unique reference for the transaction. |
+| `source` | `str` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
+| `destination` | `str` | Balance receiving the amount. |
+| `description` | `str` | Narration of the transaction. |
+| `allow_overdraft` | `bool` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
+| `skip_queue` | `bool` | Bypass the transaction queue and process directly. |
+
+</Tab>
+
+<Tab title="Inflight transaction">
+
+Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
+
+```python blnk.transactions.create wrap {9-11}
 response = blnk.transactions.create({
   "precise_amount": 10000,
   "precision": 100,
@@ -42,7 +64,22 @@ response = blnk.transactions.create({
 })
 ```
 
-```python Multiple sources {7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `inflight` | `bool` | Hold the transaction until you commit or void it. |
+| `inflight_expiry_date` | `str` | When the inflight transaction expires and rolls back. ISO 8601 format. |
+| `inflight_commit_date` | `str` | When Core auto-commits the inflight transaction. ISO 8601 format. |
+
+See [Update inflight](/sdks/python/transactions/update-inflight) to commit or void.
+
+</Tab>
+
+<Tab title="Split transaction">
+
+Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+
+<CodeGroup>
+```python Multiple sources wrap {7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
 response = blnk.transactions.create({
   "precise_amount": 3000000,
   "precision": 100,
@@ -68,7 +105,7 @@ response = blnk.transactions.create({
 })
 ```
 
-```python Multiple destinations {8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
+```python Multiple destinations wrap {8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
 response = blnk.transactions.create({
   "precise_amount": 3000000,
   "precision": 100,
@@ -93,92 +130,6 @@ response = blnk.transactions.create({
   "atomic": True,
 })
 ```
-
-```python Scheduled transaction {9}
-response = blnk.transactions.create({
-  "precise_amount": 10000000,
-  "precision": 100,
-  "currency": "USD",
-  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
-  "destination": "@fees",
-  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-  "description": "Monthly fee",
-  "scheduled_for": "2024-12-21T01:36:46+01:00",
-  "meta_data": {
-    "sender_name": "John Doe",
-    "sender_account": "00000000000",
-  },
-})
-```
-
-```python Backdated transaction {9}
-response = blnk.transactions.create({
-  "precise_amount": 35890,
-  "precision": 100,
-  "currency": "NGN",
-  "source": "@source_account",
-  "destination": "@destination_account",
-  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
-  "description": "Backdated transaction",
-  "effective_date": "2025-02-15T10:30:00Z",
-})
-```
-
-```python Dry run {2}
-preview = blnk.transactions.create({
-  "dry_run": True,
-  "precise_amount": 12000,
-  "precision": 100,
-  "currency": "USD",
-  "source": "bln_source-bal-001",
-  "destination": "bln_dest-bal-001",
-  "reference": "ref_card_settle_4821",
-  "description": "Card settlement",
-})
-```
-
-</RequestExample>
-
-<Tabs>
-<Tab title="Single transaction">
-
-Move money from one source balance to one destination in a single call.
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `precise_amount` | `number` | Amount in minor units. Use with `precision`. |
-| `amount` | `number` | Float amount. Blnk applies `precision`. Use one of `amount` or `precise_amount`. |
-| `precision` | `number` | Precision for the currency (for example `100` for cents). |
-| `currency` | `str` | Currency of the transaction. |
-| `reference` | `str` | Unique reference for the transaction. |
-| `source` | `str` | Balance sending the amount. Prefix `@` for an [internal balance](/balances/internal-balances). |
-| `destination` | `str` | Balance receiving the amount. |
-| `description` | `str` | Narration of the transaction. |
-| `allow_overdraft` | `bool` | Allow the source balance to go negative. See [Overdrafts](/transactions/overdrafts). |
-| `skip_queue` | `bool` | Bypass the transaction queue and process directly. |
-
-</Tab>
-
-<Tab title="Inflight transaction">
-
-Reserve funds without settling until you commit or void the transaction. See [Create inflight](/transactions/inflight/create-inflight).
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `inflight` | `bool` | Hold the transaction until you commit or void it. |
-| `inflight_expiry_date` | `str` | When the inflight transaction expires and rolls back. ISO 8601 format. |
-| `inflight_commit_date` | `str` | When Core auto-commits the inflight transaction. ISO 8601 format. |
-
-See [Update inflight](/sdks/python/transactions/update-inflight) to commit or void.
-
-</Tab>
-
-<Tab title="Split transaction">
-
-Debit multiple sources or credit multiple destinations in one transaction. See [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
-
-<CodeGroup>
-
 </CodeGroup>
 
 | Field | Type | Description |
@@ -197,6 +148,23 @@ Debit multiple sources or credit multiple destinations in one transaction. See [
 
 Post the transaction at a future date and time. See [Scheduling](/transactions/scheduling).
 
+```python blnk.transactions.create wrap {9}
+response = blnk.transactions.create({
+  "precise_amount": 10000000,
+  "precision": 100,
+  "currency": "USD",
+  "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+  "destination": "@fees",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Monthly fee",
+  "scheduled_for": "2024-12-21T01:36:46+01:00",
+  "meta_data": {
+    "sender_name": "John Doe",
+    "sender_account": "00000000000",
+  },
+})
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `scheduled_for` | `str` | Date and time to post the transaction. ISO 8601 format. |
@@ -208,6 +176,19 @@ Post the transaction at a future date and time. See [Scheduling](/transactions/s
 
 Record a transaction with a financial date in the past. See [Backdated transactions](/transactions/backdated-transactions).
 
+```python blnk.transactions.create wrap {9}
+response = blnk.transactions.create({
+  "precise_amount": 35890,
+  "precision": 100,
+  "currency": "NGN",
+  "source": "@source_account",
+  "destination": "@destination_account",
+  "reference": "ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  "description": "Backdated transaction",
+  "effective_date": "2025-02-15T10:30:00Z",
+})
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `effective_date` | `str` | Actual date the transaction occurred. ISO 8601 format. |
@@ -218,19 +199,34 @@ Record a transaction with a financial date in the past. See [Backdated transacti
 
 Preview whether a transaction would apply and how it would change balances without writing anything. See [Dry-run transactions](/transactions/dry-run).
 
+```python blnk.transactions.create wrap {2}
+preview = blnk.transactions.create({
+  "dry_run": True,
+  "precise_amount": 12000,
+  "precision": 100,
+  "currency": "USD",
+  "source": "bln_source-bal-001",
+  "destination": "bln_dest-bal-001",
+  "reference": "ref_card_settle_4821",
+  "description": "Card settlement",
+})
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `dry_run` | `True` | Return a preview without creating a transaction or consuming the reference. |
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Single transaction">
 
-```json Single transaction expandable
+```json 201 Created wrap expandable
 {
   "amount": 1250.34,
   "precision": 100,
@@ -253,7 +249,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Inflight transaction expandable
+</Tab>
+
+<Tab title="Inflight transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100,
   "precision": 100,
@@ -276,7 +276,12 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple sources expandable
+</Tab>
+
+<Tab title="Split transaction">
+
+<CodeGroup>
+```json 201 Created Multiple sources wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -317,7 +322,7 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 201 Created Multiple destinations expandable
+```json 201 Created Multiple destinations wrap expandable
 {
   "precise_amount": 3000000,
   "amount": 30000,
@@ -356,8 +361,13 @@ Preview whether a transaction would apply and how it would change balances witho
   "inflight_commit_date": "0001-01-01T00:00:00Z"
 }
 ```
+</CodeGroup>
 
-```json Scheduled transaction expandable
+</Tab>
+
+<Tab title="Scheduled transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 100000,
   "precision": 100,
@@ -384,7 +394,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json Backdated transaction expandable
+</Tab>
+
+<Tab title="Backdated transaction">
+
+```json 201 Created wrap expandable
 {
   "amount": 358.9,
   "precision": 100,
@@ -408,7 +422,11 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-```json 200 OK expandable {2-3}
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -421,11 +439,8 @@ Preview whether a transaction would apply and how it would change balances witho
 }
 ```
 
-</ResponseExample>
-
-<CodeGroup>
-
-</CodeGroup>
+</Tab>
+</Tabs>
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -436,15 +451,6 @@ Preview whether a transaction would apply and how it would change balances witho
 | `destination` | `str` | Resolved destination balance. |
 | `hash` | `str` | [Hash](/transactions/hash) of the transaction details. |
 | `created_at` | `str` | Date and time the transaction was created. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Overdrafts", href: "/transactions/overdrafts" },
-    { title: "Precision", href: "/transactions/precision" },
-    { title: "Create transaction", href: "/reference/create-transaction" },
-  ]}
-/>

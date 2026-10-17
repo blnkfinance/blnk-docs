@@ -11,9 +11,10 @@ Use `blnk.transactions().bulkVoidInflight` for this operation.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Queued void">
 
-```java Queued void
+```java wrap
 List<String> transactionIds = List.of(
     "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
 );
@@ -24,7 +25,13 @@ ApiResponse<JsonNode> response = blnk.transactions().bulkVoidInflight(
 );
 ```
 
-```java Synchronous void
+</Tab>
+
+<Tab title="Synchronous void">
+
+Pass `skipQueue(true)` to process each void synchronously instead of queuing.
+
+```java wrap
 List<String> transactionIds = List.of(
     "txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
 );
@@ -36,26 +43,18 @@ ApiResponse<JsonNode> response = blnk.transactions().bulkVoidInflight(
 );
 ```
 
-```java Dry run
-ApiResponse<JsonNode> preview = blnk.transactions().bulkVoidInflight(
-    BulkVoidInflightRequest.create()
-        .dryRun(true)
-        .transactionIds(List.of("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")));
-```
-
-</RequestExample>
-
-<Tabs>
-
-<Tab title="Synchronous void">
-
-Pass `skipQueue(true)` to process each void synchronously instead of queuing.
-
 </Tab>
 
 <Tab title="Dry run">
 
 Preview every void without releasing any hold. See [Dry-run transactions](/transactions/dry-run).
+
+```java wrap
+ApiResponse<JsonNode> preview = blnk.transactions().bulkVoidInflight(
+    BulkVoidInflightRequest.create()
+        .dryRun(true)
+        .transactionIds(List.of("txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94")));
+```
 
 </Tab>
 </Tabs>
@@ -64,6 +63,7 @@ Preview every void without releasing any hold. See [Dry-run transactions](/trans
 | :-- | :-- | :-- |
 | `transaction_ids` | `List<String>` | Up to 100 inflight transaction IDs to void. |
 | `skip_queue` | `boolean` | When `true`, process synchronously instead of queuing. |
+
 </Step>
 
 <Step title="Review per-item results">
@@ -74,9 +74,7 @@ Check `response.data().get("results")` for each transaction's outcome. Failed it
 
 <Step title="Response">
 
-<ResponseExample>
-
-```json 200 OK expandable
+```json 200 OK wrap expandable
 {
   "succeeded": 2,
   "failed": 1,
@@ -99,8 +97,6 @@ Check `response.data().get("results")` for each transaction's outcome. Failed it
 }
 ```
 
-</ResponseExample>
-
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `succeeded` | `Number` | Number voided successfully. |
@@ -110,12 +106,6 @@ Check `response.data().get("results")` for each transaction's outcome. Failed it
 | `results[].status` | `String` | `succeeded`, `failed`, or `queued` (when `skip_queue` is `false`). |
 | `results[].code` | `String` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
 | `results[].message` | `String` | Human-readable failure message. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
-    { title: "Bulk void inflight", href: "/reference/bulk-void-inflight" },
-  ]}
-/>

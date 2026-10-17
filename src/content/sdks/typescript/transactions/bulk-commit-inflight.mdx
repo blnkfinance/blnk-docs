@@ -11,9 +11,10 @@ Use `blnk.Transactions.bulkCommitInflight` to commit multiple inflight transacti
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Queued commit">
 
-```typescript Queued commit
+```typescript blnk.Transactions.bulkCommitInflight wrap
 const response = await blnk.Transactions.bulkCommitInflight({
   transactions: [
     {
@@ -31,7 +32,13 @@ const response = await blnk.Transactions.bulkCommitInflight({
 });
 ```
 
-```typescript Synchronous commit
+</Tab>
+
+<Tab title="Synchronous commit">
+
+Pass `skip_queue: true` to process each commit synchronously instead of queuing.
+
+```typescript blnk.Transactions.bulkCommitInflight wrap
 const response = await blnk.Transactions.bulkCommitInflight({
   skip_queue: true,
   transactions: [
@@ -46,7 +53,13 @@ const response = await blnk.Transactions.bulkCommitInflight({
 });
 ```
 
-```typescript Dry run {2}
+</Tab>
+
+<Tab title="Dry run">
+
+Preview every commit without settling any hold. Items are projected independently. See [Dry-run transactions](/transactions/dry-run).
+
+```typescript blnk.Transactions.bulkCommitInflight wrap {2}
 const preview = await blnk.Transactions.bulkCommitInflight({
   dry_run: true,
   transactions: [
@@ -59,20 +72,6 @@ const preview = await blnk.Transactions.bulkCommitInflight({
   ],
 });
 ```
-
-</RequestExample>
-
-<Tabs>
-
-<Tab title="Synchronous commit">
-
-Pass `skip_queue: true` to process each commit synchronously instead of queuing.
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview every commit without settling any hold. Items are projected independently. See [Dry-run transactions](/transactions/dry-run).
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -90,6 +89,7 @@ Pass `dry_run: true` inline, as shown above, to infer the preview response. If t
 | `transactions[].amount` | `number` | Partial commit amount. Omit to commit the full remaining inflight amount. |
 | `transactions[].precise_amount` | `number` | Precision-applied partial commit amount. Takes precedence over amount. |
 | `skip_queue` | `boolean` | When `true`, process synchronously instead of queuing. |
+
 </Step>
 
 <Step title="Review per-item results">
@@ -102,9 +102,10 @@ A dry run has no `succeeded` / `failed` counts. Check `would_apply` and `results
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Queued commit">
 
-```json Queued commit expandable
+```json 200 OK wrap expandable
 {
   "succeeded": 2,
   "failed": 1,
@@ -127,7 +128,20 @@ A dry run has no `succeeded` / `failed` counts. Check `would_apply` and `results
 }
 ```
 
-```json Dry run expandable {2-3}
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `succeeded` | `number` | Number committed successfully. |
+| `failed` | `number` | Number that failed. |
+| `results` | `object[]` | Per-transaction outcome in request order. |
+| `results[].status` | `string` | `succeeded` or `failed`. |
+| `results[].code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
+| `results[].message` | `string` | Human-readable failure message. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -160,23 +174,8 @@ A dry run has no `succeeded` / `failed` counts. Check `would_apply` and `results
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `succeeded` | `number` | Number committed successfully. |
-| `failed` | `number` | Number that failed. |
-| `results` | `object[]` | Per-transaction outcome in request order. |
-| `results[].status` | `string` | `succeeded` or `failed`. |
-| `results[].code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_VOIDED`, `INVALID_AMOUNT`). |
-| `results[].message` | `string` | Human-readable failure message. |
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Commit inflight", href: "/transactions/inflight/commit-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Bulk Commit Inflight", href: "/reference/bulk-commit-inflight" },
-  ]}
-/>

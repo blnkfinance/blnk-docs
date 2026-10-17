@@ -11,27 +11,15 @@ Use `client.LedgerBalance.Create` to create a balance on an existing ledger.
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```go Ledger balance
+```go client.LedgerBalance.Create wrap
 balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
 	LedgerID: "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb",
 	Currency: "USD",
 })
 ```
-
-```go General Ledger indicator
-balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
-	LedgerID:  "general_ledger_id",
-	Currency:  "USD",
-	Indicator: "@Revenue",
-})
-```
-
-</RequestExample>
-
-<Tabs>
-<Tab title="Ledger balance">
 
 | Field | Type | Description |
 | :-- | :-- | :-- |
@@ -48,6 +36,14 @@ balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequ
 
 Create an internal balance yourself instead of waiting for the first `@` reference on a transaction. See [Internal balances](/balances/internal-balances).
 
+```go client.LedgerBalance.Create wrap
+balance, resp, err := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+	LedgerID:  "general_ledger_id",
+	Currency:  "USD",
+	Indicator: "@Revenue",
+})
+```
+
 | Field | Type | Description |
 | :-- | :-- | :-- |
 | `LedgerID` | `string` | Must be `general_ledger_id`. `Indicator` is only allowed on this ledger. |
@@ -57,13 +53,15 @@ Needs Core **0.15.3**. A duplicate returns `409`.
 
 </Tab>
 </Tabs>
+
 </Step>
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Ledger balance">
 
-```json Ledger balance
+```json 201 Created wrap
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -80,7 +78,11 @@ Needs Core **0.15.3**. A duplicate returns `409`.
 }
 ```
 
-```json General Ledger indicator {7}
+</Tab>
+
+<Tab title="General Ledger indicator">
+
+```json 201 Created wrap {7}
 {
   "balance": 0,
   "inflight_balance": 0,
@@ -98,9 +100,10 @@ Needs Core **0.15.3**. A duplicate returns `409`.
 }
 ```
 
-</ResponseExample>
-
 You can now use `@Revenue` as `source` or `destination`.
+
+</Tab>
+</Tabs>
 
 #### Go response (`*blnkgo.LedgerBalance`)
 
@@ -113,14 +116,6 @@ You can now use `@Revenue` as `source` or `destination`.
 | `Balance` | `*big.Int` | Current net amount in the balance. |
 | `CreatedAt` | `time.Time` | Date and time the balance was created. |
 | `MetaData` | `MetaData` | Optional metadata object. |
+
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Balances overview", href: "/balances/introduction" },
-    { title: "Internal balances", href: "/balances/internal-balances" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Create balance", href: "/reference/create-balance" },
-  ]}
-/>

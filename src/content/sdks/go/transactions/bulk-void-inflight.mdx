@@ -11,9 +11,10 @@ Use `client.Transaction.BulkVoidInflight` to void multiple inflight transactions
 <Steps>
 <Step title="Call the method">
 
-<RequestExample>
+<Tabs>
+<Tab title="Queued void">
 
-```go Queued void
+```go client.Transaction.BulkVoidInflight wrap
 result, resp, err := client.Transaction.BulkVoidInflight(
  blnkgo.BulkVoidInflightRequest{
 	TransactionIDs: []string{
@@ -24,7 +25,13 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 )
 ```
 
-```go Synchronous void
+</Tab>
+
+<Tab title="Synchronous void">
+
+Pass `SkipQueue: true` to process each void synchronously instead of queuing.
+
+```go client.Transaction.BulkVoidInflight wrap
 result, resp, err := client.Transaction.BulkVoidInflight(
  blnkgo.BulkVoidInflightRequest{
 	SkipQueue: true,
@@ -36,7 +43,13 @@ result, resp, err := client.Transaction.BulkVoidInflight(
 )
 ```
 
-```go client.Transaction.BulkVoidInflightDryRun
+</Tab>
+
+<Tab title="Dry run">
+
+Preview every void without releasing any hold. Use `BulkVoidInflightDryRun`. See [Dry-run transactions](/transactions/dry-run).
+
+```go client.Transaction.BulkVoidInflightDryRun wrap
 preview, resp, err := client.Transaction.BulkVoidInflightDryRun(
 	blnkgo.BulkVoidInflightRequest{
 		TransactionIDs: []string{
@@ -47,20 +60,6 @@ preview, resp, err := client.Transaction.BulkVoidInflightDryRun(
 )
 ```
 
-</RequestExample>
-
-<Tabs>
-
-<Tab title="Synchronous void">
-
-Pass `SkipQueue: true` to process each void synchronously instead of queuing.
-
-</Tab>
-
-<Tab title="Dry run">
-
-Preview every void without releasing any hold. Use `BulkVoidInflightDryRun`. See [Dry-run transactions](/transactions/dry-run).
-
 </Tab>
 </Tabs>
 
@@ -68,6 +67,7 @@ Preview every void without releasing any hold. Use `BulkVoidInflightDryRun`. See
 | :-- | :-- | :-- |
 | `TransactionIDs` | `[]string` | Up to 100 inflight transaction IDs to void. |
 | `SkipQueue` | `bool` | When `true`, process synchronously instead of queuing. |
+
 </Step>
 
 <Step title="Review per-item results">
@@ -80,9 +80,10 @@ A dry run has no succeeded or failed counts. Check `WouldApply` and `Results`.
 
 <Step title="Response">
 
-<ResponseExample>
+<Tabs>
+<Tab title="Queued void">
 
-```json Queued void expandable
+```json 200 OK wrap expandable
 {
   "succeeded": 2,
   "failed": 1,
@@ -105,7 +106,23 @@ A dry run has no succeeded or failed counts. Check `WouldApply` and `Results`.
 }
 ```
 
-```json Dry run expandable {2-3}
+#### Go response (`*blnkgo.BulkVoidInflightResponse`)
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `Succeeded` | `int` | Number voided successfully. |
+| `Failed` | `int` | Number that failed. |
+| `Results` | `[]blnkgo.`<br />`BulkVoidInflightResult` | Per-transaction outcome in request order. |
+| `Results.`<br />`[].TransactionID` | `string` | Transaction ID from the request. |
+| `Results.`<br />`[].Status` | `string` | `succeeded`, `failed`, or `queued` (when `SkipQueue` is `false`). |
+| `Results.`<br />`[].Code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
+| `Results.`<br />`[].Message` | `string` | Human-readable failure message. |
+
+</Tab>
+
+<Tab title="Dry run">
+
+```json 200 OK wrap expandable {2-3}
 {
   "dry_run": true,
   "would_apply": true,
@@ -127,26 +144,8 @@ A dry run has no succeeded or failed counts. Check `WouldApply` and `Results`.
 }
 ```
 
-</ResponseExample>
+</Tab>
+</Tabs>
 
-#### Go response (`*blnkgo.BulkVoidInflightResponse`)
-
-| Field | Type | Description |
-| :-- | :-- | :-- |
-| `Succeeded` | `int` | Number voided successfully. |
-| `Failed` | `int` | Number that failed. |
-| `Results` | `[]blnkgo.`<br />`BulkVoidInflightResult` | Per-transaction outcome in request order. |
-| `Results.`<br />`[].TransactionID` | `string` | Transaction ID from the request. |
-| `Results.`<br />`[].Status` | `string` | `succeeded`, `failed`, or `queued` (when `SkipQueue` is `false`). |
-| `Results.`<br />`[].Code` | `string` | Failure code (for example `NOT_FOUND`, `ALREADY_COMMITTED`, `NOT_INFLIGHT`). |
-| `Results.`<br />`[].Message` | `string` | Human-readable failure message. |
 </Step>
 </Steps>
-
-<RelatedTopics
-  items={[
-    { title: "Void inflight", href: "/transactions/inflight/void-inflight" },
-    { title: "Handling hot balances", href: "/guides/hot-balances" },
-    { title: "Bulk Void Inflight", href: "/reference/bulk-void-inflight" },
-  ]}
-/>
