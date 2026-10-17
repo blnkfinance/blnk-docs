@@ -25,7 +25,7 @@ const methods = new Map(
 );
 ---
 
-<nav class="sidebar" aria-label="Documentation" data-nav-scope={navScope}>
+<nav class="sidebar" id="docs-nav" aria-label="Documentation" data-nav-scope={navScope}>
 	<div class="sidebar-body">
 		{
 			groups.map((group, index) => (
@@ -36,6 +36,11 @@ const methods = new Map(
 			))
 		}
 	</div>
+	<a
+		class="drawer-dashboard"
+		href="https://cloud.blnkfinance.com/auth/sign-in?utm_source=blnk_docs&utm_medium=documentation&utm_campaign=navbar"
+		>Open Dashboard</a
+	>
 	<div class="theme" data-theme-root>
 		<button
 			class="theme-button"
@@ -322,4 +327,92 @@ const methods = new Map(
 		outline: 2px solid var(--fg);
 		outline-offset: 2px;
 	}
+
+	.drawer-dashboard {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		.theme-button {
+			width: 44px;
+			height: 44px;
+		}
+
+		.theme-menu button {
+			min-height: 44px;
+		}
+	}
+
+	@media (max-width: 519px) {
+		.drawer-dashboard {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			box-sizing: border-box;
+			min-height: 44px;
+			margin: 0 0 0.75rem;
+			padding: 0 0.9rem;
+			border-radius: 999px;
+			background: oklch(0.32 0 0);
+			color: oklch(0.97 0 0);
+			font-size: 14px;
+			text-decoration: none;
+		}
+
+		:global(html[data-appearance='dark']) .drawer-dashboard {
+			background: oklch(0.9 0 0);
+			color: oklch(0.15 0 0);
+		}
+
+		.drawer-dashboard:focus-visible {
+			outline: 2px solid var(--fg);
+			outline-offset: 2px;
+		}
+	}
 </style>
+
+<script>
+	const nav = document.getElementById('docs-nav');
+	const openButton = document.querySelector('[data-nav-open]');
+	const backdrop = document.querySelector('[data-nav-backdrop]');
+	const mobile = matchMedia('(max-width: 1023px)');
+
+	function setOpen(open: boolean, restoreFocus: boolean) {
+		const small = mobile.matches;
+		const next = small && open;
+		document.documentElement.dataset.nav = next ? 'open' : 'closed';
+		openButton?.setAttribute('aria-expanded', String(next));
+		if (backdrop instanceof HTMLButtonElement) backdrop.hidden = !next;
+		if (nav instanceof HTMLElement) {
+			nav.inert = small && !next;
+			if (next) {
+				const first = nav.querySelector('a, button');
+				if (first instanceof HTMLElement) first.focus({ preventScroll: true });
+			}
+		}
+		for (const node of document.querySelectorAll('main, .toc')) {
+			if (node instanceof HTMLElement) node.inert = next;
+		}
+		if (!next && restoreFocus && openButton instanceof HTMLElement) openButton.focus();
+	}
+
+	setOpen(false, false);
+
+	openButton?.addEventListener('click', () => {
+		setOpen(document.documentElement.dataset.nav !== 'open', false);
+	});
+
+	backdrop?.addEventListener('click', () => setOpen(false, true));
+
+	nav?.addEventListener('click', (event) => {
+		const link = event.target instanceof Element ? event.target.closest('a') : null;
+		if (link) setOpen(false, false);
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape' || document.documentElement.dataset.nav !== 'open') return;
+		setOpen(false, true);
+	});
+
+	mobile.addEventListener('change', () => setOpen(false, false));
+</script>
