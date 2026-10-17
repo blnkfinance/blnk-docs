@@ -144,9 +144,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
     - `operating/api-keys/scopes`
     - `operating/api-keys/owner-context`
     - `operating/api-keys/manage-keys`
-- dropdown **Backups**
-  - `operating/backup-disk`
-  - `operating/backup-s3`
 - dropdown **Monitoring**
   - `operating/monitoring`
   - `operating/metrics-reference`
