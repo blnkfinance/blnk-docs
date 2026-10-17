@@ -1,0 +1,80 @@
+---
+title: "Get deployment config"
+description: "Retrieve configuration for a managed Core instance."
+seoTitle: "Get deployment config • Blnk API Reference"
+method: "GET"
+path: "/deployments/{deployment_id}/config"
+enterprise: true
+noindex: true
+---
+Use this endpoint to see which configuration keys you can change on a deployment, and which overrides are already applied. See [Managed instances](/cloud/instances/deploy) to learn more. 
+
+By default, all deployments are provisioned with configs optimized for production workloads. You only need to set these keys if you want to change the default behavior to fit your specific use case.
+
+<Authorization />
+
+### Path
+
+<ParamField path="deployment_id" type="string" required>
+Unique id of the deployment (`deploy_...`). Do not pass `instance_id` here.
+</ParamField>
+
+### Response
+
+<ResponseField name="allowed_keys" type="object">
+Map of keys Cloud lets you override, with the expected type (`int`, `bool`, `url`, or `json`). See the [Core configuration reference](/advanced/configuration/reference) for what each key means.
+</ResponseField>
+
+<ResponseField name="config" type="object">
+Overrides you have applied. Empty when you have not changed any keys. The instance still runs the optimized defaults Cloud set when it created the deployment.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc/config' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "allowed_keys": {
+    "BLNK_RATE_LIMIT_BURST": "int",
+    "BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC": "int",
+    "BLNK_RATE_LIMIT_RPS": "int",
+    "BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB": "int",
+    "BLNK_SERVER_MAX_UPLOAD_SIZE_MB": "int",
+    "BLNK_SLACK_WEBHOOK_URL": "url",
+    "BLNK_TRANSACTION_BATCH_SIZE": "int",
+    "BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK": "bool",
+    "BLNK_TRANSACTION_ENABLE_COALESCING": "bool",
+    "BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS": "bool",
+    "BLNK_TRANSACTION_LOCK_DURATION": "int",
+    "BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT": "int",
+    "BLNK_TRANSACTION_MAX_QUEUE_SIZE": "int",
+    "BLNK_TRANSACTION_MAX_WORKERS": "int",
+    "BLNK_WEBHOOK_HEADERS": "json",
+    "BLNK_WEBHOOK_URL": "url"
+  },
+  "config": {}
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Unable to load deployment configuration."
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Core configuration reference", href: "/advanced/configuration/reference" },
+    { title: "Update deployment config", href: "/reference/update-deployment-config" },
+    { title: "Get deployment details", href: "/reference/get-deployment" },
+    { title: "Managed instances", href: "/cloud/instances/deploy" },
+  ]}
+/>

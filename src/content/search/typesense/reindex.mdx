@@ -1,0 +1,206 @@
+---
+title: "Reindex Typesense"
+sidebarTitle: "Reindex"
+description: "Load an existing database into a new Typesense instance."
+seoTitle: "Reindex Typesense • Blnk Developer Documentation"
+metaDescription: "Learn how to reindex your data when connecting a new Typesense instance to an existing Blnk database"
+---
+
+<Version>Available in version 0.13.2 and later.</Version>
+
+Reindexing is typically needed after deploying a fresh Typesense instance, migrating to a new Typesense cluster, or recovering from Typesense data loss while your primary database remains intact.
+
+In this scenario, Typesense is empty while your primary database holds transactions, balances, ledgers, and identities. Reindexing populates Typesense with all existing records so search works correctly.
+
+<Tip>
+Blnk continues to index new and updated records live while a reindex runs. You do not need to wait for the bulk reindex to finish before searching recently created transactions.
+</Tip>
+
+## How it works
+
+<Steps titleSize="h3">
+<Step title="Trigger the reindex">
+Blnk reads all records from your database and indexes them into their respective Typesense collections (transactions, balances, ledgers, identities).
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/reindex" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.startReindex({});
+```
+
+```go Go wrap
+started, resp, err := client.Search.StartReindex(nil)
+```
+
+```python Python wrap
+response = blnk.search.start_reindex({})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().startReindex();
+```
+
+</CodeGroup>
+
+```json 200 OK wrap
+{
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 2145709,
+    "processed_records": 2145709,
+    "started_at": "2026-02-12T12:13:10.448612096Z"
+}
+```
+</Step>
+
+<Step title="Monitor progress">
+Check the reindex status. Completion time depends on the size of your data.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X GET "http://localhost:5001/search/reindex" \
+  -H "X-blnk-key: <api-key>"
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.getReindexStatus();
+```
+
+```go Go wrap
+progress, resp, err := client.Search.GetReindexStatus()
+```
+
+```python Python wrap
+response = blnk.search.get_reindex_status()
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().getReindexStatus();
+```
+
+</CodeGroup>
+
+```json 200 OK wrap
+{
+    "status": "completed",
+    "phase": "done",
+    "total_records": 3240705,
+    "processed_records": 3240705,
+    "started_at": "2026-02-12T12:13:10.448612096Z",
+    "completed_at": "2026-02-12T12:18:42.018420264Z"
+}
+```
+
+When Typesense hits memory limits during a reindex, Blnk pauses indexing and retries automatically instead of failing the operation. Poll this endpoint while that happens. 
+
+When paused, the response includes `paused: true`, `pause_reason: "typesense_out_of_memory"`, and `paused_at`. Reindex resumes when Typesense memory pressure clears.
+
+```json Paused wrap
+{
+    "status": "in_progress",
+    "phase": "indexing_transactions",
+    "total_records": 3240705,
+    "processed_records": 1200000,
+    "started_at": "2026-02-12T12:13:10.448612096Z",
+    "paused": true,
+    "pause_reason": "typesense_out_of_memory",
+    "paused_at": "2026-02-12T12:15:30.448612096Z"
+}
+```
+
+<Note>
+Available in Blnk Core 0.15.2 and later. Tune retry timing with `backpressure_retry_interval` and cap Typesense memory with `TYPESENSE_MEMORY_USED_MAX_PERCENTAGE` on your Typesense container. 
+
+See [Data store configuration](/operating/configuration/data-stores).
+</Note>
+</Step>
+
+<Step title="Verify completeness">
+Once the reindex finishes, confirm that all records are in Typesense by searching each collection with `q: "*"` to return all records. 
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST http://localhost:5001/search/{collection} \
+-H 'X-blnk-key: <api-key>' \
+-d '{ "q": "*" }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*"),
+    "transactions");
+```
+</CodeGroup>
+
+Compare `found` and `out_of` values with your expected record counts. If anything is missing, run the reindex again.
+</Step>
+</Steps>
+
+## Error handling
+
+<Version>Structured errors are available from Blnk Core 0.15.0 and later.</Version>
+
+Starting a second reindex while one is already running returns `409 Conflict` with `error_detail.code` set to `SRCH_REINDEX_IN_PROGRESS`.
+
+```json 409 Conflict Conflict wrap
+{
+  "error": "A reindex operation is already in progress",
+  "error_detail": {
+    "code": "SRCH_REINDEX_IN_PROGRESS",
+    "message": "A reindex operation is already in progress",
+    "details": {
+      "status": "in_progress",
+      "phase": "create_collections",
+      "total_records": 0,
+      "processed_records": 0,
+      "started_at": "2026-06-13T00:36:38.149512Z"
+    }
+  }
+}
+```
+
+To resolve the error:
+
+| Code | What to do |
+| :-- | :-- |
+| `SRCH_REINDEX_IN_PROGRESS` | Poll [Check reindex progress](/reference/get-reindex) until `status` is `completed`, then start a new reindex if needed. |
+
+For the full error catalogue, see [API error codes](/operating/error-codes).
+
+<RelatedTopics
+  items={[
+    { title: "Typesense overview", href: "/search/typesense/introduction" },
+    { title: "Start reindex", href: "/reference/start-reindex" },
+    { title: "Check reindex", href: "/reference/get-reindex" },
+  ]}
+/>

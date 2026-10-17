@@ -2,7 +2,7 @@
 import type { MarkdownHeading } from 'astro';
 import { Font } from 'astro:assets';
 import { getCollection } from 'astro:content';
-import { breadcrumbs, currentTab, labels, methodLabel, navigation, pageHref, pageLabel, type Crumb } from './navigation';
+import { breadcrumbs, currentTab, methodLabel, navigation, pageHref, pageLabel, type Crumb } from './navigation';
 import {
 	absoluteUrl,
 	canonicalPath,
@@ -32,16 +32,18 @@ interface Props {
 	lede?: string;
 	method?: string;
 	endpoint?: string;
-	enterprise?: boolean;
+	enterprise?: string;
 }
 
-const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint, enterprise = false } =
+const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint, enterprise } =
 	Astro.props;
+const notice = enterprise?.trim();
 const play = method && endpoint ? await renderIcon('play', 14) : '';
-const enterpriseIcon = enterprise ? await renderIcon('building-1', 16) : '';
+const enterpriseIcon = notice ? await renderIcon('building-1', 16) : '';
 const pageDescription = lede?.trim();
 const site = requireSite(Astro.site);
 const path = canonicalPath(Astro.url.pathname);
+const sdkMethod = path.startsWith('/sdks/') && method != null;
 const canonical = absoluteUrl(path, site);
 const image = absoluteUrl(ogImagePath, site);
 const section = currentTab(navigation, path);
@@ -138,14 +140,14 @@ function structuredData(page: {
 		<div class="frame">
 			<Header />
 			{
-				enterprise && (
+				notice && (
 					<p class="enterprise">
 						{enterpriseIcon && <Fragment set:html={enterpriseIcon} />}
-						<span>{labels.enterprise}</span>
+						<span>{notice}</span>
 					</p>
 				)
 			}
-			<div class="shell">
+			<div class:list={['shell', { 'sdk-method': sdkMethod }]}>
 				<Nav />
 				<main>
 					<article
@@ -192,7 +194,7 @@ function structuredData(page: {
 						</script>
 					</article>
 				</main>
-				<Toc headings={headings} markdown={markdown} />
+				<Toc headings={headings} markdown={markdown} sections={!sdkMethod} />
 			</div>
 			<CodeBlocks />
 		</div>

@@ -1,0 +1,73 @@
+---
+title: "Check reindex progress"
+sidebarTitle: "Check reindex progress"
+description: "Read the status of a Typesense reindex."
+seoTitle: "Check reindex progress • Blnk API Reference"
+method: "GET"
+path: "/search/reindex"
+noindex: true
+---
+
+Poll this endpoint to monitor reindex progress. Reindexing can take several minutes or longer depending on data volume.
+
+<Key />
+
+### Response
+<ResponseField name="status" type="string">
+  Current state: `in_progress` or `completed`.
+</ResponseField>
+<ResponseField name="phase" type="string">
+  Current phase (e.g. `indexing_transactions`) or `done` when complete.
+</ResponseField>
+<ResponseField name="total_records" type="integer">
+  Total number of records to index.
+</ResponseField>
+<ResponseField name="processed_records" type="integer">
+  Number of records processed so far.
+</ResponseField>
+<ResponseField name="started_at" type="string">
+  ISO 8601 timestamp when reindex began.
+</ResponseField>
+<ResponseField name="completed_at" type="string">
+  ISO 8601 timestamp when reindex finished. Only present when `status` is `completed`.
+</ResponseField>
+<ResponseField name="errors" type="array">
+  Array of error messages. Only present when an error occurs during reindex.
+</ResponseField>
+
+<ResponseExample>
+```json 200 OK
+{
+  "status": "in_progress",
+  "phase": "indexing_transactions",
+  "total_records": 2145709,
+  "processed_records": 2145709,
+  "started_at": "2026-02-12T12:13:10.448612096Z"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "No reindex operation has been started",
+  "error_detail": {
+    "code": "SRCH_REINDEX_NOT_STARTED",
+    "message": "No reindex operation has been started"
+  }
+}
+```
+</ResponseExample>
+
+<RequestExample>
+```bash cURL
+curl -X GET "http://localhost:5001/search/reindex" \
+  -H "X-blnk-key: <api-key>"
+```
+</RequestExample>
+
+<RelatedTopics
+  items={[
+    { title: "Reindex", href: "/search/typesense/reindex" },
+    { title: "Start reindex", href: "/reference/start-reindex" },
+    { title: "Typesense overview", href: "/search/typesense/introduction" },
+  ]}
+/>

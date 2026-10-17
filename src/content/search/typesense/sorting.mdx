@@ -1,0 +1,271 @@
+---
+title: "Sorting results"
+sidebarTitle: "Sorting"
+description: "Order Typesense results with sort_by."
+seoTitle: "Sorting • Blnk Developer Documentation"
+metaDescription: "Order your search results by creation date, amount, status, or combine multiple fields for multi-level sorting."
+---
+
+The `sort_by` parameter controls the order of your search results. You can sort by any field in ascending or descending order, and combine up to three fields for multi-level sorting.
+
+## Quick start
+
+Here's how to sort transactions by creation date in descending order (newest first):
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", SortBy: "created_at:desc"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .sortBy("created_at:desc"),
+    "transactions");
+```
+</CodeGroup>
+
+## Sort syntax
+
+### Basic sorting
+
+Sort by a single field using the format `field:direction`:
+
+```bash sort_by
+# Sort by amount (lowest to highest)
+"sort_by": "amount:asc"
+
+# Sort by creation date (newest to oldest)
+"sort_by": "created_at:desc"
+```
+
+### Sort directions
+
+| Direction | Description | Example |
+| :--- | :--- | :--- |
+| `asc` | Ascending order (A-Z, 0-9, oldest to newest) | `amount:asc` |
+| `desc` | Descending order (Z-A, 9-0, newest to oldest) | `created_at:desc` |
+
+### Multi-field sorting
+
+Combine up to three fields separated by commas. Fields are applied in order: the first field is primary, second breaks ties, third breaks remaining ties:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "status:asc,created_at:desc,amount:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    sort_by: "status:asc,created_at:desc,amount:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", SortBy: "status:asc,created_at:desc,amount:desc"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "sort_by": "status:asc,created_at:desc,amount:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .sortBy("status:asc,created_at:desc,amount:desc"),
+    "transactions");
+```
+</CodeGroup>
+
+This sorts by:
+1. **Status** (ascending) - groups by status first
+2. **Created date** (descending) - within each status, newest first  
+3. **Amount** (descending) - for same status and date, highest amount first
+
+## Common sorting patterns
+
+<Steps>
+<Step title="Sort by creation date">
+Show the most recent records first, useful for transaction monitoring.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", SortBy: "created_at:desc"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .sortBy("created_at:desc"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Sort by amount">
+Find the largest transactions first for financial analysis.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "amount:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    sort_by: "amount:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", SortBy: "amount:desc"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "sort_by": "amount:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .sortBy("amount:desc"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+{/* <Step title="Sort balances by amount">
+Identify accounts with the highest balances.
+
+```bash cURL
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "balance:desc"
+  }'
+```
+</Step> */}
+</Steps>
+
+## Best practices
+
+- **Default to newest first**: Use `created_at:desc` for time-sensitive data like transactions.
+- **Combine with filtering**: Sort filtered results for more targeted analysis.
+- **Limit multi-field sorting**: Use 2-3 fields maximum to avoid complexity.
+
+<RelatedTopics
+  items={[
+    { title: "Filtering", href: "/search/typesense/filtering" },
+    { title: "Pagination", href: "/search/typesense/pagination" },
+    { title: "Joins", href: "/search/typesense/joins" },
+  ]}
+/>

@@ -1,0 +1,485 @@
+---
+title: "Querying parameters"
+sidebarTitle: "Querying"
+description: "Search a collection with the query field."
+seoTitle: "Querying • Blnk Developer Documentation"
+metaDescription: "Learn how to query Blnk data using search. Dive into query syntax, filters, sorting options, and best practices for efficiency"
+---
+
+The querying parameters `q` and `query_by` work together to control what data you search for and which fields to search in. These parameters enable you to perform full-text searches, exact matches, and wildcard queries across your ledger data.
+
+The `q` parameter is required in all search requests. The `query_by` parameter is required when searching for specific terms, and optional only when using the wildcard `*`.
+
+## Quick start
+
+Here's a basic search query that demonstrates both parameters:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: 'bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e', query_by: 'source,destination' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        QueryBy: "source,destination",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", "query_by": "source,destination"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e")
+        .queryBy("source,destination"),
+    "transactions");
+```
+</CodeGroup>
+
+```json 200 OK expandable
+{
+  "found": 3,
+    "hits": [
+        {
+            "document": {
+                "amount": 5000,
+                "amount_string": "5000",
+                "atomic": false,
+                "created_at": 1720363463,
+                "currency": "USD",
+                "description": "Payment for services",
+                "destination": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+                "effective_date": 1720363463,
+                "source": "bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+                "status": "APPLIED",
+                "transaction_id": "txn_4c86b65e-8249-4b3b-8000-b907d32f9a9f"
+            },
+            "highlights": [
+                {
+          "field": "destination",
+          "matched_tokens": ["bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e"],
+          "snippet": "<mark>bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e</mark>"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Query parameters
+
+### Exact text search
+
+Search for specific text or IDs by specifying the fields to search in:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", QueryBy: "source,destination"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e")
+        .queryBy("source,destination"),
+    "transactions");
+```
+</CodeGroup>
+
+### Wildcard search
+
+Use `*` to return all records (only case where `query_by` is optional):
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*"},
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*"),
+    "balances");
+```
+</CodeGroup>
+
+### Multi-word search
+
+Search for multiple words across specified fields:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payment services",
+    "query_by": "description"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "payment services",
+    query_by: "description",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "payment services", QueryBy: "description"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "payment services",
+    "query_by": "description",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("payment services")
+        .queryBy("description"),
+    "transactions");
+```
+</CodeGroup>
+
+<Warning>
+Multi-word searches require ALL words to be present in the document. For "payment services", both "payment" AND "services" must exist in the specified fields.
+</Warning>
+
+### Single vs multiple fields
+
+Search in one field or across multiple fields using comma separation:
+
+```bash query_by
+# Single field
+{
+  "q": "john",
+  "query_by": "first_name"
+}
+
+# Multiple fields
+{
+  "q": "john doe",
+  "query_by": "first_name,last_name,email"
+}
+```
+
+### Metadata search
+
+<Version>Available in version 0.11.0 and later.</Version>
+
+Search within metadata or nested objects using dot notation:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "transfer",
+    "query_by": "meta_data.transaction_type,description"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "transfer",
+    query_by: "meta_data.transaction_type,description",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "transfer", QueryBy: "meta_data.transaction_type,description"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "transfer",
+    "query_by": "meta_data.transaction_type,description",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("transfer")
+        .queryBy("meta_data.transaction_type,description"),
+    "transactions");
+```
+</CodeGroup>
+
+## Common patterns
+
+<Steps>
+<Step title="Search for a specific balance's transactions">
+This finds all transactions where the specified balance ID appears as either source or destination.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e", QueryBy: "source,destination"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e")
+        .queryBy("source,destination"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Find customers by name or email">
+This searches for "alice" across name and email fields, useful for customer support.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/identities" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "alice",
+    "query_by": "first_name,last_name,email"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "alice",
+    query_by: "first_name,last_name,email",
+  },
+  'identities',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "alice", QueryBy: "first_name,last_name,email"},
+    blnkgo.Identities,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "alice",
+    "query_by": "first_name,last_name,email",
+  },
+  "identities",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("alice")
+        .queryBy("first_name,last_name,email"),
+    "identities");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Find transactions by description keywords">
+This finds transactions containing "refund" in their description or reference fields.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "refund",
+    "query_by": "description,reference"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "refund",
+    query_by: "description,reference",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "refund", QueryBy: "description,reference"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "refund",
+    "query_by": "description,reference",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("refund")
+        .queryBy("description,reference"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+## Best practices
+
+- **Be specific with fields**: Target relevant fields in `query_by` for better performance.
+- **Validate field names**: Invalid fields in `query_by` may return unexpected results.
+
+<RelatedTopics
+  items={[
+    { title: "Typesense overview", href: "/search/typesense/introduction" },
+    { title: "Filtering", href: "/search/typesense/filtering" },
+    { title: "Faceting", href: "/search/typesense/faceting" },
+  ]}
+/>

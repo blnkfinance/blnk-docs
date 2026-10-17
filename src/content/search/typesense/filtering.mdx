@@ -1,0 +1,678 @@
+---
+title: "Filtering results"
+sidebarTitle: "Filtering"
+description: "Narrow Typesense results with filter_by."
+seoTitle: "Filtering • Blnk Developer Documentation"
+metaDescription: "Use the filter_by parameter to refine search results with exact matches, ranges, comparisons, and logical operators."
+---
+
+The `filter_by` parameter refines your search results based on specific field values. Use filters to narrow down large datasets and find exactly what you're looking for.
+
+Filters work with any search query, including the wildcard `*`, and support various operators for different data types.
+
+## Quick start
+
+Here's a basic filter that demonstrates the most common pattern:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "status:=APPLIED && currency:=USD"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:=APPLIED && currency:=USD"),
+    "transactions");
+```
+</CodeGroup>
+
+```json 200 OK
+{
+  "found": 15,
+  "hits": [
+    {
+      "document": {
+        "amount": 1500,
+        "amount_string": "1500",
+        "atomic": false,
+        "currency": "USD",
+        "status": "APPLIED",
+        "created_at": 1720363463,
+        "effective_date": 1720363463,
+        "source": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        "destination": "bln_86ba7976-499d-4282-955e-a7c2abf5db12"
+      }
+    }
+  ]
+}
+```
+
+## Filter operators
+
+### Exact match (`:=`)
+
+Match field values exactly:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "status:=APPLIED && currency:=USD"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:=APPLIED && currency:=USD"),
+    "transactions");
+```
+</CodeGroup>
+
+### Partial match (`:`)
+
+Match fields containing the value:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    filter_by: 'description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy(
+            "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"),
+    "transactions");
+```
+</CodeGroup>
+
+### Comparison operators
+
+Compare numeric values and dates:
+
+| Operator | Meaning | Example |
+| :--- | :--- | :--- |
+| `>` | Greater than | `amount:>1000` |
+| `>=` | Greater than or equal | `balance:>=5000` |
+| `<` | Less than | `created_at:<1720396800` |
+| `<=` | Less than or equal | `balance:<=50000` |
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:>1000 && balance:<=50000"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'amount:>1000 && balance:<=50000' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "amount:>1000 && balance:<=50000"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "amount:>1000 && balance:<=50000"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("amount:>1000 && balance:<=50000"),
+    "transactions");
+```
+</CodeGroup>
+
+### Range operator (`[min..max]`)
+
+Filter values within a range:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "balance:[1000..50000] && created_at:[1720310400..1720396800]"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    filter_by: 'balance:[1000..50000] && created_at:[1720310400..1720396800]',
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "balance:[1000..50000] && created_at:[1720310400..1720396800]",
+    },
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "balance:[1000..50000] && created_at:[1720310400..1720396800]",
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("balance:[1000..50000] && created_at:[1720310400..1720396800]"),
+    "balances");
+```
+</CodeGroup>
+
+<Info>
+Use Unix timestamps for date ranges. The example above filters for July 7-8, 2024.
+</Info>
+
+### IN operator (`[value1, value2]`)
+
+Match any value from a list:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:[APPLIED, INFLIGHT] && currency:[USD, EUR]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:[APPLIED, INFLIGHT] && currency:[USD, EUR]"),
+    "transactions");
+```
+</CodeGroup>
+
+### AND operator (`&&`)
+
+Combine multiple conditions where ALL must be true:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=APPLIED && currency:=USD && amount:>1000"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:=APPLIED && currency:=USD && amount:>1000' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "status:=APPLIED && currency:=USD && amount:>1000"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "status:=APPLIED && currency:=USD && amount:>1000"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:=APPLIED && currency:=USD && amount:>1000"),
+    "transactions");
+```
+</CodeGroup>
+
+### Partial match (`:`)
+
+Match fields containing the value:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: '*',
+    filter_by: 'description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94',
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy(
+            "description:payment && reference:ref_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94"),
+    "transactions");
+```
+</CodeGroup>
+
+### Not equal (`:!=`)
+
+Exclude specific values:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "currency:!=USD && status:!=REJECTED"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'currency:!=USD && status:!=REJECTED' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "currency:!=USD && status:!=REJECTED"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "currency:!=USD && status:!=REJECTED"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("currency:!=USD && status:!=REJECTED"),
+    "transactions");
+```
+</CodeGroup>
+
+## Common patterns
+
+<Steps>
+<Step title="Filter by transaction status">
+Find all successful and pending transactions.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:[APPLIED, INFLIGHT]"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'status:[APPLIED, INFLIGHT]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "status:[APPLIED, INFLIGHT]"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "status:[APPLIED, INFLIGHT]"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:[APPLIED, INFLIGHT]"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Filter transactions by amount range">
+Find USD transactions between \$1,000 and \$10,000.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:[1000..10000] && currency:=USD"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'amount:[1000..10000] && currency:=USD' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "amount:[1000..10000] && currency:=USD"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "amount:[1000..10000] && currency:=USD"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("amount:[1000..10000] && currency:=USD"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Filter by creation date">
+Find transactions created within a specific date range using Unix timestamps.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "created_at:[1720310400..1720396800]"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'created_at:[1720310400..1720396800]' },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "created_at:[1720310400..1720396800]"},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "created_at:[1720310400..1720396800]"},
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("created_at:[1720310400..1720396800]"),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Filter by multiple currencies">
+Find balances in major currencies with positive amounts.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "currency:[USD, EUR, GBP] && balance:>0"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  { q: '*', filter_by: 'currency:[USD, EUR, GBP] && balance:>0' },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "currency:[USD, EUR, GBP] && balance:>0"},
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {"q": "*", "filter_by": "currency:[USD, EUR, GBP] && balance:>0"},
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("currency:[USD, EUR, GBP] && balance:>0"),
+    "balances");
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+## Best practices
+
+- **Use exact matches** (`:=`) for IDs, statuses, and currencies
+- **Combine with AND** (`&&`) for precise filtering 
+- **Use ranges** for amounts and dates instead of multiple comparisons
+- **Test complex filters** with simple queries first
+
+<RelatedTopics
+  items={[
+    { title: "Querying", href: "/search/typesense/querying" },
+    { title: "Faceting", href: "/search/typesense/faceting" },
+    { title: "Sorting", href: "/search/typesense/sorting" },
+  ]}
+/>

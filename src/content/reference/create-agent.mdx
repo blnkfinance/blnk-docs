@@ -1,0 +1,296 @@
+---
+title: "Create agent job"
+description: "Submit an async agent workflow against a Core instance in your Blnk Cloud workspace."
+seoTitle: "Create agent job • Blnk API Reference"
+method: "POST"
+path: "/agents/jobs"
+enterprise: true
+noindex: true
+---
+<Warning>
+Agent Jobs API is currently in beta.
+</Warning>
+
+The Agent Jobs API turns an operator or developer request into a workflow that Cloud can plan, execute, approve, pause, resume, and schedule. 
+
+You send a message such as "Review pending high-value transactions from the last 24 hours" or "Create a customer identity and a NGN balance." The agent plans the work, applies the right tools and ledger scope, then runs the steps.
+
+The Jobs API is asynchronous. You create a job once, persist the `job_id`, then [poll status](/reference/get-agent-status), [read the result](/reference/get-agent-result), and [control](/reference/control-agent) the job when you need to pause, approve, or schedule it.
+
+<Note>
+Use this API when your app, worker, or internal tool submits work and tracks the lifecycle. For an AI tool chatting against your ledger, use the [MCP server](/reference/mcp).
+</Note>
+
+### How it works
+
+<Steps>
+<Step title="Create the job">
+Call `POST /agents/jobs?instance_id=...` with a `message` (or `query`) and optional tools, filters, and callbacks.
+</Step>
+<Step title="Persist the job ID">
+Store the returned `job_id`. You need it for status, result, and control.
+</Step>
+<Step title="Poll status, then read the result">
+Poll [Get job status](/reference/get-agent-status) for progress, subtasks, and approval state. When the job completes or fails, read [Get job result](/reference/get-agent-result).
+</Step>
+<Step title="Control the job when needed">
+Use [Control agent job](/reference/control-agent) to pause, resume, approve, reject, or schedule a follow-up run.
+</Step>
+</Steps>
+
+<Authorization />
+
+### Query
+
+<ParamField query="instance_id" type="string" required>
+Core instance to run the job against (`instance_...`). Do not put `instance_id` inside `filters`.
+</ParamField>
+
+### Body
+
+<ParamField body="message" type="string">
+Natural-language request for the planner. Required unless you send `query`.
+</ParamField>
+
+<ParamField body="query" type="string">
+Alias for `message`. Both map to the same planner input. Send one of them.
+</ParamField>
+
+<ParamField body="config.skip_approval" type="boolean">
+When `true`, the job auto-approves steps that would otherwise pause. When `false` or omitted, a step that needs approval moves the job to `waiting_approval`. Poll [Get job status](/reference/get-agent-status) for the approval state, then [Control agent job](/reference/control-agent) with `approve` or `reject`.
+</ParamField>
+
+<ParamField body="config.approved_tools" type="array">
+Capabilities this job is allowed to use, such as `filter.transactions` or `transactions.create`. 
+
+Do not send planner step names like `backoffice.filter_collection`. If a planned step needs a capability that is not in this list, the job fails before it runs. Omit the field to allow every capability. See [Tool allowlist](#tool-allowlist) for the ful list.
+</ParamField>
+
+<ParamField body="config.system_prompt" type="string">
+Standing instructions for how the planner should behave on this job, for example "You are an operations analyst." The original `message` stays the same.
+</ParamField>
+
+<ParamField body="config.steer" type="string">
+Extra guidance for this request only, for example "Stay concise and list next steps." Use this for one-off constraints. It does not replace `message`.
+</ParamField>
+
+<ParamField body="config.callbacks.success_url" type="string">
+HTTPS URL Cloud POSTs when the job completes. Cloud sends this only on the terminal `completed` state. The body is the same payload as [Get job result](/reference/get-agent-result).
+</ParamField>
+
+<ParamField body="config.callbacks.failure_url" type="string">
+HTTPS URL Cloud POSTs when the job fails. Cloud sends this only on the terminal `failed` state. The body is the same payload as [Get job result](/reference/get-agent-result).
+</ParamField>
+
+<ParamField body="config.callbacks.hmac_secret" type="string">
+Shared secret so you can verify the webhook. When set, Cloud adds `X-Blnk-Timestamp` and `X-Blnk-Signature`. The signature is an HMAC-SHA256 hex digest of `{timestamp}.{raw_json_body}`.
+</ParamField>
+
+<ParamField body="filters.ledger_ids" type="array">
+Ledgers this job is allowed to read or write (`ldg_...`). Cloud narrows collection queries to these IDs, checks every step input against them, and fails the job before a step runs if it uses a ledger outside the list. This is a hard limit, not a hint to the planner.
+</ParamField>
+
+<ParamField body="filters.balance_ids" type="array">
+Balances this job is allowed to read or write (`bln_...`). Cloud narrows collection queries to these IDs and fails any step that uses a balance outside the list.
+</ParamField>
+
+<ParamField body="filters.identity_ids" type="array">
+Identities this job is allowed to read or write (`idt_...`). Cloud narrows collection queries to these IDs and fails any step that uses an identity outside the list.
+</ParamField>
+
+<ParamField body="filters.transaction_ids" type="array">
+Transactions this job is allowed to read or write (`txn_...`). Cloud narrows collection queries to these IDs and fails any step that uses a transaction outside the list.
+</ParamField>
+
+### Response
+
+The create endpoint returns `202 Accepted` with the new job ID, an initial status snapshot, and links for the next calls. 
+
+Cloud claims the job immediately, so the first snapshot is usually `running`. It then moves to `planning` while the agent builds the plan.
+
+<ResponseField name="job_id" type="string">
+ID of the new job (`job_` plus a timestamp, for example `job_1779300000000000000`). Store this. You pass it to [Get job status](/reference/get-agent-status), [Get job result](/reference/get-agent-result), and [Control agent job](/reference/control-agent).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Where the job is right now. Create usually returns `running` because Cloud claims the job immediately. It then moves to `planning`, then back to `running` while steps execute. Later values: `queued`, `scheduled`, `paused`, `waiting_approval`, `completed`, `failed`. See [Job lifecycle](#job-lifecycle).
+</ResponseField>
+
+<ResponseField name="status_message" type="string">
+Short sentence that matches `status`, for example `Workflow executing.` or `Planning workflow.` Use this for logs or UI copy. Do not parse it.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+ID of the plan Cloud built from your message (`pr_...`). Empty on create. It fills in after planning finishes. You need it only if you inspect the plan; status, result, and control use `job_id`.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud accepted the job, in UTC ISO 8601.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the job last changed, in UTC ISO 8601. On create this matches `created_at`.
+</ResponseField>
+
+<ResponseField name="links" type="object">
+Relative paths for the next calls on this job: `status`, `result`, and `control`. Prefix them with `https://api.cloud.blnkfinance.com`.
+</ResponseField>
+
+<ResponseField name="job_status" type="object">
+Full compact status snapshot at create time. Same fields as [Get job status](/reference/get-agent-status), including `progress`, `sub_tasks`, and `links`. On create, steps are still empty. Poll status to watch them fill in.
+</ResponseField>
+
+## Job lifecycle
+
+A job moves through these states:
+
+| Status | When it happens |
+| :-- | :-- |
+| `queued` | Created and waiting to be claimed |
+| `scheduled` | Waiting for a one-time `run_at` |
+| `planning` | Building the workflow from your message |
+| `running` | Claimed or executing plan steps |
+| `paused` | Soft-paused after the current step |
+| `waiting_approval` | A step needs approve or reject |
+| `completed` | All steps finished |
+| `failed` | Planning or execution failed |
+
+## Tool allowlist
+
+Each `approved_tools` entry is a **tool permission token**, not a step `task_type`. A single step may require more than one token.
+
+| Step `task_type` | Required tool tokens |
+| :-- | :-- |
+| `backoffice.create_ledger` | `ledgers.create` |
+| `backoffice.create_identity` | `identities.create` |
+| `backoffice.create_balance` | `balances.create` |
+| `backoffice.link_balance_identity` | `balances.update_identity` |
+| `backoffice.post_transaction` | `transactions.create` |
+| `backoffice.commit_inflight_transaction` | `transactions.inflight.commit` |
+| `backoffice.void_inflight_transaction` | `transactions.inflight.void` |
+| `backoffice.refund_transaction` | `transactions.refund` |
+| `backoffice.balance_reconstruct` | `metadata.update` |
+| `backoffice.setup_balance_monitor` | `balance_monitors.create` |
+| `backoffice.create_identity_and_balance` | `identities.create`, `balances.create` |
+| `backoffice.filter_collection` (transactions) | `filter.transactions` |
+| `backoffice.filter_collection` (balances) | `filter.balances` |
+| `backoffice.filter_collection` (ledgers) | `filter.ledgers` |
+| `backoffice.filter_collection` (identities) | `filter.identities` |
+| `backoffice.summarize` | `llm.summarize` |
+| `backoffice.create_watch_script` | `watch.scripts.create` |
+| `backoffice.assess_watch_transaction` | `watch.assessments.create` |
+| `backoffice.get_watch_assessment` | `watch.assessments.get` |
+| `backoffice.watch_assess_and_summarize` | `filter.transactions`, `watch.assessments.create`, `llm.summarize` |
+| `backoffice.http_request` | `http.request` |
+| `backoffice.browse_and_summarize` | `browser.fetch`, `browser.extract`, `llm.summarize` |
+| `backoffice.recon_external_data_upload` | `browser.fetch`, `recon.external_data.upload` |
+| `backoffice.create_recon_matching_rule` | `recon.matching_rule.create` |
+| `backoffice.get_recon_report` | `recon.report.get` |
+| `backoffice.get_recon_status` | `recon.status.get` |
+| `backoffice.recon_investigation` | `recon.start` |
+
+<RequestExample>
+
+```bash cURL
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "Review pending transactions above 250000 from the last 24 hours and summarize suspicious patterns.",
+    "config": {
+      "skip_approval": false,
+      "approved_tools": [
+        "filter.transactions",
+        "watch.assessments.create",
+        "llm.summarize"
+      ],
+      "system_prompt": "You are an operations analyst.",
+      "steer": "Stay concise and focus on operational next steps.",
+      "callbacks": {
+        "success_url": "https://example.com/hooks/agent-success",
+        "failure_url": "https://example.com/hooks/agent-failure",
+        "hmac_secret": "super-secret"
+      }
+    },
+    "filters": {
+      "ledger_ids": [
+        "ldg_049495c6-356e-4ebc-a45e-60d1e1e16afb"
+      ]
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 202 Accepted
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:00Z",
+  "links": {
+    "status": "/agents/jobs/job_1779300000000000000/status",
+    "result": "/agents/jobs/job_1779300000000000000/result",
+    "control": "/agents/jobs/job_1779300000000000000/control"
+  },
+  "job_status": {
+    "job_id": "job_1779300000000000000",
+    "status": "running",
+    "status_message": "Workflow executing.",
+    "plan_run_id": "",
+    "approval_state": "",
+    "last_error": "",
+    "schedule": null,
+    "progress": {
+      "total": 0,
+      "completed": 0,
+      "running": 0,
+      "pending": 0,
+      "failed": 0,
+      "waiting_approval": 0
+    },
+    "current_step": null,
+    "failed_step": null,
+    "sub_tasks": null,
+    "reasoning_trail": null,
+    "created_at": "2026-09-16T05:10:00Z",
+    "updated_at": "2026-09-16T05:10:00Z",
+    "links": {
+      "status": "/agents/jobs/job_1779300000000000000/status",
+      "result": "/agents/jobs/job_1779300000000000000/result",
+      "control": "/agents/jobs/job_1779300000000000000/control"
+    }
+  }
+}
+```
+
+```text 400 Missing instance_id
+instance_id is required
+```
+
+```text 400 Missing message
+message or query is required
+```
+
+```json 403 Forbidden
+{
+  "error": "Insufficient permissions for this operation"
+}
+```
+
+```text 503 Service Unavailable
+jobs service unavailable
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Get job status", href: "/reference/get-agent-status" },
+    { title: "Get job result", href: "/reference/get-agent-result" },
+    { title: "Control agent job", href: "/reference/control-agent" },
+    { title: "MCP server", href: "/reference/mcp" },
+  ]}
+/>

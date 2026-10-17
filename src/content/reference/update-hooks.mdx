@@ -1,0 +1,71 @@
+---
+title: "Update an existing hook"
+sidebarTitle: "Update an existing hook"
+description: "Change the URL, type, or retry settings of a hook."
+seoTitle: "Update New Hooks • Blnk API Reference"
+method: "PUT"
+path: "/hooks"
+noindex: true
+---
+
+<Version>Available in version 0.8.4 or later.</Version>
+
+<Warning>
+Send the master key (`server.secret_key`) in the `X-blnk-key` header. Regular API keys return `403 Forbidden`.
+</Warning>
+
+### Body
+<ParamField body="name" type="string" required>
+  Name of the hook. Ensure it is as descriptive as possible for easy reference.
+</ParamField>
+<ParamField body="url" type="string" required>
+  Endpoint URL where the hook will send requests.
+</ParamField>
+<ParamField body="type" type="string" required>
+  Type of the hook - `PRE_TRANSACTION` or `POST_TRANSACTION`.
+</ParamField>
+<ParamField body="active" type="boolean" required>
+  Indicates whether the hook is enabled or disabled.
+</ParamField>
+<ParamField body="timeout" type="number" required>
+  Maximum time (in seconds) allowed for the hook to execute.
+</ParamField>
+<ParamField body="retry_count" type="number" required>
+  Maximum number of retry attempts if the hook fails.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/hooks" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pre-transaction validation",
+    "url": "https://api.example.com/validate",
+    "type": "PRE_TRANSACTION",
+    "active": true,
+    "timeout": 30,
+    "retry_count": 3
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 403 Forbidden
+{
+  "error": "hook management requires master key",
+  "error_detail": {
+    "code": "AUTH_MASTER_KEY_REQUIRED",
+    "message": "hook management requires master key"
+  }
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Create hooks", href: "/reference/create-hooks" },
+    { title: "View hooks", href: "/reference/view-hooks" },
+  ]}
+/>

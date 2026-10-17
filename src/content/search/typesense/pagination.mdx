@@ -1,0 +1,359 @@
+---
+title: "Pagination"
+sidebarTitle: "Pagination"
+description: "Page through a Typesense result set."
+seoTitle: "Pagination • Blnk Developer Documentation"
+metaDescription: "Learn how to use pagination to navigate through large search result sets efficiently with page and per_page parameters."
+---
+
+The `page` and `per_page` parameters control how search results are divided into manageable chunks. This is essential for handling large datasets efficiently and improving application performance.
+
+## Quick start
+
+Here's how to get the first 25 transactions:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "page": 1,
+    "per_page": 25
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    page: 1,
+    per_page: 25,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", Page: 1, PerPage: 25},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "page": 1,
+    "per_page": 25,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .page(1)
+        .perPage(25),
+    "transactions");
+```
+</CodeGroup>
+
+## Pagination parameters
+
+| Parameter | Description | Default | Range/Limit | Type |
+| :--- | :--- | :--- | :--- | :--- |
+| `page` | Specifies which page of results to retrieve | `1` | Minimum: `1` | `integer` |
+| `per_page` | Number of records returned in each page | `10` | Maximum: `250` | `integer` |
+
+```bash page
+# Examples
+{
+  "page": 1,        # First page (default)
+  "per_page": 50    # 50 results per page
+}
+
+{
+  "page": 3,        # Third page
+  "per_page": 250   # Maximum results per page
+}
+```
+
+## Common pagination patterns
+
+<Steps>
+<Step title="Basic pagination">
+Start with the first page and a reasonable page size.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "page": 1,
+    "per_page": 50
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    page: 1,
+    per_page: 50,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", Page: 1, PerPage: 50},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "page": 1,
+    "per_page": 50,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .page(1)
+        .perPage(50),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Navigate to specific page">
+Jump to a specific page when you know the approximate location of your data.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "page": 5,
+    "per_page": 100
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    page: 5,
+    per_page: 100,
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", Page: 5, PerPage: 100},
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "page": 5,
+    "per_page": 100,
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .page(5)
+        .perPage(100),
+    "balances");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Large result sets">
+Use maximum page size for bulk data processing.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "created_at:[1720310400..1720396800]",
+    "page": 1,
+    "per_page": 250
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "created_at:[1720310400..1720396800]",
+    page: 1,
+    per_page: 250,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", FilterBy: "created_at:[1720310400..1720396800]", Page: 1, PerPage: 250},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "created_at:[1720310400..1720396800]",
+    "page": 1,
+    "per_page": 250,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("created_at:[1720310400..1720396800]")
+        .page(1)
+        .perPage(250),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+
+<Step title="Combined with sorting">
+Paginate through sorted results for consistent ordering across pages.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "sort_by": "created_at:desc",
+    "page": 2,
+    "per_page": 20
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    sort_by: "created_at:desc",
+    page: 2,
+    per_page: 20,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{Q: "*", SortBy: "created_at:desc", Page: 2, PerPage: 20},
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "sort_by": "created_at:desc",
+    "page": 2,
+    "per_page": 20,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .sortBy("created_at:desc")
+        .page(2)
+        .perPage(20),
+    "transactions");
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+## Response structure
+
+The pagination information is included in every search response:
+
+```json Example
+{
+  "found": 1247,
+  "hits": [
+    // ... result objects
+  ],
+  "out_of": 5000,
+  "page": 2,
+  "request_params": {
+    "per_page": 50
+  },
+  "search_time_ms": 3
+}
+```
+
+### Key response fields
+
+| Field | Description | Type |
+| :--- | :--- | :--- |
+| `found` | Number of records matching your search criteria | `integer` |
+| `out_of` | Total number of records in the collection | `integer` |
+| `page` | Current page number | `integer` |
+| `hits` | Array of result objects for the current page | `array` |
+
+## Best practices
+
+- **Start with reasonable page sizes**: Use 20-50 records for UI display, 100-250 for data processing.
+- **Always sort paginated results**: Use `sort_by` to ensure consistent ordering across pages.
+- **Handle empty pages gracefully**: Check if `hits` array is empty before processing results.
+- **Monitor performance**: Larger page sizes may impact response time.
+
+<RelatedTopics
+  items={[
+    { title: "Sorting", href: "/search/typesense/sorting" },
+    { title: "Joins", href: "/search/typesense/joins" },
+    { title: "Reindex", href: "/search/typesense/reindex" },
+  ]}
+/>

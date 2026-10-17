@@ -1,0 +1,83 @@
+---
+title: "Update deployment config"
+description: "Update configuration for a managed Core instance."
+seoTitle: "Update deployment config • Blnk API Reference"
+method: "PUT"
+path: "/deployments/{deployment_id}/config"
+enterprise: true
+noindex: true
+---
+Use this endpoint to override configuration on a deployment. Send only the keys you want to change. Cloud checks the keys against `allowed_keys` from [Get deployment config](/reference/get-deployment-config), applies the overrides and restarts the instance.
+
+<Warning>
+**The instance restarts after Cloud applies the config**. Make sure your app handles retries and backoffs for failed requests during the restart.
+</Warning>
+
+<Authorization />
+
+### Path
+
+<ParamField path="deployment_id" type="string" required>
+Unique id of the deployment (`deploy_...`). Do not pass `instance_id` here.
+</ParamField>
+
+### Body
+
+The body is a JSON object of overrides. Include any one of the keys from `allowed_keys` on [Get deployment config](/reference/get-deployment-config), or several. Omit keys you want to leave at the default. Do not send a key that is not in that list.
+
+| Key | Type |
+| :-- | :-- |
+| `BLNK_RATE_LIMIT_BURST` | `int` |
+| `BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC` | `int` |
+| `BLNK_RATE_LIMIT_RPS` | `int` |
+| `BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB` | `int` |
+| `BLNK_SERVER_MAX_UPLOAD_SIZE_MB` | `int` |
+| `BLNK_SLACK_WEBHOOK_URL` | `url` |
+| `BLNK_TRANSACTION_BATCH_SIZE` | `int` |
+| `BLNK_TRANSACTION_DISABLE_BATCH_REFERENCE_CHECK` | `bool` |
+| `BLNK_TRANSACTION_ENABLE_COALESCING` | `bool` |
+| `BLNK_TRANSACTION_ENABLE_QUEUED_CHECKS` | `bool` |
+| `BLNK_TRANSACTION_LOCK_DURATION` | `int` |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | `int` |
+| `BLNK_TRANSACTION_MAX_QUEUE_SIZE` | `int` |
+| `BLNK_TRANSACTION_MAX_WORKERS` | `int` |
+| `BLNK_WEBHOOK_HEADERS` | `json` |
+| `BLNK_WEBHOOK_URL` | `url` |
+
+Match the type shown for each key. For what each key means, see the [Core configuration reference](/advanced/configuration/reference).
+
+### Response
+
+<ResponseField name="message" type="string">
+Confirmation that the config was applied and the instance is restarting. Track progress with [Get deployment details](/reference/get-deployment).
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT 'https://api.cloud.blnkfinance.com/deployments/deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc/config' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "BLNK_WEBHOOK_URL": "https://example.com/webhooks/blnk"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 202 Accepted
+{
+  "message": "Configuration applied; your instance is restarting with the new settings"
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Get deployment config", href: "/reference/get-deployment-config" },
+    { title: "Core configuration reference", href: "/advanced/configuration/reference" },
+    { title: "Get deployment details", href: "/reference/get-deployment" },
+    { title: "Managed instances", href: "/cloud/instances/deploy" },
+  ]}
+/>

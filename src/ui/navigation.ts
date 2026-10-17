@@ -145,6 +145,7 @@ const palette = z.strictObject({
 const docsSchema = z.strictObject({
 	labels: z.strictObject({
 		enterprise: z.string().min(1),
+		license: z.string().min(1),
 	}),
 	colors: z.strictObject({
 		light: palette,
@@ -370,5 +371,12 @@ export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string
 const parsed = docsSchema.parse(docs);
 
 export const labels: DocsLabels = parsed.labels;
+
+/** `true` uses the Cloud label. `license` is Enterprise only. */
+export function enterpriseNotice(value: boolean | 'license' | undefined): string | undefined {
+	if (value === 'license') return labels.license;
+	if (value === true) return labels.enterprise;
+	return undefined;
+}
 export const colors: DocsColors = parsed.colors;
 export const navigation: Navigation = { navigation: parsed.navigation };

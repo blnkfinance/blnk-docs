@@ -302,7 +302,7 @@ A short labeled row above a block of prose. It is a paragraph, so it does not ap
 
 ## API fields
 
-`ParamField` documents a request field. Set one of `body`, `query`, `path`, or `header`. That value is the field name, and it sets the location badge. If more than one is set, the first of `body`, `query`, `path`, `header` wins.
+`ParamField` documents a field. Set one of `body`, `query`, `path`, or `header` for a request field. That value is the field name, and it sets the location badge. If more than one is set, the first of `body`, `query`, `path`, `header` wins. Set `name` instead when the field is not a request field, such as an environment variable. `name` does not show a location badge.
 
 ```mdx
 <ParamField body="identity_type" type="string" required>
@@ -320,10 +320,15 @@ A short labeled row above a block of prose. It is a paragraph, so it does not ap
 <ParamField header="X-blnk-key" type="string" required>
   Secret API key.
 </ParamField>
+
+<ParamField name="BLNK_SERVER_PORT" default="5001">
+  The port Blnk listens on.
+</ParamField>
 ```
 
 | Prop | Type | |
 | --- | --- | --- |
+| `name` | `string` | Field name with no location badge |
 | `body` | `string` | Field name. Location badge `body` |
 | `query` | `string` | Field name. Location badge `query` |
 | `path` | `string` | Field name. Location badge `path` |

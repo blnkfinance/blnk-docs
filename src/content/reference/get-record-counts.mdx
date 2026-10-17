@@ -1,0 +1,167 @@
+---
+title: "Get record counts"
+description: "Return stored records, overage, and create-blocked state for one Core instance."
+seoTitle: "Get record counts • Blnk API Reference"
+method: "GET"
+path: "/data/record-counts"
+enterprise: true
+noindex: true
+---
+Use this to see how many records one instance stores, how many sit above the included allowance, and whether new record creates are blocked.
+
+A record is a ledger, balance, transaction, identity, or reconciliation external data stored in the instance. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
+
+<Authorization />
+
+### Query
+
+<ParamField query="instance_id" type="string" required>
+Cloud instance id (`instance_...`). Get it from [Get instance details](/reference/get-instance). A `deploy_...` id does not work.
+</ParamField>
+
+### Response
+
+<ResponseField name="instance_id" type="string">
+Instance that was counted (`instance_...`).
+</ResponseField>
+
+<ResponseField name="record_counts" type="object">
+Counts by resource.
+<Expandable>
+  <ResponseField name="balances" type="object">
+  Balance records.
+  <Expandable>
+    <ResponseField name="count" type="integer">
+    Number of records.
+    </ResponseField>
+    <ResponseField name="total_is_estimate" type="boolean">
+    Whether `count` is an estimate.
+    </ResponseField>
+    <ResponseField name="total_source" type="string">
+    Where the count came from, such as `lake_catalog` or `exact`.
+    </ResponseField>
+  </Expandable>
+  </ResponseField>
+  <ResponseField name="identities" type="object">
+  Identity records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="ledgers" type="object">
+  Ledger records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="reconciliations" type="object">
+  Reconciliation records. Same shape as `balances`.
+  </ResponseField>
+  <ResponseField name="transactions" type="object">
+  Transaction records. Same shape as `balances`.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="total_records" type="integer">
+Sum of all record counts.
+</ResponseField>
+
+<ResponseField name="deployment_type" type="string">
+`sandbox` or `production`.
+</ResponseField>
+
+<ResponseField name="records_included" type="integer">
+Records included in the plan allowance.
+</ResponseField>
+
+<ResponseField name="overage_records" type="integer">
+Records above the included allowance.
+</ResponseField>
+
+<ResponseField name="overage_unit_price" type="number">
+Price per extra record in the billing currency's major unit (for example USD), not cents. In the sample, `0.00135` is \$0.00135 per extra record.
+</ResponseField>
+
+<ResponseField name="overage_amount" type="number">
+Estimated overage charge for the current count, in the billing currency's major unit (for example USD), not cents.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled" type="boolean">
+Whether usage-based billing is on for the organization.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled_at" type="timestamp">
+When usage-based billing was enabled for the organization. ISO 8601.
+</ResponseField>
+
+<ResponseField name="record_creates_blocked" type="boolean">
+`true` when this instance has used its included records and organization usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.cloud.blnkfinance.com/data/record-counts?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "record_counts": {
+    "balances": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "identities": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "ledgers": {
+      "count": 1,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    },
+    "reconciliations": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "exact"
+    },
+    "transactions": {
+      "count": 0,
+      "total_is_estimate": false,
+      "total_source": "lake_catalog"
+    }
+  },
+  "total_records": 1,
+  "deployment_type": "sandbox",
+  "records_included": 100000,
+  "overage_records": 0,
+  "overage_unit_price": 0.00135,
+  "overage_amount": 0,
+  "usage_billing_enabled": true,
+  "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
+  "record_creates_blocked": false
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Instance ID is required"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "Instance does not belong to this organization"
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Enable usage billing", href: "/reference/enable-usage-billing" },
+    { title: "Get usage billing", href: "/reference/get-usage-billing" },
+    { title: "Billing", href: "/cloud/organization/billing" },
+  ]}
+/>

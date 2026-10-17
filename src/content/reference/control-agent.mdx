@@ -1,0 +1,301 @@
+---
+title: "Control agent job"
+description: "Pause, resume, approve, reject, or schedule an agent job."
+seoTitle: "Control agent job • Blnk API Reference"
+method: "POST"
+path: "/agents/jobs/{job_id}/control"
+enterprise: true
+noindex: true
+---
+<Warning>
+Agent Jobs API is currently in beta.
+</Warning>
+
+Use this endpoint to pause or resume a running job, approve or reject a waiting checkpoint, or promote a finished plan into a one-time or recurring schedule.
+
+Pause, resume, approve, and reject return a job status object. Schedule actions return a smaller payload with the new child job or recurring template.
+
+<Authorization />
+
+### Path
+
+<ParamField path="job_id" type="string" required>
+Job to control (`job_...`). Use the `job_id` returned by [Create agent job](/reference/create-agent).
+</ParamField>
+
+### Body
+
+<ParamField body="action" type="string" required>
+What to do with the job:
+
+- `pause`: Soft pause. The current step finishes, then the job and its plan run stop before the next step. Status becomes `paused`.
+- `resume`: Start the job again. If `scheduled_run_at` is still in the future, status returns to `scheduled`. Otherwise Cloud runs it now.
+- `approve`: Continue a job in `waiting_approval`. The job must already have a `plan_run_id`.
+- `reject`: Fail the waiting step and move the job to `failed`. The job must already have a `plan_run_id`.
+- `schedule`: Create a one-time child job or a recurring template from this job's plan. The job must already have a reusable plan.
+</ParamField>
+
+<ParamField body="approver_id" type="string">
+Who approved or rejected the waiting step. Required in practice for an audit trail. If you omit it, Cloud stores `job-control`. Used only with `approve` and `reject`.
+</ParamField>
+
+<ParamField body="reason" type="string">
+Why you approved or rejected the step. Stored with the decision. Used only with `approve` and `reject`.
+</ParamField>
+
+<ParamField body="schedule.mode" type="string">
+Required when `action` is `schedule`. 
+
+- `once`: creates a child job that runs at `run_at`.
+- `recurring`: creates a template that keeps using this job's plan.
+</ParamField>
+
+<ParamField body="schedule.run_at" type="string">
+When the child job should start. Required for `mode: "once"`. Send an RFC3339 timestamp such as `2026-09-17T09:00:00Z`.
+</ParamField>
+
+<ParamField body="schedule.cron_expr" type="string">
+How often the recurring template should run. Required for `mode: "recurring"`, e.g. `0 * * * *` for every hour.
+</ParamField>
+
+<ParamField body="schedule.timezone" type="string">
+Timezone for the cron expression. Defaults to `UTC`. Use an IANA name such as `Africa/Lagos`.
+</ParamField>
+
+<ParamField body="schedule.name" type="string">
+Label for the recurring template. If you omit it, Cloud uses a truncated copy of the original job message.
+</ParamField>
+
+### Response
+
+Pause, resume, approve, and reject return the job after the action. Schedule returns a smaller payload for the new child job or template.
+
+<ResponseField name="job_id" type="string">
+Job you sent in the path (`job_...`). On schedule actions this is the parent job, not the new child or template.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+After pause: `paused`. After resume or approve: usually `running`. After reject: `failed`. After schedule once: `scheduled` (the child job). After schedule recurring: `active` (the template).
+</ResponseField>
+
+<ResponseField name="status_message" type="string">
+Short sentence that matches `status`. Present on pause, resume, approve, and reject. Not on schedule responses.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+Plan attached to the job (`pr_...`). Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Why the job failed. Present after `reject`, or when a step already failed.
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Plan steps on the job. Present on pause, resume, approve, and reject. This is the raw step list, not the compact status view.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud accepted the job. Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the control action landed. Present on pause, resume, approve, and reject.
+</ResponseField>
+
+<ResponseField name="scheduled_job_id" type="string">
+New child job created by `schedule` + `once` (`job_...`). Poll this ID with [Get job status](/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="scheduled_run_at" type="timestamp">
+When that child job will start, in UTC ISO 8601. Only on `schedule` + `once`.
+</ResponseField>
+
+<ResponseField name="recurring_template_id" type="string">
+Template created by `schedule` + `recurring` (`rt_...`).
+</ResponseField>
+
+<ResponseField name="next_run_at" type="timestamp">
+When that template will fire next, in UTC ISO 8601. Only on `schedule` + `recurring`.
+</ResponseField>
+
+<RequestExample>
+
+```bash Pause
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "pause"
+  }'
+```
+
+```bash Resume
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "resume"
+  }'
+```
+
+```bash Approve
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "approve",
+    "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "reason": "Reviewed and approved"
+  }'
+```
+
+```bash Reject
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "reject",
+    "approver_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "reason": "Out of policy scope"
+  }'
+```
+
+```bash Schedule once
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "schedule",
+    "schedule": {
+      "mode": "once",
+      "run_at": "2026-09-17T09:00:00Z"
+    }
+  }'
+```
+
+```bash Schedule recurring
+curl -X POST 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/control' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "schedule",
+    "schedule": {
+      "mode": "recurring",
+      "cron_expr": "0 * * * *",
+      "timezone": "UTC",
+      "name": "Hourly suspicious transaction review"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 Pause
+{
+  "job_id": "job_1779300000000000000",
+  "status": "paused",
+  "status_message": "Job paused.",
+  "plan_run_id": "pr_1779300000000000000",
+  "sub_tasks": [
+    {
+      "id": 1,
+      "plan_run_id": "pr_1779300000000000000",
+      "step_index": 1,
+      "step_id": "s1",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "id": 2,
+      "plan_run_id": "pr_1779300000000000000",
+      "step_index": 2,
+      "step_id": "s2",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000200",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:08Z"
+    }
+  ],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:12Z"
+}
+```
+
+```json 200 Resume
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:14Z"
+}
+```
+
+```json 200 Approve
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:16Z"
+}
+```
+
+```json 200 Reject
+{
+  "job_id": "job_1779300000000000000",
+  "status": "failed",
+  "status_message": "Out of policy scope",
+  "plan_run_id": "pr_1779300000000000000",
+  "last_error": "Out of policy scope",
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:16Z"
+}
+```
+
+```json 200 Schedule once
+{
+  "job_id": "job_1779300000000000000",
+  "scheduled_job_id": "job_1779386400000000000",
+  "status": "scheduled",
+  "scheduled_run_at": "2026-09-17T09:00:00Z"
+}
+```
+
+```json 200 Schedule recurring
+{
+  "job_id": "job_1779300000000000000",
+  "recurring_template_id": "rt_1779300000000000500",
+  "next_run_at": "2026-09-16T06:00:00Z",
+  "status": "active"
+}
+```
+
+```text 400 Bad Request
+unsupported action
+```
+
+```text 404 Not Found
+not found
+```
+
+```text 503 Service Unavailable
+jobs service unavailable
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Create agent job", href: "/reference/create-agent" },
+    { title: "Get job status", href: "/reference/get-agent-status" },
+    { title: "Get job result", href: "/reference/get-agent-result" },
+    { title: "MCP server", href: "/reference/mcp" },
+  ]}
+/>

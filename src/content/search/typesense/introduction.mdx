@@ -1,0 +1,869 @@
+---
+title: "Search via Typesense"
+sidebarTitle: "Overview"
+description: "Turn on Typesense and run a full-text search across your ledger."
+seoTitle: "Search via Typesense • Blnk Developer Documentation"
+metaDescription: "Use Typesense for full-text search in Blnk. Enable it by setting up your Typesense configuration."
+---
+
+<Version>Available in version 0.6.1 and later.</Version>
+
+Blnk supports Typesense for search and indexing. You can use it to retrieve ledgers, balances, transactions, and identities with filtering, sorting, faceting, and full-text search.
+
+To enable Typesense search and indexing, set up your [Typesense configuration](/operating/configuration/data-stores#typesense-configuration). Until you do, Typesense search and indexing stay disabled by default.
+
+Once Typesense is enabled, use the Search API when you need to:
+
+* Filter large datasets efficiently
+* Perform full-text searches across your data
+* Aggregate and count values with faceting
+* Sort and paginate results for better performance
+* Combine multiple search conditions in a single request
+
+## Searchable collections
+
+The Search API works with four main collections in your Blnk ledger:
+
+| Collection | Endpoint | Description |
+| :--- | :--- | :--- |
+| Transactions | `/search/transactions` | Search through all transaction records |
+| Balances | `/search/balances` | Find balance records across all ledgers |
+| Ledgers | `/search/ledgers` | Locate specific ledgers by name or metadata |
+| Identities | `/search/identities` | Search customer identity records |
+
+## Quick start
+
+To get started with the Search API, use the endpoint: `/search/{collection}` where collection can be `ledgers`, `balances`, `identities`, or `transactions`. 
+
+Here's how a full search request looks:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+    "query_by": "parent_transaction",
+    "filter_by": "status:=APPLIED && currency:=USD",
+    "sort_by": "created_at:desc",
+    "page": 1,
+    "per_page": 10
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: 'bulk_baaea495-148a-4b16-b171-68c92fb911a6',
+    query_by: 'parent_transaction',
+    filter_by: 'status:=APPLIED && currency:=USD',
+    sort_by: 'created_at:desc',
+    page: 1,
+    per_page: 10,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+        QueryBy: "parent_transaction",
+        FilterBy: "status:=APPLIED && currency:=USD",
+        SortBy: "created_at:desc",
+        Page: 1,
+        PerPage: 10,
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+    "query_by": "parent_transaction",
+    "filter_by": "status:=APPLIED && currency:=USD",
+    "sort_by": "created_at:desc",
+    "page": 1,
+    "per_page": 10,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("bulk_baaea495-148a-4b16-b171-68c92fb911a6")
+        .queryBy("parent_transaction")
+        .filterBy("status:=APPLIED && currency:=USD")
+        .sortBy("created_at:desc")
+        .page(1)
+        .perPage(10),
+    "transactions"
+);
+```
+</CodeGroup>
+
+```json 200 OK expandable
+{
+  "facet_counts": [],
+  "found": 2,
+  "hits": [
+    {
+      "document": {
+        "amount": 532,
+        "amount_string": "532",
+        "atomic": false,
+        "created_at": 1758116489,
+        "currency": "USD",
+        "description": "Test bulk",
+        "destination": "bln_20666087-1355-4736-ba04-3ba92a7542b9",
+        "effective_date": 1758116489,
+        "id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5",
+        "parent_transaction": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+        "precise_amount": 53200,
+        "precision": 100,
+        "reference": "bulk-search-1d2",
+        "source": "bln_93fb50c2-969e-49c2-bb61-ef5ed245516e",
+        "status": "APPLIED",
+        "transaction_id": "txn_cd728825-a6e1-4fae-9277-c3235a045ea5"
+      },
+      "highlights": [
+        {
+          "field": "parent_transaction",
+          "matched_tokens": ["bulk_baaea495-148a-4b16-b171-68c92fb911a6"],
+          "snippet": "<mark>bulk_baaea495-148a-4b16-b171-68c92fb911a6</mark>"
+        }
+      ],
+      "text_match": 578730123365711993
+    },
+    {
+      "document": {
+        "amount": 100,
+        "amount_string": "100",
+        "atomic": false,
+        "created_at": 1758116489,
+        "currency": "USD",
+        "description": "Test bulk",
+        "destination": "bln_d298f2b8-fdd6-4d0e-ade7-3cddcea90a8d",
+        "effective_date": 1758116489,
+        "id": "txn_0ae624a5-7fbc-4c67-831d-f888e928d4bc",
+        "parent_transaction": "bulk_baaea495-148a-4b16-b171-68c92fb911a6",
+        "precise_amount": 10000,
+        "precision": 100,
+        "reference": "bulk-search-2d3",
+        "source": "bln_6592f225-f8fe-48cd-8974-51974dc83a3a",
+        "status": "APPLIED",
+        "transaction_id": "txn_0ae624a5-7fbc-4c67-831d-f888e928d4bc"
+      },
+      "highlights": [
+        {
+          "field": "parent_transaction",
+          "matched_tokens": ["bulk_baaea495-148a-4b16-b171-68c92fb911a6"],
+          "snippet": "<mark>bulk_baaea495-148a-4b16-b171-68c92fb911a6</mark>"
+        }
+      ],
+      "text_match": 578730123365711993
+    }
+  ],
+  "out_of": 232,
+  "page": 1,
+  "request_params": {
+    "collection_name": "transactions",
+    "per_page": 10,
+    "q": "bulk_baaea495-148a-4b16-b171-68c92fb911a6"
+  },
+  "search_cutoff": false,
+  "search_time_ms": 2
+}
+```
+
+### Request parameters
+
+| Parameter | Description | Required | Type |
+| :--- | :--- | :--- | :--- |
+| `q` | The search query text. Use `*` to return all records. [Learn more](/search/typesense/querying) | Yes | `string` |
+| `query_by` | Comma-separated list of fields to search in. [Learn more](/search/typesense/querying) | No | `string` |
+| `filter_by` | Filter conditions to refine results. [Learn more](/search/typesense/filtering) | No | `string` |
+| `facet_by` | Comma-separated list of fields to aggregate and count. [Learn more](/search/typesense/faceting) | No | `string` |
+| `sort_by` | Sorting conditions for ordering results. [Learn more](/search/typesense/sorting) | No | `string` |
+| `page` | Page number for pagination. Starts at 1. [Learn more](/search/typesense/pagination) | No | `integer` |
+| `per_page` | Number of results per page. Maximum 250, default 10. [Learn more](/search/typesense/pagination) | No | `integer` |
+
+### Response structure
+
+| Field | Description | Type |
+| :--- | :--- | :--- |
+| `found` | Total number of matching records. | `integer` |
+| `hits` | Array of search results, each containing a `document` with the record data. | `array` |
+| `out_of` | Total number of records in the collection. | `integer` |
+| `page` | Current page number. | `integer` |
+| `search_time_ms` | Time taken to execute the search in milliseconds. | `integer` |
+| `facet_counts` | Aggregated counts for faceted fields. Only present when using `facet_by`. [Learn more](/search/typesense/faceting) | `array` |
+| `highlights` | Search term highlighting information for matched fields. | `array` |
+
+## Common use cases
+
+### 1. Transaction analysis
+
+<Steps>
+<Step title="Find all transactions for a specific account">
+Get a complete transaction history by searching for all transactions where a particular balance ID appears as either source or destination.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    query_by: "source,destination",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        QueryBy: "source,destination",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "query_by": "source,destination",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e")
+        .queryBy("source,destination")
+        .sortBy("created_at:desc"),
+    "transactions"
+);
+```
+</CodeGroup>
+</Step>
+
+<Step title="Get recent high-value transactions">
+Find transactions above a certain amount threshold to monitor large money movements or flag suspicious activity.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "amount:>10000",
+    "sort_by": "created_at:desc",
+    "per_page": 50
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "amount:>10000",
+    sort_by: "created_at:desc",
+    per_page: 50,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "amount:>10000",
+        SortBy: "created_at:desc",
+        PerPage: 50,
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "amount:>10000",
+    "sort_by": "created_at:desc",
+    "per_page": 50,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("amount:>10000")
+        .sortBy("created_at:desc")
+        .perPage(50),
+    "transactions"
+);
+```
+</CodeGroup>
+</Step>
+
+<Step title="Search transactions by date range">
+Retrieve all transactions that occurred within a specific time period for reporting or audit purposes. Use Unix timestamps for date filtering.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "created_at:[1704067200..1706745599]",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "created_at:[1704067200..1706745599]",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "created_at:[1704067200..1706745599]",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "created_at:[1704067200..1706745599]",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy(
+            "created_at:[1704067200..1706745599]"
+        )
+        .sortBy("created_at:desc"),
+    "transactions"
+);
+```
+</CodeGroup>
+
+<Info>
+Learn more about date filtering and Unix timestamps in our [Filtering documentation](/search/typesense/filtering).
+</Info>
+</Step>
+
+<Step title="Find rejected transactions">
+Filter transactions by status to identify failed payments that were rejected due to insufficient funds or validation errors.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "status:=REJECTED",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "status:=REJECTED",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "status:=REJECTED",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "status:=REJECTED",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("status:=REJECTED")
+        .sortBy("created_at:desc"),
+    "transactions"
+);
+```
+</CodeGroup>
+
+<Tip>
+For advanced filtering with operators like `:=`, `&&`, and ranges, see our detailed [Filtering guide](/search/typesense/filtering).
+</Tip>
+</Step>
+
+<Step title="Search by transaction type or description">
+Use full-text search to find transactions based on transaction type in metadata or descriptions for customer support.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "payment",
+    "query_by": "meta_data.transaction_type,description",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "payment",
+    query_by: "meta_data.transaction_type,description",
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "payment",
+        QueryBy: "meta_data.transaction_type,description",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "payment",
+    "query_by": "meta_data.transaction_type,description",
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("payment")
+        .queryBy("meta_data.transaction_type,description")
+        .sortBy("created_at:desc"),
+    "transactions"
+);
+```
+</CodeGroup>
+
+<Info>
+Learn more about full-text search and field-specific queries in our [Querying documentation](/search/typesense/querying).
+</Info>
+</Step>
+
+<Step title="Find transactions between specific accounts">
+Search for transactions that occurred between two particular balance IDs to track money flow or analyze trading patterns.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e && '\
+'destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const filterBy =
+  "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e" +
+  " && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12";
+
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: filterBy,
+    sort_by: "created_at:desc",
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+filterBy := "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e" +
+    " && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12"
+
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: filterBy,
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Transactions,
+)
+```
+
+```python Python wrap
+filter_by = (
+  "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e"
+  " && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12"
+)
+
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": filter_by,
+    "sort_by": "created_at:desc",
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+String filterBy =
+    "source:=bln_28f25ef6-2e0d-4fa6-891c-37fc409d654e"
+        + " && destination:=bln_86ba7976-499d-4282-955e-a7c2abf5db12";
+
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy(filterBy)
+        .sortBy("created_at:desc"),
+    "transactions"
+);
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+### 2. Account management
+
+<Steps>
+<Step title="Get balances above/below a threshold">
+Find all balances with amounts greater than or less than specific values for risk management or account monitoring.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "balance:>100000",
+    "sort_by": "balance:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by: "balance:>100000",
+    sort_by: "balance:desc",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "balance:>100000",
+        SortBy: "balance:desc",
+    },
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "balance:>100000",
+    "sort_by": "balance:desc",
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy("balance:>100000")
+        .sortBy("balance:desc"),
+    "balances"
+);
+```
+</CodeGroup>
+</Step>
+
+<Step title="Fetch all balances belonging to an identity">
+Retrieve all balances associated with a specific identity ID to get a complete view of a user's accounts and wallets.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "*",
+    "filter_by": "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "*",
+    filter_by:
+      "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    sort_by: "created_at:desc",
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "*",
+        FilterBy: "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Balances,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "*",
+    "filter_by": "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e",
+    "sort_by": "created_at:desc",
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("*")
+        .filterBy(
+            "identity_id:=idt_28f25ef6-2e0d-4fa6-891c-37fc409d654e"
+        )
+        .sortBy("created_at:desc"),
+    "balances"
+);
+```
+</CodeGroup>
+</Step>
+
+<Step title="Search ledgers by name or metadata">
+Find specific ledgers using partial name matching or metadata filters to locate the right ledger for operations.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "customer savings",
+    "query_by": "name",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "customer savings",
+    query_by: "name",
+    sort_by: "created_at:desc",
+  },
+  'ledgers',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "customer savings",
+        QueryBy: "name",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Ledgers,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "customer savings",
+    "query_by": "name",
+    "sort_by": "created_at:desc",
+  },
+  "ledgers",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("customer savings")
+        .queryBy("name")
+        .sortBy("created_at:desc"),
+    "ledgers"
+);
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+### 3. Customer support
+
+<Steps>
+<Step title="Search identities by name or email">
+Find specific customer identities using partial name matching or email addresses for customer support and account verification.
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/search/identities" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "john doe",
+    "query_by": "first_name,last_name,email",
+    "sort_by": "created_at:desc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.search(
+  {
+    q: "john doe",
+    query_by: "first_name,last_name,email",
+    sort_by: "created_at:desc",
+  },
+  'identities',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Search.SearchDocument(
+    blnkgo.SearchParams{
+        Q: "john doe",
+        QueryBy: "first_name,last_name,email",
+        SortBy: "created_at:desc",
+    },
+    blnkgo.Identities,
+)
+```
+
+```python Python wrap
+response = blnk.search.search(
+  {
+    "q": "john doe",
+    "query_by": "first_name,last_name,email",
+    "sort_by": "created_at:desc",
+  },
+  "identities",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().search(
+    SearchParams.create()
+        .q("john doe")
+        .queryBy("first_name,last_name,email")
+        .sortBy("created_at:desc"),
+    "identities"
+);
+```
+</CodeGroup>
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Typesense configuration", href: "/operating/configuration/data-stores#typesense-configuration" },
+    { title: "Querying", href: "/search/typesense/querying" },
+    { title: "Filtering", href: "/search/typesense/filtering" },
+    { title: "Search via Typesense", href: "/reference/search-typesense" },
+  ]}
+/>

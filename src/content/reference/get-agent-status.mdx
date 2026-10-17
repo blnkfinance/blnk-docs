@@ -1,0 +1,242 @@
+---
+title: "Get job status"
+description: "Poll progress, subtasks, and approval state for an agent job."
+seoTitle: "Get job status • Blnk API Reference"
+method: "GET"
+path: "/agents/jobs/{job_id}/status"
+enterprise: true
+noindex: true
+---
+<Warning>
+Agent Jobs API is currently in beta.
+</Warning>
+
+Use this endpoint while an agent job is in progress. The response is a compact snapshot: status, progress counts, the current or failed step, and summarized subtasks.
+
+For the final output after the job completes or fails, use [Get job result](/reference/get-agent-result). To pause, resume, approve, reject, or schedule, use [Control agent job](/reference/control-agent).
+
+<Note>
+Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object with the raw plan steps and reasoning trail.
+</Note>
+
+<Authorization />
+
+### Path
+
+<ParamField path="job_id" type="string" required>
+Job to poll (`job_...`). Use the `job_id` returned by [Create agent job](/reference/create-agent).
+</ParamField>
+
+<ParamField query="view" type="string">
+Set to `debug` or `verbose` to add a `debug` object with the raw plan steps and reasoning trail. Leave unset for the compact payload.
+</ParamField>
+
+<ParamField query="verbose" type="string">
+Alias for `view=debug`. Send `1` or `true`. Prefer `view`.
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+Optional Core instance (`instance_...`). When present, Cloud checks that the instance belongs to your organization. The job already stores its instance from create.
+</ParamField>
+
+### Response
+
+<ResponseField name="job_id" type="string">
+Job you polled (`job_...`). Same value you sent in the path.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Where the job is right now: `queued`, `scheduled`, `planning`, `running`, `paused`, `waiting_approval`, `completed`, or `failed`. Poll until `completed` or `failed`, then call [Get job result](/reference/get-agent-result).
+</ResponseField>
+
+<ResponseField name="status_message" type="string">
+Short sentence that matches `status`, for example `Workflow executing.` Use this for logs or UI copy. Do not parse it.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+Plan Cloud built from your message (`pr_...`). Empty until planning finishes. Status, result, and control still use `job_id`.
+</ResponseField>
+
+<ResponseField name="approval_state" type="string">
+Set when the job is in `waiting_approval`. Empty otherwise. Use [Control agent job](/reference/control-agent) with `approve` or `reject` to continue.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Most recent error on the job. Empty while the job is healthy. Filled when a step or the planner fails.
+</ResponseField>
+
+<ResponseField name="schedule" type="object">
+Present when this job is waiting for a one-time run or is tied to a recurring template. `null` for a normal create.
+
+<Expandable title="Schedule properties">
+<ResponseField name="scheduled_run_at" type="timestamp">
+UTC ISO 8601 time when a one-time scheduled child job should start.
+</ResponseField>
+
+<ResponseField name="recurring_template_id" type="string">
+Recurring template created from this job (`rt_...`).
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="progress" type="object">
+How many plan steps are in each state: `total`, `completed`, `running`, `pending`, `failed`, `waiting_approval`. Use this for a progress bar. `running` also counts steps in `created_task`.
+</ResponseField>
+
+<ResponseField name="current_step" type="object">
+The step Cloud is on now: first `running`, `created_task`, or `waiting_approval` step, otherwise the next `pending` step. `null` when no step is active. Same shape as one item in `sub_tasks`.
+</ResponseField>
+
+<ResponseField name="failed_step" type="object">
+First step with status `failed`. `null` when every step has succeeded or has not failed yet. Same shape as one item in `sub_tasks`.
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Compact plan steps, oldest first. This is the summarized view. Use `view=debug` if you need the raw plan payload.
+
+<Expandable title="Compact step">
+<ResponseField name="step_id" type="string">
+Step ID from the plan (`s1`, `s2`, ...).
+</ResponseField>
+
+<ResponseField name="title" type="string">
+Readable label derived from `task_type`. Cloud strips the `backoffice.` prefix and replaces underscores with spaces.
+</ResponseField>
+
+<ResponseField name="task_type" type="string">
+Planner step name, such as `backoffice.filter_collection`. Map this to a capability in the [tool allowlist](/reference/create-agent#tool-allowlist) if you set `approved_tools`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Step state: `pending`, `running`, `created_task`, `waiting_approval`, `completed`, or `failed`.
+</ResponseField>
+
+<ResponseField name="task_id" type="string">
+Task Cloud created for this step (`tsk_...`). Empty until the step starts work.
+</ResponseField>
+
+<ResponseField name="depends_on" type="array">
+`step_id` values this step waits on before it can run.
+</ResponseField>
+
+<ResponseField name="summary" type="string">
+What the step is doing or just did, truncated to 220 characters.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+Why the step failed. Empty on successful or in-progress steps.
+</ResponseField>
+
+<ResponseField name="input_summary" type="string">
+Short description of the step input, for example `transactions filtered by 1 condition`. Empty when Cloud has nothing useful to show.
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="reasoning_trail" type="array">
+Compact planner and execution notes. Each item has `id`, `kind`, `title`, `status`, and `summary`. Empty until the planner writes notes.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud accepted the job, in UTC ISO 8601.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the job last changed, in UTC ISO 8601. Use this to see if a poll returned new work.
+</ResponseField>
+
+<ResponseField name="links" type="object">
+Relative paths for `status`, `result`, and `control` on this job. Prefix them with `https://api.cloud.blnkfinance.com`.
+</ResponseField>
+
+<ResponseField name="debug" type="object">
+Raw `sub_tasks` and `reasoning_trail`. Present only when you send `view=debug` (or `verbose=1`). Omit it in production clients.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/status' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "job_id": "job_1779300000000000000",
+  "status": "running",
+  "status_message": "Workflow executing.",
+  "plan_run_id": "pr_1779300000000000000",
+  "approval_state": "",
+  "last_error": "",
+  "schedule": null,
+  "progress": {
+    "total": 2,
+    "completed": 1,
+    "running": 1,
+    "pending": 0,
+    "failed": 0,
+    "waiting_approval": 0
+  },
+  "current_step": {
+    "step_id": "s2",
+    "title": "watch assess and summarize",
+    "task_type": "backoffice.watch_assess_and_summarize",
+    "status": "running",
+    "summary": "Step is running.",
+    "created_at": "2026-09-16T05:10:04Z",
+    "updated_at": "2026-09-16T05:10:08Z"
+  },
+  "failed_step": null,
+  "sub_tasks": [
+    {
+      "step_id": "s1",
+      "title": "filter collection",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "summary": "Step completed.",
+      "input_summary": "transactions filtered by 1 condition",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "step_id": "s2",
+      "title": "watch assess and summarize",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "running",
+      "summary": "Step is running.",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:08Z"
+    }
+  ],
+  "reasoning_trail": [],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:08Z",
+  "links": {
+    "status": "/agents/jobs/job_1779300000000000000/status",
+    "result": "/agents/jobs/job_1779300000000000000/result",
+    "control": "/agents/jobs/job_1779300000000000000/control"
+  }
+}
+```
+
+```text 404 Not Found
+not found
+```
+
+```text 503 Service Unavailable
+jobs service unavailable
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Create agent job", href: "/reference/create-agent" },
+    { title: "Get job result", href: "/reference/get-agent-result" },
+    { title: "Control agent job", href: "/reference/control-agent" },
+    { title: "MCP server", href: "/reference/mcp" },
+  ]}
+/>

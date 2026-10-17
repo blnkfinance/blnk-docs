@@ -1,0 +1,246 @@
+---
+title: "MCP server"
+description: "Connect an AI client to a Core instance through the Blnk MCP server."
+seoTitle: "MCP server • Blnk API Reference"
+enterprise: true
+noindex: true
+---
+The Blnk MCP server exposes a Core instance through the [Model Context Protocol](https://modelcontextprotocol.io/). Cursor, Claude Desktop, and ChatGPT connect to Cloud, and Cloud forwards authorized tool calls to that instance.
+
+Clients do not open a connection to Core. Cloud checks the credential, enforces `mcp:read` and `mcp:write`, and sends the operation to the instance in the URL.
+
+<RequestExample>
+
+```json MCP configuration
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "X-blnk-key": "CLOUD_API_KEY"
+      }
+    }
+  }
+}
+```
+
+</RequestExample>
+
+## Set up your client
+
+<Steps>
+<Step title="Create credentials">
+Create an [API key](/reference/api-keys) or an [OAuth client](/reference/oauth). Both need `mcp:read` and `mcp:write`.
+</Step>
+<Step title="Copy the MCP endpoint">
+Open **Settings > MCP** and copy the configuration for the instance.
+
+<Tabs>
+<Tab title="API key">
+
+```json API key
+{
+  "mcpServers": {
+    "blnk": {
+      "url": "https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID",
+      "headers": {
+        "X-blnk-key": "CLOUD_API_KEY"
+      }
+    }
+  }
+}
+```
+
+</Tab>
+<Tab title="OAuth">
+Use the endpoint URL with your OAuth client id and client secret. The client signs in. You do not put a Cloud API key in the config.
+
+```text Endpoint
+https://api.cloud.blnkfinance.com/mcp/YOUR_INSTANCE_ID
+```
+
+</Tab>
+</Tabs>
+</Step>
+<Step title="Add the server to the client">
+<Tabs>
+<Tab title="Cursor">
+Open Cursor settings, go to **MCP**, and add the server. Paste the JSON for an API key, or the endpoint URL for OAuth.
+</Tab>
+<Tab title="Claude Desktop">
+Add the configuration to `claude_desktop_config.json`.
+
+```bash macOS
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+```bash Windows
+%APPDATA%\Claude\claude_desktop_config.json
+```
+
+</Tab>
+<Tab title="ChatGPT">
+Go to **Settings > Apps**. Open **Advanced settings**, enable **Developer mode**, and click **Create app**.
+
+![ChatGPT MCP app form with name, server URL, and OAuth fields](img/cloud/chatgpt-setup.png)
+
+- **Name:** A name such as Blnk MCP.
+- **MCP Server URL:** The endpoint from the previous step.
+- **Authentication:** OAuth, then the client id and client secret.
+
+Click **Create** and sign in to Blnk Cloud when asked.
+</Tab>
+</Tabs>
+</Step>
+<Step title="Ask about the ledger">
+The client can read and update ledger data through the tools below.
+</Step>
+</Steps>
+
+## What you can ask
+
+- **Activity:** Transactions from the last 24 hours, or what changed since yesterday.
+- **Balances:** The balance for a wallet, or balances that are negative or low.
+- **Failures:** Failed or voided transactions, or a transaction by reference.
+- **Large movements:** USD transactions over \$5,000, or unusually large transactions today.
+- **Totals:** How much moved today, or the total across customer wallets.
+- **Lake:** The lake schema, a count of `APPLIED` transactions last month, or a saved query on a daily schedule.
+- **Workflows:** A balance monitor, a bulk inflight commit, or a reconciliation run.
+
+## Supported tools
+
+Blnk MCP registers 74 tools: 4 ledgers, 14 balances, 13 transactions, 10 identities, 3 search, 4 filters, 7 reconciliation, 5 hooks, 1 metadata, 2 system, and 11 lake.
+
+<Tabs>
+<Tab title="Ledgers">
+
+- `create_ledger`
+- `get_ledger`
+- `list_ledgers`
+- `update_ledger`
+
+</Tab>
+<Tab title="Balances" icon="wallet">
+
+- `create_balance`
+- `get_balance`
+- `list_balances`
+- `get_balance_by_indicator`
+- `take_balance_snapshots`
+- `get_historical_balance`
+- `get_balance_lineage`
+- `update_balance_identity`
+- `create_balance_monitor`
+- `get_balance_monitor`
+- `list_balance_monitors`
+- `list_balance_monitors_by_balance`
+- `update_balance_monitor`
+- `delete_balance_monitor`
+
+</Tab>
+<Tab title="Transactions">
+
+- `record_transaction`
+- `get_transaction`
+- `get_transaction_by_reference`
+- `list_transactions`
+- `commit_inflight`
+- `void_inflight`
+- `bulk_commit_inflight`
+- `bulk_void_inflight`
+- `recover_queued_transactions`
+- `refund_transaction`
+- `schedule_transaction`
+- `bulk_transactions`
+- `get_transaction_lineage`
+
+</Tab>
+<Tab title="Identities">
+
+- `create_identity`
+- `get_identity`
+- `list_identities`
+- `update_identity`
+- `delete_identity`
+- `tokenize_field`
+- `tokenize_identity`
+- `detokenize_field`
+- `detokenize_identity`
+- `get_tokenized_fields`
+
+</Tab>
+<Tab title="Search" icon="search">
+
+- `search`
+- `start_reindex`
+- `get_reindex`
+
+</Tab>
+<Tab title="Filters">
+
+- `query_transactions`
+- `query_balances`
+- `query_ledgers`
+- `query_identities`
+
+</Tab>
+<Tab title="Reconciliation">
+
+- `upload_reconciliation_data`
+- `create_matching_rule`
+- `update_matching_rule`
+- `delete_matching_rule`
+- `start_reconciliation`
+- `start_instant_reconciliation`
+- `get_reconciliation`
+
+</Tab>
+<Tab title="Hooks" icon="webhook">
+
+- `create_hook`
+- `update_hook`
+- `get_hook`
+- `list_hooks`
+- `delete_hook`
+
+</Tab>
+<Tab title="Metadata">
+
+- `update_metadata`
+
+</Tab>
+<Tab title="System" icon="server">
+
+- `get_health`
+- `get_metrics`
+
+</Tab>
+<Tab title="Lake" icon="layers">
+
+- `lake_schema`
+- `lake_query`
+- `list_lake_queries`
+- `get_lake_query`
+- `create_lake_query`
+- `update_lake_query`
+- `delete_lake_query`
+- `list_lake_query_runs`
+- `get_lake_query_run`
+- `put_lake_query_schedule`
+- `delete_lake_query_schedule`
+
+</Tab>
+</Tabs>
+
+## Response
+
+Blnk MCP follows the [Model Context Protocol specification](https://modelcontextprotocol.io/specification/2025-03-26). Message shape, session lifecycle, transport, and errors are defined there. Most clients handle that for you.
+
+<RelatedTopics
+  items={[
+    { title: "Create agent job", href: "/reference/create-agent" },
+    { title: "API keys", href: "/reference/api-keys" },
+    { title: "OAuth", href: "/reference/oauth" },
+    { title: "Cloud API overview", href: "/reference/cloud-overview" },
+  ]}
+/>

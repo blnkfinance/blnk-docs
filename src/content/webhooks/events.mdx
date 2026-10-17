@@ -1,0 +1,139 @@
+---
+title: "Supported events"
+sidebarTitle: "Supported events"
+description: "Look up the event names Blnk sends."
+icon: "list-ordered"
+seoTitle: "Supported events • Blnk Developer Documentation"
+metaDescription: "A list of all event names emitted by Blnk."
+---
+
+These are the `event` values Blnk sends to your [global webhook](/webhooks/global-webhooks) URL. Configure your endpoint in [webhook configuration](/operating/configuration/webhooks), then handle the events listed below.
+
+## Ledgers
+
+| Event name | Description |
+| :-- | :-- |
+| `ledger.created` | When a ledger is created. |
+
+## Balances
+
+| Event name | Description |
+| :-- | :-- |
+| `balance.created` | When a balance is created. |
+
+## Balance monitors
+
+| Event name | Description |
+| :-- | :-- |
+| `balance.monitor` | When a balance monitor is triggered because its conditions are met. |
+
+## Transactions
+
+| Event name | Description |
+| :-- | :-- |
+| `transaction.applied` | When a transaction is applied or committed. |
+| `transaction.inflight` | When a transaction is inflight. |
+| `transaction.void` | When an inflight transaction is voided. |
+| `transaction.scheduled` | When a transaction is successfully scheduled. |
+| `transaction.rejected` | When a transaction is rejected. |
+
+## Bulk transactions
+
+| Event name | Description |
+| :-- | :-- |
+| `bulk_transaction.applied` | When all items in a bulk transaction have been applied. |
+| `bulk_transaction.inflight` | When all items in a bulk transaction are successfully inflight. |
+| `bulk_transaction.failed` | When a bulk transaction fails. |
+
+## Identities
+
+| Event name | Description |
+| :-- | :-- |
+| `identity.created` | When an identity is created. |
+
+## Metadata
+
+<Version>Available in version 0.15.5 and later.</Version>
+
+| Event name | Description |
+| :-- | :-- |
+| `ledger.metadata.updated` | After a successful public ledger metadata update. |
+| `balance.metadata.updated` | After a successful public balance metadata update. |
+| `identity.metadata.updated` | After a successful public identity metadata update. |
+| `transaction.metadata.updated` | After a successful public transaction metadata update. |
+
+Blnk sends these events only after a successful public [Update metadata](/reference/update-metadata) request. Internal metadata writes do not emit them.
+
+Each payload includes `event_id` and `timestamp` in `data` for deduplication.
+
+**Ledger, balance, and identity** — full resource snapshot with merged `meta_data` for this write (same shape as `*.created` events).
+
+**Transaction** — patch only:
+
+```json Example payload wrap
+{
+  "event": "transaction.metadata.updated",
+  "data": {
+    "transaction_id": "txn_c62f200b-905f-4983-a349-cadd279234aa",
+    "meta_data_patch": {
+      "settlement_batch": "B-42"
+    },
+    "event_id": "7f1b0c8d-4e55-4b19-9e2c-a1c83e2f4b19",
+    "timestamp": "2026-09-24T12:50:59Z"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `transaction_id` | String | The id you passed (`txn_…` or `bulk_…`). For bulk ids, one event is sent but the merge applies to every matching row. |
+| `meta_data_patch` | Object | The metadata this request applied. Blnk does not re-read merged `meta_data` in the event. |
+| `event_id` | String | Unique id for this event. |
+| `timestamp` | String | UTC time when the event was enqueued. |
+
+The metadata merge is authoritative once the API returns `200`. Webhook delivery is best-effort after that.
+
+[Update metadata](/metadata) to trigger these events.
+
+## Reconciliations
+
+<Version>Available in version 0.15.0 and later.</Version>
+
+| Event name | Description |
+| :-- | :-- |
+| `reconciliation.completed` | When a reconciliation run completes successfully. |
+| `reconciliation.failed` | When a reconciliation run fails. |
+
+[Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) return only `reconciliation_id`. Read status, match counts, and timestamps from the webhook payload.
+
+## System errors
+
+<Version>Available in version 0.12.0 and later.</Version>
+
+| Event name | Description |
+| :-- | :-- |
+| `system.error` | When a system error occurs (e.g. duplicate reference). |
+
+```json Example payload wrap
+{
+  "event": "system.error",
+  "data": {
+    "error": "reference 0x8fa3c1a2b7d9_q has already been used",
+    "time": "2025-12-08T10:30:45Z"
+  }
+}
+```
+
+| Field | Type | Description |
+| :-- | :-- | :-- |
+| `error` | String | The error message describing what went wrong. |
+| `time` | String | ISO 8601 formatted timestamp when the error occurred. |
+
+<RelatedTopics
+  items={[
+    { title: "Global webhooks", href: "/webhooks/global-webhooks" },
+    { title: "Update metadata", href: "/metadata" },
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Webhooks overview", href: "/webhooks/overview" },
+  ]}
+/>

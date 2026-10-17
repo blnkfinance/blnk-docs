@@ -1,0 +1,124 @@
+---
+title: "Proxy API"
+description: "Forward a Core HTTP request through Blnk Cloud to a connected instance."
+seoTitle: "Proxy API • Blnk API Reference"
+enterprise: true
+noindex: true
+---
+The Proxy API forwards a Core request through Blnk Cloud. Send the same method, path, and body you would send to Core. Prefix the path with `/proxy`, authenticate with a Cloud or Enterprise credential, and add `instance_id`. Cloud forwards the request and returns the Core response unchanged.
+
+Historical reporting uses [Create new query](/reference/create-new-query). Alerts, deployments, and the other Cloud routes are not Core paths. Call those on their own paths, not through `/proxy`.
+
+### How it works
+
+1. Your app sends the request to `https://api.cloud.blnkfinance.com/proxy/...` with the Core method. On a self-hosted Enterprise deployment, use `ENTERPRISE_PUBLIC_URL` instead.
+2. Cloud authenticates the Cloud API key or OAuth access token.
+3. Cloud uses `instance_id` to choose the Core instance.
+4. Cloud forwards the request.
+5. Cloud returns the Core response unchanged.
+
+Field shapes match the [Core API reference](/reference/overview). Send that payload to the proxy URL with Cloud authentication and `instance_id`.
+
+```bash Base URLs
+Core:   {METHOD} http://CORE_INSTANCE_URL/{path}
+Proxy:  {METHOD} https://api.cloud.blnkfinance.com/proxy/{path}?instance_id=YOUR_INSTANCE_ID
+```
+
+<Authorization />
+
+### URL format and headers
+
+<ParamField path="path" type="string" required>
+Core path after `/proxy`. Use the same path you would call on Core.
+</ParamField>
+
+<ParamField query="instance_id" type="string" required>
+Instance to target. Required on every proxy request. Read it from [Get instance](/reference/get-instance) (`instance_...`). Do not send `deployment_id` here.
+</ParamField>
+
+<ParamField header="Content-Type" type="string">
+Required when the request has a body. Use `application/json`, or `multipart/form-data` for a reconciliation upload.
+</ParamField>
+
+### Calling Core endpoints
+
+Prefix the Core path with `/proxy` and keep the HTTP method. Append `?instance_id=YOUR_INSTANCE_ID` to every request.
+
+| Method | Core path | Proxy path |
+| --- | --- | --- |
+| GET | `/ledgers` | `/proxy/ledgers` |
+| GET | `/ledgers/{ledger_id}` | `/proxy/ledgers/{ledger_id}` |
+| POST | `/ledgers` | `/proxy/ledgers` |
+| PUT | `/ledgers/{ledger_id}` | `/proxy/ledgers/{ledger_id}` |
+| DELETE | `/reconciliation/matching-rules/{rule_id}` | `/proxy/reconciliation/matching-rules/{rule_id}` |
+
+Every Core route follows the same pattern. When you create a transaction and omit `precision` or `reference`, Cloud sets `precision` to `100` and generates a `reference`.
+
+### Response
+
+When Cloud can reach Core, the status code and body match that Core endpoint. If `instance_id` is missing, Cloud returns a JSON error.
+
+<RequestExample>
+
+```bash POST
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Integration Ledger",
+    "meta_data": {
+      "description": "Ledger for integration test"
+    }
+  }'
+```
+
+```bash GET
+curl -X GET "https://api.cloud.blnkfinance.com/proxy/ledgers/ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN"
+```
+
+```bash PUT
+curl -X PUT "https://api.cloud.blnkfinance.com/proxy/ledgers/ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Customer Savings Ledger"
+  }'
+```
+
+```bash DELETE
+curl -X DELETE "https://api.cloud.blnkfinance.com/proxy/reconciliation/matching-rules/rule_6e6feddd-930b-4e13-8ba1-1a3eee659bb3?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "My Integration Ledger",
+  "created_at": "2024-02-20T05:28:03.558281542Z",
+  "meta_data": {
+    "description": "Ledger for integration test"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "instance_id is required"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Core API reference", href: "/reference/overview" },
+    { title: "Get instance", href: "/reference/get-instance" },
+    { title: "Create new query", href: "/reference/create-new-query" },
+    { title: "API keys", href: "/reference/api-keys" },
+  ]}
+/>

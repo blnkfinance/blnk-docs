@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { isDropdown, itemPath, labels, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
+import { enterpriseNotice, isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
 export const siteTitle = 'Blnk Documentation';
@@ -94,7 +94,7 @@ function toPage(entry: CollectionEntry<'docs'>): IndexablePage {
 			entry.data.title,
 			description,
 			entry.body,
-			entry.data.enterprise ? labels.enterprise : undefined,
+			enterpriseNotice(entry.data.enterprise),
 		),
 	};
 }

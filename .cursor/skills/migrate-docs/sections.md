@@ -77,19 +77,14 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `identities/link-balances`
 - `identities/pii-tokenization`
 
-### Metadata
+### Search & metadata
 
-- `metadata/overview`
-- `metadata/create-metadata`
-- `metadata/update-metadata`
-
-### Search
-
-- dropdown **Using Direct DB** source icon `database`
+- `metadata`
+- dropdown **Direct DB search** source icon `database`
   - `search/db/filtering`
   - `search/db/performance`
   - `search/db/examples`
-- dropdown **Using Typesense** source icon `search`
+- dropdown **Typesense search** source icon `search`
   - `search/typesense/introduction`
   - `search/typesense/querying`
   - `search/typesense/filtering`
@@ -120,7 +115,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 ### Operating
 
 - dropdown **Configuration**
-  - `operating/configuration/overview`
   - `operating/configuration/server-security`
   - `operating/configuration/data-stores`
   - `operating/configuration/transactions`
@@ -128,7 +122,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
   - `operating/configuration/reconciliations`
   - `operating/configuration/webhooks`
   - `operating/configuration/observability`
-  - `operating/configuration/backup`
   - dropdown **Enterprise**
     - `operating/configuration/enterprise/launcher`
     - `operating/configuration/enterprise/branding`
@@ -366,12 +359,9 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `reference/detokenize-field`
 - `reference/detokenize-identity`
 
-#### Metadata
+#### Search & metadata
 
 - `reference/update-metadata`
-
-#### Search
-
 - `reference/search-db`
 - `reference/search-typesense`
 - `reference/start-reindex`
@@ -398,72 +388,73 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 ### Cloud APIs source icon `cloud`
 
+Pages live in `reference/`, with `enterprise: true`. There is no `reference/cloud/` folder.
+
 #### Start Here
 
-- `cloud/reference/overview`
-- dropdown **Authentication** source icon `lock`
-  - `cloud/reference/api-keys`
-  - `cloud/reference/oauth`
+- `reference/cloud-overview`
+- `reference/api-keys`
+- `reference/oauth`
 
 #### Deployments
 
-- `cloud/reference/create-deployment`
-- `cloud/reference/get-instance`
-- `cloud/reference/list-deployments`
-- `cloud/reference/get-deployment`
-- `cloud/reference/get-deployment-config`
-- `cloud/reference/update-deployment-config`
-- `cloud/reference/upgrade-deployment`
-- `cloud/reference/destroy-deployment`
+- `reference/create-deployment`
+- `reference/get-instance`
+- `reference/list-deployments`
+- `reference/get-deployment`
+- `reference/get-deployment-config`
+- `reference/update-deployment-config`
+- `reference/upgrade-deployment`
+- `reference/destroy-deployment`
 
 #### Proxy & data
 
-- `cloud/reference/proxy-api`
+- `reference/proxy-api`
 
 #### Data lake
 
-- `cloud/reference/create-new-query`
-- `cloud/reference/get-lake-schema`
-- `cloud/reference/list-lake-query-runs`
-- `cloud/reference/get-lake-query-run`
-- `cloud/reference/create-saved-lake-query`
-- `cloud/reference/list-saved-lake-queries`
-- `cloud/reference/get-saved-lake-query`
-- `cloud/reference/update-saved-lake-query`
-- `cloud/reference/delete-saved-lake-query`
-- `cloud/reference/schedule-saved-lake-query`
-- `cloud/reference/delete-saved-lake-query-schedule`
+- `reference/create-new-query`
+- `reference/get-lake-schema`
+- `reference/list-lake-query-runs`
+- `reference/get-lake-query-run`
+- `reference/create-saved-lake-query`
+- `reference/list-saved-lake-queries`
+- `reference/get-saved-lake-query`
+- `reference/update-saved-lake-query`
+- `reference/delete-saved-lake-query`
+- `reference/schedule-saved-lake-query`
+- `reference/delete-saved-lake-query-schedule`
 
 #### AI integrations
 
-- `cloud/reference/mcp`
-- `cloud/reference/create-agent`
-- `cloud/reference/get-agent-status`
-- `cloud/reference/get-agent-result`
-- `cloud/reference/control-agent`
+- `reference/mcp`
+- `reference/create-agent`
+- `reference/get-agent-status`
+- `reference/get-agent-result`
+- `reference/control-agent`
 
 #### Audit
 
-- `cloud/reference/list-audit-logs`
+- `reference/list-audit-logs`
 
 #### Alerts
 
-- `cloud/reference/create-alert`
-- `cloud/reference/get-alert`
-- `cloud/reference/update-alert`
-- `cloud/reference/list-alert-statuses`
-- `cloud/reference/create-alert-status`
-- `cloud/reference/update-alert-status`
-- `cloud/reference/delete-alert-status`
+- `reference/create-alert`
+- `reference/get-alert`
+- `reference/update-alert`
+- `reference/list-alert-statuses`
+- `reference/create-alert-status`
+- `reference/update-alert-status`
+- `reference/delete-alert-status`
 
 #### Billing
 
-- `cloud/reference/get-billing-status`
-- `cloud/reference/get-billing-overview`
-- `cloud/reference/list-invoices`
-- `cloud/reference/get-usage-billing`
-- `cloud/reference/enable-usage-billing`
-- `cloud/reference/get-record-counts`
+- `reference/get-billing-status`
+- `reference/get-billing-overview`
+- `reference/list-invoices`
+- `reference/get-usage-billing`
+- `reference/enable-usage-billing`
+- `reference/get-record-counts`
 
 ### Watch APIs source icon `eye`
 

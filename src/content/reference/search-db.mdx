@@ -1,0 +1,118 @@
+---
+title: "Search via DB"
+sidebarTitle: "Search via DB"
+description: "Filter a collection with a JSON query against the database."
+seoTitle: "Search via DB • Blnk API Reference"
+method: "POST"
+path: "/{collection}/filter"
+noindex: true
+---
+
+The Filter API lets you retrieve records from any collection using server-side filters with a clean JSON interface. Use it when you need precise, composable queries without the overhead of Typesense.
+
+<Key />
+
+### Path
+<ParamField path="collection" type="string" required>
+  The collection to filter. Supported values:
+  - `ledgers` - Filter ledgers by name or metadata
+  - `balances` - Filter balance records across all ledgers
+  - `transactions` - Filter transaction records
+  - `identities` - Filter customer identity records
+</ParamField>
+
+### Body
+<ParamField body="filters" type="array" required>
+  Array of filter objects. Each object has `field`, `operator`, and optionally `value` or `values`. Learn more: [Search via DB docs](/search/db/filtering)
+  
+  Examples:
+  - `[{"field": "status", "operator": "eq", "value": "APPLIED"}]` - Exact match
+  - `[{"field": "currency", "operator": "in", "values": ["USD", "EUR"]}]` - Multiple values
+</ParamField>
+<ParamField body="logical_operator" type="string">
+  Combines multiple filters with `and` or `or`. Default: `and`.
+</ParamField>
+<ParamField body="sort_by" type="string">
+  Field to sort by. Only indexed fields are sortable. Default: `created_at`. Learn more: [Performance Tuning](/search/db/performance)
+</ParamField>
+<ParamField body="sort_order" type="string">
+  Sort direction: `asc` or `desc`. Default: `desc`.
+</ParamField>
+<ParamField body="include_count" type="boolean">
+  Include total count in response. May impact performance on large datasets. Default: `false`.
+</ParamField>
+<ParamField body="limit" type="integer">
+  Max records to return. Default: 20, max: 100.
+</ParamField>
+<ParamField body="offset" type="integer">
+  Records to skip for pagination. Default: 0.
+</ParamField>
+
+### Response
+<ResponseField name="data" type="array">
+  Array of matching records. Structure varies by collection type (ledger, balance, transaction, or identity).
+</ResponseField>
+<ResponseField name="total_count" type="integer">
+  Total number of matching records. Only present when `include_count` is `true`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "currency", "operator": "in", "values": ["USD", "EUR"] }
+    ],
+    "logical_operator": "and",
+    "sort_by": "created_at",
+    "sort_order": "desc",
+    "include_count": true,
+    "limit": 20,
+    "offset": 0
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "data": [
+    {
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+      "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 150
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Invalid filter: invalid operator 'resembles' for field 'amount': must be one of eq, ne, gt, gte, lt, lte, in, between, like, ilike, isnull, isnotnull",
+  "error_detail": {
+    "code": "GEN_BAD_REQUEST",
+    "message": "Invalid filter: invalid operator 'resembles' for field 'amount': must be one of eq, ne, gt, gte, lt, lte, in, between, like, ilike, isnull, isnotnull"
+  }
+}
+```
+</ResponseExample>
+
+<Tip>
+For full-text search, advanced faceting, or querying across millions of records, use [Search via Typesense](/reference/search-typesense) instead.
+</Tip>
+
+<RelatedTopics
+  items={[
+    { title: "DB filtering", href: "/search/db/filtering" },
+    { title: "DB performance", href: "/search/db/performance" },
+    { title: "Search via Typesense", href: "/reference/search-typesense" },
+  ]}
+/>

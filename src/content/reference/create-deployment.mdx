@@ -1,0 +1,152 @@
+---
+title: "Create deployment"
+description: "Deploy a ledger as a managed Core instance through Blnk Cloud."
+seoTitle: "Create deployment • Blnk API Reference"
+method: "POST"
+path: "/deployments"
+enterprise: true
+noindex: true
+---
+**Use this endpoint to deploy a ledger**. Cloud hosts a managed Core instance and connects it to your workspace, so you get a live ledger over the API without installing or operating Core yourself.
+
+If you already run Core, this is the same action as [Deploy an instance](/cloud/instances/deploy) in the dashboard.
+
+<Note>
+This endpoint deploys a managed ledger only. To attach a self-hosted Core instead, [connect it from the dashboard](/cloud/instances/create) first.
+</Note>
+
+<Authorization />
+
+### Body
+
+<ParamField body="name" type="string" required>
+Display name for this ledger in your workspace.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+Environment for the ledger: `sandbox` or `production`. Cloud assigns capacity from this value.
+</ParamField>
+
+<ParamField body="region" type="string">
+**Production only**. Choose a datacenter closest to your app. Do not send this for sandbox. Cloud assigns the sandbox region.
+</ParamField>
+
+### Response
+
+<ResponseField name="deployment_id" type="string">
+Unique id for this managed deployment (`deploy_...`). Use it with Deployments APIs. Do not pass it as `instance_id` when routing Cloud APIs.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Display name of this ledger in your workspace.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+Environment for the ledger: `sandbox` or `production`. Cloud assigns capacity from this value.
+</ResponseField>
+
+<ResponseField name="tier" type="string">
+Capacity Cloud assigned for this deployment, such as `B1.Micro` or `B1.Standard`. You do not choose this when you create the deployment.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+`PENDING` until the instance is ready, then `ACTIVE`. Sandbox typically takes 7 - 10 minutes. Production can take 10 - 30 minutes.
+</ResponseField>
+
+<ResponseField name="region" type="string">
+Datacenter code for the instance. Cloud assigns this for sandbox. You choose it for production.
+</ResponseField>
+
+<ResponseField name="dedicated" type="boolean">
+`true` when the instance runs on dedicated Production infrastructure. Sandbox is always `false`.
+</ResponseField>
+
+<ResponseField name="ingress_mode" type="string">
+How Cloud routes traffic to the instance. Live values include `shared` and `legacy`.
+</ResponseField>
+
+<ResponseField name="watch_enabled" type="boolean">
+Whether Watch is enabled.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled" type="boolean">
+Whether usage-based billing is on for the organization.
+</ResponseField>
+
+<ResponseField name="usage_billing_enabled_at" type="timestamp">
+When usage-based billing was enabled for the organization.
+</ResponseField>
+
+<ResponseField name="record_creates_blocked" type="boolean">
+`true` when this instance has used its included records and organization usage-based billing is off, so new records cannot be created. `false` while the instance is within its allowance or usage-based billing is on. See [Usage-based billing](/cloud/organization/billing#usage-based-billing).
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the deployment was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the deployment was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash Sandbox
+curl -X POST 'https://api.cloud.blnkfinance.com/deployments' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "my-sandbox",
+    "type": "sandbox"
+  }'
+```
+
+```bash Production
+curl -X POST 'https://api.cloud.blnkfinance.com/deployments' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "my-prod",
+    "type": "production",
+    "region": "nyc3",
+    "dedicated": true
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "my-sandbox",
+  "ingress_mode": "shared",
+  "dedicated": false,
+  "tier": "B1.Micro",
+  "type": "sandbox",
+  "region": "nyc3",
+  "status": "PENDING",
+  "watch_enabled": false,
+  "usage_billing_enabled": true,
+  "usage_billing_enabled_at": "2026-09-09T07:20:08.028229Z",
+  "record_creates_blocked": false,
+  "created_at": "2026-09-11T09:28:16.864765Z",
+  "updated_at": "2026-09-11T09:28:16.864765Z"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Key: 'CreateDeploymentRequest.Name' Error:Field validation for 'Name' failed on the 'required' tag"
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Managed instances", href: "/cloud/instances/deploy" },
+    { title: "Self-hosted instances", href: "/cloud/instances/create" },
+    { title: "Get deployment details", href: "/reference/get-deployment" },
+    { title: "List deployments", href: "/reference/list-deployments" },
+  ]}
+/>

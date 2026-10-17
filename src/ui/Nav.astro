@@ -99,6 +99,28 @@ const methods = new Map(
 			} catch {
 				/* storage can be unavailable */
 			}
+
+			const body = sidebar.querySelector('.sidebar-body');
+			const current = sidebar.querySelector('a.nav-item[aria-current="page"]');
+			if (!(body instanceof HTMLElement) || !(current instanceof HTMLElement)) return;
+			const showCurrent = () => {
+				if (body.clientHeight === 0) return;
+				const item = current.getBoundingClientRect();
+				const top = item.top - body.getBoundingClientRect().top;
+				const bottom = top + item.height;
+				if (top >= 0 && bottom <= body.clientHeight) return;
+				body.scrollTop = Math.max(0, body.scrollTop + top - (body.clientHeight - item.height) / 2);
+			};
+			showCurrent();
+			requestAnimationFrame(showCurrent);
+			window.addEventListener(
+				'load',
+				() => {
+					showCurrent();
+					requestAnimationFrame(showCurrent);
+				},
+				{ once: true },
+			);
 		})();
 	</script>
 </nav>

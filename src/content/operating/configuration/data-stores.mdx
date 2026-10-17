@@ -8,6 +8,8 @@ metaDescription: "Set up PostgreSQL, Redis, and Typesense for your Blnk deployme
 
 Blnk relies on PostgreSQL and Redis to run core ledger operations, and can optionally use TypeSense for search and indexing. This page explains the settings used to connect and tune each service.
 
+Set them in a `blnk.json` file or with environment variables that use the `BLNK_` prefix. PostgreSQL and Redis are the only connections Blnk needs to start.
+
 ## Database settings
 
 Use these settings to configure Blnk’s PostgreSQL connection and connection pool.
@@ -41,13 +43,21 @@ BLNK_DATABASE_CONN_MAX_IDLE_TIME=5m
 ```
 </CodeGroup>
 
-|                                    | Description                                                                       | Default |
-| ---------------------------------- | --------------------------------------------------------------------------------- | ------- |
-| `BLNK_DATA_SOURCE_DNS`             | PostgreSQL connection string used by Blnk. This is required.                      | None    |
-| `BLNK_DATABASE_MAX_OPEN_CONNS`     | Maximum number of open database connections in the pool.                          | `50`    |
-| `BLNK_DATABASE_MAX_IDLE_CONNS`     | Maximum number of idle database connections kept ready.                           | `25`    |
-| `BLNK_DATABASE_CONN_MAX_LIFETIME`  | Maximum amount of time a database connection can be reused before it is recycled. | `30m`   |
-| `BLNK_DATABASE_CONN_MAX_IDLE_TIME` | Maximum amount of time an idle database connection is kept before it is recycled. | `5m`    |
+<ParamField name="BLNK_DATA_SOURCE_DNS" required>
+PostgreSQL connection string used by Blnk.
+</ParamField>
+<ParamField name="BLNK_DATABASE_MAX_OPEN_CONNS" default="50">
+Maximum number of open database connections in the pool.
+</ParamField>
+<ParamField name="BLNK_DATABASE_MAX_IDLE_CONNS" default="25">
+Maximum number of idle database connections kept ready.
+</ParamField>
+<ParamField name="BLNK_DATABASE_CONN_MAX_LIFETIME" default="30m">
+Maximum amount of time a database connection can be reused before it is recycled.
+</ParamField>
+<ParamField name="BLNK_DATABASE_CONN_MAX_IDLE_TIME" default="5m">
+Maximum amount of time an idle database connection is kept before it is recycled.
+</ParamField>
 
 ### `BLNK_DATA_SOURCE_DNS`
 
@@ -98,13 +108,21 @@ BLNK_REDIS_CONN_MAX_IDLE_TIME=2m
 ```
 </CodeGroup>
 
-|                                | Description                                                                                         | Default |
-| ------------------------------ | --------------------------------------------------------------------------------------------------- | ------- |
-| `BLNK_REDIS_DNS`               | Redis address or connection URL used by Blnk. This is required.                                     | None    |
-| `BLNK_REDIS_SKIP_TLS_VERIFY`   | Disables TLS certificate verification for Redis connections.                                        | `false` |
-| `BLNK_REDIS_POOL_SIZE`         | Maximum connections in the Redis pool.                                                              | `100`   |
-| `BLNK_REDIS_MIN_IDLE_CONNS`    | Idle connections kept ready in the pool.                                                            | `20`    |
-| `BLNK_REDIS_CONN_MAX_IDLE_TIME` | How long a pooled connection may sit idle before Blnk discards it. Env: Go duration (`2m`). JSON: nanoseconds. From 0.15.5. | `2m`    |
+<ParamField name="BLNK_REDIS_DNS" required>
+Redis address or connection URL used by Blnk.
+</ParamField>
+<ParamField name="BLNK_REDIS_SKIP_TLS_VERIFY" default="false">
+Disables TLS certificate verification for Redis connections.
+</ParamField>
+<ParamField name="BLNK_REDIS_POOL_SIZE" default="100">
+Maximum connections in the Redis pool.
+</ParamField>
+<ParamField name="BLNK_REDIS_MIN_IDLE_CONNS" default="20">
+Idle connections kept ready in the pool.
+</ParamField>
+<ParamField name="BLNK_REDIS_CONN_MAX_IDLE_TIME" default="2m">
+How long a pooled connection may sit idle before Blnk discards it. Env: Go duration (`2m`). JSON: nanoseconds. From 0.15.5.
+</ParamField>
 
 ### `BLNK_REDIS_DNS`
 
@@ -156,12 +174,18 @@ BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL=5s
 ```
 </CodeGroup>
 
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_TYPESENSE_DNS` | TypeSense server address. If unset, Blnk disables search and indexing features via Typesense. | Disabled when unset |
-| `BLNK_TYPESENSE_KEY` | API key used to connect to TypeSense. | `blnk-api-key` |
-| `BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL` | How long Blnk waits before retrying indexing or reindex work after Typesense reports a memory limit error. | `5s` |
-| `TYPESENSE_MEMORY_USED_MAX_PERCENTAGE` | Typesense container setting. Caps Typesense memory usage as a percentage of available memory before it rejects writes. | `85` |
+<ParamField name="BLNK_TYPESENSE_DNS">
+TypeSense server address. If unset, Blnk disables search and indexing features via Typesense.
+</ParamField>
+<ParamField name="BLNK_TYPESENSE_KEY" default="blnk-api-key">
+API key used to connect to TypeSense.
+</ParamField>
+<ParamField name="BLNK_TYPESENSE_BACKPRESSURE_RETRY_INTERVAL" default="5s">
+How long Blnk waits before retrying indexing or reindex work after Typesense reports a memory limit error.
+</ParamField>
+<ParamField name="TYPESENSE_MEMORY_USED_MAX_PERCENTAGE" default="85">
+Typesense container setting. Caps Typesense memory usage as a percentage of available memory before it rejects writes.
+</ParamField>
 
 Set Typesense memory limits on the Typesense service itself, not in Blnk:
 
@@ -183,7 +207,6 @@ Use Typesense when you need full-text search, faceted filtering, faster queries 
 
 <RelatedTopics
   items={[
-    { title: "Configuration overview", href: "/operating/configuration/overview" },
     { title: "Observability", href: "/operating/configuration/observability" },
   ]}
 />

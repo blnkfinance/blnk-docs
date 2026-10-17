@@ -1,0 +1,239 @@
+---
+title: "Metadata"
+icon: "tag"
+description: "Add custom fields to a ledger, balance, transaction, identity, or balance monitor, and update them later."
+seoTitle: "About Metadata • Blnk Developer Documentation"
+metaDescription: "Discover Blnk metadata features, how metadata is defined and used, and ways to attach custom attributes to financial objects"
+---
+
+`meta_data` is a key-value object on a ledger, balance, transaction, identity, or balance monitor. Add it when you create the record. Change it later on a ledger, balance, transaction, or identity with [Update metadata](/reference/update-metadata).
+
+Updating a parent also updates its children. An inflight transaction and its applied or void child share the same metadata.
+
+## Add metadata
+
+Include `meta_data` in the create body. The key is the field name, and the value is what you store.
+
+```json Transaction
+{
+  "precise_amount": 102912,
+  "precision": 100,
+  "currency": "USD",
+  "reference": "ref_00a8f264-6367-4617-abc8-e661431d3b7b",
+  "source": "@Deposit_USD",
+  "destination": "bln_d0cb79eb-cdc4-4a0d-af00-f5aaf15721ae",
+  "allow_overdraft": true,
+  "description": "Payment for services",
+  "meta_data": {
+    "invoice_id": "INV-12345",
+    "initiated_by": "Jason Burke",
+    "timestamp": "2023-10-01T12:00:00Z",
+    "sender_name": "Oakley Stationeries",
+    "sender_bank": "12345678901234",
+    "routing_number": "123456789",
+    "source_country": "United States"
+  }
+}
+```
+
+A later read of that record includes `meta_data` with the rest of the fields. Use the record's GET endpoint, or the [Filter API](/search/db/filtering).
+
+```json 200 OK
+{
+  "id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+  "source": "@FundingPool",
+  "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "reference": "ref_001adcfgf",
+  "amount": 750,
+  "precision": 100,
+  "precise_amount": 75000,
+  "currency": "USD",
+  "description": "Fund with starting balance amount",
+  "allow_overdraft": true,
+  "status": "QUEUED",
+  "created_at": "2024-12-21T01:36:46.997063436Z",
+  "meta_data": {
+    "sender_name": "John Doe",
+    "sender_account": "00000000000"
+  }
+}
+```
+
+## Update metadata
+
+<Version>Available in version 0.8.2 and later.</Version>
+
+Send `POST /{id}/metadata`. `{id}` is the ledger, balance, transaction, or identity you already created. A scoped key needs `metadata:write`. See [Scopes](/operating/api-keys/scopes).
+
+<Steps>
+<Step title="Add a field">
+
+Start from metadata that already has a first name:
+
+```json Example
+{
+  "meta_data": {
+    "first_name": "Jason"
+  }
+}
+```
+
+Send the new fields. Blnk keeps `first_name` and adds the keys in this request.
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/{id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "last_name": "Brooks",
+      "verification_status": "Pending"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Metadata.update(
+  '{id}',
+  {
+    meta_data: {
+      last_name: 'Brooks',
+      verification_status: 'Pending',
+    },
+  },
+);
+```
+
+```go Go wrap
+meta, resp, err := client.Metadata.UpdateMetadata(
+  "{id}",
+  blnkgo.UpdateMetaDataRequest{
+    MetaData: blnkgo.MetaData{
+      "last_name":            "Brooks",
+      "verification_status": "Pending",
+    },
+  },
+)
+```
+
+```python Python wrap
+response = blnk.metadata.update(
+  "{id}",
+  {
+    "meta_data": {
+      "last_name": "Brooks",
+      "verification_status": "Pending",
+    },
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.metadata().update(
+    "{id}",
+    UpdateMetadataData.create()
+        .metaData(Map.of(
+            "last_name", "Brooks",
+            "verification_status", "Pending"
+        )));
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "meta_data": {
+    "first_name": "Jason",
+    "last_name": "Brooks",
+    "verification_status": "Pending"
+  }
+}
+```
+
+</Step>
+<Step title="Change a field">
+
+Send only the key you want to change. The other keys stay as they are.
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://localhost:5001/{id}/metadata" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meta_data": {
+      "verification_status": "Approved"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Metadata.update(
+  '{id}',
+  {
+    meta_data: {
+      verification_status: 'Approved',
+    },
+  },
+);
+```
+
+```go Go wrap
+meta, resp, err := client.Metadata.UpdateMetadata(
+  "{id}",
+  blnkgo.UpdateMetaDataRequest{
+    MetaData: blnkgo.MetaData{
+      "verification_status": "Approved",
+    },
+  },
+)
+```
+
+```python Python wrap
+response = blnk.metadata.update(
+  "{id}",
+  {
+    "meta_data": {
+      "verification_status": "Approved",
+    },
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.metadata().update(
+    "{id}",
+    UpdateMetadataData.create()
+        .metaData(Map.of("verification_status", "Approved")));
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "meta_data": {
+    "first_name": "Jason",
+    "last_name": "Brooks",
+    "verification_status": "Approved"
+  }
+}
+```
+
+</Step>
+</Steps>
+
+<Version>From 0.14.0, the response key is `meta_data`. See the [0.14.0 migration guide](/changelog/v14-migration).</Version>
+
+<Version>From 0.15.5, a successful update also sends a `*.metadata.updated` webhook. See [Supported events](/webhooks/events#metadata).</Version>
+
+<RelatedTopics
+  items={[
+    { title: "Update metadata API", href: "/reference/update-metadata" },
+    { title: "Filter records", href: "/search/db/filtering" },
+    { title: "Supported events", href: "/webhooks/events#metadata" },
+    { title: "Scopes", href: "/operating/api-keys/scopes" },
+  ]}
+/>

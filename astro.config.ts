@@ -58,6 +58,11 @@ function face(weight: number, style: 'normal' | 'italic', file: string) {
 export default defineConfig({
 	site: 'https://docs.blnkfinance.com',
 	trailingSlash: 'never',
+	redirects: {
+		'/metadata/overview': '/metadata',
+		'/metadata/create-metadata': '/metadata',
+		'/metadata/update-metadata': '/metadata',
+	},
 	integrations: [mdx(), pagefind()],
 	markdown: {
 		processor: unified({

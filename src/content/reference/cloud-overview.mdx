@@ -1,0 +1,74 @@
+---
+title: "Cloud API reference"
+sidebarTitle: "Overview"
+description: "Call Blnk Cloud to manage instances, audit access, and reach Core through one API."
+seoTitle: "Cloud API Reference Overview | Blnk Cloud Guide"
+metaDescription: "Learn how to use the Blnk Cloud APIs for your integration."
+enterprise: true
+noindex: true
+---
+Cloud APIs talk to the Core instances connected to a Blnk Cloud workspace. They cover authentication, deployments, audit logs, the data lake, alerts, agents, and billing.
+
+Use them when you want one credential and one host for every instance, instead of storing each Core key yourself.
+
+- **Authentication.** One Cloud or Enterprise key reaches dev, staging, and production.
+- **Deployments.** Deploy a ledger as a managed Core instance and manage it from the workspace.
+- **Audit logging.** Each API call is logged for compliance and debugging.
+- **Data lake.** Run SQL against a ledger instance.
+- **Alerts.** Flag an entity and route the alert in the workspace.
+- **AI.** Connect an assistant with [MCP](/reference/mcp) or start an [agent job](/reference/create-agent).
+- **Billing.** Read plan status, invoices, and record usage, or turn on [usage-based billing](/reference/enable-usage-billing).
+
+## How Cloud APIs work
+
+A Cloud API sits between your application and your Core instances. It does not replace the Core API. It authenticates the caller, picks the instance, and records the call.
+
+An internal dashboard that manages staging and production can store each Core URL and secret and call Core directly. That still leaves you to build who-did-what for every action. Cloud APIs take instance routing and the audit log, so the dashboard sends one key and one `instance_id`.
+
+<Steps>
+<Step title="Connect your Core instances">
+Connect each Core instance to the workspace. Each connection gets an `instance_id`. Later Cloud calls use that id to choose the instance.
+</Step>
+<Step title="Create Cloud API keys">
+Create a Cloud API key for each user of the internal tool. The key authenticates that user on Cloud API calls.
+
+<Note>
+A Cloud API key is issued by the workspace. A Core API key is issued by the Core instance. Calling Core directly still uses the Core key.
+</Note>
+
+![How Cloud APIs work](img/cloud/cloud-api.png)
+</Step>
+<Step title="Call Core through the proxy">
+Send Core requests through the [Proxy API](/reference/proxy-api) with the user's Cloud API key. Cloud authenticates the user, writes the audit log, and forwards the request.
+
+<Tabs>
+<Tab title="With Cloud APIs">
+The request goes to the proxy. Cloud checks the key, logs the action, and routes it to the instance.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+Read that user's actions in the workspace audit log, or call [List audit logs](/reference/list-audit-logs).
+</Tab>
+<Tab title="Without Cloud APIs">
+The request goes straight to Core. You handle routing, authentication, and the audit log.
+
+```bash cURL
+curl -X POST "https://YOUR_CORE_INSTANCE_URL/refund-transaction/txn_f482a1b3-6c2d-4e89-a17b-3d5e8f2a1c94" \
+  -H "X-blnk-key: YOUR_SECRET_KEY"
+```
+</Tab>
+</Tabs>
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "API keys", href: "/reference/api-keys" },
+    { title: "OAuth", href: "/reference/oauth" },
+    { title: "Proxy API", href: "/reference/proxy-api" },
+    { title: "Create new query", href: "/reference/create-new-query" },
+  ]}
+/>

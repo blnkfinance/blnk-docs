@@ -19,7 +19,7 @@ The URL is the original path. `ledgers/introduction` is `/ledgers/introduction`.
 - **Core** stays at the top level: `home/`, `ledgers/`, `balances/`, `transactions/`, `reconciliations/`, `identities/`, `metadata/`, `search/`, `webhooks/`, `operating/`, `guides/`, `tutorials/`, `changelog/`, and `index`. API key guides live in `operating/api-keys/`.
 - **Cloud** stays in `cloud/`. That is the enterprise product. There is no `/enterprise` folder.
 - **Watch** stays in `watch/`. It is its own tab.
-- **API Reference** stays in `reference/`, `cloud/reference/`, and `watch/reference/`.
+- **API Reference** stays in `reference/` and `watch/reference/`. Cloud API pages are `reference/<slug>` with `enterprise: true`. There is no `reference/cloud/` or `cloud/reference/` folder.
 - **SDKs & CLI** stay in `cli/` and `sdks/{typescript,go,python,java}/`.
 
 No page is listed in more than one tab. Operating pages live in `operating/`. `changelog/` is shared by the product changelog pages and Migration guides. Do not move a file to give a group its own folder.
@@ -33,7 +33,7 @@ Landing pages, added only once that file exists:
 | Watch | `/watch/quick-start` | `watch/quick-start` |
 | API Reference | `/reference/overview` | `reference/overview` |
 | Core APIs | `/reference/overview` | `reference/overview` |
-| Cloud APIs | `/cloud/reference/overview` | `cloud/reference/overview` |
+| Cloud APIs | `/reference/cloud-overview` | `reference/cloud-overview` |
 | Watch APIs | `/watch/reference/overview` | `watch/reference/overview` |
 | Blnk CLI | `/cli/install` | `cli/install` |
 | Typescript SDK | `/sdks/typescript/start/quick-start` | `sdks/typescript/start/quick-start` |
@@ -78,7 +78,7 @@ Keep a minimal `index.mdx` so `/` builds, unless this chunk is Core · Start Her
 
 Rewrite `src/content/docs.json` navigation. Drop the Learn tab and the Open source / Enterprise labels. After the clear, only `/` exists, so the only tab is Core with path `/` and the groups this chunk adds. Add Cloud, Watch, API Reference, or SDKs & CLI when this chunk creates that landing page. Menu items use `label`, not Mintlify's `item`. A nested Mintlify `group` becomes a `dropdown`, except on the API tab, where those pages are listed. Do not add an API dropdown unless the user said to.
 
-`tabPath` in `src/ui/navigation.ts` must allow `/`. An empty root must not steal `/` from the Core tab. When several tabs match, the longest matching tab or menu prefix wins, so `/cloud/reference/...` stays on API Reference and `/cloud/ledgers/...` stays on Cloud.
+`tabPath` in `src/ui/navigation.ts` must allow `/`. An empty root must not steal `/` from the Core tab. When several tabs match, the longest matching tab or menu prefix wins, so `/reference/...` stays on API Reference and `/cloud/...` stays on Cloud.
 
 Add optional `icon` to the docs schema in `src/content.config.ts`. `src/ui/Pages.astro` shows that icon on a page that is a direct child of a group, and not on a page nested in a dropdown.
 

@@ -1,0 +1,185 @@
+---
+title: "Get job result"
+description: "Read the final output, subtasks, and errors for an agent job."
+seoTitle: "Get job result • Blnk API Reference"
+method: "GET"
+path: "/agents/jobs/{job_id}/result"
+enterprise: true
+noindex: true
+---
+<Warning>
+Agent Jobs API is currently in beta.
+</Warning>
+
+Use this endpoint after an agent job completes or fails. You can call it earlier, but `output`, `final_message`, `completed_at`, and `failed_at` are fully populated only in a terminal state.
+
+For in-progress polling, use [Get job status](/reference/get-agent-status). To receive this payload automatically, set `config.callbacks` when you [create the job](/reference/create-agent).
+
+<Note>
+Add `?view=debug` (or `view=verbose`, `verbose=1`) to include a `debug` object with the raw plan steps and reasoning trail.
+</Note>
+
+<Authorization />
+
+### Path
+
+<ParamField path="job_id" type="string" required>
+Job whose result you want (`job_...`). Use the `job_id` returned by [Create agent job](/reference/create-agent).
+</ParamField>
+
+<ParamField query="view" type="string">
+Set to `debug` or `verbose` to add a `debug` object with the raw plan steps and reasoning trail. Leave unset for the compact payload.
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+Optional Core instance (`instance_...`). When present, Cloud checks that the instance belongs to your organization. The job already stores its instance from create.
+</ParamField>
+
+### Response
+
+<ResponseField name="job_id" type="string">
+Job you requested (`job_...`). Same value you sent in the path.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+Where the job is right now. Read `output` and `final_message` when this is `completed`. Read `last_error` when this is `failed`. You can call this endpoint earlier, but those fields fill in only after the job finishes.
+</ResponseField>
+
+<ResponseField name="output" type="object">
+Structured result of the finished plan. The keys depend on the steps that ran. Often includes a `summary` string. Empty or partial until `status` is `completed`.
+</ResponseField>
+
+<ResponseField name="final_message" type="string">
+Plain-language summary of the result. Use this for UI copy. The same text is often also in `output.summary`.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+Why the job failed. Empty on success. Filled when `status` is `failed`.
+</ResponseField>
+
+<ResponseField name="plan_run_id" type="string">
+Plan that produced this result (`pr_...`). Empty if planning never finished.
+</ResponseField>
+
+<ResponseField name="progress" type="object">
+How many plan steps ended in each state: `total`, `completed`, `running`, `pending`, `failed`, `waiting_approval`. Same shape as [Get job status](/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="failed_step" type="object">
+First compact step with status `failed`. `null` when the job completed without a failed step. Same shape as one item in `sub_tasks` on [Get job status](/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="sub_tasks" type="array">
+Compact plan steps, oldest first. Same fields as `sub_tasks` on [Get job status](/reference/get-agent-status).
+</ResponseField>
+
+<ResponseField name="reasoning_trail" type="array">
+Compact planner and execution notes (`id`, `kind`, `title`, `status`, `summary`). Empty if the planner wrote none.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When Cloud accepted the job, in UTC ISO 8601.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the job last changed, in UTC ISO 8601.
+</ResponseField>
+
+<ResponseField name="completed_at" type="timestamp">
+When the job reached `completed`, in UTC ISO 8601. `null` until then.
+</ResponseField>
+
+<ResponseField name="failed_at" type="timestamp">
+When the job reached `failed`, in UTC ISO 8601. `null` unless `status` is `failed`.
+</ResponseField>
+
+<ResponseField name="links" type="object">
+Relative paths for `status`, `result`, and `control` on this job. Prefix them with `https://api.cloud.blnkfinance.com`.
+</ResponseField>
+
+<ResponseField name="debug" type="object">
+Raw `sub_tasks` and `reasoning_trail`. Present only when you send `view=debug` (or `verbose=1`). Omit it in production clients.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/agents/jobs/job_1779300000000000000/result' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "job_id": "job_1779300000000000000",
+  "status": "completed",
+  "output": {
+    "summary": "3 pending transactions above the threshold look suspicious and should be reviewed."
+  },
+  "final_message": "3 pending transactions above the threshold look suspicious and should be reviewed.",
+  "last_error": "",
+  "plan_run_id": "pr_1779300000000000000",
+  "progress": {
+    "total": 2,
+    "completed": 2,
+    "running": 0,
+    "pending": 0,
+    "failed": 0,
+    "waiting_approval": 0
+  },
+  "failed_step": null,
+  "sub_tasks": [
+    {
+      "step_id": "s1",
+      "title": "filter collection",
+      "task_type": "backoffice.filter_collection",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000100",
+      "summary": "Step completed.",
+      "input_summary": "transactions filtered by 1 condition",
+      "created_at": "2026-09-16T05:10:02Z",
+      "updated_at": "2026-09-16T05:10:04Z"
+    },
+    {
+      "step_id": "s2",
+      "title": "watch assess and summarize",
+      "task_type": "backoffice.watch_assess_and_summarize",
+      "status": "completed",
+      "task_id": "tsk_1779300000000000200",
+      "summary": "Step completed.",
+      "created_at": "2026-09-16T05:10:04Z",
+      "updated_at": "2026-09-16T05:10:20Z"
+    }
+  ],
+  "reasoning_trail": [],
+  "created_at": "2026-09-16T05:10:00Z",
+  "updated_at": "2026-09-16T05:10:20Z",
+  "completed_at": "2026-09-16T05:10:20Z",
+  "failed_at": null,
+  "links": {
+    "status": "/agents/jobs/job_1779300000000000000/status",
+    "result": "/agents/jobs/job_1779300000000000000/result",
+    "control": "/agents/jobs/job_1779300000000000000/control"
+  }
+}
+```
+
+```text 404 Not Found
+not found
+```
+
+```text 503 Service Unavailable
+jobs service unavailable
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Create agent job", href: "/reference/create-agent" },
+    { title: "Get job status", href: "/reference/get-agent-status" },
+    { title: "Control agent job", href: "/reference/control-agent" },
+    { title: "MCP server", href: "/reference/mcp" },
+  ]}
+/>

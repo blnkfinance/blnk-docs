@@ -8,9 +8,8 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — Core · Transactions
 - done — Core · Reconciliation
 - done — Core · Identities
-- pending — Core · Metadata
-- pending — Core · Search
-- pending — Core · Webhooks
+- done — Core · Search & metadata
+- done — Core · Webhooks
 - done — Core · API keys
 - pending — Core · Guides
 - done — Core · Configuration
@@ -38,19 +37,18 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — API Reference · Core APIs · Transactions
 - done — API Reference · Core APIs · Reconciliation
 - done — API Reference · Core APIs · Identities
-- pending — API Reference · Core APIs · Metadata
-- pending — API Reference · Core APIs · Search
-- pending — API Reference · Core APIs · Transaction hooks
+- done — API Reference · Core APIs · Search & metadata
+- done — API Reference · Core APIs · Transaction hooks
 - pending — API Reference · Core APIs · API keys
 - pending — API Reference · Core APIs · System
-- pending — API Reference · Cloud APIs · Start Here
-- pending — API Reference · Cloud APIs · Deployments
-- pending — API Reference · Cloud APIs · Proxy & data
-- pending — API Reference · Cloud APIs · Data lake
-- pending — API Reference · Cloud APIs · AI integrations
-- pending — API Reference · Cloud APIs · Audit
-- pending — API Reference · Cloud APIs · Alerts
-- pending — API Reference · Cloud APIs · Billing
+- done — API Reference · Cloud APIs · Start Here
+- done — API Reference · Cloud APIs · Deployments
+- done — API Reference · Cloud APIs · Proxy & data
+- done — API Reference · Cloud APIs · Data lake
+- done — API Reference · Cloud APIs · AI integrations
+- done — API Reference · Cloud APIs · Audit
+- done — API Reference · Cloud APIs · Alerts
+- done — API Reference · Cloud APIs · Billing
 - pending — API Reference · Watch APIs · Start Here
 - pending — API Reference · Watch APIs · Transactions
 - pending — API Reference · Watch APIs · Instructions

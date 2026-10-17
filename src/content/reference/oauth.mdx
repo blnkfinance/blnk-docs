@@ -1,0 +1,137 @@
+---
+title: "Using OAuth"
+sidebarTitle: "OAuth"
+description: "Create an OAuth client and exchange the authorization code for a Cloud API access token."
+seoTitle: "Using OAuth | Blnk Cloud Guide"
+metaDescription: "Create OAuth client credentials and get access tokens for Blnk Cloud APIs"
+enterprise: true
+noindex: true
+---
+OAuth clients authenticate MCP and third-party apps against a Cloud workspace. Manage them in [Settings > API Keys](https://cloud.blnkfinance.com/cloud/settings/api-keys).
+
+Each client has a name, a client id, a client secret shown once, scopes such as `mcp:read` or `*`, and an expiration. Expiration can be a date or **Never**.
+
+Create the client, exchange the authorization code for an access token, and send that token as `X-blnk-key`. Refresh the token when it expires, or sign in again after the refresh token ends.
+
+## Create an OAuth client
+
+<Steps>
+<Step title="Open API keys">
+Go to **Settings > API Keys**. Click **Create API key**.
+
+![API keys page with the Create API key button highlighted](img/cloud/api-keys-create-button.png)
+</Step>
+<Step title="Set the client">
+- **Name:** A name for the client, such as the MCP integration.
+- **Type:** **OAuth**.
+- **Scopes:** `*` for every permission, or a smaller set such as `mcp:read`, `proxy:write`, or `data:read`.
+- **Expires:** A date, or **Never**.
+</Step>
+<Step title="Copy the credentials">
+The client id and client secret are shown once. Copy both before you leave the screen.
+
+![OAuth credentials panel showing Client ID, Client Secret, and a warning to store them](img/cloud/new-oauth.png)
+
+<Warning>
+The client secret cannot be read again. If you lose it, revoke the client and create another.
+</Warning>
+</Step>
+</Steps>
+
+## Get an access token
+
+Third-party apps use the access token with the [Proxy API](/reference/proxy-api) and [Create new query](/reference/create-new-query).
+
+<Steps>
+<Step title="Send the user to authorize">
+Redirect the browser to the authorize URL so the user can sign in:
+
+```bash Authorization URL
+https://api.cloud.blnkfinance.com/oauth/authorize?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=https://your-app.com/oauth/callback
+```
+
+`YOUR_CLIENT_ID` is the OAuth client id. `redirect_uri` is your callback URL and must match the value you send when you exchange the code.
+
+![Blnk login page](img/cloud/oauth-login.png)
+
+After sign-in, Blnk redirects to your app with a code:
+
+```bash Redirect
+https://your-app.com/oauth/callback?code=THE_AUTH_CODE
+```
+</Step>
+<Step title="Exchange the code">
+The access token lasts 1 hour.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/oauth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET" \
+  -d "grant_type=authorization_code" \
+  -d "code=THE_CODE_FROM_REDIRECT" \
+  -d "redirect_uri=https://your-app.com/oauth/callback"
+```
+
+```json 200 OK
+{
+  "access_token": "blnk_at_...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "blnk_rt_...",
+  "scope": "data:read data:write proxy:write"
+}
+```
+</Step>
+<Step title="Refresh the token">
+The refresh token lasts 30 days. After that, the user signs in again.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/oauth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=blnk_rt_YOUR_REFRESH_TOKEN_HERE"
+```
+</Step>
+</Steps>
+
+## Use the access token
+
+Send the access token in `X-blnk-key` on Cloud API requests.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Integration Ledger"
+  }'
+```
+
+## Revoke an OAuth client
+
+Revoke a client to stop it immediately. A revoked client stays in the list and cannot authenticate.
+
+<Steps>
+<Step title="Open the client">
+Click the client name in the API Keys table.
+</Step>
+<Step title="Revoke it">
+In the details panel, click **Revoke key**.
+
+<Warning>
+Revoking a client disables it immediately. Apps using that client stop until you create a new one.
+</Warning>
+</Step>
+<Step title="Confirm">
+Confirm the revocation. The status in the table changes to **Revoked**.
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "API keys", href: "/reference/api-keys" },
+    { title: "Proxy API", href: "/reference/proxy-api" },
+    { title: "Create new query", href: "/reference/create-new-query" },
+  ]}
+/>

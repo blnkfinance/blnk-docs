@@ -1,0 +1,519 @@
+---
+title: "Examples"
+sidebarTitle: "Examples"
+description: "Filter transactions, balances, and ledgers with ready-made Filter API queries."
+seoTitle: "Examples • Blnk Developer Documentation"
+metaDescription: "Learn how to use Blnk's Filter API with practical examples for common filtering scenarios."
+---
+
+This page provides practical examples of using Blnk's Filter API. For information about filter syntax, operators, and available fields, see [Database Filtering](/search/db/filtering).
+
+## High-value applied transactions
+
+Retrieve all applied transactions above \$10,000, sorted by amount:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "status", "operator": "eq", "value": "APPLIED" },
+      { "field": "amount", "operator": "gte", "value": 10000 }
+    ],
+    "sort_by": "amount",
+    "sort_order": "desc",
+    "limit": 50
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'status',
+        operator: 'eq',
+        value: 'APPLIED',
+      },
+      {
+        field: 'amount',
+        operator: 'gte',
+        value: 10000,
+      },
+    ],
+    sort_by: 'amount',
+    sort_order: 'desc',
+    limit: 50,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {Field: "status", Operator: blnkgo.OpEqual, Value: "APPLIED"},
+        {Field: "amount", Operator: blnkgo.OpGTE, Value: 10000},
+    },
+    SortBy: "amount",
+    SortOrder: "desc",
+    Limit: 50,
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "status",
+        "operator": "eq",
+        "value": "APPLIED",
+      },
+      {
+        "field": "amount",
+        "operator": "gte",
+        "value": 10000,
+      },
+    ],
+    "sort_by": "amount",
+    "sort_order": "desc",
+    "limit": 50,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("status")
+            .operator("eq")
+            .value("APPLIED"),
+            FilterCondition.create()
+            .field("amount")
+            .operator("gte")
+            .value(10000)
+        ))
+        .sortBy("amount")
+        .sortOrder("desc")
+        .limit(50),
+    "transactions");
+```
+</CodeGroup>
+
+```json 200 OK wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_6164573b-6cc8-45a4-ad2e-7b4ba6a60f7d",
+      "amount": 15000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "source": "bln_28edb3e5-c168-4127-a1c4-16274e7a28d3",
+      "destination": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+## USD balances with positive balance
+
+Find all USD balances with a positive balance and include the total count:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/balances/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "currency", "operator": "eq", "value": "USD" },
+      { "field": "balance", "operator": "gt", "value": 0 }
+    ],
+    "include_count": true
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'currency',
+        operator: 'eq',
+        value: 'USD',
+      },
+      {
+        field: 'balance',
+        operator: 'gt',
+        value: 0,
+      },
+    ],
+    include_count: true,
+  },
+  'balances',
+);
+```
+
+```go Go wrap
+results, resp, err := client.LedgerBalance.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {Field: "currency", Operator: blnkgo.OpEqual, Value: "USD"},
+        {Field: "balance", Operator: blnkgo.OpGT, Value: 0},
+    },
+    IncludeCount: true,
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "currency",
+        "operator": "eq",
+        "value": "USD",
+      },
+      {
+        "field": "balance",
+        "operator": "gt",
+        "value": 0,
+      },
+    ],
+    "include_count": True,
+  },
+  "balances",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("currency")
+            .operator("eq")
+            .value("USD"),
+            FilterCondition.create()
+            .field("balance")
+            .operator("gt")
+            .value(0)
+        ))
+        .includeCount(true),
+    "balances");
+```
+</CodeGroup>
+
+```json 200 OK wrap
+{
+  "data": [
+    {
+      "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "currency": "USD",
+      "balance": 50000,
+      "credit_balance": 75000,
+      "debit_balance": 25000,
+      "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc"
+    }
+  ],
+  "total_count": 42
+}
+```
+
+## Transactions in date range
+
+Retrieve transactions from Q1 2024:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "created_at", "operator": "gte", "value": "2024-01-01" },
+      { "field": "created_at", "operator": "lt", "value": "2024-04-01" }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'created_at',
+        operator: 'gte',
+        value: '2024-01-01',
+      },
+      {
+        field: 'created_at',
+        operator: 'lt',
+        value: '2024-04-01',
+      },
+    ],
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {Field: "created_at", Operator: blnkgo.OpGTE, Value: "2024-01-01"},
+        {Field: "created_at", Operator: blnkgo.OpLT, Value: "2024-04-01"},
+    },
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "created_at",
+        "operator": "gte",
+        "value": "2024-01-01",
+      },
+      {
+        "field": "created_at",
+        "operator": "lt",
+        "value": "2024-04-01",
+      },
+    ],
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("created_at")
+            .operator("gte")
+            .value("2024-01-01"),
+            FilterCondition.create()
+            .field("created_at")
+            .operator("lt")
+            .value("2024-04-01")
+        )),
+    "transactions");
+```
+</CodeGroup>
+
+```json 200 OK wrap
+[
+  {
+    "transaction_id": "txn_q1_001",
+    "amount": 5000,
+    "currency": "USD",
+    "status": "APPLIED",
+    "created_at": "2024-02-14T09:00:00Z"
+  }
+]
+```
+
+## Multiple currencies with pattern search
+
+Find all ledgers with "savings" in the name, sorted alphabetically:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/ledgers/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "name", "operator": "ilike", "value": "%savings%" }
+    ],
+    "sort_by": "name",
+    "sort_order": "asc"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'name',
+        operator: 'ilike',
+        value: '%savings%',
+      },
+    ],
+    sort_by: 'name',
+    sort_order: 'asc',
+  },
+  'ledgers',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Ledger.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {Field: "name", Operator: blnkgo.OpILike, Value: "%savings%"},
+    },
+    SortBy: "name",
+    SortOrder: "asc",
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "name",
+        "operator": "ilike",
+        "value": "%savings%",
+      },
+    ],
+    "sort_by": "name",
+    "sort_order": "asc",
+  },
+  "ledgers",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("name")
+            .operator("ilike")
+            .value("%savings%")
+        ))
+        .sortBy("name")
+        .sortOrder("asc"),
+    "ledgers");
+```
+</CodeGroup>
+
+```json 200 OK wrap
+[
+  {
+    "ledger_id": "ldg_savings_001",
+    "name": "Customer Savings Accounts",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "ledger_id": "ldg_savings_002",
+    "name": "High-Yield Savings",
+    "created_at": "2024-03-15T00:00:00Z"
+  }
+]
+```
+
+## Transactions by balance
+
+Find all transactions for a specific balance with pagination:
+
+<CodeGroup>
+```bash cURL wrap
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "balance_id", "operator": "eq", "value": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f" }
+    ],
+    "include_count": true,
+    "limit": 100
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Search.filter(
+  {
+    filters: [
+      {
+        field: 'balance_id',
+        operator: 'eq',
+        value: 'bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f',
+      },
+    ],
+    include_count: true,
+    limit: 100,
+  },
+  'transactions',
+);
+```
+
+```go Go wrap
+results, resp, err := client.Transaction.Filter(blnkgo.FilterParams{
+    Filters: []blnkgo.Filter{
+        {
+            Field: "balance_id",
+            Operator: blnkgo.OpEqual,
+            Value: "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+        },
+    },
+    IncludeCount: true,
+    Limit: 100,
+})
+```
+
+```python Python wrap
+response = blnk.search.filter(
+  {
+    "filters": [
+      {
+        "field": "balance_id",
+        "operator": "eq",
+        "value": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      },
+    ],
+    "include_count": True,
+    "limit": 100,
+  },
+  "transactions",
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.search().filter(
+    FilterParams.create()
+        .filters(List.of(
+            FilterCondition.create()
+            .field("balance_id")
+            .operator("eq")
+            .value("bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f")
+        ))
+        .includeCount(true)
+        .limit(100),
+    "transactions");
+```
+</CodeGroup>
+
+```json 200 OK wrap
+{
+  "data": [
+    {
+      "transaction_id": "txn_c4e70eb8-e4d6-4e04-a2e2-92a43b969e0c",
+      "amount": 1000,
+      "currency": "USD",
+      "status": "APPLIED",
+      "balance_id": "bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_count": 250
+}
+```
+
+<RelatedTopics
+  items={[
+    { title: "DB filtering", href: "/search/db/filtering" },
+    { title: "DB performance", href: "/search/db/performance" },
+    { title: "Search via DB", href: "/reference/search-db" },
+  ]}
+/>

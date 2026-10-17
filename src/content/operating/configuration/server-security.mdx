@@ -32,12 +32,18 @@ BLNK_METRICS_BEARER_TOKEN=
 ```
 </CodeGroup>
 
-|  | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_SERVER_SECURE` | Enables additional secure-mode protections for the server. | `false` |
-| `BLNK_SERVER_SECRET_KEY` | Secret used for signing and other cryptographic operations. | None |
-| `BLNK_SERVER_PORT` | The port Blnk listens on for incoming HTTP or HTTPS requests. | `5001` |
-| `BLNK_METRICS_BEARER_TOKEN` | Bearer token required to access `/metrics` when set. See [Metrics endpoint](#metrics-endpoint). | None |
+<ParamField name="BLNK_SERVER_SECURE" default="false">
+Enables additional secure-mode protections for the server.
+</ParamField>
+<ParamField name="BLNK_SERVER_SECRET_KEY">
+Secret used for signing and other cryptographic operations.
+</ParamField>
+<ParamField name="BLNK_SERVER_PORT" default="5001">
+The port Blnk listens on for incoming HTTP or HTTPS requests.
+</ParamField>
+<ParamField name="BLNK_METRICS_BEARER_TOKEN">
+Bearer token required to access `/metrics` when set. See [Metrics endpoint](#metrics-endpoint).
+</ParamField>
 
 ### `BLNK_SERVER_SECURE`
 
@@ -48,20 +54,12 @@ When set to `true`, requests must authenticate via `X-Blnk-Key` header using one
 - the master key, `BLNK_SERVER_SECRET_KEY`
 - a stored API key
 
-    <Card title="API keys" icon="key-2" href="/operating/api-keys/overview">
-      Scoped keys for day-to-day API access.
-    </Card>
-
 ### `BLNK_SERVER_SECRET_KEY`
 
 This is required for any secure Blnk deployment. It is used in two places in Blnk:
 
 1. As the master API key for authenticated requests to the server
 2. As the HMAC signing secret for outgoing webhooks and hook callbacks.
-
-    <Card title="Webhook security" icon="shield" href="/webhooks/overview#webhook-security-signature-verification">
-      Signature verification for webhook consumers.
-    </Card>
 
 This means the same secret affects both request authentication and webhook signature validation on systems receiving Blnk webhooks.
 
@@ -117,12 +115,18 @@ BLNK_CERT_STORAGE_PATH=/var/lib/blnk/certs
 ```
 </CodeGroup>
 
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_SERVER_SSL` | When `true`, Blnk starts an HTTPS listener on `server.port` and obtains a certificate for `server.domain`. When `false`, Blnk serves plaintext HTTP. | `false` |
-| `BLNK_SERVER_SSL_DOMAIN` | Domain used to issue the certificate. Point this hostname at the server before you enable SSL. When empty, Blnk defaults to `localhost`. | `localhost` |
-| `BLNK_SERVER_SSL_EMAIL` | Email Let's Encrypt uses for certificate expiry notices. | None |
-| `BLNK_CERT_STORAGE_PATH` | Directory where issued certificates are stored. The process must be able to write here. | `/var/lib/blnk/certs` |
+<ParamField name="BLNK_SERVER_SSL" default="false">
+When `true`, Blnk starts an HTTPS listener on `server.port` and obtains a certificate for `server.domain`. When `false`, Blnk serves plaintext HTTP.
+</ParamField>
+<ParamField name="BLNK_SERVER_SSL_DOMAIN" default="localhost">
+Domain used to issue the certificate. Point this hostname at the server before you enable SSL. When empty, Blnk defaults to `localhost`.
+</ParamField>
+<ParamField name="BLNK_SERVER_SSL_EMAIL">
+Email Let's Encrypt uses for certificate expiry notices.
+</ParamField>
+<ParamField name="BLNK_CERT_STORAGE_PATH" default="/var/lib/blnk/certs">
+Directory where issued certificates are stored. The process must be able to write here.
+</ParamField>
 
 ### How `server.ssl` works
 
@@ -142,10 +146,6 @@ If a certificate cannot be issued, the server **fails to start**. It does not fa
 If you left `"ssl": true` in `blnk.json` (or `BLNK_SERVER_SSL=true`) while your clients still use `http://`, those clients will fail the TLS handshake after you upgrade to 0.15.4. Set `ssl` to `false` to keep HTTP, or finish the HTTPS setup before you deploy.
 </Warning>
 
-<Card title="Enable HTTPS" icon="lock" href="/operating/enable-https">
-  Domain, certificate, and verification steps.
-</Card>
-
 ## Tokenization settings
 
 Use tokenization settings to enable encryption and token generation when using the [PII Tokenization](/identities/pii-tokenization) feature.
@@ -162,9 +162,9 @@ BLNK_TOKENIZATION_SECRET="blnk-pii-secret"
 ```
 </CodeGroup>
 
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_TOKENIZATION_SECRET` | Enables tokenization for sensitive identity fields. Must be exactly 32 bytes long. Used as the cryptographic secret for tokenization operations. | Disabled when unset |
+<ParamField name="BLNK_TOKENIZATION_SECRET">
+Enables tokenization for sensitive identity fields. Must be exactly 32 bytes long. Used as the cryptographic secret for tokenization operations. Disabled when unset.
+</ParamField>
 
 ### Tokenization behaviour
 
@@ -197,10 +197,12 @@ BLNK_SERVER_MAX_UPLOAD_SIZE_MB=256
 
 </CodeGroup>
 
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB` | Max size in MB for JSON request bodies. | `5` |
-| `BLNK_SERVER_MAX_UPLOAD_SIZE_MB` | Max size in MB for multipart uploads. Applies to [reconciliation upload](/reference/upload-data). | `256` |
+<ParamField name="BLNK_SERVER_MAX_REQUEST_BODY_SIZE_MB" default="5">
+Max size in MB for JSON request bodies.
+</ParamField>
+<ParamField name="BLNK_SERVER_MAX_UPLOAD_SIZE_MB" default="256">
+Max size in MB for multipart uploads. Applies to [reconciliation upload](/reference/upload-data).
+</ParamField>
 
 ## How limits are applied
 
@@ -237,11 +239,15 @@ BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC=10800
 ```
 </CodeGroup>
 
-| | Description | Default |
-| :-- | :-- | :-- |
-| `BLNK_RATE_LIMIT_RPS` | Maximum requests allowed per second per client. | `5000000` |
-| `BLNK_RATE_LIMIT_BURST` | Maximum short burst allowed above the RPS limit. | `10000000` |
-| `BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC` | Cleanup interval for expired rate-limit data, in seconds. | `10800` |
+<ParamField name="BLNK_RATE_LIMIT_RPS" default="5000000">
+Maximum requests allowed per second per client.
+</ParamField>
+<ParamField name="BLNK_RATE_LIMIT_BURST" default="10000000">
+Maximum short burst allowed above the RPS limit.
+</ParamField>
+<ParamField name="BLNK_RATE_LIMIT_CLEANUP_INTERVAL_SEC" default="10800">
+Cleanup interval for expired rate-limit data, in seconds.
+</ParamField>
 
 ### Rate limiting behaviour
 
@@ -261,6 +267,7 @@ If you set only one of those two values, Blnk derives the other automatically:
     { title: "Enable HTTPS", href: "/operating/enable-https" },
     { title: "Secure Blnk", href: "/operating/secure-blnk" },
     { title: "API keys overview", href: "/operating/api-keys/overview" },
+    { title: "Webhook security", href: "/webhooks/overview#webhook-security-signature-verification" },
     { title: "0.15.4 migration", href: "/changelog/v15-4-migration" },
   ]}
 />

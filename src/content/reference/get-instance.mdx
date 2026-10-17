@@ -1,0 +1,129 @@
+---
+title: "Get instance details"
+description: "Retrieve full details for a Core instance in your Blnk Cloud workspace."
+seoTitle: "Get instance details • Blnk API Reference"
+method: "GET"
+path: "/instances/{instance_id}"
+enterprise: true
+noindex: true
+---
+An instance is any Core connected to your Cloud workspace, whether you host it on-prem or Blnk hosts it as a [managed deployment](/cloud/instances/deploy). Cloud uses `instance_id` (`instance_...`) to route API requests to the right Core.
+
+Use this endpoint only when you need to retrieve the Core secret for your managed deployment. Otherwise, use [Get deployment details](/reference/get-deployment) to get the deployment details.
+
+<Warning>
+The live payload can include secrets. Do not commit it or paste it into tickets.
+</Warning>
+
+<Tip>
+**To view all instances** (on-prem and managed) in your workspace, use `GET /instances` alone with no instance ID.
+</Tip>
+
+<Authorization />
+
+### Path
+
+<ParamField path="instance_id" type="string" required>
+Unique id of the instance (`instance_...`). Do not pass `deployment_id` here.
+</ParamField>
+
+### Response
+
+<ResponseField name="instance_id" type="string">
+Unique id for this connected Core (`instance_...`). Pass it on Proxy, Filters, Data Lake, and other Cloud APIs so Cloud routes the request to this Core.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Display name of the instance in your workspace.
+</ResponseField>
+
+<ResponseField name="sync_status" type="string">
+Whether Cloud can reach the instance. `connected` means the connection is healthy.
+</ResponseField>
+
+<ResponseField name="connection_type" type="string">
+How Cloud talks to Core. `agent` means Cloud uses the Query Agent. `direct` means Cloud connects to the database with stored credentials.
+</ResponseField>
+
+<ResponseField name="agent_api_key" type="string">
+Secret used to authenticate with this Core. What it is depends on how the instance is hosted. On a [managed deployment](/cloud/instances/deploy), this is the Core secret key for the deployed Core. Use it as `X-blnk-key` when you directly call the Core's APIs.
+
+On a [self-hosted instance](/cloud/instances/create), this is the Query Agent connection key. It matches the `CONNECTION_KEY` set when you connected the instance.
+</ResponseField>
+
+<ResponseField name="instance_url" type="string">
+Public HTTPS URL of this Core. Cloud uses it for actions that call the instance.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+Where the Core runs. `cloud` is a [managed deployment](/cloud/instances/deploy). `on-prem` is a Core you host.
+</ResponseField>
+
+<ResponseField name="deployment_id" type="string">
+Id of the matching managed deployment (`deploy_...`). Present only when Blnk hosts this instance. Use it with Deployments APIs, not as `instance_id`.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the instance was connected to the workspace.
+</ResponseField>
+
+<ResponseField name="monitoring_enabled" type="boolean">
+Whether Cloud Monitoring is on for this instance.
+</ResponseField>
+
+<ResponseField name="deployment" type="object">
+Nested summary of the managed deployment, when this instance is managed. Same shape as [Get deployment details](/reference/get-deployment). Do not use the nested `deployment_id` in place of `instance_id` when routing Cloud APIs.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/instances/instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "ledger_instance_id": "",
+  "name": "my-sandbox",
+  "sync_status": "connected",
+  "ledger_version": "",
+  "connection_type": "agent",
+  "agent_api_key": "sk_live_...",
+  "instance_url": "https://my-sandbox-sharespaces.deployment.blnkfinance.com",
+  "type": "cloud",
+  "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "created_at": "2026-09-14T11:32:14.112322Z",
+  "monitoring_enabled": true,
+  "deployment": {
+    "deployment_id": "deploy_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "name": "my-sandbox",
+    "ingress_mode": "shared",
+    "dedicated": false,
+    "tier": "B1.Micro",
+    "type": "sandbox",
+    "region": "nyc3",
+    "status": "ACTIVE",
+    "domain": "my-sandbox-sharespaces.deployment.blnkfinance.com",
+    "has_db_access": false,
+    "watch_enabled": false,
+    "current_step": "FINALIZED",
+    "operation_type": "deploy",
+    "created_at": "2026-09-14T11:32:11.971709Z",
+    "updated_at": "2026-09-14T11:33:44.636516Z"
+  }
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "List deployments", href: "/reference/list-deployments" },
+    { title: "Get deployment details", href: "/reference/get-deployment" },
+    { title: "Proxy API", href: "/reference/proxy-api" },
+  ]}
+/>
