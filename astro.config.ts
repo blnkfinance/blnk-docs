@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { defineConfig, fontProviders } from 'astro/config';
 import type { AstroIntegration } from 'astro';
+import node from '@astrojs/node';
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
 import { fenceMetaTransformer } from './src/lib/fence-meta';
@@ -58,6 +59,8 @@ function face(weight: number, style: 'normal' | 'italic', file: string) {
 export default defineConfig({
 	site: 'https://docs.blnkfinance.com',
 	trailingSlash: 'never',
+	server: { host: true },
+	adapter: node({ mode: 'standalone' }),
 	redirects: {
 		'/metadata/overview': '/metadata',
 		'/metadata/create-metadata': '/metadata',

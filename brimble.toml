@@ -1,0 +1,37 @@
+#:schema https://brimble.io/schema/brimble.json
+
+[services.docs]
+type = "web"
+region = "eu-central"
+
+[services.docs.build]
+install = "npm install"
+command = "npx astro build"
+output = "dist"
+cache = true
+health_check = true
+
+[services.docs.build.runtime]
+node = "22"
+
+[services.docs.deploy]
+start = "node ./dist/server/entry.mjs"
+health = "/"
+port = 8000
+
+[services.docs.resources]
+cpu = 0.5
+memory = "0.5gb"
+disk = "3gb"
+
+[services.docs.network]
+public = true
+
+[services.docs.scale]
+replicas = 1
+
+[services.docs.env]
+HOST = "0.0.0.0"
+
+[services.docs.secrets]
+required = ["DOCS_MCP_USAGE_SECRET"]
