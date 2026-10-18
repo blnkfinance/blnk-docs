@@ -10,5 +10,7 @@ The routes Astro builds.
 | `llms-full.txt.ts` | The full text of those pages |
 | `sitemap.xml.ts` | The sitemap |
 | `robots.txt.ts` | `robots.txt` |
+| `.well-known/skills/[...path].ts` | The skills index and skill files, for `npx skills add` |
+| `.well-known/mcp.json.ts` | The Docs MCP discovery document |
 
 A page with `noindex: true` stays on the site and is left out of the markdown copy, the sitemap, and the `llms` files.

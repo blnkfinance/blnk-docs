@@ -2,10 +2,6 @@
 
 Pages still to move from `blnkfinance/blnk-docs`. Everything else in [sections.md](sections.md) is already on the site.
 
-## LLMs
-
-- `home/llms` — Build with LLMs
-
 ## SDKs
 
 - `home/sdks` — Blnk SDKs

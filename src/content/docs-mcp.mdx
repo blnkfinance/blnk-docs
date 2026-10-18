@@ -1,0 +1,59 @@
+---
+title: "Docs MCP"
+icon: "mcp"
+description: "Connect a coding agent to the live Blnk docs."
+seoTitle: "Docs MCP • Blnk Developer Documentation"
+---
+
+The Docs MCP is the knowledge base your agent reads while it builds with Blnk. It searches these pages, then reads the one that matches the task.
+
+Add it once. After that, the agent checks the docs before it names an endpoint, a field, or a ledger.
+
+## Set it up
+
+Click **Copy agent prompt**, then paste it into your agent. It writes the Docs MCP into that agent's config.
+
+<Prompt>
+
+Add the Blnk Docs MCP to this agent.
+
+The server name is `blnk-docs`. The URL is `https://docs.blnkfinance.com/mcp`. The transport is HTTP, with no API key and no headers.
+
+Write it into the MCP config for the agent I am using, and keep every other server.
+
+Cursor uses `~/.cursor/mcp.json` under `mcpServers`. Claude Code uses `~/.claude.json`, or `.mcp.json` in this project, under `mcpServers`. Any other client uses the same URL as a remote HTTP MCP server.
+
+If the tools are not live in this chat, tell me to reload MCP or start a new chat.
+
+</Prompt>
+
+The server is `https://docs.blnkfinance.com/mcp`. It does not take an API key. If the tools are not in the chat yet, reload MCP or start a new chat.
+
+## How it works
+
+Your agent uses these tools to read the docs while it builds. It starts with `orient`, finds the page, then reads it. 
+
+| Tool | What it does |
+| --- | --- |
+| `orient` | Chooses how to read Blnk for this task: a lookup, a ledger design, or an implementation. |
+| `search` | Finds up to 10 pages for a question (paginated). Can scope the search inside one of the tabs: Core, API, SDKs, or CLI. |
+| `list_pages` | Lists the pages in one part of the docs, in sidebar order. |
+| `read_page` | Reads one page, or one section of it. |
+| `get_operation` | For a method and path, shows the API page first, then the matching SDK page. |
+
+## Skills
+
+Three skills install from this site. `blnk` looks up the docs and routes the task, `blnk-design` draws the money movement map, and `blnk-implement` writes the call.
+
+```bash
+npx skills add https://docs.blnkfinance.com
+```
+
+The CLI installs them into the agents it finds, such as Cursor and Claude Code.
+
+<RelatedTopics
+  items={[
+    { title: "Quick start", href: "/install" },
+    { title: "Deployment", href: "/deploy" },
+  ]}
+/>

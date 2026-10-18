@@ -2,7 +2,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { enterpriseNotice, isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavGroup, type NavItem } from '../ui/navigation';
 
 export const siteName = 'Blnk';
-export const siteTitle = 'Blnk Documentation';
+export const siteTitle = 'Blnk Docs';
 export const ogImagePath = '/og.png';
 export const ogImageAlt = 'Blnk documentation';
 export const ogImageWidth = 602;
@@ -29,8 +29,63 @@ function present(value: string | undefined): string | undefined {
 	return trimmed ? trimmed : undefined;
 }
 
-export function documentTitle(seoTitle: string | undefined, title: string): string {
-	return present(seoTitle) ?? `${title} | ${siteTitle}`;
+const properNouns: Record<string, string> = {
+	blnk: 'Blnk',
+	core: 'Core',
+	cloud: 'Cloud',
+	watch: 'Watch',
+	typesense: 'Typesense',
+	git: 'Git',
+	amazon: 'Amazon',
+	oauth: 'OAuth',
+	typescript: 'TypeScript',
+	python: 'Python',
+	java: 'Java',
+	go: 'Go',
+	joins: 'JOINs',
+	https: 'HTTPS',
+};
+
+/** Sentence case for the document title. Product names and acronyms stay capitalized. */
+export function sentenceCaseTitle(value: string): string {
+	const tokens = value.trim().split(/\s+/);
+	return tokens
+		.map((token, index) => {
+			const formatted = formatTitleToken(token, index);
+			const previous = tokens[index - 1]?.replace(/[^A-Za-z]/g, '');
+			if (index > 0 && /^data$/i.test(previous ?? '') && /^lake$/i.test(token.replace(/[^A-Za-z]/g, ''))) {
+				return formatted.replace(/lake/i, 'Lake');
+			}
+			return formatted;
+		})
+		.join(' ');
+}
+
+function formatTitleToken(token: string, index: number): string {
+	if (/^v?\d/i.test(token)) return token;
+	if (!token.includes('-')) return formatTitleWord(token, index);
+	return token
+		.split('-')
+		.map((part, partIndex) => formatTitleWord(part, index + partIndex))
+		.join('-');
+}
+
+function formatTitleWord(token: string, index: number): string {
+	const match = token.match(/^([^A-Za-z0-9]*)([A-Za-z0-9]*)([\s\S]*)$/);
+	if (!match || !match[2]) return token;
+	const [, prefix, core, rest] = match;
+	const lower = core.toLowerCase();
+	const proper = properNouns[lower];
+	if (proper) return `${prefix}${proper}${rest}`;
+	if (core.length >= 2 && core === core.toUpperCase() && /[A-Z]/.test(core)) return token;
+	const cased =
+		index === 0 && /^\p{L}/u.test(lower) ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+	return `${prefix}${cased}${rest}`;
+}
+
+/** Document title, og:title, and twitter:title. */
+export function documentTitle(title: string): string {
+	return `${sentenceCaseTitle(title)} – ${siteTitle}`;
 }
 
 /** First word capitalized, later words lowercase. All-caps tokens such as API stay as written. */

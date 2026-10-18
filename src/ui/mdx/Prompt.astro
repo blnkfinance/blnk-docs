@@ -1,0 +1,65 @@
+---
+import Icon from './Icon.astro';
+---
+
+<div data-prompt>
+	<button type="button" class="prompt" data-prompt-copy aria-label="Copy agent prompt">
+		<span class="prompt-state" data-prompt-idle>
+			<Icon icon="copy-2" size={16} />
+			Copy agent prompt
+		</span>
+		<span class="prompt-state" data-prompt-done hidden>
+			<Icon icon="check" size={16} />
+			Copied
+		</span>
+	</button>
+	<div class="prompt-source" hidden data-prompt-body>
+		<slot />
+	</div>
+</div>
+
+<script>
+	function promptText(source: HTMLElement) {
+		const blocks = [...source.children].filter((node) => node instanceof HTMLElement);
+		if (blocks.length === 0) return source.textContent?.trim() ?? '';
+		return blocks
+			.map((node) => node.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+			.filter(Boolean)
+			.join('\n\n');
+	}
+
+	function initPrompts() {
+		document.querySelectorAll('[data-prompt]').forEach((root) => {
+			if (!(root instanceof HTMLElement) || root.dataset.ready) return;
+			root.dataset.ready = 'true';
+			const source = root.querySelector('[data-prompt-body]');
+			const button = root.querySelector('[data-prompt-copy]');
+			const idle = root.querySelector('[data-prompt-idle]');
+			const done = root.querySelector('[data-prompt-done]');
+			if (!(source instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
+			if (!(idle instanceof HTMLElement) || !(done instanceof HTMLElement)) return;
+			let reset = 0;
+
+			button.addEventListener('click', async () => {
+				try {
+					await navigator.clipboard.writeText(promptText(source));
+				} catch {
+					button.setAttribute('aria-label', 'Could not copy');
+					return;
+				}
+				idle.hidden = true;
+				done.hidden = false;
+				button.setAttribute('aria-label', 'Copied');
+				window.clearTimeout(reset);
+				reset = window.setTimeout(() => {
+					idle.hidden = false;
+					done.hidden = true;
+					button.setAttribute('aria-label', 'Copy agent prompt');
+				}, 2000);
+			});
+		});
+	}
+
+	initPrompts();
+	document.addEventListener('astro:page-load', initPrompts);
+</script>

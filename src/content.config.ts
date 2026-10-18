@@ -14,7 +14,6 @@ const docs = defineCollection({
 			title: z.string(),
 			sidebarTitle: z.string().optional(),
 			description: z.string(),
-			seoTitle: z.string().optional(),
 			metaDescription: z.string().optional(),
 			noindex: z.boolean().optional().default(false),
 			enterprise: z.union([z.literal(false), z.literal('license')]).optional().default(false),

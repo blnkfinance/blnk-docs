@@ -24,6 +24,7 @@ A snippet is compiled on its own. It imports each component it uses.
 | `Step.astro` | `Step` | One step |
 | `CardGroup.astro` | `CardGroup` | Grid of cards |
 | `Card.astro` | `Card` | Link or static tile |
+| `Prompt.astro` | `Prompt` | Click to copy a prompt |
 | `Tabs.astro` | `Tabs` | Tab set. The bar is built in the browser |
 | `Tab.astro` | `Tab` | One panel |
 | `AccordionGroup.astro` | `AccordionGroup` | Border around a set of accordions |
@@ -131,6 +132,18 @@ A card with `href` renders as a link and shows an arrow. Omit `href` for a tile 
 | `Card` | `title` | `string` | Required |
 | `Card` | `icon` | `string` | Optional icon name. See [Icons](#icons) |
 | `Card` | `href` | `string` | Optional link |
+
+## Prompt
+
+A button. Clicking it copies the prompt. The prompt text is not shown on the page.
+
+```mdx
+<Prompt>
+Add the server, then tell me if I need to reload.
+</Prompt>
+```
+
+`Prompt` takes no props.
 
 ## Tabs
 

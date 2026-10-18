@@ -92,7 +92,7 @@ When a Core page explains an action you can also do in the dashboard, put the st
 
 When a request sample and its response are followed by a `Tabs` pair of field tables, keep the tabs. The request tab holds the code group, then its field table. The response tab holds the response sample, then its field table. Code groups stay code groups.
 
-Frontmatter `title` is the H1. `description` is the lede: one sentence about what the reader does on this page. If the source blockquote is a product slogan, rewrite it. Copy `sidebarTitle` when the source has one. The sidebar uses `sidebarTitle`, and uses `title` in sentence case when it is absent. Copy `og:title` to `seoTitle` and `og:description` to `metaDescription`. `seoTitle` is the full document title and `og:title`. It already includes the site name, and `documentTitle` does not append ` | Blnk Documentation` when it is set. `metaDescription` is the meta description and `og:description`. Drop the H1 and blockquote from the body. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
+Frontmatter `title` is the H1. `description` is the lede: one sentence about what the reader does on this page. If the source blockquote is a product slogan, rewrite it. Copy `sidebarTitle` when the source has one. The sidebar uses `sidebarTitle`, and uses `title` in sentence case when it is absent. Do not copy `og:title`. The document title, `og:title`, and `twitter:title` are `{title} – Blnk Docs` in sentence case. Leave `seoTitle` off. A title that does not say what the page is gets a clearer name, such as `Blnk Core changelog` or `Balances overview`. Copy `og:description` to `metaDescription`. `metaDescription` is the meta description and `og:description`. Drop the H1 and blockquote from the body. On an endpoint page, set `method` and `path` together, matching the source and the OpenAPI spec. On a top-level page, set `icon` to the Mingcute name from the accepted plan. Leave `icon` off nested pages.
 
 Delete pasted `export const` blocks, including `RelatedTopics` and `CtaCallout`. Drop `<NeedHelp />`. It is not used on docs or API reference pages. Do not import `<Card>` or `<CardGroup>` from the source. Drop them. A link to another page goes in RelatedTopics. Use the components in `src/ui/mdx/components.ts` and the snippets in `src/content/snippets`. The reference is [COMPONENTS.md](../../../COMPONENTS.md). Registered tags: Note, Info, Version, Tip, Warning, Check, Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, CodeGroup, ParamField, ResponseField, RequestExample, ResponseExample, Frame, Map, Video, Expandable, Update, Icon, Tooltip, RelatedTopics, SchemaChart, SectionLabel, DockerImage, Key, Authorization, ApiKey.
 
@@ -119,6 +119,8 @@ Do not undo these. A stated length in px stays that px. Do not divide it by the 
 ### Copy
 
 The lede is one sentence about what the reader does on this page. A product slogan stays in `metaDescription`. It is not the lede.
+
+The document title, `og:title`, and `twitter:title` are `{title} – Blnk Docs` in sentence case. The dash is an en dash. Product names and acronyms stay capitalized. A changelog is `Blnk Core changelog`. An overview names the subject, such as `Balances overview`. Do not set `seoTitle`.
 
 Do not number headings. `## 1: Installation Guide` becomes `## Install Blnk`.
 

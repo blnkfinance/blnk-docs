@@ -9,7 +9,7 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `install`
 - `index`
 - `home/deploy`
-- `home/llms`
+- `docs-mcp` — replaces `home/llms`
 - dropdown **Use cases** source icon `lightbulb`
   - `tutorials/quick-start/wallet-management`
   - `tutorials/quick-start/escrow-payments`

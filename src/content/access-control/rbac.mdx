@@ -1,0 +1,80 @@
+---
+title: "RBAC"
+sidebarTitle: "RBAC"
+description: "Choose Cloud scopes for teammates, API keys, and OAuth clients, and see what each role can do."
+metaDescription: "Cloud scopes and role permissions for teammates, API keys, and OAuth clients in Blnk Cloud."
+icon: "shield-shape"
+enterprise: license
+---
+
+RBAC decides what a teammate, an API key, or an OAuth client can do in the workspace. A role is the ceiling, and a scope selects actions inside that ceiling.
+
+Assign roles on [Team members](/access-control/team). 
+
+Assign scopes when you create an [API key](/reference/enterprise-api-key) or an [OAuth client](/reference/oauth) in [Settings > API Keys](https://cloud.blnkfinance.com/cloud/settings/api-keys). 
+
+A key keeps the role of the teammate who created it, including when the scope is `*`.
+
+## Scopes
+
+A scope uses `resource:action`. `read` allows data reads. `write` allows create, update, and delete.
+
+| Scope | What it allows |
+| :-- | :-- |
+| `data:read` | Read ledger data, reports, and the Data Lake, including a read through the proxy. |
+| `data:write` | Create and update Data Lake queries, and other writes under `/data`. Also covers a proxy write when the role allows that route. |
+| `proxy:read` | Read a connected Core instance through the proxy. |
+| `proxy:write` | Create, update, and delete on a connected Core instance through the proxy. |
+| `instances:read` | View connected instances. |
+| `instances:write` | Create, update, and delete instances. |
+| `deployments:read` | View deployments. |
+| `deployments:write` | Create, update, and delete deployments. |
+| `billing:read` | View billing. |
+| `billing:write` | Change the plan, payment method, and usage billing. |
+| `audit:read` | Read the [audit log](/access-control/audit-logs). |
+| `mcp:read` | Read the [MCP](/reference/mcp) endpoint for an instance. |
+| `mcp:write` | Call MCP tools on an instance. |
+| `alerts:read` | Read alerts. |
+| `alerts:write` | Create and update alerts. Admin can also delete them. |
+| `apps:read` | View apps in the workspace. |
+| `apps:write` | Register, update, install, and uninstall apps. |
+| `*` | Every route the role already allows, including team management, agents, and anomalies. |
+
+<Note>
+`POST /data/lake/query` accepts `data:read` as well as `data:write`. Saving or updating a query needs `data:write`.
+</Note>
+
+<Tip>For services that talk directly to your ledger, you can also use [Scoped keys](/operating/api-keys/scoped-keys) to manage their access and authentitcation instead of exposing your master secret.</Tip>
+
+## Roles
+
+Every role can use the read scopes, and every role can use `data:write` for the Data Lake. The table lists the write scopes that vary by role.
+
+| Scope | Admin | Operator | Investigator | Analyst |
+| :-- | :-- | :-- | :-- | :-- |
+| `instances:write` | Yes | — | — | — |
+| `deployments:write` | Yes | — | — | — |
+| `billing:write` | Yes | — | — | — |
+| `apps:write` | Yes | — | — | — |
+| `proxy:write` | Yes | Yes | — | — |
+| `mcp:write` | Yes | Yes | — | — |
+| `alerts:write` | Yes | — | Yes | — |
+
+Admin and Operator can write through the proxy, which is how a key records transactions on a connected instance. Investigator can create and update alerts, and deleting an alert stays with Admin.
+
+Inviting a teammate, changing a role, and removing a member stay with Admin. A key for team management, anomalies, or agents uses `*`, and the role still applies.
+
+## Apps
+
+An installed app can be granted `data:read`, `data:write`, `alerts:read`, and `alerts:write`. 
+
+The grant is the set chosen at install, and it stays on that install. See [How apps work](/apps/how-apps-work#application-permissions).
+
+<RelatedTopics
+  items={[
+    { title: "Team members", href: "/access-control/team" },
+    { title: "Enterprise API keys", href: "/reference/enterprise-api-key" },
+    { title: "Enterprise OAuth", href: "/reference/oauth" },
+    { title: "Audit logs", href: "/access-control/audit-logs" },
+  ]}
+/>
