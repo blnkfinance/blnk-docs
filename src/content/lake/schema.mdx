@@ -7,21 +7,41 @@ icon: "mind-map"
 enterprise: license
 ---
 
-The **Schema** tab lists the tables and columns in your instance [data lake](/lake/introduction). There are four tables: `transactions`, `balances`, `ledgers`, and `identity`.
+Call [Get lake schema](/reference/get-lake-schema) for the column names and types on an instance.
 
-They connect on shared IDs, so a transaction can be read with the balance it touched, the ledger that balance belongs to, and the identity that owns it. Confirm column names and types with [Get lake schema](/reference/get-lake-schema).
+In Insights, the **Schema** tab lists the same four tables: `transactions`, `balances`, `ledgers`, and `identity`.
+
+They connect on shared IDs. A transaction can be read with the balance it touched, then the ledger and the identity that own that balance.
 
 ## How they connect
 
-Balances sit in the middle. Each balance belongs to one ledger and can belong to one identity. Each transaction points at two balances: **source** is where money leaves, and **destination** is where money arrives.
+Balances sit in the middle. Each balance belongs to one ledger and can belong to one identity.
+
+Each transaction points at two balances. **source** is where money leaves, and **destination** is where money arrives.
 
 <SchemaChart />
 
-A transaction row stores balance IDs, not names. The identity name lives on `identity`, and the ledger name lives on `ledgers`. Follow `destination` or `source` to the balance, then to the identity or the ledger.
+<Tip>Follow `destination` or `source` to the balance, then to the identity or the ledger.</Tip>
 
-A balance, ledger, or identity keeps one ID for its lifetime. The lake can store more than one copy of that ID across days. See [Data Lake](/lake/introduction).
+## Read the schema
 
-A lake transaction row has one source and one destination. For transactions that split across many balances, see [Multiple sources](/transactions/multiple-sources) and [Multiple destinations](/transactions/multiple-destinations).
+<Tabs>
+  <Tab title="Using the API">
+    Pass `instance_id` for the instance whose lake you are reading.
+
+    ```bash cURL
+    curl -X GET 'https://api.cloud.blnkfinance.com/data/lake/schema?instance_id=YOUR_INSTANCE_ID' \
+      -H 'X-blnk-key: CLOUD_API_KEY'
+    ```
+
+    The response lists public columns only. See [Get lake schema](/reference/get-lake-schema).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    Open **Insights** and select the **Schema** tab. It lists the tables and columns for the active instance.
+
+    ![Insights Schema tab with tables, columns, and a preview of ledger rows](img/insights/schema-tab.jpg)
+  </Tab>
+</Tabs>
 
 ## Tables and columns
 
@@ -50,12 +70,6 @@ A lake transaction row has one source and one destination. For transactions that
     | `balance_id` | Primary key. Unique balance ID |
     | `ledger_id` | Ledger this balance belongs to |
     | `identity_id` | Identity this balance belongs to |
-    | `balance` | Amount in smallest units as copied that day. Not a live holding. See the [Ledger API](/reference/get-balance). |
-    | `credit_balance` | Credits in smallest units as copied that day |
-    | `debit_balance` | Debits in smallest units as copied that day |
-    | `inflight_balance` | Inflight amount in smallest units as copied that day |
-    | `inflight_credit_balance` | Inflight credits in smallest units as copied that day |
-    | `inflight_debit_balance` | Inflight debits in smallest units as copied that day |
     | `currency` | Balance currency |
     | `indicator` | Balance indicator or alias, when set |
     | `created_at` | When the balance was created |
@@ -87,7 +101,6 @@ A lake transaction row has one source and one destination. For transactions that
 
 <RelatedTopics
   items={[
-    { title: "Data Lake", href: "/lake/introduction" },
     { title: "Queries", href: "/lake/queries" },
     { title: "Templates", href: "/lake/templates" },
     { title: "Get lake schema", href: "/reference/get-lake-schema" },

@@ -1,27 +1,66 @@
 ---
 title: "Insights queries"
 sidebarTitle: "Queries"
-description: "Run, save, and schedule Insights queries."
+description: "Run, save, and schedule queries against your data lake."
 metaDescription: "Run, save, and schedule Insights queries. Insights uses DuckDB SQL syntax."
 icon: "list-search"
 enterprise: license
 ---
 
-Run SQL against your instance [data lake](/lake/introduction), then save and schedule the reports you want to keep. The **Queries** tab holds that work: **Saved**, **Scheduled**, and **History**.
+Run SQL with [Create new query](/reference/create-new-query), then save and schedule the reports you want to keep.
 
-Insights accepts one read-only DuckDB `SELECT` or `WITH`. Start from a [template](/lake/templates), or paste your own statement. That rule does not change.
+In Insights, the **Queries** tab holds that work: **Saved**, **Scheduled**, and **History**.
 
-## Start a query
+A query is one read-only DuckDB `SELECT` or `WITH`. Start from a [template](/lake/templates), or paste your own statement.
 
-Click **New query** to open a blank editor. Set the toolbar date range for the period you care about, then paste a `SELECT` or `WITH` and click **Run**.
+## What you can query
 
-![Insights workbench after New query, with Untitled lake query and the Queries tab open](img/insights/workbench-new-query.png)
+The lake has four tables: `transactions`, `balances`, `ledgers`, and `identity`. Open [Schema](/lake/schema) for the columns and how they join.
+
+A payment can be on the ledger before it shows up here. Keep that delay in mind for recent activity.
+
+| Question | Where to get it |
+| :-- | :-- |
+| Money that moved over a period | [Create new query](/reference/create-new-query) or Insights |
+| Wallets, ledgers, and identities in that history | [Create new query](/reference/create-new-query) or Insights |
+| Amount in a wallet right now | [Get balance](/reference/get-balance) |
+| Amount in a wallet at a past time | [Historical balances](/balances/historical-balances) |
+
+## Date range
+
+The date range is the period of history the query is for. Set it to the days the report needs, and the lake opens only those days.
+
+On `transactions`, that period is when money moved through a status. A September range is September's payments.
+
+On `balances`, `ledgers`, and `identity`, that period is when the record was created. A September range is wallets, ledgers, and identities created in September.
+
+<Tabs>
+  <Tab title="Using the API">
+    `start_date` and `end_date` are the first and last day of that period on [Create new query](/reference/create-new-query).
+
+    A saved query sets its date range with `range_mode`. There are two types:
+
+    | Type | What it stores |
+    | :-- | :-- |
+    | `fixed` | `start_date` and `end_date`. Every run opens those same days. |
+    | `rolling` | `rolling_days`. Each run opens that many days, ending when the query runs. |
+
+    See [Create saved query](/reference/create-saved-lake-query).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    Choose that period in the toolbar. The query is about those days, and no others.
+
+    ![Date range in the Insights toolbar, beside Run](img/insights/insights-sql-workbench.png)
+  </Tab>
+</Tabs>
 
 ## Accepted SQL queries
 
-Insights accepts **one read-only `SELECT` or `WITH` statement** against the data lake. The dialect is [DuckDB SQL](https://duckdb.org/docs/stable/sql/introduction.html).
+Insights accepts one read-only `SELECT` or `WITH` against the data lake. The dialect is [DuckDB SQL](https://duckdb.org/docs/stable/sql/introduction.html).
 
-DuckDB functions such as `TRY_CAST`, `DATE_TRUNC`, `ANY_VALUE`, and `BOOL_AND` are available. PostgreSQL-only or MySQL-only syntax is not guaranteed to run. Any other statement is rejected.
+DuckDB functions such as `TRY_CAST`, `DATE_TRUNC`, `ANY_VALUE`, and `BOOL_AND` are available.
+
+PostgreSQL-only or MySQL-only syntax is not guaranteed to run. Any other statement is rejected.
 
 | Allowed | Rejected |
 | :-- | :-- |
@@ -29,78 +68,179 @@ DuckDB functions such as `TRY_CAST`, `DATE_TRUNC`, `ANY_VALUE`, and `BOOL_AND` a
 | `transactions`, `balances`, `ledgers`, `identity` | Any other table |
 | Named columns | `SELECT *` |
 
-The toolbar date range chooses which days are scanned. A `WHERE` clause can drop rows inside those days. It cannot open days outside the range.
+Open [Schema](/lake/schema) for tables and how they connect.
 
-Open [Schema](/lake/schema) for tables and how they connect. Open [Data Lake](/lake/introduction) for how history is stored.
+## Start a query
+
+<Tabs>
+  <Tab title="Using the API">
+    Send `instance_id`, `start_date`, `end_date`, and one read-only `sql`.
+
+    ```bash cURL
+    curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/query' \
+      -H 'X-blnk-key: CLOUD_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "instance_id": "YOUR_INSTANCE_ID",
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-31",
+        "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
+      }'
+    ```
+
+    Field details are on [Create new query](/reference/create-new-query).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    Click **New query** to open a blank editor. Set the toolbar date range, paste a `SELECT` or `WITH`, and click **Run**.
+
+    ![Insights workbench after New query, with Untitled lake query and the Queries tab open](img/insights/workbench-new-query.png)
+  </Tab>
+</Tabs>
 
 ## Save a query
 
-After you run a query you want to keep, click **Save**. Until you save, the draft is named **Untitled lake query**.
+Saving stores the SQL. It does not run the query.
 
-Saved queries live on this instance. Open one from **Saved** to put that SQL back in the editor.
+<Tabs>
+  <Tab title="Using the API">
+    Send `instance_id`, `name`, `sql`, and a `range_mode` of `fixed` or `rolling`.
 
-![Set the date range, run a query, then save it from Actions](img/insights/run-and-save.gif)
+    ```bash cURL
+    curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/queries' \
+      -H 'X-blnk-key: CLOUD_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "instance_id": "YOUR_INSTANCE_ID",
+        "name": "Applied volume by currency",
+        "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000",
+        "range_mode": "fixed",
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-31"
+      }'
+    ```
+
+    Run it later with `saved_query_id` on [Create new query](/reference/create-new-query). See [Create saved query](/reference/create-saved-lake-query).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    Click **Save** after a run you want to keep. Until you save, the draft is named **Untitled lake query**.
+
+    Saved queries live on this instance. Open one from **Saved** to put that SQL back in the editor.
+
+    ![Set the date range, run a query, then save it from Actions](img/insights/run-and-save.gif)
+  </Tab>
+</Tabs>
 
 ## Schedule a query
 
-**Schedule query** appears in **Actions** once the query is saved with no unsaved edits.
+A schedule runs the last saved SQL and keeps a result preview. It does not send notifications.
 
-<Steps>
-  <Step title="Open the schedule">
-    Open **Actions**, then **Schedule query**.
-  </Step>
-  <Step title="Set the schedule">
-    - **Preset:** Hourly, Daily at 09:00, Weekly on Monday, or Monthly on the 1st. The **Cron expression** field fills from the preset. Leave it as is unless you need a custom schedule.
-    - **Timezone:** the timezone for the schedule
+- Editor changes do not run until you save again.
+- If a run returns empty, check the date range first.
 
-    Click **Save schedule**.
+<Tabs>
+  <Tab title="Using the API">
+    Send `cron_expression` and `timezone` for the saved query.
 
-    ![Open Actions, choose Schedule query, pick a preset and timezone, then save the schedule](img/insights/schedule-query.gif)
-  </Step>
-</Steps>
+    ```bash cURL
+    curl -X PUT 'https://api.cloud.blnkfinance.com/data/lake/queries/{query_id}/schedule' \
+      -H 'X-blnk-key: CLOUD_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "cron_expression": "0 9 * * *",
+        "timezone": "America/New_York",
+        "enabled": true
+      }'
+    ```
 
-Scheduled runs use the saved query and keep a result preview in run history. They do not send external notifications.
+    `0 9 * * *` is every day at 09:00 in that timezone. See [Schedule saved query](/reference/schedule-saved-lake-query).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    **Schedule query** appears in **Actions** once the query is saved with no unsaved edits.
 
-- Schedules always run the **last saved version**. Editor changes do not run until you save again.
-- A scheduled report is the same SQL you run by hand. If a run returns empty, check the date range first.
+    <Steps>
+      <Step title="Open the schedule">
+        Open **Actions**, then **Schedule query**.
+      </Step>
+      <Step title="Set the schedule">
+        - **Preset:** Hourly, Daily at 09:00, Weekly on Monday, or Monthly on the 1st.
+        - **Cron expression:** fills from the preset. Leave it unless you need a custom schedule.
+        - **Timezone:** the timezone for the schedule
+
+        Click **Save schedule**.
+
+        ![Open Actions, choose Schedule query, pick a preset and timezone, then save the schedule](img/insights/schedule-query.gif)
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
 ## Reopen a past run
 
-Use **History** when you want to reopen SQL you already ran on this instance, including queries you never saved. **Saved** is a different list: it stores the query you chose to keep, while History stores each execution.
+<Tabs>
+  <Tab title="Using the API">
+    [List query runs](/reference/list-lake-query-runs) returns recent runs for one instance.
 
-![Open History on the Queries tab to reopen a past run](img/insights/queries-history.gif)
+    [Get query run](/reference/get-lake-query-run) returns one run, including the SQL snapshot and a result preview.
+
+    ```bash cURL
+    curl -X GET 'https://api.cloud.blnkfinance.com/data/lake/query-runs?instance_id=YOUR_INSTANCE_ID&limit=20' \
+      -H 'X-blnk-key: CLOUD_API_KEY'
+    ```
+  </Tab>
+  <Tab title="Using the Dashboard">
+    Use **History** to reopen SQL you already ran, including queries you never saved.
+
+    **Saved** is the query you chose to keep. History stores each execution.
+
+    ![Open History on the Queries tab to reopen a past run](img/insights/queries-history.gif)
+  </Tab>
+</Tabs>
 
 ## Troubleshooting
 
 <AccordionGroup>
   <Accordion title="My totals do not match the dashboard">
-    Check whether the query sums `precise_amount` as-is, or divides by `precision` first. See [Precision](/transactions/precision). Also check whether it mixed currencies, or summed `balances.balance` across days. For live data, use the [Ledger API](/reference/get-balance).
+    Check whether the query sums `precise_amount` as-is, or divides by `precision` first. See [Precision](/transactions/precision).
+
+    Also check whether it mixed currencies. For a live balance, use the [Ledger API](/reference/get-balance).
   </Accordion>
   <Accordion title="Transaction counts look inflated after a join">
     Check whether `balances`, `ledgers`, or `identity` were collapsed to one row per ID before the join. See [How they connect](/lake/schema#how-they-connect).
   </Accordion>
   <Accordion title="Open inflight holds look wrong">
-    Check the toolbar date range covers both the hold and its commit or void days. You can also reference the [Open inflight holds](/lake/templates#catching-problems) template.
+    Check that `start_date` and `end_date`, or the toolbar, cover the hold and its commit or void.
+
+    You can also use the [Open inflight holds](/lake/templates#catching-problems) template.
   </Accordion>
   <Accordion title="Query returns no rows">
-    Check the toolbar date range. It has to include the days you expect to see.
+    Check `start_date` and `end_date`, or the toolbar. The range has to include the days you expect.
   </Accordion>
   <Accordion title="Query fails with a type error">
-    A column may be typed differently across days of history. Check whether dates and amounts are wrapped in `TRY_CAST`.
+    A column may be typed differently across days. Wrap dates and amounts in `TRY_CAST`.
   </Accordion>
   <Accordion title="Query rejected: statement not allowed">
     Check that the statement is one `SELECT` or `WITH`. See [Accepted SQL queries](#accepted-sql-queries).
   </Accordion>
   <Accordion title="Query is slow or times out">
-    Check the toolbar date range, how many currencies you are scanning, whether you selected `*`, and whether the query has a `LIMIT` (recommended to keep it under 5000).
+    Check the date range and how many currencies you are scanning.
+
+    Also check whether you selected `*` and whether the query has a `LIMIT`. Keep it under 5000.
   </Accordion>
 </AccordionGroup>
+
+## Best practices
+
+- Live data retrieval should use the [Ledger API](/reference/get-balance). The data lake is best for historical insights over a period.
+- Each status is its own row. Filter `status`, and use `parent_transaction` for a commit or void.
+- The date range follows `created_at`. See [Date range](#date-range).
+- Widen the range when a hold and its commit or void fall on different days.
+- Wrap dates and amounts in `TRY_CAST` so one mismatched row does not fail the query.
 
 <RelatedTopics
   items={[
     { title: "Insights overview", href: "/lake/overview" },
-    { title: "Data Lake", href: "/lake/introduction" },
     { title: "Schema", href: "/lake/schema" },
     { title: "Templates", href: "/lake/templates" },
+    { title: "Create new query", href: "/reference/create-new-query" },
   ]}
 />
