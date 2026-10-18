@@ -1,4 +1,4 @@
-export const AREAS = ['Core', 'API', 'SDKs & CLI', 'Watch'] as const;
+export const AREAS = ['Core', 'Learn', 'API', 'SDKs & CLI', 'Watch'] as const;
 export type Area = (typeof AREAS)[number];
 
 export const READ_LIMIT = 200;

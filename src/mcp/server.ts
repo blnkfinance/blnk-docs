@@ -84,7 +84,7 @@ export async function createMcpServer(): Promise<McpServer> {
 		'search',
 		{
 			title: 'Search the docs',
-			description: 'Search Blnk docs. Returns at most 10 pages, ranked by title and description. Optional area is Core, API, SDKs & CLI, or Watch.',
+			description: 'Search Blnk docs. Returns at most 10 pages, ranked by title and description. Optional area is Core, Learn, API, SDKs & CLI, or Watch.',
 			inputSchema: { query: z.string().min(1), area: z.enum(AREAS).optional() },
 			annotations: readOnly,
 		},
@@ -135,7 +135,7 @@ export async function createMcpServer(): Promise<McpServer> {
 		{
 			title: 'List pages',
 			description:
-				'List docs pages in nav order: title, path, and description. Filter with area (Core, API, SDKs & CLI, Watch) or group (a sidebar group name). Returns 40 pages. Pass the cursor to continue.',
+				'List docs pages in nav order: title, path, and description. Filter with area (Core, Learn, API, SDKs & CLI, Watch) or group (a sidebar group name). Returns 40 pages. Pass the cursor to continue.',
 			inputSchema: { area: z.enum(AREAS).optional(), group: z.string().optional(), cursor: z.string().optional() },
 			annotations: readOnly,
 		},
