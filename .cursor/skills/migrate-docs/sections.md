@@ -25,7 +25,9 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `home/cli`
 - `changelog/blnk-core`
 - dropdown **Migration**
-  - dropdown **Core migrations**
+  - `migrations/migrating-to-blnk`
+  - `migrations/migrate-to-cloud`
+  - dropdown **Version migrations**
     - `migrations/core/upgrade`
     - `migrations/core/v15-4-migration`
     - `migrations/core/v15-1-migration`
@@ -36,7 +38,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
     - `migrations/core/v12-migration`
     - `migrations/core/v11-migration`
     - `migrations/core/v10-5-migration`
-  - `migrations/migrate-to-cloud`
 
 ### Ledgers
 
@@ -92,11 +93,13 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 ### Search & metadata
 
-- `metadata`
-- dropdown **Direct DB search** source icon `database`
+- dropdown **Search** source icon `database`
+  - `search/overview`
   - `search/db/filtering`
   - `search/db/performance`
   - `search/db/examples`
+- `search/metadata`
+- `search/metadata-templates`
 - dropdown **Typesense search** source icon `search`
   - `search/typesense/introduction`
   - `search/typesense/querying`
@@ -114,7 +117,7 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `webhooks/transaction-hooks`
 - `webhooks/events`
 
-### Guides
+### Ledger guides
 
 - `guides/double-entry`
 - `guides/negative-balances`
@@ -123,7 +126,6 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 - `guides/insufficient-funds`
 - `guides/adjusting-balances`
 - `guides/closing-balances`
-- `guides/migration`
 
 ### Operating
 
@@ -161,6 +163,11 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
   - `operating/queue-recovery`
   - `operating/balance-reconstruction`
 - `operating/error-codes`
+- dropdown **Dashboard**
+  - `account/profile`
+  - `account/security`
+  - `organization/workspace`
+  - `organization/billing`
 
 ## Cloud source icon `cloud`
 
@@ -231,6 +238,11 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 - `cloud/monitoring/overview`
 
+### Access control
+
+- `access-control/team`
+- `access-control/audit-logs`
+
 ### Insights
 
 - `cloud/insights/overview`
@@ -257,11 +269,7 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 - `cloud/account/profile`
 - `cloud/account/security`
-- `cloud/account/notifications`
 - `cloud/organization/workspace`
-- `cloud/organization/metadata-templates`
-- `cloud/organization/team`
-- `cloud/organization/audit-logs`
 - `cloud/organization/billing`
 
 ## Watch source icon `eye`
@@ -387,7 +395,7 @@ Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group
 
 ### Cloud APIs source icon `cloud`
 
-Pages live in `reference/`, with `enterprise: true`. There is no `reference/cloud/` folder.
+Pages live in `reference/`, with `enterprise: license`. There is no `reference/cloud/` folder.
 
 #### Start here
 

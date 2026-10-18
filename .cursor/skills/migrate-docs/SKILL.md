@@ -19,7 +19,7 @@ The URL is the original path. `ledgers/introduction` is `/ledgers/introduction`.
 - **Core** stays at the top level: `home/`, `ledgers/`, `balances/`, `transactions/`, `reconciliations/`, `identities/`, `metadata/`, `search/`, `webhooks/`, `operating/`, `guides/`, `tutorials/`, `changelog/`, `migrations/`, and `index`. API key guides live in `operating/api-keys/`.
 - **Cloud** stays in `cloud/`. That is the enterprise product. There is no `/enterprise` folder.
 - **Watch** stays in `watch/`. It is its own tab.
-- **API Reference** stays in `reference/` and `watch/reference/`. Cloud API pages are `reference/<slug>` with `enterprise: true`. There is no `reference/cloud/` or `cloud/reference/` folder.
+- **API Reference** stays in `reference/` and `watch/reference/`. Cloud API pages are `reference/<slug>` with `enterprise: license`. There is no `reference/cloud/` or `cloud/reference/` folder.
 - **SDKs & CLI** stay in `cli/` and `sdks/{typescript,go,python,java}/`.
 
 No page is listed in more than one tab. Operating pages live in `operating/`. `changelog/` holds the product changelog pages. Core version migrations live in `migrations/core/`. Migrate to Blnk Cloud lives at `migrations/migrate-to-cloud`. Do not write those pages back under `changelog/` or `cloud/instances/`. Do not move a file to give a group its own folder.

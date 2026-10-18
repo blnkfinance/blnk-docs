@@ -1,0 +1,344 @@
+---
+title: "Understanding the Double-Entry Principle"
+sidebarTitle: "Double-entry principle"
+description: "Record every movement as a debit on one balance and an equal credit on another."
+icon: "transfer"
+seoTitle: "Double-Entry Principle in the Blnk Ledger • Blnk Developer Documentation"
+metaDescription: "Learn the basics, explore scenarios, and simplify record-keeping in your Blnk Ledger."
+---
+
+If you've read any part of the Blnk documentation, you must have heard about the Double Entry Accounting principle.
+
+It is a big deal in the business world of accounting today. Every business, small, medium, or large, relies on this simple principle to do accurate bookkeeping and reconciliation of their books.
+
+For financial applications, it means keeping the books of an organization across multiple nodes in your system. As a software engineer or technical founder, this can be very new territory for you, and it is even more daunting when you have to build a financial application. Don't worry! Thousands of others like you across the world also face this problem.
+
+In this guide, we're going to learn all about the basics of bookkeeping and the Double Entry principle with Blnk. To get started, please [install Blnk on your local machine](/install).
+
+## The Double Entry Accounting principle
+
+The Double Entry Accounting principle states that for every entry into an account, there needs to be a corresponding and opposite entry into a different account.
+
+Only two types of entries can happen in an account: a credit and a debit. When an account is credited, money is added to the account, and when it is debited, money is removed from the account. So the principle states that if there's a credit entry in one account, there must be an equal debit entry in another account.
+
+> Another way to visualize the Double Entry principle is that for every transaction, there must be a source and a destination.
+
+## The basics
+
+There are two rules to the double-entry principle:
+
+1. Every financial category in your organization is represented by an account.
+2. Every financial transaction can be modeled as a "transfer" between accounts.
+
+For example, let's say User A has \$5,000 in their account and they pay the company \$3,000. If we tracked only the company's accounts, we see only a \$3,000 credit with no information on where it came from, and that's not true. It moved from User A to the company's account.
+
+So the records look like:
+
+| | User A | Company |
+| --- | :---: | :---: |
+| Starting balance | \$5,000 | \$0 |
+| Invoice paid | –\$3,000 | |
+| | | +\$3,000 |
+| Ending balance | **\$2,000** | **\$3,000** |
+
+The payment is entered twice (hence, "double" entry); it is removed from User A and added to the company account. The amount inputted on both accounts must always be equal, so that no value is lost. It's just been moved around.
+
+<Info>
+**Why is it important for the value to be equal?**
+
+Because the double entry aims to be the source of truth for your financial records. When you say you received \$3,000, the assumption is that someone else paid \$3,000 to you. If you received \$3,000 despite being paid \$4,000, it becomes a case of fraud and dishonesty which is terrible for any business.
+</Info>
+
+### Let's build it with Blnk
+
+Let's model this on our Blnk server.
+
+<Steps>
+<Step title="Create a ledger">
+First, we create a new ledger to group our balances in, and we'll name it "User Balances".
+
+To do this call the endpoint URL, `/ledgers`, and pass the following in its request body:
+
+<Tabs>
+<Tab title="Create ledger">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/ledgers" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "User balances",
+    "meta_data": {
+      "project_owner": "Blnk Finance"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: 'User balances',
+  meta_data: { project_owner: 'Blnk Finance' },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+  Name: "User balances",
+  MetaData: blnkgo.MetaData{
+    "project_owner": "Blnk Finance",
+  },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "User balances",
+  "meta_data": { "project_owner": "Blnk Finance" },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("User balances")
+        .metaData(Map.of("project_owner", "Blnk Finance")));
+```
+
+</CodeGroup>
+</Tab>
+<Tab title="Response">
+
+```json 201 Created wrap
+{
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "name": "User balances",
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+</Tab>
+</Tabs>
+
+Copy the `ledger_id` from the response. You'll need it for the next step.
+</Step>
+<Step title="Create a balance for User A">
+Next, create a balance for the user.
+
+To do this, call the endpoint URL, `/balances`, and pass the following in its request body:
+
+<Tabs>
+<Tab title="Create balance">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/balances" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "currency": "USD"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: 'ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc',
+  currency: 'USD',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+  LedgerID: "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  Currency: "USD",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "currency": "USD",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc")
+        .currency("USD"));
+```
+
+</CodeGroup>
+</Tab>
+<Tab title="Response">
+
+```json 201 Created wrap
+{
+  "balance_id": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+  "currency": "USD",
+  "balance": 0,
+  "created_at": "2024-12-21T01:36:46.997063436Z"
+}
+```
+
+</Tab>
+</Tabs>
+
+Copy the `balance_id` from the response. You'll need it for the next step.
+</Step>
+<Step title="Record the transaction">
+To do this, call the endpoint URL, `/transactions`, and pass the following in its request body:
+
+<Tabs>
+<Tab title="Record transaction">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "http://YOUR_BLNK_INSTANCE_URL/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference": "ref_8728781718",
+    "precise_amount": 300000,
+    "currency": "USD",
+    "precision": 100,
+    "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    "destination": "@CompanyRevenue",
+    "description": "Invoice payment",
+    "meta_data": {
+      "user_id": "user_a"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.create({
+  reference: 'ref_8728781718',
+  precise_amount: 300000,
+  currency: 'USD',
+  precision: 100,
+  source: 'bln_ebcd230f-6265-4d4a-a4ca-45974c47f746',
+  destination: '@CompanyRevenue',
+  description: 'Invoice payment',
+  meta_data: { user_id: 'user_a' },
+});
+```
+
+```go Go wrap
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+  ParentTransaction: blnkgo.ParentTransaction{
+    PreciseAmount: big.NewInt(300000),
+    Reference:   "ref_8728781718",
+    Currency:    "USD",
+    Precision:   100,
+    Source:      "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+    Destination: "@CompanyRevenue",
+    Description: "Invoice payment",
+  },
+})
+```
+
+```python Python wrap
+response = blnk.transactions.create({
+  "reference": "ref_8728781718",
+  "precise_amount": 300000,
+  "currency": "USD",
+  "precision": 100,
+  "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "destination": "@CompanyRevenue",
+  "description": "Invoice payment",
+  "meta_data": { "user_id": "user_a" },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .reference("ref_8728781718")
+        .preciseAmount(300000)
+        .currency("USD")
+        .precision(100)
+        .source("bln_ebcd230f-6265-4d4a-a4ca-45974c47f746")
+        .destination("@CompanyRevenue")
+        .description("Invoice payment")
+        .metaData(Map.of("user_id", "user_a")));
+```
+
+</CodeGroup>
+</Tab>
+<Tab title="Response">
+
+```json 201 Created wrap
+{
+  "transaction_id": "txn_171821872187",
+  "reference": "ref_8728781718",
+  "amount": 3000,
+  "precise_amount": 300000,
+  "currency": "USD",
+  "source": "bln_ebcd230f-6265-4d4a-a4ca-45974c47f746",
+  "destination": "@CompanyRevenue",
+  "status": "QUEUED",
+  "created_at": "2024-04-23T12:32:00Z"
+}
+```
+
+</Tab>
+</Tabs>
+
+This moves 3000 from User A's balance to your revenue account (represented by an [internal balance](/balances/internal-balances) in your ledger).
+</Step>
+<Step title="Review the transaction record">
+You can see at first glance that this transaction has a source (where it was debited from) and a destination (where it was credited to).
+
+| id | reference | amount | currency | source | destination | description | created_at |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| txn_171821872187 | ref_8728781718 | 300000 | USD | bln_ebcd230f-6265-4d4a-a4ca-45974c47f746 | @CompanyRevenue | Invoice payment | 2024-04-23 12:32 UTC |
+
+<Note>
+The amount was converted to its lowest unit (cents, in this case) to ensure correctness when computing the balances. To learn more, read: [Understanding precision](/transactions/precision).
+</Note>
+</Step>
+</Steps>
+
+## Dealing with the real world
+
+Dealing with double entry when you manage both accounts is easy. But what happens when you deal with the world? What happens if User A sends the same \$3,000 to an external bank account outside of our system? How do we represent it with the double entry principle?
+
+To do this with Blnk, we recommend that you create an internal balance to represent all transactions with the outside world. We call it `"@World"`. This way you can track all money in and out of your system from one balance.
+
+To apply it, use `@World` in the source or destination field depending on what kind of transaction it is, and you now have a corresponding, traceable entry equal to your user balance's entry. For example, User A sent money out, your transaction records would look like this:
+
+| id | reference | amount | currency | source | destination | description | created_at |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| txn_171821872187 | ref_8728781718 | 300000 | USD | bln_ebcd230f-6265-4d4a-a4ca-45974c47f746 | @World | Invoice payment | 2024-04-23 12:32 UTC |
+
+## Applying this to your financial application
+
+When building your financial application, it is important to apply the double entry principle to ensure that you can guard against fraud and dishonesty. Blnk allows you to be able to see both entries in one record, instead of recording the CR and DR entries in separate records in your database.
+
+Good financial recording also saves you a lot of time and effort in performing settlements and reconciliation, a necessary operation for any financial application in today's world.
+
+With Blnk, you don't have to worry about building the structures for Double Entry recording. You have instant access to all the tools you need to correctly record and track all transactions in your application.
+
+## References
+
+A big part of this guide was referenced from this amazing article by Meredydd: [An Engineer's Guide to Double-Entry Bookkeeping](https://anvil.works/blog/double-entry-accounting-for-engineers).
+
+Check it out to learn more about bookkeeping. Other references include:
+
+1. [How To Do A Bank Reconciliation (EASY WAY)](https://www.youtube.com/watch?v=zhmO3DM3YiY) by Accounting Stuff
+2. [Ledger: Stripe’s system for tracking and validating money movement](https://stripe.com/blog/ledger-stripe-system-for-tracking-and-validating-money-movement) by Ilya Ganelin
+3. [Double Entry: What It Means in Accounting and How It's Used](https://www.investopedia.com/terms/d/double-entry.asp) by Adam Hayes
+
+<RelatedTopics
+  items={[
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Ledgers overview", href: "/ledgers/introduction" },
+    { title: "Balances overview", href: "/balances/introduction" },
+  ]}
+/>

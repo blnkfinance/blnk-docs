@@ -49,7 +49,7 @@ function operationText(pages: DocPage[]): string {
 		if (group.length === 0) return;
 		lines.push(heading);
 		for (const page of group) {
-			const flag = page.enterprise && page.enterprise !== true ? ` (${page.enterprise})` : page.enterprise ? ' (enterprise)' : '';
+			const flag = page.enterprise ? ` (${page.enterprise})` : '';
 			lines.push(`- ${page.title}${flag}: ${page.href}`);
 		}
 	}

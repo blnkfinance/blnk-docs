@@ -9,6 +9,7 @@ import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
 import { fenceMetaTransformer } from './src/lib/fence-meta';
 import { remarkContentImages } from './src/lib/remark-content-images';
+import docs from './src/content/docs.json' with { type: 'json' };
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -61,24 +62,7 @@ export default defineConfig({
 	trailingSlash: 'never',
 	server: { host: true },
 	adapter: node({ mode: 'standalone' }),
-	redirects: {
-		'/metadata/overview': '/metadata',
-		'/metadata/create-metadata': '/metadata',
-		'/metadata/update-metadata': '/metadata',
-		'/reference/proxy-api': '/reference/enterprise#proxy',
-		'/reference/api-keys': '/reference/enterprise-api-key',
-		'/changelog/upgrade': '/migrations/core/upgrade',
-		'/changelog/v15-4-migration': '/migrations/core/v15-4-migration',
-		'/changelog/v15-1-migration': '/migrations/core/v15-1-migration',
-		'/changelog/v15-migration': '/migrations/core/v15-migration',
-		'/changelog/v14-3-migration': '/migrations/core/v14-3-migration',
-		'/changelog/v14-migration': '/migrations/core/v14-migration',
-		'/changelog/v13-2-migration': '/migrations/core/v13-2-migration',
-		'/changelog/v12-migration': '/migrations/core/v12-migration',
-		'/changelog/v11-migration': '/migrations/core/v11-migration',
-		'/changelog/v10-5-migration': '/migrations/core/v10-5-migration',
-		'/cloud/instances/migration': '/migrations/migrate-to-cloud',
-	},
+	redirects: docs.redirects,
 	integrations: [mdx(), pagefind()],
 	markdown: {
 		processor: unified({

@@ -21,6 +21,8 @@ export type NavDropdown = {
 	/** Content path when the label is also a page. */
 	page?: string;
 	icon?: string;
+	/** Omit this dropdown from the sidebar. The pages stay. */
+	hidden?: boolean;
 	pages: NavItem[];
 };
 
@@ -87,6 +89,7 @@ export const navDropdown: z.ZodType<NavDropdown> = z.lazy(() =>
 		dropdown: z.string().min(1),
 		page: pagePath.optional(),
 		icon: iconName.optional(),
+		hidden: z.boolean().optional(),
 		pages: z.array(z.union([pagePath, navPage, navDropdown])),
 	}),
 );
@@ -150,17 +153,26 @@ const palette = z.strictObject({
 	surfaceFill: oklch,
 });
 
+const redirectSource = z
+	.string()
+	.regex(/^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/);
+
+const redirectDestination = z
+	.string()
+	.regex(
+		/^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*(?:#[a-z0-9]+(?:-[a-z0-9]+)*)?$/,
+	);
+
 const docsSchema = z.strictObject({
 	labels: z.strictObject({
-		enterprise: z.string().min(1),
 		license: z.string().min(1),
-		cloud: z.string().min(1),
 	}),
 	colors: z.strictObject({
 		light: palette,
 		dark: palette,
 	}),
 	navigation: navigationObject,
+	redirects: z.record(redirectSource, redirectDestination),
 });
 
 export type DocsColors = z.infer<typeof docsSchema>['colors'];
@@ -377,16 +389,32 @@ export function assertPagesExist(navigation: Navigation, ids: ReadonlySet<string
 	}
 }
 
+/** A redirect source must not be a page, and its destination must be one. Chains are already flattened. */
+export function assertRedirects(redirects: Record<string, string>, ids: ReadonlySet<string>): void {
+	const sources = new Set(Object.keys(redirects));
+	const problems: string[] = [];
+	for (const [source, destination] of Object.entries(redirects)) {
+		const sourceId = source.slice(1);
+		const destinationPath = destination.split('#')[0];
+		const destinationId = destinationPath.slice(1);
+		if (ids.has(sourceId)) problems.push(`source is a page: ${source}`);
+		if (!ids.has(destinationId)) problems.push(`missing page: ${source} -> ${destination}`);
+		if (sources.has(destinationPath)) problems.push(`destination is another redirect: ${source} -> ${destination}`);
+	}
+	if (problems.length > 0) {
+		throw new Error(`docs.json redirects: ${problems.join('; ')}`);
+	}
+}
+
 const parsed = docsSchema.parse(docs);
 
 export const labels: DocsLabels = parsed.labels;
 
-/** `true` is Enterprise or Cloud. `license` is Enterprise only. `cloud` is Blnk Cloud only. */
-export function enterpriseNotice(value: boolean | 'license' | 'cloud' | undefined): string | undefined {
+/** `license` is Enterprise only. */
+export function enterpriseNotice(value: false | 'license' | undefined): string | undefined {
 	if (value === 'license') return labels.license;
-	if (value === 'cloud') return labels.cloud;
-	if (value === true) return labels.enterprise;
 	return undefined;
 }
 export const colors: DocsColors = parsed.colors;
 export const navigation: Navigation = { navigation: parsed.navigation };
+export const redirects: Record<string, string> = parsed.redirects;

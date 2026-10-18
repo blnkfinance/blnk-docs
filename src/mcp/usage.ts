@@ -1,6 +1,10 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { RAW_LINE_DAYS, lagosDate, lagosYesterday, olderThanDays } from './dates';
+import { Pool } from 'pg';
+import { RAW_LINE_DAYS, lagosYesterday } from './dates';
+import { assembleReport, type DailyReport, type ReportRow } from './report';
+import { sessionLogStatements } from './schema';
+
+export type { DailyReport } from './report';
+export { assembleReport } from './report';
 
 export type UsageEvent = {
 	time: string;
@@ -15,119 +19,93 @@ export type UsageEvent = {
 	filter?: string;
 };
 
-type StoredDay = {
-	sessionClients: Record<string, string>;
-	tools: Record<string, number>;
-	pages: Record<string, { title: string; count: number }>;
-	operations: Record<string, number>;
-};
+const DAY_REPORT = `
+WITH day AS (
+	SELECT *
+	FROM mcp_session_log
+	WHERE at >= ($1::date::timestamp AT TIME ZONE 'Africa/Lagos')
+		AND at < ((($1::date + 1)::timestamp) AT TIME ZONE 'Africa/Lagos')
+)
+SELECT
+	(SELECT COUNT(DISTINCT session)::int FROM day) AS sessions,
+	(SELECT COALESCE(jsonb_object_agg(client, sessions), '{}'::jsonb) FROM (
+		SELECT client, COUNT(DISTINCT session)::int AS sessions FROM day GROUP BY client
+	) clients) AS clients,
+	(SELECT COALESCE(jsonb_object_agg(tool, calls), '{}'::jsonb) FROM (
+		SELECT tool, COUNT(*)::int AS calls FROM day GROUP BY tool
+	) tools) AS tools,
+	(SELECT COALESCE(jsonb_agg(jsonb_build_object('path', page_path, 'title', title, 'count', calls)), '[]'::jsonb) FROM (
+		SELECT page_path, (array_agg(page_title ORDER BY at DESC))[1] AS title, COUNT(*)::int AS calls
+		FROM day
+		WHERE page_path IS NOT NULL AND page_title IS NOT NULL
+		GROUP BY page_path
+	) pages) AS pages,
+	(SELECT COALESCE(jsonb_agg(jsonb_build_object('name', operation, 'count', calls)), '[]'::jsonb) FROM (
+		SELECT operation, COUNT(*)::int AS calls
+		FROM day
+		WHERE operation IS NOT NULL
+		GROUP BY operation
+	) operations) AS operations
+`;
 
-export type DailyReport = {
-	date: string;
-	sessions: number;
-	clients: Record<string, number>;
-	tools: Record<string, number>;
-	pages: { path: string; title: string; count: number }[];
-	operations: { name: string; count: number }[];
-};
+let pool: Pool | undefined;
+let ready: Promise<void> | undefined;
 
-const usageDir = () => process.env.MCP_USAGE_DIR ?? join(process.cwd(), 'data');
-const linesPath = () => join(usageDir(), 'mcp-usage.jsonl');
-const dailyPath = () => join(usageDir(), 'mcp-usage-daily.json');
-
-let queue: Promise<void> = Promise.resolve();
-
-function enqueue(work: () => Promise<void>): Promise<void> {
-	const run = queue.then(work, work);
-	queue = run.then(
-		() => undefined,
-		() => undefined,
-	);
-	return run;
+function database(): Pool {
+	const connectionString = process.env.DATABASE_URL;
+	if (!connectionString) throw new Error('DATABASE_URL is not set');
+	pool ??= new Pool({ connectionString, max: 1, idleTimeoutMillis: 0 });
+	return pool;
 }
 
-async function readLines(): Promise<UsageEvent[]> {
-	try {
-		const raw = await readFile(linesPath(), 'utf8');
-		return raw
-			.split('\n')
-			.filter(Boolean)
-			.flatMap((line) => {
-				try {
-					return [JSON.parse(line) as UsageEvent];
-				} catch {
-					return [];
-				}
-			});
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+async function readyPool(): Promise<Pool> {
+	const current = database();
+	ready ??= (async () => {
+		for (const statement of sessionLogStatements) await current.query(statement);
+	})().catch((error: unknown) => {
+		ready = undefined;
 		throw error;
-	}
-}
-
-async function readDays(): Promise<Record<string, StoredDay>> {
-	try {
-		return JSON.parse(await readFile(dailyPath(), 'utf8')) as Record<string, StoredDay>;
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
-		throw error;
-	}
-}
-
-function emptyDay(): StoredDay {
-	return { sessionClients: {}, tools: {}, pages: {}, operations: {} };
-}
-
-function bump(map: Record<string, number>, key: string) {
-	map[key] = (map[key] ?? 0) + 1;
-}
-
-export function toReport(date: string, day: StoredDay | undefined): DailyReport {
-	const stored = day ?? emptyDay();
-	const clients: Record<string, number> = {};
-	for (const client of Object.values(stored.sessionClients)) bump(clients, client);
-	const pages = Object.entries(stored.pages)
-		.map(([path, page]) => ({ path, title: page.title, count: page.count }))
-		.sort((a, b) => b.count - a.count || a.path.localeCompare(b.path));
-	const operations = Object.entries(stored.operations)
-		.map(([name, count]) => ({ name, count }))
-		.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-	return {
-		date,
-		sessions: Object.keys(stored.sessionClients).length,
-		clients,
-		tools: stored.tools,
-		pages,
-		operations,
-	};
+	});
+	await ready;
+	return current;
 }
 
 export async function recordUsage(event: UsageEvent): Promise<void> {
-	await enqueue(async () => {
-		await mkdir(usageDir(), { recursive: true });
-		const kept = (await readLines()).filter((line) => !olderThanDays(line.time, RAW_LINE_DAYS));
-		kept.push(event);
-		await writeFile(linesPath(), `${kept.map((line) => JSON.stringify(line)).join('\n')}\n`);
-
-		const days = await readDays();
-		const date = lagosDate(new Date(event.time));
-		const day = days[date] ?? emptyDay();
-		day.sessionClients[event.session] = event.client;
-		bump(day.tools, event.tool);
-		if (event.pagePath && event.pageTitle) {
-			const page = day.pages[event.pagePath] ?? { title: event.pageTitle, count: 0 };
-			page.count += 1;
-			page.title = event.pageTitle;
-			day.pages[event.pagePath] = page;
-		}
-		if (event.operation) bump(day.operations, event.operation);
-		days[date] = day;
-		await writeFile(dailyPath(), `${JSON.stringify(days)}\n`);
-	});
+	const current = await readyPool();
+	const client = await current.connect();
+	try {
+		await client.query('BEGIN');
+		await client.query(
+			`INSERT INTO mcp_session_log (at, tool, session, client, page_path, page_title, operation, query, task, filter)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			[
+				event.time,
+				event.tool,
+				event.session,
+				event.client,
+				event.pagePath ?? null,
+				event.pageTitle ?? null,
+				event.operation ?? null,
+				event.query ?? null,
+				event.task ?? null,
+				event.filter ?? null,
+			],
+		);
+		await client.query('DELETE FROM mcp_session_log WHERE at < now() - make_interval(days => $1)', [RAW_LINE_DAYS]);
+		await client.query('COMMIT');
+	} catch (error) {
+		await client.query('ROLLBACK');
+		throw error;
+	} finally {
+		client.release();
+	}
 }
 
 export async function yesterdayReport(now = new Date()): Promise<DailyReport> {
 	const date = lagosYesterday(now);
-	const days = await readDays();
-	return toReport(date, days[date]);
+	const current = await readyPool();
+	const result = await current.query<ReportRow>(DAY_REPORT, [date]);
+	const row = result.rows[0];
+	if (!row) return assembleReport(date, { sessions: 0, clients: null, tools: null, pages: null, operations: null });
+	return assembleReport(date, row);
 }

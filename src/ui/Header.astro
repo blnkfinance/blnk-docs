@@ -162,7 +162,6 @@ function tabCurrent(tab: NavTab): boolean {
 	let pagefindFailed = false;
 	let request = 0;
 	let active = -1;
-	const recentKey = 'docs-search-recent';
 	const maxResults = 12;
 
 	function escapeHtml(value) {
@@ -186,33 +185,16 @@ function tabCurrent(tab: NavTab): boolean {
 
 	function resultHref(url) {
 		if (!url) return '/';
-		if (/^https?:/i.test(url)) return url;
-		const hashAt = url.indexOf('#');
-		const path = hashAt === -1 ? url : url.slice(0, hashAt);
-		const hash = hashAt === -1 ? '' : url.slice(hashAt);
-		const normalized = path.startsWith('/') ? path : `/${path}`;
-		return `${normalized}${hash}`;
+		// Pagefind keeps the directory slash from index.html. trailingSlash is never, so that 404s.
+		const parsed = new URL(url, 'http://docs.local');
+		let path = parsed.pathname;
+		if (path.length > 1) path = path.replace(/\/+$/, '');
+		const suffix = `${path}${parsed.search}${parsed.hash}`;
+		return parsed.origin === 'http://docs.local' ? suffix : `${parsed.origin}${suffix}`;
 	}
 
 	function sameText(left, right) {
 		return left.trim().toLowerCase() === right.trim().toLowerCase();
-	}
-
-	function readRecent() {
-		try {
-			const parsed = JSON.parse(localStorage.getItem(recentKey) || '[]');
-			if (!Array.isArray(parsed)) return [];
-			return parsed
-				.filter((item) => item && typeof item.url === 'string' && typeof item.title === 'string')
-				.slice(0, 5);
-		} catch {
-			return [];
-		}
-	}
-
-	function remember(item) {
-		const next = [item, ...readRecent().filter((saved) => saved.url !== item.url)].slice(0, 5);
-		localStorage.setItem(recentKey, JSON.stringify(next));
 	}
 
 	async function loadPagefind() {
@@ -241,7 +223,7 @@ function tabCurrent(tab: NavTab): boolean {
 			? `<span class="search-hit-section">${escapeHtml(item.kicker)}</span>`
 			: '';
 		const text = excerptHtml({ ...item, terms });
-		return `<a class="search-hit" role="option" href="${escapeHtml(href)}" data-search-hit data-title="${escapeHtml(item.title)}" data-page-title="${escapeHtml(item.pageTitle)}" data-category="${escapeHtml(item.category || '')}">
+		return `<a class="search-hit" role="option" href="${escapeHtml(href)}" data-search-hit>
 			${label}
 			<span class="search-hit-title">${highlight(item.title, terms)}</span>
 			${text ? `<p>${text}</p>` : ''}
@@ -331,35 +313,13 @@ function tabCurrent(tab: NavTab): boolean {
 		});
 	}
 
-	function showRecent() {
-		if (!results || !list || !meta || !empty) return;
-		const recent = readRecent();
-		if (!recent.length) {
-			results.hidden = true;
-			empty.hidden = true;
-			list.replaceChildren();
-			active = -1;
-			return;
-		}
+	function clearResults() {
+		if (!results || !list || !empty) return;
+		results.hidden = true;
 		empty.hidden = true;
-		results.hidden = false;
-		meta.textContent = 'Recent';
-		renderHits(
-			recent.map((item) => ({
-				pageTitle: item.pageTitle || item.title,
-				category: item.category || '',
-				items: [
-					{
-						title: item.title,
-						url: item.url,
-						pageTitle: item.pageTitle || item.title,
-						category: item.category || '',
-						kicker: item.title === item.pageTitle ? item.category || '' : item.pageTitle || item.category || '',
-					},
-				],
-			})),
-			[],
-		);
+		list.replaceChildren();
+		active = -1;
+		if (input instanceof HTMLInputElement) input.removeAttribute('aria-activedescendant');
 	}
 
 	async function renderResults(immediate = false) {
@@ -368,7 +328,7 @@ function tabCurrent(tab: NavTab): boolean {
 		const terms = query.split(/\s+/).filter(Boolean);
 		if (!terms.length) {
 			request += 1;
-			showRecent();
+			clearResults();
 			return;
 		}
 		const id = ++request;
@@ -415,7 +375,7 @@ function tabCurrent(tab: NavTab): boolean {
 		input.focus();
 		loadPagefind();
 		if (input.value.trim()) renderResults(true);
-		else showRecent();
+		else clearResults();
 	}
 
 	function typingTarget(target) {
@@ -432,17 +392,6 @@ function tabCurrent(tab: NavTab): boolean {
 
 	input?.addEventListener('input', () => {
 		renderResults(false);
-	});
-
-	list?.addEventListener('click', (event) => {
-		const hit = event.target instanceof Element ? event.target.closest('[data-search-hit]') : null;
-		if (!(hit instanceof HTMLAnchorElement)) return;
-		remember({
-			title: hit.dataset.title || hit.textContent || '',
-			url: hit.getAttribute('href') || '/',
-			pageTitle: hit.dataset.pageTitle || hit.dataset.title || '',
-			category: hit.dataset.category || '',
-		});
 	});
 
 	list?.addEventListener('mouseover', (event) => {
@@ -996,8 +945,16 @@ function tabCurrent(tab: NavTab): boolean {
 	}
 
 	:global(.search-hit p) {
+		display: -webkit-box;
+		min-height: 0;
 		margin: 0.15rem 0 0;
+		overflow: hidden;
 		color: var(--muted);
+		line-height: 1.45;
+		max-height: calc(1.45em * 2);
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
 	}
 
 	:global(.search-hit mark) {

@@ -2,7 +2,7 @@ import { getCollection } from 'astro:content';
 import { enterpriseNotice, isDropdown, itemPath, navigation, pageHref, pagePaths, tabGroups, type NavItem } from '../ui/navigation';
 import { metaDescription, pageMarkdown } from '../lib/seo';
 
-export type EnterpriseFlag = boolean | 'license' | 'cloud';
+export type EnterpriseFlag = 'license';
 
 export type DocPage = {
 	id: string;

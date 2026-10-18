@@ -1,0 +1,140 @@
+---
+title: "Managing Insufficient Funds"
+sidebarTitle: "Managing insufficient funds"
+description: "Handle an insufficient-funds rejection on Blnk Core 0.10.8 and older."
+icon: "alert"
+seoTitle: "Managing Insufficient Funds • Blnk Developer Documentation"
+metaDescription: "Learn how to handle insufficient funds scenarios in Blnk versions 0.10.8 and older."
+---
+
+<Version>This guide is for Blnk Core 0.10.8 and older. For version 0.11.0 and later, see [Managing insufficient funds](/transactions/introduction#managing-insufficient-funds).</Version>
+
+You can manage insufficient funds scenarios in two ways: through automatic rejection handling when transactions are attempted with insufficient balance, and through proactive balance checking before initiating transactions.
+
+## Automatic rejection
+
+When a transaction is posted where the `source` balance has insufficient funds, Blnk automatically handles this scenario to maintain ledger integrity. Blnk checks only the balance amount to determine if it is sufficient for the transaction amount being processed.
+
+If funds are insufficient, Blnk:
+
+1. Rejects the transaction.
+2. Records this rejection in your ledger using the same state tracking mechanism (i.e. `QUEUED` → `REJECTED`). Learn more about [transaction lifecycle](/transactions/transaction-lifecycle).
+3. Sends a webhook notification to inform your system of the state change and new ledger record.
+
+<Tip>You can also preemptively track the transaction status (via `reference` or `parent_transaction`) to know if the transaction was successful or rejected.</Tip>
+
+## Proactive balance verification
+
+Instead of waiting for a `transaction.rejected` webhook, you can implement a preemptive available balance check in your workflow. Here's how:
+
+First, query the balance of the sender using:
+
+<Tabs>
+<Tab title="View balance">
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X GET 'http://YOUR_BLNK_INSTANCE_URL/balances/{balance_id}?with_queued=true' \
+  -H 'X-blnk-key: <api-key>'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.get(
+  'bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a',
+  {
+    with_queued: true,
+  },
+);
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Get(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    &blnkgo.GetBalanceRequest{WithQueued: true},
+)
+```
+
+```python Python wrap
+response = blnk.ledger_balances.get(
+  "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+  {"with_queued": True},
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().get(
+    "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    GetBalanceRequest.create().withQueued(true));
+```
+
+</CodeGroup>
+</Tab>
+<Tab title="Response">
+
+```json 200 OK {2,8,10} wrap
+{
+    "balance": 50000,
+    "version": 0,
+    "inflight_balance": 0,
+    "credit_balance": 50000,
+    "inflight_credit_balance": 0,
+    "debit_balance": 0,
+    "inflight_debit_balance": 0,
+    "queued_credit_balance": 0,
+    "queued_debit_balance": 15000,
+    "precision": 100,
+    "ledger_id": "ldg_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "identity_id": "idt_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "balance_id": "bln_e39a239a-a6ca-4509-b0d9-29dcc5630f8a",
+    "indicator": "",
+    "currency": "USD",
+    "created_at": "2024-07-05T08:13:18.882616461Z",
+    "meta_data": null
+}
+```
+
+</Tab>
+</Tabs>
+
+Next, calculate your available balance:
+
+```text Available balance
+available_balance = balance - inflight_debit_balance - queued_debit_balance
+```
+
+- If the available balance is sufficient, proceed with posting your transaction.
+- If the available balance is insufficient, you can gracefully handle this scenario in your application by notifying the customer immediately, avoiding the need for webhook handling.
+
+## Insufficient funds for inflight transactions
+
+<Version>Starting from version 0.11.0, Blnk includes inflight balances in the insufficient funds check. The manual checks described below are only necessary for versions 0.10.8 and older.</Version>
+
+When working with inflight transactions, your system must always consider both the actual balance and any pending inflight amounts.
+
+To do this, compute an `available_balance` for your customers indicating the amount available for them to spend on new transactions:
+
+```text Available balance
+available_balance = balance - inflight_debit_balance - queued_debit_balance
+```
+
+To check for insufficient funds before initiating an inflight transaction:
+
+1. Query the `source` balance with `GET /balances/{balance_id}?with_queued=true`, and compute the `available_balance`.
+2. Compare the new transaction amount against `available_balance`:
+   - **If amount ≤ available_balance:** Proceed with the transaction.
+   - **If amount > available_balance:** Handle it in your application by notifying the customer of insufficient funds.
+
+With this approach:
+
+- You ensure that pending inflight transactions will always be committed when they need to.
+- Customers are prevented from spending funds that are waiting to be deducted from their balance.
+
+<RelatedTopics
+  items={[
+    { title: "Overdrafts", href: "/transactions/overdrafts" },
+    { title: "Record a transaction", href: "/transactions/introduction" },
+    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
+    { title: "Queued balances", href: "/balances/introduction#queued-balances" },
+  ]}
+/>

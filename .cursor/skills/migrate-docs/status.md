@@ -11,7 +11,7 @@ Change `pending` to `done` after the chunk is on the site. Do not start the next
 - done — Core · Search & metadata
 - done — Core · Webhooks
 - done — Core · API keys
-- pending — Core · Guides
+- done — Core · Guides
 - done — Core · Configuration
 - done — Core · Advanced
 - pending — Core · Migration guides

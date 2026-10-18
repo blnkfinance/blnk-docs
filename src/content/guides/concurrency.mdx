@@ -1,0 +1,82 @@
+---
+title: "Handling Concurrency"
+sidebarTitle: "Handling concurrency"
+description: "See how queues, distributed locks, and optimistic locking keep concurrent updates correct."
+icon: "chip"
+seoTitle: "How We Manage Concurrency • Blnk Developer Documentation"
+metaDescription: "Learn how Blnk handles concurrency with queues and optimistic locking."
+---
+
+Concurrency is a normal part of financial systems, where multiple transactions can try to read from or write to the same balance at the same time. Without the right controls, this can lead to race conditions, lock contention, and incorrect balance updates.
+
+This guide explains the main mechanisms Blnk uses to handle concurrent transaction processing safely. We'll cover:
+
+1. [Queueing transactions](#queueing-transactions)
+2. [Distributed Redis balance locks](#distributed-redis-balance-locks)
+3. [Optimistic locking at the DB layer](#optimistic-locking-at-the-db-layer)
+
+## Queueing transactions
+
+Queueing means a transaction is first recorded as work to be processed, instead of being applied to the ledger immediately in the same request.
+
+**Here is how it works:**
+
+1. Blnk saves the transaction in a `QUEUED` state and returns that status to the caller.
+2. It then enqueues the work onto one of several **queue shards**. Blnk hashes the source balance ID and maps it to a shard (`new:transaction_1` … `new:transaction_N`). The shard count is controlled by `BLNK_QUEUE_NUMBER_OF_QUEUES` (default `20`).
+3. Workers pull from those shards in parallel. Transactions that share a source tend to land on the same shard, which reduces contention before locks run. Unrelated sources spread across shards and process concurrently.
+4. When a worker picks up the job, it acquires the balance locks, applies the update, and moves the transaction out of `QUEUED`.
+
+Queue sharding lowers the chance of unrelated traffic colliding in the same worker lane. It does not replace locking: if many transactions still hit the same balances, Blnk uses the other safeguards below (and, for hot sinks or pairs, strategies in [Handling hot balances](/guides/hot-balances)).
+
+<Check>
+By default, Blnk uses the queue when receiving a transaction request. Learn more: [Transaction lifecycle](/transactions/transaction-lifecycle) · [Queue configuration](/operating/configuration/queue)
+</Check>
+
+### Skipping the queue
+
+Blnk also supports skipping the queue and processing a transaction immediately in the same request by setting `skip_queue=true`.
+
+In this mode, Blnk no longer relies on the queue and uses the other safeguards to keep balance updates correct.
+
+## Distributed Redis balance locks
+
+In Blnk, distributed locks are used to make sure two conflicting transactions don't update the same balance at the same time.
+
+Here's how it works:
+
+1. Blnk identifies the balance IDs involved in a transaction request. Next, it acquires Redis-backed locks for those balances before processing begins.
+
+2. Blnk locks balances in a consistent order to prevent deadlocks. Without this, one transaction could lock Balance A and wait for Balance B, while another locks Balance B and waits for Balance A creating a deadlock.
+
+3. If Blnk cannot acquire all the locks it needs, it releases any locks already acquired, then either waits and retries or fails, depending on your configuration.
+
+4. Once the locks are held, Blnk reads the latest balance state, validates the transaction, applies the update, and commits it atomically.
+
+5. After the commit, the locks are released.
+
+## Optimistic locking at the DB layer
+
+Blnk also uses optimistic locking to make sure that a balance is only updated if it has not changed since it was last read.
+
+Instead of holding a database lock from the start, Blnk reads the balance, computes the new value in memory, and then tries to write that update back only if the balance is still in the same version it originally read. If another transaction updated the balance first, the write is rejected.
+
+Blnk does this using a `version` field on each balance. When a new transaction is recorded:
+
+1. Blnk reads the balances and their current `version`.
+2. Blnk computes the new balance value in memory, and then tries to update the balance only if the `version` is still the same.
+3. If the update succeeds, the `version` is incremented.
+4. If no row is updated, Blnk treats it as an optimistic locking conflict, which means the balance was changed by another transaction before this write could be applied.
+
+<Check>
+In Blnk, optimistic locking acts as the database-level safety net.
+
+**Distributed locks** prevent conflicting transactions from running at the same time, while **optimistic locking** checks at write time that the balance has not changed since Blnk last read it.
+</Check>
+
+<RelatedTopics
+  items={[
+    { title: "Handling hot balances", href: "/guides/hot-balances" },
+    { title: "Queue configuration", href: "/operating/configuration/queue" },
+    { title: "Queue recovery", href: "/operating/queue-recovery" },
+  ]}
+/>

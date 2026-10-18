@@ -17,7 +17,7 @@ const docs = defineCollection({
 			seoTitle: z.string().optional(),
 			metaDescription: z.string().optional(),
 			noindex: z.boolean().optional().default(false),
-			enterprise: z.union([z.boolean(), z.literal('license'), z.literal('cloud')]).optional().default(false),
+			enterprise: z.union([z.literal(false), z.literal('license')]).optional().default(false),
 			icon: z
 				.string()
 				.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Icon names are MingCute line filenames')

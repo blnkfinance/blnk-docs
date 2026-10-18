@@ -1,0 +1,244 @@
+---
+title: "Handling Hot Balances"
+sidebarTitle: "Handling hot balances"
+description: "Handle high-traffic balances so lock contention does not stop transactions."
+icon: "flame"
+seoTitle: "Handling Hot Balances • Blnk Developer Documentation"
+metaDescription: "Strategies for managing high-traffic balances and preventing lock contention in Blnk."
+---
+
+**Hot balances** refer to balances that perform large volumes of concurrent transactions. If not handled correctly, this can lead to lock contention errors, transaction failures and a poor user experience.
+
+Most hot balance scenarios fall into one of the following patterns:
+
+1. **A → N:** one source balance funds many destination balances concurrently.
+2. **N → A:** many source balances fund one destination balance concurrently.
+3. **A → B and B → A:** the same two balances exchange funds concurrently.
+
+This guide explains strategies to handle these patterns safely. We'll cover:
+
+1. Using the queue
+2. Coalescing
+3. Sharding balances
+4. Lock wait timeout
+5. Hot-lane routing
+
+## Using the queue
+
+For high traffic or overlapping balances, we recommend using the default queue-based flow (`skip_queue: false`).
+
+The queue helps Blnk handle contention more effectively and reduces the chance of lock errors by allowing retries, hot-lane routing, and coalescing. Learn more: [How queueing works](/guides/concurrency#queueing-transactions).
+
+<Note>
+Lock contention can still happen in queued processing. Workers also [acquire distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) when applying transactions.
+
+The difference is that the queue gives Blnk more ways to manage that contention and lower the likelihood of lock-related failures.
+</Note>
+
+## Coalescing
+
+<Version>Available in version 0.14 and later.</Version>
+
+Consider a deposit workflow involving one internal source balance concurrently funding 1000+ destination balances, or vice versa, e.g. `A → N` or `N → A`.
+
+**With Coalescing**, Blnk identifies the queued transactions based on if they share the same `source`, `destination`, and `currency`, batches them in-memory, and applies them in a single commit.
+
+This reduces the number of balance lookups, locks and commits required, improving throughput and performance overall.
+
+<Check>Coalescing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
+
+### How to use
+
+To enable Coalescing, update your Blnk configuration file to include the following settings:
+
+```bash .env
+BLNK_TRANSACTION_ENABLE_COALESCING=true
+BLNK_TRANSACTION_BATCH_SIZE=1000
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_TRANSACTION_ENABLE_COALESCING` | Turns queued coalescing on or off. |
+| `BLNK_TRANSACTION_BATCH_SIZE` | Controls how many transactions Blnk will try to coalesce in one batch. |
+
+For the full Coalescing settings, see [transaction configuration](/operating/configuration/transactions#coalescing-settings).
+
+### When to use
+
+As a rule of thumb, choose Coalescing when you have traffic bursts with repeated balance overlap and want the queue to drain more efficiently.
+
+It is a good fit when:
+
+- It takes too long for your queue to finish processing the transactions.
+- You see repeated contention on the same balance pair, source, or destination.
+- Your system experiences frequent bursts, with many similar transactions happening concurrently.
+- You want to reduce repeated lock contention errors in the queue and improve throughput.
+- A single balance ID is the root cause of contention. Consider [Sharding balances](#sharding-balances) in addition to coalescing.
+
+Coalescing is less useful when:
+
+- Traffic is low-volume and spread across many balances.
+- You use `skip_queue: true` to process transactions immediately.
+
+## Sharding balances
+
+Consider a treasury pool, settlement account, or fee sink that must handle thousands of concurrent deposits or payouts through one balance, e.g. `A → N` or `N → A`.
+
+**With balance sharding**, you split that single hot balance into multiple shard balances (for example `@Settlement-0` through `@Settlement-19`) and route each transaction to one shard in your application.
+
+Here's how it looks in practice.
+
+```javascript Shard routing example wrap
+function shardIndex(key, shardCount):
+  hash = stableHash(key)
+  return hash mod shardCount
+
+shardCount = 20
+shard = shardIndex(destinationId, shardCount)
+
+// Route each transaction to a shard before you create it:
+source = "@Treasury-" + shard
+
+createTransaction(
+  source: source,
+  destination: destinationId,
+  amount: ...,
+  currency: ...,
+  reference: ...
+)
+```
+
+At higher load, this is the strategy that turns one bottleneck into many parallel lanes:
+
+- **More transactions apply at once.** Each shard is a separate balance, so updates no longer queue behind a single balance ID.
+- **Less lock contention per balance.** Fewer transactions compete for the same balance lock, whether you use the queue or process immediately with `skip_queue: true`.
+- **Your queue drains faster.** With queued processing, volume that previously stacked on one balance spreads across shards, so workers can process unrelated shards concurrently instead of waiting on one lock.
+- **Coalescing stays effective.** With the queue enabled, each shard still batches transactions that share the same `source`, `destination`, and `currency`, but with far less contention per pair than a single overloaded balance.
+
+### How to use
+
+1. Create `N` shard balances on the same ledger.
+2. Implement a routing function in your application.
+3. If you use queued processing, tune queue throughput so workers can keep up once traffic spreads across shards (see below).
+4. If you use queued processing, enable coalescing for additional throughput (see [Coalescing](#coalescing)).
+
+If you use the default queue, raise queue capacity and worker concurrency gradually as load grows:
+
+```bash .env
+BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY=4
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_QUEUE_TRANSACTION_WORKER_CONCURRENCY` | Worker concurrency for normal transaction queues. Raise gradually once sharding spreads work across shards. |
+
+For full queue settings, see [queue configuration](/operating/configuration/queue).
+
+### When to use
+
+Choose balance sharding when one balance ID limits how much traffic your system can process, even after enabling the queue and coalescing.
+
+It is a good fit when:
+
+- Throughput plateaus because every transaction touches the same balance.
+- Lock contention errors stay high on one source or destination under sustained load.
+- You have a hot source (`A → N`) or hot destination (`N → A`) and need volume to spread across parallel lanes.
+- You use `skip_queue: true` and need lower lock contention on synchronous requests.
+- You can aggregate shard balances for reporting and reconciliation.
+
+Balance sharding is less useful when:
+
+- Contention is already spread across many balances.
+- You need a single balance identity for external reconciliation or regulatory reporting without aggregation.
+
+## Lock wait timeout
+
+<Version>Available in version 0.14 and later.</Version>
+
+**Lock wait timeout** lets you set how long Blnk should wait to [acquire distributed balance locks](/guides/concurrency#distributed-redis-balance-locks) before returning a lock error.
+
+This applies to both queued and immediate processing. In queued processing, it affects how long a worker waits before that attempt fails. In immediate processing (`skip_queue: true`), it affects how long the request waits in the request path before failing.
+
+This is especially important for immediate processing. If no timeout is set, a lock conflict can fail the request immediately. Setting a timeout gives the lock time to clear, which can reduce lock errors, but it also means the caller may wait longer for a response.
+
+<Note>
+A **shorter timeout** keeps requests more responsive, but makes lock errors more likely during contention, while **a longer timeout** gives contention more time to clear, but increases request latency and how long the caller may remain blocked.
+</Note>
+
+### How to use
+
+To configure lock wait timeout, update your Blnk configuration with:
+
+```bash .env
+BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT=3
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_TRANSACTION_LOCK_WAIT_TIMEOUT` | Controls how long Blnk will wait for locks before failing the transaction with a lock error, in integer seconds. |
+
+For more lock tuning options, see [transaction configuration](/operating/configuration/transactions#blnk_transaction_lock_wait_timeout). For queue and retry settings, see [queue configuration](/operating/configuration/queue).
+
+### When to use
+
+This setting matters most when you want to control how long Blnk waits to acquire a lock before failing. Use it when you need to tune lock wait behavior across your deployment, especially if you expect occasional contention.
+
+It is a good fit when:
+
+- you use `skip_queue: true` and want a bounded wait time before returning a lock error
+- you want requests to survive short contention spikes
+- lock waits are usually brief and predictable
+- slightly higher latency is acceptable in exchange for fewer lock errors
+
+## Hot-lane routing
+
+<Version>Available in version 0.14 and later.</Version>
+
+Consider a workflow where a small number of balance pairs keep receiving heavy concurrent traffic, while the rest of the queue is relatively normal, i.e. `A → B and B → A`.
+
+With **hot-lane routing**, Blnk identifies queued transactions for a specific source, destination, and currency pair that is showing repeated lock contention, and routes new traffic for that exact pair into a dedicated hot queue.
+
+This helps isolate the hottest balance pairs from the rest of your queued traffic, so they stop disturbing normal queue processing.
+
+<Check>Hot-lane routing only works when `skip_queue=false`. It doesn't apply when you skip the queue.</Check>
+
+### How to use
+
+To enable hot-lane routing, update your Blnk configuration file to include the following settings:
+
+```bash .env
+BLNK_QUEUE_ENABLE_HOT_LANE=true
+```
+
+| Settings | Description |
+| :-- | :-- |
+| `BLNK_QUEUE_ENABLE_HOT_LANE` | Turns hot-lane routing on or off. |
+
+For the full Hot-lane routing settings, see [queue configuration](/operating/configuration/queue#hot-lane-routing-settings).
+
+### When to use
+
+Choose hot-lane routing when contention is concentrated around a small number of balance pairs and you want to isolate that traffic from the rest of the queue.
+
+It is a good fit when:
+
+- A few specific balance pairs repeatedly cause lock contention.
+- A small number of hot pairs are slowing down otherwise healthy queue traffic.
+- You want to isolate the worst offenders without changing correctness behavior.
+- Your normal queue works well overall, but certain balance pairs keep colliding.
+
+It is less useful when:
+
+- Traffic is broadly distributed with no clear hot pairs.
+- Your main issue is overall worker throughput rather than localized contention. Use [Coalescing](#coalescing) or [Sharding balances](#sharding-balances) instead.
+- One balance ID (not just one pair) is the throughput bottleneck. Consider [Sharding balances](#sharding-balances).
+- Most of your traffic is synchronous and bypasses the queue. Consider [Sharding balances](#sharding-balances) or [Lock wait timeout](#lock-wait-timeout).
+
+<RelatedTopics
+  items={[
+    { title: "Concurrency", href: "/guides/concurrency" },
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
+    { title: "Queue configuration", href: "/operating/configuration/queue" },
+  ]}
+/>
