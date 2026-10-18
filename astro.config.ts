@@ -1,4 +1,4 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { access, cp, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -13,13 +13,30 @@ import docs from './src/content/docs.json' with { type: 'json' };
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
-function run(command: string, args: string[]) {
+function run(command: string, args: string[], timeoutMs: number) {
 	return new Promise<void>((resolve, reject) => {
-		const child = spawn(command, args, { stdio: 'inherit' });
-		child.on('error', reject);
-		child.on('exit', (code) => {
-			if (code === 0) resolve();
-			else reject(new Error(`${command} exited with ${code}`));
+		// Ignore stdin. An open pipe keeps the Pagefind wrapper from exiting after it prints "Finished".
+		const child = spawn(command, args, {
+			stdio: ['ignore', 'inherit', 'inherit'],
+			detached: true,
+		});
+		const timer = setTimeout(() => {
+			if (child.pid != null) {
+				try {
+					process.kill(-child.pid, 'SIGKILL');
+				} catch {
+					child.kill('SIGKILL');
+				}
+			}
+		}, timeoutMs);
+		child.on('error', (error) => {
+			clearTimeout(timer);
+			reject(error);
+		});
+		child.on('exit', (code, signal) => {
+			clearTimeout(timer);
+			if (code === 0 || signal === 'SIGKILL') resolve();
+			else reject(new Error(`${command} exited with ${code ?? signal}`));
 		});
 	});
 }
@@ -31,7 +48,9 @@ function pagefind(): AstroIntegration {
 		hooks: {
 			'astro:build:done': async ({ dir }) => {
 				const site = fileURLToPath(dir);
-				await run(join(root, 'node_modules', '.bin', 'pagefind'), ['--site', site]);
+				const index = join(site, 'pagefind', 'pagefind.js');
+				await run(join(root, 'node_modules', '.bin', 'pagefind'), ['--site', site], 60_000);
+				await access(index);
 				const output = join(root, 'public', 'pagefind');
 				await rm(output, { recursive: true, force: true });
 				await mkdir(join(root, 'public'), { recursive: true });
