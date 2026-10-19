@@ -118,9 +118,9 @@ Guide field tables have no Type column. Request columns are Field, Description, 
 | `name` | Name of the ledger. | Yes |
 ```
 
-Language tabs in a `CodeGroup` are `cURL`, `TypeScript`, `Go`, `Python`, and `Java`, in that order, and only for languages the page actually shows. `wrap` belongs on those guide fences.
+Language tabs in a `CodeGroup` are `cURL`, `TypeScript`, `Go`, `Python`, and `Java`, in that order, and only for languages the page actually shows. Lines wrap. Do not add `wrap`.
 
-On an API reference page, samples go in `RequestExample` and `ResponseExample`. Sibling fences become tabs. Do not wrap them in `CodeGroup`. Do not add `wrap`. Those lines scroll. Group request fields under `### Path`, `### Query`, `### Body`, or `### Header` with `ParamField`. A path field is `required`. Response fields use `ResponseField`.
+On an API reference page, samples go in `RequestExample` and `ResponseExample`. Sibling fences become tabs. Do not wrap them in `CodeGroup`. Those lines scroll. Group request fields under `### Path`, `### Query`, `### Body`, or `### Header` with `ParamField`. A path field is `required`. Response fields use `ResponseField`.
 
 Core samples call `http://localhost:5001`. Cloud samples call `https://api.cloud.blnkfinance.com`. The header is `X-blnk-key`. Do not send `status`. Blnk sets it.
 

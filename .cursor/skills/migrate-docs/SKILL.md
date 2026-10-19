@@ -108,7 +108,7 @@ Every fenced code block needs a title. The first word is the language. The title
 ```typescript Quick start
 ````
 
-A fence that is only a language, such as `` ```json ``, has no title. The header then shows the language, or `Code`. Take the title from the source fence. Do not invent one that disagrees with the sample. A request is the client name, usually `cURL`. When several requests in one example share a language, the title is the action, such as `View ledgers` or `Get ledger`. A response is the status, such as `200 OK` or `201 Created`. When several responses share a status, the title says which one, such as `All ledgers`. Inside a `CodeGroup`, that title is the tab. Inside `RequestExample` and `ResponseExample`, it is the label on the block. Do not add `wrap` on those fences. The lines scroll. Several fences stay siblings inside `RequestExample` or `ResponseExample`. The page turns them into tabs. Do not wrap them in `CodeGroup`.
+A fence that is only a language, such as `` ```json ``, has no title. The header then shows the language, or `Code`. Take the title from the source fence. Do not invent one that disagrees with the sample. A request is the client name, usually `cURL`. When several requests in one example share a language, the title is the action, such as `View ledgers` or `Get ledger`. A response is the status, such as `200 OK` or `201 Created`. When several responses share a status, the title says which one, such as `All ledgers`. Inside a `CodeGroup`, that title is the tab. Inside `RequestExample` and `ResponseExample`, it is the label on the block. Lines wrap. Do not add `wrap`. Lines inside `RequestExample` and `ResponseExample` scroll. Several fences stay siblings inside `RequestExample` or `ResponseExample`. The page turns them into tabs. Do not wrap them in `CodeGroup`.
 
 If a tag is not registered, skip that page and ask. Do not invent a component. `<JsonNode` inside a Java sample is source code, not a component.
 
@@ -173,7 +173,7 @@ Remove every `---` between sections. Leave the frontmatter fences. Do not put a 
 
 ### Samples
 
-Do not add `wrap` on a fence inside `RequestExample` or `ResponseExample`. Those lines scroll.
+Lines wrap. Do not add `wrap`. Lines inside `RequestExample` and `ResponseExample` scroll.
 
 Several fences inside one `RequestExample` or `ResponseExample` stay siblings. The page groups them as tabs. Do not wrap them in `CodeGroup`.
 

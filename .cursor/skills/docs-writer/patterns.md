@@ -27,7 +27,7 @@ Call [Create identity](/reference/create-identity).
 <Tabs>
   <Tab title="Create identity">
     <CodeGroup>
-    ```bash cURL wrap
+    ```bash cURL
     curl -X POST "http://localhost:5001/identities" \
       -H "X-blnk-key: <api-key>" \
       -H "Content-Type: application/json" \

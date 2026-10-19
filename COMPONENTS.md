@@ -387,16 +387,18 @@ Fenced code is highlighted with Shiki (`one-light` / `one-dark-pro` in `astro.co
 The first word of the fence info is the language. Words after it are a title, unless they are a flag below.
 
 ````mdx
-```bash cURL wrap
+```bash cURL
 curl -X POST "http://localhost:5001/ledgers" \
   -H "X-blnk-key: <api-key>"
 ```
 ````
 
+Lines wrap. A block inside `RequestExample` or `ResponseExample` scrolls instead.
+
 | Meta | Effect |
 | --- | --- |
 | Title words | Header on a standalone block. Tab label inside a `CodeGroup` or a multi-fence example. Example: `cURL`, `200 OK` |
-| `wrap` | Long lines wrap |
+| `wrap` | Accepted so the word stays out of the title. Lines wrap without it |
 | `highlight={2}` | Highlight those lines. Also `highlight={2,4-6}`, `{2,4-6}`, or `2,4-6` |
 | `focus={2,3}` | Dim every line outside the range. Ranges work the same way as highlight |
 | `expandable` | Stored as `data-expandable`. No change to the layout |
@@ -415,7 +417,7 @@ Put fences one after another as direct children of `CodeGroup`. Each fence becom
 ````mdx
 <CodeGroup>
 
-```bash cURL wrap
+```bash cURL
 curl -X POST "http://localhost:5001/ledgers" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -461,7 +463,7 @@ curl -X GET "http://localhost:5001/ledgers/{ledger_id}" \
 </ResponseExample>
 ````
 
-Neither component takes props. A fence title, such as `cURL` or `201 Created`, is the label on that block. These blocks do not show a copy button, and their lines scroll. Leave `wrap` off.
+Neither component takes props. A fence title, such as `cURL` or `201 Created`, is the label on that block. These blocks do not show a copy button, and their lines scroll.
 
 Two or more fences that are direct children of one example become tabs. The page does that grouping. Leave them as siblings.
 
