@@ -1,7 +1,7 @@
 ---
 name: migrate-docs
 description: >-
-  Migrates Blnk docs from blnkfinance/blnk-docs onto this site one nav group
+  Migrates Blnk docs from blnkfinance/docs-v1 onto this site one nav group
   at a time, keeping each section's original path. Use when the user says to
   migrate a chunk, group, or section of the docs, or says next.
 ---
@@ -84,7 +84,9 @@ Add optional `icon` to the docs schema in `src/content.config.ts`. `src/ui/Pages
 
 ## Write each page
 
-Read the source from `blnkfinance/blnk-docs` at the same path (the docs filesystem, or GitHub). Do not copy specimen pages. Keep the source wording, and apply Copy.
+Read the source from `blnkfinance/docs-v1` at the same path (the docs filesystem, or GitHub). Do not copy specimen pages. Keep the source wording, and apply Copy.
+
+Voice, layout, samples, and frontmatter follow [docs-writer](../docs-writer/SKILL.md). Where this file and that skill disagree on the page, follow docs-writer.
 
 Remove dividers from the body. A divider is a horizontal rule on its own line, `---`, between sections. Leave the frontmatter fences.
 
@@ -120,7 +122,7 @@ Do not undo these. A stated length in px stays that px. Do not divide it by the 
 
 The lede is one sentence about what the reader does on this page. A product slogan stays in `metaDescription`. It is not the lede.
 
-The document title, `og:title`, and `twitter:title` are `{title} – Blnk Docs` in sentence case. The dash is an en dash. Product names and acronyms stay capitalized. A changelog is `Blnk Core changelog`. An overview names the subject, such as `Balances overview`. Do not set `seoTitle`.
+The document title, `og:title`, and `twitter:title` are `{title} – Blnk Docs` in sentence case. The dash is an en dash. Product names and acronyms stay capitalized. A changelog is `Blnk Core changelog`. An overview names the subject, such as `Balances overview`. The page `/` redirects to uses `Blnk Finance Official Documentation`. Do not set `seoTitle`.
 
 Do not number headings. `## 1: Installation Guide` becomes `## Install Blnk`.
 
@@ -252,7 +254,7 @@ Do not add `<NeedHelp />` on a docs page or an API reference page. Drop it from 
 
 ### Quick start
 
-`src/content/install.mdx` is `/install`. Do not replace it with the original `home/install` page.
+`src/content/index.mdx` is `/`. Do not replace it with the original `home/install` page.
 
 It has two sections, with no numbers on the headings: Install Blnk, then Record your first transaction. Nothing else. No "View your ledger", key concepts, or dry run.
 

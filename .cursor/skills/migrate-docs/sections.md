@@ -1,6 +1,6 @@
 # Sections
 
-Steer list copied from `blnkfinance/blnk-docs` `docs.json`. A chunk is one group under a tab, or one group under a menu item. Dropdowns belong to that group. Paths are the file ids under `src/content`, without `.mdx`.
+Steer list copied from `blnkfinance/docs-v1` `docs.json`. A chunk is one group under a tab, or one group under a menu item. Dropdowns belong to that group. Paths are the file ids under `src/content`, without `.mdx`.
 
 ## Core source icon `layers`
 

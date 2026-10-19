@@ -177,7 +177,7 @@ const redirectSource = z
 const redirectDestination = z
 	.string()
 	.regex(
-		/^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*(?:#[a-z0-9]+(?:-[a-z0-9]+)*)?$/,
+		/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)?(?:#[a-z0-9]+(?:-[a-z0-9]+)*)?$/,
 	);
 
 const docsSchema = z.strictObject({
@@ -413,7 +413,7 @@ export function assertRedirects(redirects: Record<string, string>, ids: Readonly
 	for (const [source, destination] of Object.entries(redirects)) {
 		const sourceId = source === '/' ? 'index' : source.slice(1);
 		const destinationPath = destination.split('#')[0];
-		const destinationId = destinationPath.slice(1);
+		const destinationId = destinationPath === '/' ? 'index' : destinationPath.slice(1);
 		if (ids.has(sourceId)) problems.push(`source is a page: ${source}`);
 		if (!ids.has(destinationId)) problems.push(`missing page: ${source} -> ${destination}`);
 		if (sources.has(destinationPath)) problems.push(`destination is another redirect: ${source} -> ${destination}`);

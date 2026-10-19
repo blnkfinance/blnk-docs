@@ -1,5 +1,5 @@
-import { access, cp, mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { access, cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { defineConfig, fontProviders } from 'astro/config';
@@ -8,6 +8,7 @@ import node from '@astrojs/node';
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
 import { fenceMetaTransformer } from './src/lib/fence-meta';
+import { tokenClassTransformer } from './src/lib/token-class';
 import { remarkContentImages } from './src/lib/remark-content-images';
 import docs from './src/content/docs.json' with { type: 'json' };
 
@@ -39,6 +40,62 @@ function run(command: string, args: string[], timeoutMs: number) {
 			else reject(new Error(`${command} exited with ${code ?? signal}`));
 		});
 	});
+}
+
+const cacheControl = 'public, max-age=1800';
+
+type HeaderEntry = {
+	pathname: string;
+	headers: { key: string; value: string }[];
+};
+
+function pagePath(name: string): string {
+	if (name === '' || name === '/') return '/';
+	return name.startsWith('/') ? name : `/${name}`;
+}
+
+async function addMarkdown(root: string, dir: string, paths: Set<string>) {
+	const entries = await readdir(dir, { withFileTypes: true });
+	for (const entry of entries) {
+		if (entry.name === '_astro' || entry.name === 'pagefind') continue;
+		const full = join(dir, entry.name);
+		if (entry.isDirectory()) {
+			await addMarkdown(root, full, paths);
+			continue;
+		}
+		if (!entry.name.endsWith('.md')) continue;
+		const rel = relative(root, full).split(sep).join('/');
+		paths.add(rel.startsWith('/') ? rel : `/${rel}`);
+	}
+}
+
+/** Tell browsers and the host to keep each built page for 30 minutes. */
+function pageCache(): AstroIntegration {
+	return {
+		name: 'page-cache',
+		hooks: {
+			'astro:build:done': async ({ dir, pages }) => {
+				const client = fileURLToPath(dir);
+				const file = join(client, '..', '_headers.json');
+				const paths = new Set(pages.map((page) => pagePath(page.pathname)));
+				await addMarkdown(client, client, paths);
+				let existing: HeaderEntry[] = [];
+				try {
+					existing = JSON.parse(await readFile(file, 'utf8')) as HeaderEntry[];
+				} catch {
+					existing = [];
+				}
+				const byPath = new Map(existing.map((entry) => [entry.pathname, entry]));
+				for (const pathname of paths) {
+					const entry = byPath.get(pathname) ?? { pathname, headers: [] };
+					entry.headers = entry.headers.filter((header) => header.key.toLowerCase() !== 'cache-control');
+					entry.headers.push({ key: 'Cache-Control', value: cacheControl });
+					byPath.set(pathname, entry);
+				}
+				await writeFile(file, JSON.stringify([...byPath.values()]));
+			},
+		},
+	};
 }
 
 /** Index the built site, then copy the bundle so the dev server can serve it. */
@@ -80,9 +137,10 @@ export default defineConfig({
 	site: 'https://docs.blnkfinance.com',
 	trailingSlash: 'never',
 	server: { host: true },
-	adapter: node({ mode: 'standalone' }),
+	adapter: node({ mode: 'standalone', staticHeaders: true }),
+	prefetch: false,
 	redirects: docs.redirects,
-	integrations: [mdx(), pagefind()],
+	integrations: [mdx(), pagefind(), pageCache()],
 	markdown: {
 		processor: unified({
 			remarkPlugins: [remarkContentImages],
@@ -96,7 +154,7 @@ export default defineConfig({
 				dark: 'one-dark-pro',
 			},
 			defaultColor: false,
-			transformers: [fenceMetaTransformer()],
+			transformers: [fenceMetaTransformer(), tokenClassTransformer()],
 		},
 	},
 	fonts: [

@@ -1,8 +1,8 @@
 ---
 title: "Building Your App Logic"
 sidebarTitle: "App development"
-description: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
-metaDescription: "Use Cloud APIs to read data, perform actions, and create alerts from your Custom App."
+description: "Call Blnk to read data, perform actions, and create alerts from your Custom App."
+metaDescription: "Call Blnk to read data, perform actions, and create alerts from your Custom App."
 enterprise: license
 ---
 
@@ -14,17 +14,17 @@ After installation, your app now has what it needs to work with the selected Clo
 
 Your backend should use those values to decide which instance to call, what key to use, and what actions the app is allowed to perform. **For our Stripe Sync app,** this is where the backend starts doing the work: importing pay-ins from Stripe, sending them to Blnk as transactions, and saving the sync details locally.
 
-## Choose the right Cloud API
+## Choose how to call Blnk
 
-Custom Apps usually use these Cloud APIs.
+Custom Apps usually use these APIs.
 
 | API | When to use it |
 | :-- | :-- |
 | Data Lake API | Query historical ledger data with SQL. |
-| Proxy API | Call any Core endpoint through Cloud. |
-| Other Cloud features | Use Cloud features that are not Core endpoints, such as alerts. |
+| Proxy API | Call any Core endpoint through Blnk. |
+| Other Blnk features | Use Blnk features that are not Core endpoints, such as alerts. |
 
-All requests use the Cloud base URL:
+All requests use this base URL:
 
 ```bash Base URL
 https://api.cloud.blnkfinance.com
@@ -33,7 +33,7 @@ https://api.cloud.blnkfinance.com
 The installed app API key goes in the `X-blnk-key` header:
 
 ```bash API key
-X-blnk-key: CLOUD_API_KEY
+X-blnk-key: blnk_...
 ```
 
 For Proxy API requests, include the selected `instance_id` in the URL:
@@ -48,7 +48,7 @@ For Data Lake API requests, send `instance_id` in the JSON body.
 
 <Tabs>
   <Tab title="Using the Proxy API">
-    Use the proxy when your app wants to call Core through Cloud. The format is:
+    Use the proxy when your app wants to call Core through Blnk. The format is:
 
     ```bash Proxy URL wrap
     https://api.cloud.blnkfinance.com/proxy/<core-path>?instance_id=<instance_id>
@@ -68,11 +68,11 @@ For Data Lake API requests, send `instance_id` in the JSON body.
     POST https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_...
     ```
 
-    A complete request via the Cloud Proxy looks like:
+    A complete request through the proxy looks like:
 
     ```bash cURL wrap
     curl -X POST "https://api.cloud.blnkfinance.com/proxy/transactions?instance_id=inst_..." \
-      -H "X-blnk-key: CLOUD_API_KEY" \
+      -H "X-blnk-key: blnk_..." \
       -H "Content-Type: application/json" \
       -d '{
         "amount": 100.50,
@@ -99,7 +99,7 @@ For Data Lake API requests, send `instance_id` in the JSON body.
 
     ```bash cURL wrap
     curl -X POST "https://api.cloud.blnkfinance.com/data/lake/query" \
-      -H "X-blnk-key: CLOUD_API_KEY" \
+      -H "X-blnk-key: blnk_..." \
       -H "Content-Type: application/json" \
       -d '{
         "instance_id": "inst_...",
@@ -109,10 +109,10 @@ For Data Lake API requests, send `instance_id` in the JSON body.
       }'
     ```
   </Tab>
-  <Tab title="Other Cloud features">
-    Use other Cloud endpoints for features that belong to Cloud itself.
+  <Tab title="Other Blnk features">
+    Use other Blnk endpoints for features that are not Core endpoints. Alerts are a good example.
 
-    Alerts are a good example. You do not call alerts through `/proxy` or the data lake. You call the Alerts API directly.
+    You do not call alerts through `/proxy` or the data lake. You call the Alerts API directly.
 
     ```bash Flag resource wrap
     https://api.cloud.blnkfinance.com/alerts/flag/<resource_id>
@@ -151,7 +151,7 @@ Let's apply this to build the [Stripe Sync workflow](/apps/define-workflow#map-y
     Filtering on `status === "succeeded"` ensures we only import pay-ins that have actually settled into your Stripe balance. Anything still pending, requiring action, or canceled is skipped.
   </Step>
   <Step title="Send the pay-in to Blnk">
-    Next, we'll mirror the Stripe pay-in as a transaction in the selected Blnk Cloud instance through the Proxy API:
+    Next, we'll mirror the Stripe pay-in as a transaction in the selected Cloud instance through the Proxy API:
 
     ```typescript sendPayInToBlnk.ts wrap
     async function sendPayInToBlnk(instance_id: string, payIn) {

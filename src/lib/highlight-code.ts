@@ -1,4 +1,5 @@
 import { createHighlighter, type Highlighter } from 'shiki';
+import { tokenClassTransformer } from './token-class';
 
 const themes = {
 	light: 'one-light',
@@ -26,5 +27,6 @@ export async function highlightCode(code: string, lang: HighlightLang) {
 		lang,
 		themes,
 		defaultColor: false,
+		transformers: [tokenClassTransformer()],
 	});
 }

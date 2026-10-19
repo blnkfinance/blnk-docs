@@ -3,6 +3,8 @@ import { enterpriseNotice, isDropdown, itemPath, navigation, pageHref, pagePaths
 
 export const siteName = 'Blnk';
 export const siteTitle = 'Blnk Docs';
+/** Document title for `/`. Other pages use `{title} – Blnk Docs`. */
+export const homeDocumentTitle = 'Blnk Finance Official Documentation';
 export const ogImagePath = '/og.png';
 export const ogImageAlt = 'Blnk documentation';
 export const ogImageWidth = 602;

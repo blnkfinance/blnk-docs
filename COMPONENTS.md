@@ -121,7 +121,7 @@ A grid of links or static tiles. `CardGroup` defaults to two columns and stacks 
 
 ```mdx
 <CardGroup cols={2}>
-  <Card title="Install Blnk" icon="sparkles" href="/install">
+  <Card title="Install Blnk" icon="sparkles" href="/">
     Deploy your ledger in minutes.
   </Card>
   <Card title="Ledgers" icon="book">
@@ -236,7 +236,7 @@ Images in `src/content` are rewritten to site paths by `src/lib/remark-content-i
 
 Embeds a Blnk money movement map. `src` must be `https` on `map.blnkfinance.com` or `map.blnkfinance.xyz`. Any other value renders nothing.
 
-The iframe is view-only (`tabindex="-1"`). **View full map** opens the same URL in a new tab.
+The iframe can be zoomed and panned. Editing stays off. **View full map** opens the same URL in a new tab.
 
 ```mdx
 <Map
@@ -492,7 +492,7 @@ A list of follow-up links. The block is omitted when `items` is empty. Links tha
 ```mdx
 <RelatedTopics
   items={[
-    { title: "Install Blnk", href: "/install" },
+    { title: "Install Blnk", href: "/" },
     { title: "Blnk Finance", href: "https://blnkfinance.com" },
   ]}
 />

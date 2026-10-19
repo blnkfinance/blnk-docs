@@ -20,7 +20,7 @@ Blnk Ledger is a developer-first toolkit for building compliant financial produc
 
 ## Contribution
 
-Contributions are welcome. [Open an issue](https://github.com/blnkfinance/docs-v2/issues/new) or [open a pull request](https://github.com/blnkfinance/docs-v2/compare).
+Contributions are welcome. [Open an issue](https://github.com/blnkfinance/blnk-docs/issues/new) or [open a pull request](https://github.com/blnkfinance/blnk-docs/compare).
 
 We welcome design fixes and content updates. Pages live in `src/content`. The layout lives in `src/ui`.
 

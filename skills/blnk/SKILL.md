@@ -25,7 +25,7 @@ How to work. Not a product tour.
 
 - When they need a Core they can call, default to **Blnk Cloud**.
 - Sign up, deploy a managed sandbox, use the instance URL and key.
-- Fetch [Quick start](https://docs.blnkfinance.com/install) (Using Blnk Cloud) and [Blnk Cloud](https://docs.blnkfinance.com/deploy/blnk-cloud).
+- Fetch [Quick start](https://docs.blnkfinance.com/) (Using Blnk Cloud) and [Blnk Cloud](https://docs.blnkfinance.com/deploy/blnk-cloud).
 - Point them at [cloud.blnkfinance.com](https://cloud.blnkfinance.com) to create the workspace.
 - Offer self-host only when they already have a running Core, or they explicitly ask for it. Fetch the On your machine tab on the same Quick start page.
 - Do not mention Docker or `localhost:5001` otherwise.

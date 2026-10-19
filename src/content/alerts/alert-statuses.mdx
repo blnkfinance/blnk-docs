@@ -22,6 +22,17 @@ The Alert statuses page lists all custom statuses for your organization. For eac
 
 Use the **Actions** menu (three dots) on a row to edit or delete that status.
 
+### Using the API
+
+Call [List alert statuses](/reference/list-alert-statuses). `data` is your statuses. `allowed_colours` is the hex codes you can set on create or update.
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/alerts/statuses' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+
+Each status has a `key`, such as `PENDING_REVIEW`. Use that key when you set an alert's status. Field details are on [List alert statuses](/reference/list-alert-statuses).
+
 ## Add a status
 
 Click **+ Add status** in the top-right corner.
@@ -35,12 +46,42 @@ Click **Add status**.
 
 The new status will appear in the list and can be used when updating alerts.
 
+### Using the API
+
+Call [Create alert status](/reference/create-alert-status). `name` and `colour` are required. `colour` has to be one of `allowed_colours` from [List alert statuses](/reference/list-alert-statuses).
+
+If you omit `key`, Blnk derives one from the name. "Pending Review" becomes `PENDING_REVIEW`.
+
+```bash cURL
+curl -X POST 'https://api.cloud.blnkfinance.com/alerts/statuses' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Pending Review",
+    "colour": "#3B82F6"
+  }'
+```
+
 ## Edit a status
 
 1. On the Alert statuses page, open the **Actions** menu (three dots) for the status you want to change.
 2. Select **Edit**.
 3. Update the **Name** and/or **Colour**.
 4. Click **Save**.
+
+### Using the API
+
+Call [Update alert status](/reference/update-alert-status) with the status key. The key is case-insensitive. The key stays the same when the name or colour changes.
+
+```bash cURL
+curl -X PUT 'https://api.cloud.blnkfinance.com/alerts/statuses/PENDING_REVIEW' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Awaiting Review",
+    "colour": "#10B981"
+  }'
+```
 
 ## Delete a status
 
@@ -50,11 +91,22 @@ The new status will appear in the list and can be used when updating alerts.
 
 If any alerts still use this status, you must reassign them to another status before you can delete it.
 
+### Using the API
+
+Call [Delete alert status](/reference/delete-alert-status) with the status key. The delete fails while any alert still uses that status. Reassign those alerts with [Update alert](/reference/update-alert), then delete the status again.
+
+```bash cURL
+curl -X DELETE 'https://api.cloud.blnkfinance.com/alerts/statuses/PENDING_REVIEW' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+
 <RelatedTopics
   items={[
     { title: "Alerts overview", href: "/alerts/overview" },
     { title: "Alert description", href: "/alerts/description" },
     { title: "Create alert status", href: "/reference/create-alert-status" },
     { title: "List alert statuses", href: "/reference/list-alert-statuses" },
+    { title: "Update alert status", href: "/reference/update-alert-status" },
+    { title: "Delete alert status", href: "/reference/delete-alert-status" },
   ]}
 />

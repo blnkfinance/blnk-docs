@@ -7,63 +7,159 @@ icon: "bell-ringing"
 enterprise: license
 ---
 
-Alerts let you track and get notified about important events and conditions in your Blnk Core. You can create alerts manually on any record from the dashboard, or trigger them automatically via [the Alerts API](/reference/create-alert).
+Alerts let you track and get notified about important events and conditions in your Blnk Core. 
+
+You can create alerts manually on any record from the dashboard, or trigger them automatically via [the Alerts API](/reference/create-alert).
 
 ## Manual flagging
 
-You can manually flag records from their details page using **Actions** > **Flag balance**. For balance-specific steps (including status selection and custom status creation), see [Flag balance](/cloud/balances/flag-balance). After you flag a balance, use **Alerts** to update the alert status as needed (for example, `Flagged`, `Investigating`, or `Resolved`).
+You can manually flag records from their details page, or flag them with the API.
+
+<Tabs>
+  <Tab title="Using the API">
+    Call [Create alert](/reference/create-alert). The path id is the balance, transaction, or identity you are flagging. `description` is required, and `title` is optional.
+
+    ```bash cURL
+    curl -X POST 'https://api.cloud.blnkfinance.com/alerts/flag/bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f' \
+      -H 'X-blnk-key: CLOUD_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "title": "Balance flagged for review",
+        "description": "Customer balance needs a manual check."
+      }'
+    ```
+
+    The response includes `anomaly_id`. That is the alert id you use to read or update it. Field details are on [Create alert](/reference/create-alert).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    <Steps titleSize="h3">
+      <Step title="Open the record">
+        Go to the details page for the record you want to flag.
+      </Step>
+      <Step title="Flag the record">
+        Choose **Actions** > **Flag balance**. Balance-specific steps, including status selection and custom status creation, are on [Flag balance](/cloud/balances/flag-balance).
+      </Step>
+      <Step title="Update the status">
+        After you flag a balance, open **Alerts** and update the alert status as needed, for example `Flagged`, `Investigating`, or `Resolved`.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
 ## Working with alerts
 
 All alerts in your workspace are displayed in the **Alerts** table, where you can view, filter, and manage them.
 
-### Alerts table
+<Tabs>
+  <Tab title="Using the API">
+    [Get alert](/reference/get-alert) returns every alert when you omit the id. Pass `alert_id` to return one alert.
 
-The **Alerts** table shows a list of all alerts in your workspace. You can filter alerts by:
+    ```bash List alerts
+    curl -X GET 'https://api.cloud.blnkfinance.com/alerts' \
+      -H 'X-blnk-key: CLOUD_API_KEY'
+    ```
 
-- **All:** View all alerts in your workspace.
-- **Assigned to you:** View only alerts assigned to you.
+    ```bash Get alert
+    curl -X GET 'https://api.cloud.blnkfinance.com/alerts/ano_8a380fd1-0289-46d1-bc76-aa17a510a64e' \
+      -H 'X-blnk-key: CLOUD_API_KEY'
+    ```
+  </Tab>
+  <Tab title="Using the Dashboard">
+    <Steps titleSize="h3">
+      <Step title="Filter the Alerts table">
+        The **Alerts** table shows a list of all alerts in your workspace. You can filter alerts by:
 
-You can also filter further by status:
+        - **All:** View all alerts in your workspace.
+        - **Assigned to you:** View only alerts assigned to you.
 
-- **All:** View all alerts regardless of status.
-- **Investigating:** Alerts currently under investigation.
-- **Flagged:** Alerts that have been flagged for review.
-- **Resolved:** Alerts that have been resolved.
+        You can also filter further by status:
 
-![Alerts table showing all alert information](img/alerts/alerts-table.png)
+        - **All:** View all alerts regardless of status.
+        - **Investigating:** Alerts currently under investigation.
+        - **Flagged:** Alerts that have been flagged for review.
+        - **Resolved:** Alerts that have been resolved.
 
-For each alert, you can see:
+        ![Alerts table showing all alert information](img/alerts/alerts-table.png)
 
-- **Title:** The title describing the nature of the alert (e.g., "Transaction flagged as suspicious," "Identity flagged as suspicious").
-- **Status:** The current status of the alert - flagged, investigating, or resolved.
-- **Assigned to:** The user responsible for handling the alert.
-- **Created at:** The date and time the alert was created.
+        For each alert, you can see:
 
-### View alert details
+        | Field | What it shows |
+        | :-- | :-- |
+        | Title | The title describing the nature of the alert (e.g., "Transaction flagged as suspicious," "Identity flagged as suspicious"). |
+        | Status | The current status of the alert - flagged, investigating, or resolved. |
+        | Assigned to | The user responsible for handling the alert. |
+        | Created at | The date and time the alert was created. |
+      </Step>
+      <Step title="Open an alert">
+        Click an alert from the table to open its details panel on the right side of your screen.
 
-Click an alert from the table to open its details panel on the right side of your screen.
+        ![Alert details summary view](img/alerts/alert-details-summary.png)
 
-![Alert details summary view](img/alerts/alert-details-summary.png)
+        The alert details panel shows:
 
-The alert details panel shows:
+        - **Name:** The title of the alert (e.g., "Transaction flagged as suspicious").
+        - **Status:** The current status displayed as a colored tag with an icon - flagged (yellow), investigating (blue), or resolved (green).
+        - **Description:** The description or reason for the alert.
+        - **Assigned to:** The user responsible for handling the alert.
+        - **Date:** The date and time the alert was created.
+        - **Alert ID:** The unique identifier for the alert. Click the copy icon to copy the ID.
+      </Step>
+      <Step title="Open the full details">
+        Select **Full info** in the top-right corner of the details panel or press `E` to expand the details.
 
-- **Name:** The title of the alert (e.g., "Transaction flagged as suspicious").
-- **Status:** The current status displayed as a colored tag with an icon - flagged (yellow), investigating (blue), or resolved (green).
-- **Description:** The description or reason for the alert.
-- **Assigned to:** The user responsible for handling the alert.
-- **Date:** The date and time the alert was created.
-- **Alert ID:** The unique identifier for the alert. Click the copy icon to copy the ID.
+        ![Alert full details page showing flagged records and audit log](img/alerts/alert-details-page.png)
 
-For a complete view, select **Full info** in the top-right corner of the details panel or press `E` to expand the details.
+        In the full details page, you can see:
 
-![Alert full details page showing flagged records and audit log](img/alerts/alert-details-page.png)
+        - **Flagged records:** A section showing all records (transactions, balances, or identities) affected by the alert. The table displays key information about each record, including currency, amount, status, source, destination, and effective date.
+        - **View record:** Click on any record in the flagged records table to view its full details page.
+        - **Audit log:** A section that tracks all actions and changes made to the alert, allowing you to monitor the alert's history.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
-In the full details page, you can see:
+## Update an alert
 
-- **Flagged records:** A section showing all records (transactions, balances, or identities) affected by the alert. The table displays key information about each record, including currency, amount, status, source, destination, and effective date.
-- **View record:** Click on any record in the flagged records table to view its full details page.
-- **Audit log:** A section that tracks all actions and changes made to the alert, allowing you to monitor the alert's history.
+Change the title, description, or status on an existing alert. `status` is a status key, such as `FLAGGED` or a custom key from [Alert statuses](/alerts/alert-statuses).
+
+<Tabs>
+  <Tab title="Using the API">
+    Call [Update alert](/reference/update-alert) with the alert id. Send the fields you want to change.
+
+    ```bash cURL
+    curl -X PUT 'https://api.cloud.blnkfinance.com/alerts/flag/ano_8a380fd1-0289-46d1-bc76-aa17a510a64e' \
+      -H 'X-blnk-key: CLOUD_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "title": "Balance flagged for review",
+        "description": "Moved to pending review after the first check.",
+        "status": "PENDING_REVIEW"
+      }'
+    ```
+
+    Field details are on [Update alert](/reference/update-alert).
+  </Tab>
+  <Tab title="Using the Dashboard">
+    <Steps titleSize="h3">
+      <Step title="Open the full details">
+        Open the alert, then select **Full info** or press `E`. The page shows the title, the status, and **Actions**.
+
+        ![Alert full details page with Actions beside the title and status](img/alerts/alert-details-page.png)
+      </Step>
+      <Step title="Edit the title or status">
+        Open **Actions** and select **Edit alert**. Change the title or the status, then save.
+      </Step>
+      <Step title="Edit the description">
+        Click the pencil next to **Description**. Make your changes, then click **Save**.
+
+        ![Alert description editor with the pencil and slash command menu](img/alerts/alert-description-editor.png)
+
+        Slash commands and teammate mentions are on [Alert description](/alerts/description).
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
 <RelatedTopics
   items={[
@@ -72,5 +168,7 @@ In the full details page, you can see:
     { title: "Flag balance", href: "/cloud/balances/flag-balance" },
     { title: "Flag transaction", href: "/cloud/transactions/flag-transaction" },
     { title: "Create alert", href: "/reference/create-alert" },
+    { title: "Get alert", href: "/reference/get-alert" },
+    { title: "Update alert", href: "/reference/update-alert" },
   ]}
 />

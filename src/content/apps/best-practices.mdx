@@ -2,18 +2,18 @@
 title: "Custom App security and best practices"
 sidebarTitle: "Best practices"
 description: "Check security and reliability before you ship a Custom App."
-metaDescription: "Security and reliability checklist for Custom Apps before you ship to production in Blnk Cloud."
+metaDescription: "Security and reliability checklist for Custom Apps before you ship to production in Blnk."
 icon: "check-circle"
 enterprise: license
 ---
 
-You have wired install, launch, and Cloud API calls. Before users rely on your app in production, use this page as a final checklist for security and reliability.
+You have wired install, launch, and calls to Blnk. Before users rely on your app in production, use this page as a final checklist for security and reliability.
 
-## How Blnk Cloud keeps apps safe
+## How Blnk keeps apps safe
 
-Blnk Cloud is designed so your app never needs direct access to the Core. Learn more: [How apps work](/apps/how-apps-work).
+Blnk is designed so your app never needs direct access to Core. Learn more: [How apps work](/apps/how-apps-work).
 
-| Blnk Cloud handles | You handle in your app |
+| Blnk handles | You handle in your app |
 | --- | --- |
 | A scoped API key for each install | Protecting and storing the API key safely |
 | Permission checks on every request | Securing the portal users see in the dashboard |
@@ -54,16 +54,16 @@ Supported permission scopes today:
 
 | Scope | What it allows |
 | --- | --- |
-| `data:read` | Read ledger data through Cloud. |
-| `data:write` | Perform write operations through Cloud APIs. |
+| `data:read` | Read ledger data through Blnk. |
+| `data:write` | Perform write operations through Blnk. |
 | `alerts:read` | Read alerts for the installed instance. |
-| `alerts:write` | Create and update alerts through Cloud. |
+| `alerts:write` | Create and update alerts through Blnk. |
 
-## Calling Blnk Cloud from your backend
+## Calling Blnk from your backend
 
-All Cloud API calls from your app should run on the server using the install's scoped API key.
+Calls to Blnk from your app should run on the server using the install's scoped API key.
 
-- Use the Cloud base URL and authentication pattern from [App development](/apps/app-logic).
+- Use the base URL and authentication pattern from [App development](/apps/app-logic).
 - **Always include the correct `instance_id`** for the installation you are acting on. The key is bound to that instance.
 - Use the [Proxy API](/reference/proxy-api) for Core actions and [Create new query](/reference/create-new-query) for historical SQL. Use alerts endpoints for alert features, not the proxy.
 
@@ -73,10 +73,10 @@ Your portal UI should call **your** backend. Your backend calls Blnk. That keeps
 
 ## URLs you register in the manifest
 
-When you [register your app](/apps/register-app), you provide callback and portal URLs that Blnk calls from the cloud.
+When you [register your app](/apps/register-app), you provide callback and portal URLs that Blnk calls over the internet.
 
 - **Production:** Use public **HTTPS** endpoints that Blnk can reach from the internet.
-- **Local development:** Use a tunnel service (for example ngrok) and register the HTTPS URL. `localhost` will not work when your app is embedded in the Cloud dashboard.
+- **Local development:** Use a tunnel service (for example ngrok) and register the HTTPS URL. `localhost` will not work when your app is embedded in the dashboard.
 - Blnk validates callback and portal URLs when you register the app. Invalid or unreachable URLs will block registration or launch.
 
 ## Portal and dashboard embedding
@@ -95,7 +95,7 @@ Only Blnk-owned domains can embed your portal. Other sites, including `localhost
 
 ### Portal sessions and URLs
 
-- Return a new `portal_url` every time someone launches the app from Cloud.
+- Return a new `portal_url` every time someone launches the app from the dashboard.
 - Use **short-lived portal sessions**. Roughly 5 to 15 minutes is a good default. Validate the session on every portal page load and API request from the UI.
 - The `portal_url` is for your interface only. Do not put API keys, provider secrets, or other sensitive data in the link.
 
@@ -110,7 +110,7 @@ Before users rely on your app in production, work through this list:
 5. Uninstall disables the install and stops related jobs
 6. Manifest requests only needed scopes
 7. Backend checks `granted_permissions` before sensitive actions
-8. Every Cloud API call includes the correct `instance_id`
+8. Every call to Blnk includes the correct `instance_id`
 9. Production URLs are public HTTPS endpoints Blnk can reach
 10. Local testing uses a tunnel, not raw `localhost` in the manifest
 11. `frame-ancestors` policy is set on portal pages

@@ -12,21 +12,21 @@ If the work needs a server and none is running, ask the user to start it. Wait f
 
 ## Before you write about Blnk
 
-Check the current product before you write an endpoint, a field, or an SDK method. Use the Blnk docs MCP (`search_blnk_finance`, `query_docs_filesystem_blnk_finance`) and the Blnk skills: `blnk-lookup` for product facts, `blnk-design` for a money movement map, `blnk-implement` for an integration, `blnk-fintech` for a flow review.
+Check the current product before you write an endpoint, a field, or an SDK method. Use the Blnk docs MCP (`blnk-docs`: `orient`, then `search`, `list_pages`, or `get_operation`, then `read_page`) and the Blnk skills: `blnk-lookup` for product facts, `blnk-design` for a money movement map, `blnk-implement` for an integration, `blnk-fintech` for a flow review.
 
 Query collections with the Filter API. Use Typesense for full-text search. A money movement map is a shortened `map.blnkfinance.com` URL inside `<Map>`.
 
 ## Pages
 
+When you write or edit a page, read and follow `.cursor/skills/docs-writer/SKILL.md`. That includes a new page, a rewrite, and a small copy edit.
+
 Keep the original path. A tag that is not in `src/ui/mdx/components.ts` and not a file in `src/content/snippets` is a stop: ask, and do not add a component to get past it.
-
-Copy, samples, images, and spacing already decided for this site are in `.cursor/skills/migrate-docs/SKILL.md` under **Decisions already on the site**. Follow that section on any page edit, including ones that are not a migration.
-
-A paragraph is 2 or 3 sentences. Break a fourth sentence into the next paragraph. Do not stack one-line paragraphs unless that sentence is its own point.
 
 ## Skills
 
-**migrate-docs.** The user asked to migrate a chunk, a group, or a section, or said `next`. Read the skill, `status.md`, and `sections.md`. Post the plan and wait. Write nothing until they accept. One group, then stop.
+**docs-writer.** Any write or edit of a page in `src/content`. Read the skill before changing copy, layout, samples, or frontmatter. Follow it.
+
+**migrate-docs.** The user asked to migrate a chunk, a group, or a section, or said `next`. Read the skill, `status.md`, and `sections.md`. Post the plan and wait. Write nothing until they accept. One group, then stop. The page you write still follows docs-writer.
 
 **expert.** The user tagged the prompt with `expert`. It does not run on its own.
 

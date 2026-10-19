@@ -16,6 +16,7 @@ import {
 } from '../lib/seo';
 import '../styles/styles.css';
 import '../styles/mdx.css';
+import '../styles/code-tokens.css';
 import { renderIcon } from '../icons/mingcute';
 import { ClientRouter } from 'astro:transitions';
 import Analytics from './Analytics.astro';
@@ -112,6 +113,24 @@ function structuredData(page: {
 				const root = document.documentElement;
 				root.dataset.theme = theme;
 				root.dataset.appearance = dark ? 'dark' : 'light';
+			})();
+		</script>
+		<script is:inline>
+			(() => {
+				const framed = () => {
+					try {
+						return window.self !== window.top;
+					} catch {
+						return true;
+					}
+				};
+				const mark = (root) => {
+					if (root && framed()) root.dataset.embed = '';
+				};
+				mark(document.documentElement);
+				document.addEventListener('astro:before-swap', (event) => {
+					mark(event.newDocument?.documentElement);
+				});
 			})();
 		</script>
 		<script is:inline>
@@ -306,5 +325,8 @@ function structuredData(page: {
 			</div>
 			<CodeBlocks />
 		</div>
+		<script>
+			import './prefetch';
+		</script>
 	</body>
 </html>

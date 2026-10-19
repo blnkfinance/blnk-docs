@@ -1,6 +1,6 @@
 # Outstanding
 
-Pages still to move from `blnkfinance/blnk-docs`. Everything else in [sections.md](sections.md) is already on the site.
+Pages still to move from `blnkfinance/docs-v1`. Everything else in [sections.md](sections.md) is already on the site.
 
 ## SDKs
 
