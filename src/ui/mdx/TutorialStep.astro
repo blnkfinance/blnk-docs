@@ -1,0 +1,28 @@
+---
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<section class="tutorial-step">
+	<p class="tutorial-step-label">Step <span class="tutorial-step-index"></span></p>
+	<div class="tutorial-step-main">
+		<h2>{title}</h2>
+		<slot />
+	</div>
+	<div class="tutorial-frames" hidden></div>
+	<script is:inline>
+		(() => {
+			const step = document.currentScript?.parentElement;
+			if (!(step instanceof HTMLElement)) return;
+			const main = step.querySelector(':scope > .tutorial-step-main');
+			const stack = step.querySelector(':scope > .tutorial-frames');
+			if (!(main instanceof HTMLElement) || !(stack instanceof HTMLElement)) return;
+			for (const frame of main.querySelectorAll(':scope .tutorial-frame')) stack.append(frame);
+			if (stack.childElementCount > 0) stack.hidden = false;
+			window.bindTutorialFields?.();
+		})();
+	</script>
+</section>

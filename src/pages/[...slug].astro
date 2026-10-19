@@ -5,6 +5,7 @@ import { assertPagesExist, assertRedirects, enterpriseNotice, navigation, pageHr
 import * as mdxComponents from '../ui/mdx/components';
 import { withSnippets } from '../ui/mdx/snippets';
 import DocsLayout from '../ui/DocsLayout.astro';
+import Tutorial from '../ui/Tutorial.astro';
 
 export async function getStaticPaths() {
 	const docs = await getCollection('docs');
@@ -23,7 +24,8 @@ const { Content, headings } = await render(entry);
 const components = withSnippets(mdxComponents);
 const description = metaDescription(entry.data.metaDescription, entry.data.description);
 const notice = enterpriseNotice(entry.data.enterprise);
-const markdown = pageMarkdown(entry.data.title, description, entry.body, notice);
+const markdown = pageMarkdown(entry.data.title, description, entry.body ?? '', notice);
+const tutorialId = entry.id.replace(/^tutorials\//, '');
 ---
 
 <DocsLayout
@@ -37,6 +39,16 @@ const markdown = pageMarkdown(entry.data.title, description, entry.body, notice)
 	method={entry.data.method}
 	endpoint={entry.data.path}
 	enterprise={notice}
+	toc={!entry.data.tutorial}
+	tutorial={entry.data.tutorial}
 >
-	<Content components={components} />
+	{
+		entry.data.tutorial ? (
+			<Tutorial id={tutorialId}>
+				<Content components={components} />
+			</Tutorial>
+		) : (
+			<Content components={components} />
+		)
+	}
 </DocsLayout>

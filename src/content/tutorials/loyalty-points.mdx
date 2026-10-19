@@ -1,0 +1,944 @@
+---
+title: "Loyalty points"
+description: "Learn how to implement loyalty points with Blnk."
+icon: "layers"
+tutorial: true
+---
+
+Loyalty points are a balance a customer earns on a purchase and spends on a later one. Awarding points issues them from a pool, and redeeming points returns them to that pool.
+
+This tutorial shows how to implement that with Blnk.
+
+<TutorialSteps>
+  <TutorialStep title="Design the money movement">
+    Before we start building, we need to define our [money movement](/ledgers/money-movement-map). Alice pays for a purchase from her USD balance, and we award points from a pool into her points balance.
+
+    A purchase of \$100.00 moves from Alice to `@RevenueUSD`. We then issue 10 points from `@PointsPool` to her points balance, one point for every \$10 she spends.
+
+    When she buys again, those points move back to `@PointsPool`. Ten points are worth \$1.00, so a \$20.00 purchase costs her \$19.00 from her USD balance.
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/FT727slh1E" title="Awarding loyalty points" />
+    </TutorialFrame>
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/x2vFiHpEzQ" title="Redeeming loyalty points" />
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create a ledger">
+    Before we start recording transactions, we need to set up our [ledger](/ledgers/introduction) to track Alice's USD balance and her points balance.
+
+    For our example, she holds both in one ledger. We'll create that ledger for the two balances.
+
+    <Tip>
+      `@RevenueUSD` and `@PointsPool` are created in the [General Ledger](/ledgers/general-ledger) when we record the purchase and the award, separate from this customer ledger.
+    </Tip>
+
+    Create the ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-ledger" method="POST" path="/ledgers" save="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer wallets" />
+            <TutorialInput name="description" label="Description" value="USD and points balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create an identity">
+    An [identity](/identities/introduction) is how we record the customer. We pass Alice's type, name, email, and phone number.
+
+    Anything else we want to keep goes in [metadata](/search/metadata). We'll store her customer id there as `customer_id`.
+
+    Create the identity:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-identity" method="POST" path="/identities" save="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Alice" />
+            <TutorialInput name="last_name" label="Last name" value="Johnson" />
+            <TutorialInput name="email_address" label="Email" value="alice@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567890" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-001" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the wallet">
+    Now that we have Alice in our ledger, we can create a USD balance for her, stored in the ledger from step 2.
+
+    We'll use the `ledger_id` and `identity_id` from the earlier steps, set the currency, and submit. Blnk creates the balance and attaches it to Alice.
+
+    Create the wallet:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-usd-balance" method="POST" path="/balances" save="usd_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the points balance">
+    Alice also needs a balance for points, in the same ledger and on the same identity. We'll set the currency to `POINTS` and submit.
+
+    Create the points balance:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-points-balance" method="POST" path="/balances" save="points_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="POINTS" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Record a deposit">
+    Alice deposits \$120.00 via an ACH transfer so she can pay for both purchases. The destination is her USD balance, and the source is `@WorldUSD_ACH`.
+
+    The amount is a decimal, and we multiply it by [precision](/transactions/precision) `100` to get `precise_amount`. The reference and the description are already set.
+
+    <Note>
+      To make sure the transaction applies, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@WorldUSD_ACH` is created with a 0 balance, and Blnk would reject the record because the source has insufficient funds.
+    </Note>
+
+    Record the deposit:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "DEP-20261019-090000",
+    "description": "ACH deposit",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'DEP-20261019-090000',
+  description: 'ACH deposit',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "DEP-20261019-090000",
+        Description: "ACH deposit",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "DEP-20261019-090000",
+  "description": "ACH deposit",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("DEP-20261019-090000")
+        .description("ACH deposit")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="record-deposit" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="DEP-20261019-090000" />
+            <TutorialValue name="description" value="ACH deposit" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="120.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" value="@WorldUSD_ACH" />
+            <TutorialInput name="destination" label="Destination" from="usd_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Record a purchase">
+    Alice buys something for \$100.00. The source is her USD balance, and the destination is `@RevenueUSD`.
+
+    The reference and the description are already set. After this purchase she has \$20.00 left, which covers the discounted purchase later.
+
+    Record the purchase:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "PUR-20261019-103000",
+    "description": "Product purchase",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'PUR-20261019-103000',
+  description: 'Product purchase',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "PUR-20261019-103000",
+        Description: "Product purchase",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "PUR-20261019-103000",
+  "description": "Product purchase",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("PUR-20261019-103000")
+        .description("Product purchase")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="record-purchase" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="PUR-20261019-103000" />
+            <TutorialValue name="description" value="Product purchase" />
+            <TutorialInput name="amount" label="Amount" value="100.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="usd_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@RevenueUSD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Award the points">
+    The purchase earns her 10 points, one for every \$10. We move those points from `@PointsPool` to her points balance.
+
+    Points use [precision](/transactions/precision) `1`, so 10 points is `precise_amount` `10`. We'll store the purchase reference in [metadata](/search/metadata) as `purchase_reference`.
+
+    <Note>
+      To make sure the award applies, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@PointsPool` is created with a 0 balance, and Blnk would reject the record because the source has insufficient funds.
+    </Note>
+
+    Award the points:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 1,
+    "reference": "PTS-20261019-103000",
+    "description": "Loyalty points award",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true,
+    "meta_data": {
+      "purchase_reference": "{{purchase_reference}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 1;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'PTS-20261019-103000',
+  description: 'Loyalty points award',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+  meta_data: {
+    purchase_reference: '{{purchase_reference}}',
+  },
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 1
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "PTS-20261019-103000",
+        Description: "Loyalty points award",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+        MetaData: blnkgo.MetaData{
+            "purchase_reference": "{{purchase_reference}}",
+        },
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 1
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "PTS-20261019-103000",
+  "description": "Loyalty points award",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+  "meta_data": {
+    "purchase_reference": "{{purchase_reference}}",
+  },
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 1;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("PTS-20261019-103000")
+        .description("Loyalty points award")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true)
+        .metaData(Map.of("purchase_reference", "{{purchase_reference}}")));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="award-points" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="PTS-20261019-103000" />
+            <TutorialValue name="description" value="Loyalty points award" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Points" value="10.00" type="amount" precision="1" />
+            <TutorialInput name="currency" label="Currency" value="POINTS" />
+            <TutorialInput name="source" label="Source" value="@PointsPool" />
+            <TutorialInput name="destination" label="Destination" from="points_balance_id" />
+            <TutorialInput name="purchase_reference" label="Purchase reference" value="PUR-20261019-103000" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Redeem the points">
+    Alice uses those 10 points on a later purchase. Ten points are worth \$1.00, so we move them from her points balance back to `@PointsPool`.
+
+    The reference and the description are already set. Her points balance is 0 after this, and the dollar discount is applied on the next step.
+
+    Redeem the points:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 1,
+    "reference": "RDM-20261019-140000",
+    "description": "Points redemption",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 1;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'RDM-20261019-140000',
+  description: 'Points redemption',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 1
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "RDM-20261019-140000",
+        Description: "Points redemption",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 1
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "RDM-20261019-140000",
+  "description": "Points redemption",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 1;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("RDM-20261019-140000")
+        .description("Points redemption")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="redeem-points" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="RDM-20261019-140000" />
+            <TutorialValue name="description" value="Points redemption" />
+            <TutorialInput name="amount" label="Points" value="10.00" type="amount" precision="1" />
+            <TutorialInput name="currency" label="Currency" value="POINTS" />
+            <TutorialInput name="source" label="Source" from="points_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@PointsPool" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Record the discounted purchase">
+    The item costs \$20.00, and the points cover \$1.00. She pays the remaining \$19.00 from her USD balance to `@RevenueUSD`.
+
+    The reference and the description are already set. This leaves \$1.00 in her USD balance.
+
+    Record the discounted purchase:
+
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "PUR-20261019-140000",
+    "description": "Discounted purchase",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'PUR-20261019-140000',
+  description: 'Discounted purchase',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "PUR-20261019-140000",
+        Description: "Discounted purchase",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "PUR-20261019-140000",
+  "description": "Discounted purchase",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("PUR-20261019-140000")
+        .description("Discounted purchase")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="record-discounted-purchase" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="PUR-20261019-140000" />
+            <TutorialValue name="description" value="Discounted purchase" />
+            <TutorialInput name="amount" label="Amount" value="19.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="usd_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@RevenueUSD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Confirmation">
+    We should now have \$1.00 in Alice's USD balance and no points left. The \$19.00 purchase went to `@RevenueUSD`, and the 10 points went back to `@PointsPool`.
+
+    If you have a Blnk Cloud account or an Enterprise license, you can confirm this by checking the dashboard or using the [CLI](/cli/balances).
+
+    Print every balance:
+
+```bash List balances wrap
+blnk balances list
+```
+
+  </TutorialStep>
+</TutorialSteps>

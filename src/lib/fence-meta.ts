@@ -84,26 +84,112 @@ export function fenceMetaTransformer(): ShikiTransformer {
 	};
 }
 
+const slotPattern = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
 const idPattern = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
 
-/** `{ledger_id}` and other id placeholders, in the same mark as an id value. */
+function slotText(name: string, raw: string): string {
+	if (name === 'CORE_URL' || name === 'CORE_SECRET_KEY') return name;
+	return raw;
+}
+
+/** `{ledger_id}` marks an id. `{{name}}` is a tutorial value the page fills in. */
 function highlightIds(node: Element) {
+	groupSplitSlots(node);
 	const next: ElementContent[] = [];
 	for (const child of node.children) {
 		if (child.type === 'element') {
-			highlightIds(child);
+			if (child.properties?.['data-fill'] == null) highlightIds(child);
 			next.push(child);
 			continue;
 		}
-		if (child.type !== 'text' || !idPattern.test(child.value)) {
-			idPattern.lastIndex = 0;
+		if (child.type !== 'text') {
 			next.push(child);
 			continue;
 		}
-		idPattern.lastIndex = 0;
-		next.push(...splitIds(child));
+		next.push(...splitTutorialText(child));
 	}
 	node.children = next;
+}
+
+function textOf(node: ElementContent): string {
+	if (node.type === 'text') return node.value;
+	if (node.type === 'element') return node.children.map(textOf).join('');
+	return '';
+}
+
+/** Shiki can split `{{name}}` across spans. Join that run into one fill. */
+function groupSplitSlots(node: Element) {
+	const children = node.children;
+	if (children.length < 2) return;
+	const texts = children.map(textOf);
+	const full = texts.join('');
+	if (!full.includes('{{')) return;
+	const starts: number[] = [];
+	let offset = 0;
+	for (const text of texts) {
+		starts.push(offset);
+		offset += text.length;
+	}
+	const taken = new Set<number>();
+	const grouped = new Map<number, Element>();
+	for (const match of full.matchAll(slotPattern)) {
+		const start = match.index ?? 0;
+		const end = start + match[0].length;
+		const first = starts.findIndex((item, index) => item <= start && start < item + texts[index].length);
+		if (first < 0 || start !== starts[first]) continue;
+		let last = first;
+		while (last + 1 < texts.length && starts[last] + texts[last].length < end) last += 1;
+		if (last === first || starts[last] + texts[last].length !== end) continue;
+		for (let index = first; index <= last; index += 1) taken.add(index);
+		grouped.set(first, {
+			type: 'element',
+			tagName: 'span',
+			properties: { className: ['code-id'], 'data-fill': match[1] },
+			children: [{ type: 'text', value: slotText(match[1], match[0]) }],
+		});
+	}
+	if (grouped.size === 0) return;
+	const next: ElementContent[] = [];
+	for (let index = 0; index < children.length; index += 1) {
+		const group = grouped.get(index);
+		if (group) next.push(group);
+		else if (!taken.has(index)) next.push(children[index]);
+	}
+	node.children = next;
+}
+
+function splitTutorialText(node: Text): ElementContent[] {
+	if (!node.value.includes('{')) return [node];
+	const parts: ElementContent[] = [];
+	for (const part of splitSlots(node)) {
+		if (part.type === 'text' && idPattern.test(part.value)) {
+			idPattern.lastIndex = 0;
+			parts.push(...splitIds(part));
+		} else {
+			idPattern.lastIndex = 0;
+			parts.push(part);
+		}
+	}
+	return parts;
+}
+
+function splitSlots(node: Text): ElementContent[] {
+	const parts: ElementContent[] = [];
+	let last = 0;
+	for (const match of node.value.matchAll(slotPattern)) {
+		const index = match.index ?? 0;
+		if (index > last) parts.push({ type: 'text', value: node.value.slice(last, index) });
+		parts.push({
+			type: 'element',
+			tagName: 'span',
+			properties: { className: ['code-id'], 'data-fill': match[1] },
+			children: [{ type: 'text', value: slotText(match[1], match[0]) }],
+		});
+		last = index + match[0].length;
+	}
+	if (last < node.value.length) parts.push({ type: 'text', value: node.value.slice(last) });
+	if (parts.length === 0) return [node];
+	return parts;
 }
 
 function splitIds(node: Text): ElementContent[] {

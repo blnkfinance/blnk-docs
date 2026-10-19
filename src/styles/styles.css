@@ -96,6 +96,14 @@ pre {
 	grid-template-rows: auto auto 1fr;
 }
 
+.frame:has(> .tutorial-banner:not([hidden])) {
+	grid-template-rows: auto auto 1fr;
+}
+
+.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) {
+	grid-template-rows: auto auto auto 1fr;
+}
+
 .enterprise {
 	display: flex;
 	align-items: center;
@@ -122,9 +130,17 @@ pre {
 }
 
 .frame:has(> .enterprise) .sidebar,
-.frame:has(> .enterprise) .toc {
+.frame:has(> .enterprise) .toc,
+.frame:has(> .tutorial-banner:not([hidden])) .sidebar,
+.frame:has(> .tutorial-banner:not([hidden])) .toc {
 	top: 96px;
 	height: calc(100dvh - 96px);
+}
+
+.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) .sidebar,
+.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) .toc {
+	top: 144px;
+	height: calc(100dvh - 144px);
 }
 
 .frame:has(> .enterprise) .article-examples {
@@ -449,6 +465,78 @@ main {
 	margin-inline: auto;
 }
 
+@media (min-width: 1280px) {
+	.shell.tutorial main {
+		grid-column: 2 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		padding-right: 0;
+		padding-left: 0;
+	}
+
+	.shell.tutorial .article {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+		max-width: none;
+		width: auto;
+		margin-inline: 0;
+	}
+
+	.shell.tutorial .article > :not(.tutorial) {
+		grid-column: 1;
+		padding-inline: var(--article-gutter);
+	}
+
+	.shell.tutorial .tutorial {
+		display: contents;
+	}
+
+	.shell.tutorial .tutorial > :not(.tutorial-steps) {
+		grid-column: 1;
+		margin-bottom: 0;
+		padding-inline: var(--article-gutter);
+	}
+
+	.shell.tutorial .tutorial > p + p {
+		margin-top: 16px;
+	}
+
+	.shell.tutorial .tutorial-steps {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+	}
+
+	.shell.tutorial .tutorial-step {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+	}
+
+	.shell.tutorial .tutorial-step-label,
+	.shell.tutorial .tutorial-step-main {
+		grid-column: 1;
+		min-width: 0;
+		padding-inline: var(--article-gutter);
+	}
+
+	.shell.tutorial .tutorial-step-main {
+		grid-row: 2;
+	}
+
+	.shell.tutorial .tutorial-frames {
+		position: relative;
+		z-index: 1;
+		grid-column: 2;
+		grid-row: 2;
+		align-self: start;
+		margin-top: 0;
+		margin-right: 1.25rem;
+		margin-left: calc(64px - var(--article-gutter));
+	}
+}
+
 .shell:has(.has-examples) main {
 	grid-column: 2 / -1;
 	display: grid;
@@ -673,8 +761,15 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 }
 
 .frame:has(> .enterprise) .article h2,
-.frame:has(> .enterprise) .article h3 {
+.frame:has(> .enterprise) .article h3,
+.frame:has(> .tutorial-banner:not([hidden])) .article h2,
+.frame:has(> .tutorial-banner:not([hidden])) .article h3 {
 	scroll-margin-top: 120px;
+}
+
+.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) .article h2,
+.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) .article h3 {
+	scroll-margin-top: 168px;
 }
 
 .article h2 {
@@ -799,7 +894,9 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 	}
 
 	.sidebar,
-	.frame:has(> .enterprise) .sidebar {
+	.frame:has(> .enterprise) .sidebar,
+	.frame:has(> .tutorial-banner:not([hidden])) .sidebar,
+	.frame:has(> .enterprise):has(> .tutorial-banner:not([hidden])) .sidebar {
 		position: fixed;
 		z-index: 40;
 		top: var(--header-block);
@@ -835,13 +932,19 @@ html[data-appearance='dark'] .article .endpoint-path .endpoint-param {
 		grid-row: 2;
 	}
 
-	.enterprise {
+	.enterprise,
+	.tutorial-banner {
 		position: static;
 		height: auto;
 		min-height: 40px;
 		padding: 10px 16px;
 		white-space: normal;
 		line-height: 1.4;
+	}
+
+	.tutorial-banner {
+		position: relative;
+		padding-inline: 48px;
 	}
 
 	.article h2,

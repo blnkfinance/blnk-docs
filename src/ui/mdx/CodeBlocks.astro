@@ -10,6 +10,23 @@
 		return pre.dataset.title || pre.dataset.language || 'Code';
 	}
 
+	let syncingTutorialLanguage = false;
+
+	function syncTutorialLanguage(group: HTMLElement, label: string) {
+		if (syncingTutorialLanguage || !label) return;
+		const tutorial = group.closest('.tutorial');
+		if (!tutorial) return;
+		syncingTutorialLanguage = true;
+		tutorial.querySelectorAll('[data-code-group]').forEach((other) => {
+			if (!(other instanceof HTMLElement) || other === group) return;
+			const match = [...other.querySelectorAll(':scope > .code-group-bar .code-group-tab')].find(
+				(item) => item.textContent?.trim() === label,
+			);
+			if (match instanceof HTMLButtonElement && match.getAttribute('aria-selected') !== 'true') match.click();
+		});
+		syncingTutorialLanguage = false;
+	}
+
 	function addTitle(pre: HTMLElement) {
 		if (pre.closest('[data-code-group]') || pre.closest('.code-frame')) return;
 		const frame = document.createElement('div');
@@ -262,7 +279,10 @@
 				button.setAttribute('role', 'tab');
 				button.textContent = codeLabel(pre);
 				button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-				button.addEventListener('click', () => select(index));
+				button.addEventListener('click', () => {
+					select(index);
+					syncTutorialLanguage(group, button.textContent?.trim() ?? '');
+				});
 				bar.append(button);
 				const sync = collapse(pre, () => collapsed(panel));
 				if (sync) syncExpand.push(sync);

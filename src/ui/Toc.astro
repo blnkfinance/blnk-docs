@@ -6,17 +6,24 @@ import TocList from './TocList.astro';
 
 const copyIcon = await renderIcon('copy-2', 16);
 
+interface StepLink {
+	id: string;
+	title: string;
+}
+
 interface Props {
 	headings: MarkdownHeading[];
 	markdown: string;
 	sections?: boolean;
+	steps?: StepLink[];
 }
 
-const { headings, markdown, sections = true } = Astro.props;
+const { headings, markdown, sections = true, steps = [] } = Astro.props;
 const groups = tocItems(headings, markdown);
 const changelog = markdown.includes('<Update ');
+const tutorialSteps = steps.length > 0;
 const hasSections =
-	sections && groups.length > 0 && (changelog || headings.some((heading) => heading.depth === 2));
+	tutorialSteps || (sections && groups.length > 0 && (changelog || headings.some((heading) => heading.depth === 2)));
 
 const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 ---
@@ -27,9 +34,15 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 			hasSections && (
 				<nav aria-label="On this page">
 					<ul>
-						{groups.map((group) => (
-							<TocList item={group} />
-						))}
+						{tutorialSteps
+							? steps.map((step) => (
+									<li>
+										<a href={`#${step.id}`} data-tutorial-step={step.id}>
+											{step.title}
+										</a>
+									</li>
+								))
+							: groups.map((group) => <TocList item={group} />)}
 					</ul>
 				</nav>
 			)
@@ -85,7 +98,7 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 
 	function tocEntries() {
 		return [...document.querySelectorAll('.toc nav a')].flatMap((link) => {
-			if (!(link instanceof HTMLAnchorElement)) return [];
+			if (!(link instanceof HTMLAnchorElement) || link.hasAttribute('data-tutorial-step')) return [];
 			const id = decodeURIComponent(link.hash.slice(1));
 			const heading = document.getElementById(id);
 			return heading ? [{ link, heading }] : [];
@@ -278,5 +291,12 @@ const pageJson = JSON.stringify(markdown).replace(/</g, '\\u003c');
 	.toc :global(a[aria-current='location']),
 	.toc :global(a[aria-current='location']:hover) {
 		color: var(--primary);
+	}
+
+	.toc :global(a[data-done]::after) {
+		content: 'Done';
+		margin-left: 0.45rem;
+		font-size: 11px;
+		letter-spacing: 0.02em;
 	}
 </style>

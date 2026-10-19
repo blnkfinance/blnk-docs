@@ -1,0 +1,169 @@
+---
+import { renderIcon } from '../icons/mingcute';
+
+const closeIcon = await renderIcon('close', 16);
+---
+
+<div class="tutorial-banner" data-tutorial-banner data-state="off">
+	<p class="tutorial-banner-line">
+		<span data-tutorial-banner-copy>Connect your sandbox to see this tutorial in action.</span>
+		{' '}
+		<span class="tutorial-credentials-anchor">
+			<button type="button" data-tutorial-credentials aria-expanded="false">Connect credentials.</button>
+			<form class="tutorial-credentials" hidden>
+				<label class="tutorial-input">
+					<span>Core URL</span>
+					<input name="baseUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://sandbox.example" />
+				</label>
+				<label class="tutorial-input">
+					<span>Core secret</span>
+					<input name="apiKey" type="password" autocomplete="off" spellcheck="false" />
+				</label>
+				<p class="tutorial-credentials-note">Use a dev or sandbox key.</p>
+				<p class="tutorial-error" data-tutorial-credentials-error hidden></p>
+				<button type="submit">Save</button>
+			</form>
+		</span>
+	</p>
+	<button type="button" class="tutorial-banner-close" data-tutorial-banner-dismiss aria-label="Close">
+		<Fragment set:html={closeIcon} />
+	</button>
+</div>
+
+<script is:inline>
+	(() => {
+		const CORE_KEY = 'blnk.core';
+		const WEEK = 7 * 24 * 60 * 60 * 1000;
+
+		function readCore() {
+			try {
+				const raw = localStorage.getItem(CORE_KEY);
+				if (!raw) return null;
+				const parsed = JSON.parse(raw);
+				if (typeof parsed.baseUrl !== 'string' || typeof parsed.apiKey !== 'string') return null;
+				if (typeof parsed.expiresAt !== 'number' || typeof parsed.savedAt !== 'number') return null;
+				return parsed;
+			} catch {
+				return null;
+			}
+		}
+
+		function connected(record) {
+			return !!record && record.expiresAt > Date.now() && record.apiKey.trim() !== '';
+		}
+
+		function applyTutorialCore() {
+			const record = readCore();
+			const on = connected(record);
+			document.querySelectorAll('[data-fill="CORE_URL"]').forEach((node) => {
+				node.textContent = on && record ? record.baseUrl : 'CORE_URL';
+			});
+			document.querySelectorAll('[data-fill="CORE_SECRET_KEY"]').forEach((node) => {
+				node.textContent = on ? '••••••••' : 'CORE_SECRET_KEY';
+			});
+		}
+
+		window.applyTutorialCore = applyTutorialCore;
+
+		function bindBanner(banner) {
+			if (!(banner instanceof HTMLElement) || banner.dataset.bound === 'true') return;
+			banner.dataset.bound = 'true';
+			if (window.__tutorialBannerDismissed) {
+				banner.hidden = true;
+				return;
+			}
+			const copy = banner.querySelector('[data-tutorial-banner-copy]');
+			const trigger = banner.querySelector('[data-tutorial-credentials]');
+			const form = banner.querySelector('.tutorial-credentials');
+			const urlInput = form?.querySelector('input[name="baseUrl"]');
+			const secretInput = form?.querySelector('input[name="apiKey"]');
+			const error = form?.querySelector('[data-tutorial-credentials-error]');
+			if (!(copy instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement)) return;
+			if (!(form instanceof HTMLFormElement) || !(urlInput instanceof HTMLInputElement)) return;
+			if (!(secretInput instanceof HTMLInputElement) || !(error instanceof HTMLElement)) return;
+
+			function paint() {
+				const record = readCore();
+				const on = connected(record);
+				banner.dataset.state = on ? 'on' : 'off';
+				copy.textContent = on ? 'Core credentials is connected.' : 'Connect your sandbox to see this tutorial in action.';
+				trigger.textContent = on ? 'Edit credentials.' : 'Connect credentials.';
+				if (on && record) {
+					urlInput.value = record.baseUrl;
+					secretInput.value = record.apiKey;
+				}
+				applyTutorialCore();
+			}
+
+			function close() {
+				form.hidden = true;
+				trigger.setAttribute('aria-expanded', 'false');
+			}
+
+			function showError(message) {
+				error.hidden = false;
+				error.textContent = message;
+			}
+
+			trigger.addEventListener('click', () => {
+				const open = form.hidden;
+				form.hidden = !open;
+				trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+				error.hidden = true;
+				if (open) urlInput.focus();
+			});
+
+			form.addEventListener('submit', (event) => {
+				event.preventDefault();
+				error.hidden = true;
+				let origin = urlInput.value.trim();
+				try {
+					const url = new URL(origin);
+					if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Use an http or https URL.');
+					origin = url.origin;
+				} catch (cause) {
+					showError(cause instanceof Error && cause.message === 'Use an http or https URL.' ? cause.message : 'Use an http or https URL.');
+					return;
+				}
+				const secret = secretInput.value.trim();
+				if (!secret) {
+					showError('Enter the Core secret.');
+					return;
+				}
+				const now = Date.now();
+				localStorage.setItem(CORE_KEY, JSON.stringify({ baseUrl: origin, apiKey: secret, savedAt: now, expiresAt: now + WEEK }));
+				urlInput.value = origin;
+				close();
+				paint();
+			});
+
+			document.addEventListener('click', (event) => {
+				if (form.hidden) return;
+				if (event.target instanceof Node && banner.contains(event.target)) return;
+				close();
+			});
+
+			document.addEventListener('keydown', (event) => {
+				if (event.key === 'Escape') close();
+			});
+
+			banner.querySelector('[data-tutorial-banner-dismiss]')?.addEventListener('click', () => {
+				window.__tutorialBannerDismissed = true;
+				close();
+				banner.hidden = true;
+			});
+
+			paint();
+		}
+
+		if (!window.__tutorialBannerBound) {
+			window.__tutorialBannerBound = true;
+			document.addEventListener('astro:page-load', () => {
+				document.querySelectorAll('[data-tutorial-banner]').forEach((banner) => bindBanner(banner));
+				applyTutorialCore();
+			});
+		}
+
+		document.querySelectorAll('[data-tutorial-banner]').forEach((banner) => bindBanner(banner));
+	})();
+</script>

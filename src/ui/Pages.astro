@@ -1,6 +1,6 @@
 ---
 import { renderIcon } from '../icons/mingcute';
-import { isDropdown, itemPath, matchesPage, methodLabel, pageHref, type NavItem } from './navigation';
+import { isDropdown, isLink, itemPath, matchesPage, methodLabel, pageHref, type NavItem } from './navigation';
 import Pages from './Pages.astro';
 
 interface Props {
@@ -29,10 +29,10 @@ function childSelected(item: Extract<NavItem, { dropdown: string }>): boolean {
 	return item.pages.some((child) => contains(child));
 }
 
-/** Page rows use frontmatter. A dropdown uses its own nav icon. Nested rows stay plain. */
+/** Page rows use frontmatter. A dropdown or external link uses its own nav icon. Nested rows stay plain. */
 function iconName(item: NavItem): string | undefined {
 	if (nested) return undefined;
-	if (isDropdown(item)) return item.icon;
+	if (isDropdown(item) || isLink(item)) return item.icon;
 	const path = itemPath(item);
 	return path ? pageIcons.get(path) : undefined;
 }
@@ -45,12 +45,31 @@ for (const page of pages) {
 	if (svg) icons.set(name, svg);
 }
 const mark = await renderIcon('add', 16);
+const external = await renderIcon('arrow-right-up', 16);
 ---
 
 <ul class="nav-pages" id={id} hidden={open === false ? true : undefined}>
 	{
 		pages.map((page, index) => {
 			if (isDropdown(page) && page.hidden) return null;
+			if (isLink(page)) {
+				const icon = icons.get(iconName(page) ?? '');
+				return (
+					<li>
+						<a class="nav-item" href={page.href} target="_blank" rel="noopener noreferrer">
+							{icon && (
+								<span class="nav-icon">
+									<Fragment set:html={icon} />
+								</span>
+							)}
+							<span class="nav-text">{page.link}</span>
+							<span class="nav-mark" aria-hidden="true">
+								<Fragment set:html={external} />
+							</span>
+						</a>
+					</li>
+				);
+			}
 			if (!isDropdown(page)) {
 				const path = itemPath(page);
 				if (!path) return null;

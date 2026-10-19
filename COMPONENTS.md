@@ -22,6 +22,14 @@ A snippet is compiled on its own. It imports each component it uses.
 | `Check.astro` | `Check` | Callout, tone `check`, icon `check-circle` |
 | `Steps.astro` | `Steps` | Numbered sequence |
 | `Step.astro` | `Step` | One step |
+| `TutorialSteps.astro` | `TutorialSteps` | Sections on a tutorial page |
+| `TutorialStep.astro` | `TutorialStep` | One tutorial section |
+| `TutorialFrame.astro` | `TutorialFrame` | Container to the right of a tutorial step |
+| `TutorialCode.astro` | `TutorialCode` | Code whose `{{name}}` values follow the frame |
+| `TutorialInput.astro` | `TutorialInput` | A field in a tutorial frame |
+| `TutorialValue.astro` | `TutorialValue` | A fixed request value, not shown in the form |
+| `TutorialForm.astro` | `TutorialForm` | Submit control for a tutorial frame |
+| `TutorialResponse.astro` | `TutorialResponse` | Response hidden until that form is submitted |
 | `CardGroup.astro` | `CardGroup` | Grid of cards |
 | `Card.astro` | `Card` | Link or static tile |
 | `Prompt.astro` | `Prompt` | Click to copy a prompt |
@@ -554,6 +562,98 @@ These older names still resolve. A file with the same name as the alias wins ove
 | `water` | `drop` |
 
 `Card`, `Tab`, `Accordion`, callouts, and `SectionLabel` all use these names. Frontmatter `icon` on a page uses the same set. The sidebar shows that icon on a page that is a direct child of a group.
+
+## Tutorials
+
+A tutorial is one page, with `tutorial: true` in the frontmatter. The sidenav lists that page. The story stays on that page, in `TutorialSteps`. Do not split the steps into separate files.
+
+Each `TutorialStep` is one section. The label is `Step 1`, `Step 2`, and so on, from the order of the steps. A line sits under the label, across the article. The title renders as an `h2`.
+
+Every tutorial page has a banner. Until a Core URL and secret are saved in the browser, it asks you to connect a sandbox. After that, it says the credentials are connected. Connect and Edit open the same popover.
+
+`TutorialFrame` sits to the right of that step. Anything inside the frame goes in that container. Several frames in one step stack down the right side.
+
+```mdx
+<TutorialSteps>
+  <TutorialStep title="Design your money movement">
+    Describe the balances before you create them.
+
+    <TutorialFrame>
+      The map for this step.
+    </TutorialFrame>
+  </TutorialStep>
+</TutorialSteps>
+```
+
+| Component | Prop | Type | |
+| --- | --- | --- | --- |
+| `TutorialSteps` | | | Wraps the sections and numbers them |
+| `TutorialStep` | `title` | `string` | Required. The section heading |
+| `TutorialFrame` | | | One container on the right of its step |
+| `TutorialFrame` | `plain` | `boolean` | Removes the border, background, and padding |
+| `TutorialCode` | | | Wraps the code for one step. `{{name}}` fills from a `TutorialInput` with that name |
+| `TutorialInput` | `name` | `string` | Required. Matches `{{name}}` in the step |
+| `TutorialInput` | `label` | `string` | Required |
+| `TutorialInput` | `value` | `string` | Starting value |
+| `TutorialForm` | `label` | `string` | Submit button. Defaults to `Submit` |
+| `TutorialForm` | `id` | `string` | Request name the server looks up on this page |
+| `TutorialForm` | `method` | `string` | Core method, such as `POST` |
+| `TutorialForm` | `path` | `string` | Core path, such as `/ledgers`. `{transaction_id}` is filled from a field of that name and left out of the body |
+| `TutorialForm` | `save` | `string` | Name kept for a later step. Defaults to the response key, such as `ledger_id` |
+| `TutorialForm` | `response` | `string` | Response key to store under `save`, when a later step needs a second `balance_id` or `identity_id` |
+| `TutorialInput` | `from` | `string` | Fills this field from a saved key when that step succeeds |
+| `TutorialInput` | `group` | `string` | Nests the field, such as `meta_data` |
+| `TutorialInput` | `type` | `string` | `string`, `number`, `boolean`, or `amount`. Defaults to `string` |
+| `TutorialInput` | `precision` | `string` | With `type="amount"`, multiplies the decimal into `precise_amount` |
+| `TutorialValue` | `name` | `string` | Request field set before the form, such as `reference` |
+| `TutorialValue` | `value` | `string` | The fixed value sent to Core |
+| `TutorialResponse` | | | Stays hidden until the form in that frame is submitted. Then it shows the Core response |
+
+Connect your sandbox is the first `Step`. Use `Connect` for the URL, the key, and the result. The reader can read every step without running one.
+
+Each later step explains the decision, then an `Action`, then a `Result`. `Result` stays hidden until **Run on your sandbox** succeeds. `{{name}}` in a code sample, and `<Saved name="name" />` in prose, fill from the form or from an earlier step.
+
+`id` is the name the route looks up in this page. `save` is the name stored for later steps. `response` is the response field, and it defaults to `save`. A `Field` `value` of `{{ledger_id}}` reads that saved name. `type` is `string`, `number`, or `boolean`.
+
+````mdx
+<Steps titleSize="h3">
+  <Step title="Connect your sandbox">
+    <Connect />
+  </Step>
+  <Step title="Create a customer ledger">
+    <Action id="create-ledger" method="POST" path="/ledgers" save="ledger_id">
+      <Field name="name" label="Ledger name" value="Customer Wallets Ledger" />
+
+```bash cURL
+curl -X POST "{{base}}/ledgers" \
+  -H "X-blnk-key: {{api_key}}" \
+  -d '{"name":"{{name}}"}'
+```
+
+    </Action>
+    <Result>
+      Core returns `ledger_id` <Saved name="ledger_id" />.
+    </Result>
+  </Step>
+</Steps>
+````
+
+| Component | Prop | Type | |
+| --- | --- | --- | --- |
+| `Connect` | | | Sandbox URL, API key, and the result of reading ledgers |
+| `Action` | `id` | `string` | Required. The route finds this action on the page |
+| `Action` | `method` | `"GET"` \| `"POST"` \| `"PUT"` \| `"PATCH"` \| `"DELETE"` | Required. The route reads this from the file |
+| `Action` | `path` | `string` | Required. A path on the reader's sandbox, such as `/ledgers` |
+| `Action` | `save` | `string` | Name stored for later steps |
+| `Action` | `response` | `string` | Response field to store. Defaults to `save` |
+| `Field` | `name` | `string` | Required. JSON key sent to Core |
+| `Field` | `label` | `string` | Required |
+| `Field` | `value` | `string` | Optional. `{{ledger_id}}` reads a saved id |
+| `Field` | `type` | `"string"` \| `"number"` \| `"boolean"` | Defaults to `string` |
+| `Saved` | `name` | `string` | Required. Prints a saved value after a run |
+| `Result` | | | Shown after that action has run |
+
+`{{base}}` and `{{api_key}}` in a code sample come from Connect your sandbox. The visible sample masks the key. Copy includes it.
 
 ## Adding a component
 

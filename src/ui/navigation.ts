@@ -8,11 +8,18 @@ const pagePath = z
 		'Page paths are relative to src/content, without an extension',
 	);
 
-/** A page path, a page with an icon, or a dropdown whose pages can themselves be dropdowns. */
-export type NavItem = string | NavPage | NavDropdown;
+/** A page path, a page with an icon, an external link, or a dropdown whose pages can themselves be dropdowns. */
+export type NavItem = string | NavPage | NavLink | NavDropdown;
 
 export type NavPage = {
 	page: string;
+	icon?: string;
+};
+
+/** Opens another site. The sidebar shows an arrow instead of a dropdown mark. */
+export type NavLink = {
+	link: string;
+	href: string;
 	icon?: string;
 };
 
@@ -30,6 +37,10 @@ export function isDropdown(item: NavItem): item is NavDropdown {
 	return typeof item !== 'string' && 'dropdown' in item;
 }
 
+export function isLink(item: NavItem): item is NavLink {
+	return typeof item !== 'string' && 'href' in item;
+}
+
 /** Method badge label. DELETE is DEL in both places. PATCH is PAT in the sidebar so the column stays as wide as POST. */
 export function methodLabel(method: string, sidebar = false): string {
 	if (method === 'DELETE') return 'DEL';
@@ -37,10 +48,10 @@ export function methodLabel(method: string, sidebar = false): string {
 	return method;
 }
 
-/** Content path for a link or for a dropdown that is also a page. */
+/** Content path for a page or for a dropdown that is also a page. */
 export function itemPath(item: NavItem): string | undefined {
 	if (typeof item === 'string') return item;
-	return item.page;
+	if ('page' in item) return item.page;
 }
 
 export type NavGroup = {
@@ -84,19 +95,25 @@ const navPage = z.strictObject({
 	icon: iconName.optional(),
 });
 
+const navLink = z.strictObject({
+	link: z.string().min(1),
+	href: z.string().regex(/^https:\/\/\S+$/, 'External links are https URLs'),
+	icon: iconName.optional(),
+});
+
 export const navDropdown: z.ZodType<NavDropdown> = z.lazy(() =>
 	z.strictObject({
 		dropdown: z.string().min(1),
 		page: pagePath.optional(),
 		icon: iconName.optional(),
 		hidden: z.boolean().optional(),
-		pages: z.array(z.union([pagePath, navPage, navDropdown])),
+		pages: z.array(z.union([pagePath, navPage, navLink, navDropdown])),
 	}),
 );
 
 const navGroup = z.strictObject({
 	group: z.string().min(1),
-	pages: z.array(z.union([pagePath, navPage, navDropdown])),
+	pages: z.array(z.union([pagePath, navPage, navLink, navDropdown])),
 });
 
 const tabPath = z

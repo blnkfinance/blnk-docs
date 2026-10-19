@@ -22,6 +22,7 @@ import Header from './Header.astro';
 import CodeBlocks from './mdx/CodeBlocks.astro';
 import Nav from './Nav.astro';
 import Toc from './Toc.astro';
+import TutorialBanner from './TutorialBanner.astro';
 
 interface Props {
 	title: string;
@@ -34,9 +35,12 @@ interface Props {
 	method?: string;
 	endpoint?: string;
 	enterprise?: string;
+	toc?: boolean;
+	tutorial?: boolean;
+	steps?: { id: string; title: string }[];
 }
 
-const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint, enterprise } =
+const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint, enterprise, toc = true, tutorial = false, steps } =
 	Astro.props;
 const notice = enterprise?.trim();
 const play = method && endpoint ? await renderIcon('play', 14) : '';
@@ -149,7 +153,8 @@ function structuredData(page: {
 					</p>
 				)
 			}
-			<div class:list={['shell', { 'sdk-method': sdkMethod }]}>
+			{tutorial && <TutorialBanner />}
+			<div class:list={['shell', { 'sdk-method': sdkMethod, tutorial: !toc }]}>
 				<Nav />
 				<main>
 					<article
@@ -196,7 +201,7 @@ function structuredData(page: {
 						</script>
 					</article>
 				</main>
-				<Toc headings={headings} markdown={markdown} sections={!sdkMethod} />
+				{toc && <Toc headings={headings} markdown={markdown} sections={!sdkMethod} steps={steps} />}
 			</div>
 			<CodeBlocks />
 		</div>

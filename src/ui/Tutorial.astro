@@ -1,0 +1,39 @@
+---
+interface Props {
+	id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<div class="tutorial" data-tutorial={id}>
+	<slot />
+</div>
+
+<script>
+	import { bootTutorial } from './tutorial-player';
+
+	function placeTutorialFrames() {
+		for (const step of document.querySelectorAll('.tutorial-step')) {
+			if (!(step instanceof HTMLElement)) continue;
+			const main = step.querySelector(':scope > .tutorial-step-main');
+			const stack = step.querySelector(':scope > .tutorial-frames');
+			if (!(main instanceof HTMLElement) || !(stack instanceof HTMLElement)) continue;
+			for (const frame of main.querySelectorAll(':scope .tutorial-frame')) stack.append(frame);
+			stack.hidden = stack.childElementCount === 0;
+		}
+	}
+
+	bootTutorial();
+	placeTutorialFrames();
+	function applyCore() {
+		const apply = (window as Window & { applyTutorialCore?: () => void }).applyTutorialCore;
+		apply?.();
+	}
+	applyCore();
+	document.addEventListener('astro:page-load', () => {
+		bootTutorial();
+		placeTutorialFrames();
+		applyCore();
+	});
+</script>

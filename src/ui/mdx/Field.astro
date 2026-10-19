@@ -1,0 +1,34 @@
+---
+interface Props {
+	name: string;
+	label: string;
+	value?: string;
+	type?: 'string' | 'number' | 'boolean';
+}
+
+const { name, label, value = '', type = 'string' } = Astro.props;
+const from = value.match(/^\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}$/)?.[1];
+---
+
+{
+	type === 'boolean' ? (
+		<label class="tutorial-field tutorial-check">
+			<input type="checkbox" name={name} data-default={value === 'true' ? 'true' : 'false'} checked={value === 'true'} />
+			<span>{label}</span>
+		</label>
+	) : (
+		<label class="tutorial-field">
+			<span>{label}</span>
+			<input
+				name={name}
+				type={type === 'number' ? 'number' : 'text'}
+				value={from ? undefined : value}
+				data-default={from ? undefined : value}
+				data-from={from}
+				autocomplete="off"
+				spellcheck="false"
+			/>
+			<span class="tutorial-hint" hidden></span>
+		</label>
+	)
+}

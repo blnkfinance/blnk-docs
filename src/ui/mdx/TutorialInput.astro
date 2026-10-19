@@ -1,0 +1,312 @@
+---
+interface Props {
+	name: string;
+	label: string;
+	value?: string;
+	group?: string;
+	from?: string;
+	type?: string;
+	precision?: string;
+}
+
+const { name, label, value = '', from, precision } = Astro.props;
+---
+
+<label class="tutorial-input">
+	<span>{label}</span>
+	<input type="text" name={name} value={value} data-tutorial-field={name} data-from={from} data-precision={precision} />
+</label>
+
+<script is:inline>
+	(() => {
+		const slotPattern = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
+
+		function groupSplitSlots(element) {
+			const nodes = [...element.childNodes];
+			if (nodes.length < 2) return;
+			const texts = nodes.map((node) => node.textContent ?? '');
+			const full = texts.join('');
+			if (!full.includes('{{')) return;
+			const starts = [];
+			let offset = 0;
+			for (const text of texts) {
+				starts.push(offset);
+				offset += text.length;
+			}
+			const groups = [];
+			for (const match of full.matchAll(slotPattern)) {
+				const start = match.index ?? 0;
+				const end = start + match[0].length;
+				const first = starts.findIndex((item, index) => item <= start && start < item + texts[index].length);
+				if (first < 0 || start !== starts[first]) continue;
+				let last = first;
+				while (last + 1 < texts.length && starts[last] + texts[last].length < end) last += 1;
+				if (last === first || starts[last] + texts[last].length !== end) continue;
+				groups.push({ first, last, name: match[1] });
+			}
+			for (const group of groups.reverse()) {
+				const span = document.createElement('span');
+				span.className = 'code-id';
+				span.dataset.fill = group.name;
+				span.textContent = group.name === 'CORE_URL' || group.name === 'CORE_SECRET_KEY' ? group.name : `{{${group.name}}}`;
+				element.insertBefore(span, nodes[group.first]);
+				for (let index = group.first; index <= group.last; index += 1) nodes[index].remove();
+			}
+		}
+
+		function repairFills(step) {
+			for (const element of [...step.querySelectorAll('*')].reverse()) {
+				if (element.closest('[data-fill]') && !element.hasAttribute('data-fill')) continue;
+				groupSplitSlots(element);
+			}
+		}
+
+		function preciseAmount(amount, precision) {
+			const text = String(amount).trim();
+			if (!/^\d+(\.\d+)?$/.test(text)) return '';
+			const factor = BigInt(precision);
+			if (factor < 1n) return '';
+			const [whole, fraction = ''] = text.split('.');
+			const scale = 10n ** BigInt(fraction.length);
+			const extra = fraction ? BigInt(fraction) * factor : 0n;
+			if (extra % scale !== 0n) return '';
+			return (BigInt(whole) * factor + extra / scale).toString();
+		}
+
+		function applyTutorialField(input) {
+			const step = input.closest('.tutorial-step');
+			const key = input.dataset.tutorialField;
+			if (!step || !key) return;
+			if (input.dataset.from && !input.value && input.dataset.filled !== 'true') return;
+			repairFills(step);
+			step.querySelectorAll(`[data-fill="${CSS.escape(key)}"]`).forEach((node) => {
+				if (node.closest('.tutorial-response')) return;
+				node.textContent = input.value;
+			});
+			if (!input.dataset.precision) return;
+			const precise = preciseAmount(input.value, input.dataset.precision);
+			if (!precise) return;
+			step.querySelectorAll('[data-fill="precise_amount"]').forEach((node) => {
+				if (node.closest('.tutorial-response')) return;
+				node.textContent = precise;
+			});
+		}
+
+		function tutorialSaved() {
+			const root = window;
+			if (!root.__tutorialSaved) root.__tutorialSaved = {};
+			return root.__tutorialSaved;
+		}
+
+		function publishSaved(key, value) {
+			if (!key || typeof value !== 'string' || !value) return;
+			tutorialSaved()[key] = value;
+			document.querySelectorAll('[data-from]').forEach((input) => {
+				if (!(input instanceof HTMLInputElement) || input.dataset.from !== key) return;
+				input.value = value;
+				input.dataset.filled = 'true';
+				applyTutorialField(input);
+			});
+			document.querySelectorAll('.tutorial-step').forEach((step) => repairFills(step));
+			document.querySelectorAll(`[data-fill="${CSS.escape(key)}"]`).forEach((node) => {
+				if (node.closest('.tutorial-response')) return;
+				node.textContent = value;
+			});
+		}
+
+		function readCore() {
+			try {
+				const raw = localStorage.getItem('blnk.core');
+				if (!raw) return null;
+				const parsed = JSON.parse(raw);
+				if (typeof parsed.baseUrl !== 'string' || typeof parsed.apiKey !== 'string') return null;
+				if (typeof parsed.expiresAt !== 'number' || parsed.expiresAt <= Date.now() || !parsed.apiKey.trim()) return null;
+				return parsed;
+			} catch {
+				return null;
+			}
+		}
+
+		function openResponse(form) {
+			const frame = form.closest('.tutorial-frame');
+			const tabs = frame?.querySelector('[data-tabs]');
+			const button = [...(tabs?.querySelectorAll(':scope > .tab-bar .tab-button') ?? [])].find(
+				(item) => item.textContent?.trim() === 'Response',
+			);
+			if (button instanceof HTMLButtonElement) button.click();
+		}
+
+		async function paintHighlighted(pre, text) {
+			let lang = 'plaintext';
+			try {
+				JSON.parse(text);
+				lang = 'json';
+			} catch {
+				lang = 'plaintext';
+			}
+			const result = await fetch('/api/highlight', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ code: text, lang }),
+			});
+			if (!result.ok) return false;
+			const payload = await result.json();
+			if (!payload || typeof payload.html !== 'string') return false;
+			const holder = document.createElement('div');
+			holder.innerHTML = payload.html;
+			const next = holder.querySelector('pre');
+			const code = next?.querySelector('code');
+			if (!(next instanceof HTMLElement) || !(code instanceof HTMLElement)) return false;
+			pre.className = next.className;
+			const style = next.getAttribute('style');
+			if (style) pre.setAttribute('style', style);
+			pre.replaceChildren(code);
+			return true;
+		}
+
+		async function showPanel(form, status, text) {
+			const frame = form.closest('.tutorial-frame');
+			const response = frame?.querySelector('.tutorial-response');
+			const pre = response?.querySelector('[data-tutorial-response-body]');
+			if (!(response instanceof HTMLElement) || !(pre instanceof HTMLElement)) return;
+			const title = status || 'Response';
+			const body = String(text ?? '');
+			pre.dataset.title = title;
+			pre.dataset.language = 'json';
+			let painted = false;
+			try {
+				painted = await paintHighlighted(pre, body);
+			} catch {
+				painted = false;
+			}
+			if (!painted) {
+				let code = pre.querySelector('code');
+				if (!(code instanceof HTMLElement)) {
+					code = document.createElement('code');
+					pre.append(code);
+				}
+				code.replaceChildren();
+				for (const line of body.split('\n')) {
+					const row = document.createElement('span');
+					row.className = 'line';
+					row.textContent = line.length > 0 ? line : ' ';
+					code.append(row);
+				}
+			}
+			response.hidden = false;
+			window.enhanceCodeBlocks?.();
+			const label = pre.closest('.code-frame')?.querySelector('.code-title');
+			if (label) label.textContent = title;
+			openResponse(form);
+		}
+
+		async function showTutorialResponse(form) {
+			const requestId = form.dataset.tutorialRequest;
+			const tutorial = form.closest('[data-tutorial]')?.dataset.tutorial;
+			const record = readCore();
+			if (!record) {
+				showPanel(form, '', 'Connect your sandbox before submitting.');
+				return;
+			}
+			if (!requestId || !tutorial) {
+				showPanel(form, '', 'This step cannot be submitted.');
+				return;
+			}
+			const fields = {};
+			form.querySelectorAll('[data-tutorial-field]').forEach((input) => {
+				if (!(input instanceof HTMLInputElement) || !input.dataset.tutorialField) return;
+				fields[input.dataset.tutorialField] = input.value;
+			});
+			const button = form.querySelector('button[type="submit"]');
+			if (button instanceof HTMLButtonElement) button.disabled = true;
+			try {
+				const result = await fetch('/api/tutorial', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						baseUrl: record.baseUrl,
+						apiKey: record.apiKey,
+						tutorial,
+						step: requestId,
+						fields,
+					}),
+				});
+				let payload = null;
+				try {
+					payload = await result.json();
+				} catch {
+					payload = null;
+				}
+				if (!result.ok) {
+					const message = payload && typeof payload.error === 'string' ? payload.error : 'Could not reach that sandbox.';
+					showPanel(form, '', message);
+					return;
+				}
+				const status = payload && typeof payload.status === 'number' ? payload.status : result.status;
+				const labels = {
+					200: '200 OK',
+					201: '201 Created',
+					400: '400 Bad Request',
+					401: '401 Unauthorized',
+					403: '403 Forbidden',
+					404: '404 Not Found',
+					409: '409 Conflict',
+				};
+				const responseBody = payload ? payload.body : null;
+				const text = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody, null, 2);
+				showPanel(form, labels[status] || String(status), text);
+				if (
+					status >= 200 &&
+					status < 300 &&
+					form.dataset.save &&
+					responseBody &&
+					typeof responseBody === 'object' &&
+					!Array.isArray(responseBody)
+				) {
+					const responseKey = form.dataset.response || form.dataset.save;
+					const saved = responseBody[responseKey];
+					if (typeof saved === 'string') publishSaved(form.dataset.save, saved);
+				}
+			} catch {
+				showPanel(form, '', 'Could not reach that sandbox.');
+			} finally {
+				if (button instanceof HTMLButtonElement) button.disabled = false;
+			}
+		}
+
+		window.bindTutorialFields = () => {
+			const saved = tutorialSaved();
+			document.querySelectorAll('[data-tutorial-field]').forEach((node) => {
+				if (!(node instanceof HTMLInputElement)) return;
+				const key = node.dataset.from;
+				if (key && typeof saved[key] === 'string') {
+					node.value = saved[key];
+					node.dataset.filled = 'true';
+				}
+				if (node.dataset.bound !== 'true') {
+					node.dataset.bound = 'true';
+					node.addEventListener('input', () => applyTutorialField(node));
+				}
+				applyTutorialField(node);
+			});
+			document.querySelectorAll('[data-tutorial-form]').forEach((form) => {
+				if (!(form instanceof HTMLFormElement) || form.dataset.bound === 'true') return;
+				form.dataset.bound = 'true';
+				form.addEventListener('submit', (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					showTutorialResponse(form);
+				});
+			});
+		};
+
+		window.bindTutorialFields();
+	})();
+</script>
+
+<script>
+	document.addEventListener('astro:page-load', () => {
+		const bind = (window as Window & { bindTutorialFields?: () => void }).bindTutorialFields;
+		bind?.();
+	});
+</script>
