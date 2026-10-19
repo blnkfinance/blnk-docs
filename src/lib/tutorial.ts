@@ -8,8 +8,11 @@ export type TutorialFieldType = (typeof fieldTypes)[number];
 
 export type TutorialField = {
 	name: string;
+	as?: string;
 	type: TutorialFieldType;
 	group?: string;
+	list?: string;
+	index?: number;
 	precision?: number;
 	fixed?: string;
 };
@@ -39,23 +42,38 @@ function fieldsFrom(source: string, tag: 'Field' | 'TutorialInput' | 'TutorialVa
 	const fields: TutorialField[] = [];
 	for (const field of source.matchAll(new RegExp(`<${tag}\\b([^>]*?)\\/?>`, 'g'))) {
 		const name = attr(field[1], 'name');
+		const asName = attr(field[1], 'as');
 		const type = attr(field[1], 'type') ?? 'string';
 		const group = attr(field[1], 'group');
+		const list = attr(field[1], 'list');
+		const index = attr(field[1], 'index');
 		const precision = attr(field[1], 'precision');
 		const fixed = tag === 'TutorialValue' ? attr(field[1], 'value') : undefined;
 		if (!name || !namePattern.test(name) || fields.some((item) => item.name === name)) return null;
+		if (asName && !namePattern.test(asName)) return null;
 		if (!fieldTypes.includes(type as TutorialFieldType)) return null;
 		if (group && !namePattern.test(group)) return null;
+		if (list && !namePattern.test(list)) return null;
+		if (list && (index == null || !/^\d+$/.test(index) || Number(index) > 20)) return null;
+		if (!list && index != null) return null;
 		if (type === 'amount') {
 			if (!precision || !/^\d+$/.test(precision) || Number(precision) < 1) return null;
 		} else if (precision) {
 			return null;
 		}
 		if (tag === 'TutorialValue' && fixed == null) return null;
+		const jsonKey = type === 'amount' ? 'precise_amount' : (asName ?? name);
+		const slot = `${list ?? ''}:${index ?? ''}:${group ?? ''}:${jsonKey}`;
+		if (fields.some((item) => `${item.list ?? ''}:${item.index ?? ''}:${item.group ?? ''}:${item.type === 'amount' ? 'precise_amount' : (item.as ?? item.name)}` === slot)) {
+			return null;
+		}
 		fields.push({
 			name,
+			as: asName,
 			type: type as TutorialFieldType,
 			group,
+			list,
+			index: index == null ? undefined : Number(index),
 			precision: precision ? Number(precision) : undefined,
 			fixed,
 		});
@@ -103,7 +121,7 @@ export async function findTutorialAction(tutorial: string, id: string): Promise<
 	return parseActions(entry.body ?? '').find((action) => action.id === id) ?? null;
 }
 
-type Json = string | number | boolean | { [key: string]: Json };
+type Json = string | number | boolean | Json[] | { [key: string]: Json };
 
 /** `4500.00` at precision `100` is `450000`. */
 export function preciseAmount(amount: string, precision: number): number {
@@ -146,6 +164,33 @@ export function requestPath(action: TutorialAction, fields: unknown): string {
 	});
 }
 
+function isRecord(value: Json | undefined): value is { [key: string]: Json } {
+	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** A `list` field lands on `transactions[index]`. `group` nests inside that object. */
+function place(body: Record<string, Json>, field: TutorialField, write: (target: Record<string, Json>) => void): void {
+	let target = body;
+	if (field.list) {
+		const index = field.index ?? 0;
+		const existing = body[field.list];
+		const list: Json[] = Array.isArray(existing) ? [...existing] : [];
+		while (list.length <= index) list.push({});
+		const item = list[index];
+		const record = isRecord(item) ? item : {};
+		list[index] = record;
+		body[field.list] = list;
+		target = record;
+	}
+	if (field.group) {
+		const existing = target[field.group];
+		const group = isRecord(existing) ? existing : {};
+		target[field.group] = group;
+		target = group;
+	}
+	write(target);
+}
+
 /** Keep only fields the action declared, and coerce them to the declared type. */
 export function requestBody(action: TutorialAction, fields: unknown): Record<string, Json> {
 	const source = fieldSource(fields);
@@ -154,7 +199,10 @@ export function requestBody(action: TutorialAction, fields: unknown): Record<str
 	for (const field of action.fields) {
 		if (inPath.has(field.name)) continue;
 		if (field.fixed != null) {
-			body[field.name] = coerce(field.fixed, field.type);
+			const fixed = coerce(field.fixed, field.type);
+			place(body, field, (target) => {
+				target[field.as ?? field.name] = fixed;
+			});
 			continue;
 		}
 		const value = source[field.name];
@@ -170,19 +218,18 @@ export function requestBody(action: TutorialAction, fields: unknown): Record<str
 		if (trimmed.length > 500) throw new Error('A field is too long.');
 		if (field.type === 'amount') {
 			if (!field.precision) throw new Error('Enter an amount that fits the precision.');
-			body.precise_amount = preciseAmount(trimmed, field.precision);
-			body.precision = field.precision;
+			const precise = preciseAmount(trimmed, field.precision);
+			const precision = field.precision;
+			place(body, field, (target) => {
+				target.precise_amount = precise;
+				target.precision = precision;
+			});
 			continue;
 		}
 		const coerced = coerce(trimmed, field.type);
-		if (!field.group) {
-			body[field.name] = coerced;
-			continue;
-		}
-		const existing = body[field.group];
-		const group = existing && typeof existing === 'object' ? existing : {};
-		group[field.name] = coerced;
-		body[field.group] = group;
+		place(body, field, (target) => {
+			target[field.as ?? field.name] = coerced;
+		});
 	}
 	return body;
 }

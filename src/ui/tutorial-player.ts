@@ -1,11 +1,9 @@
 const CORE_KEY = 'blnk.core';
-const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 type CoreRecord = {
 	baseUrl: string;
 	apiKey: string;
 	savedAt: number;
-	expiresAt: number;
 };
 
 type Progress = {
@@ -32,7 +30,7 @@ function readCore(): CoreRecord | null {
 		if (!raw) return null;
 		const parsed = JSON.parse(raw) as Partial<CoreRecord>;
 		if (typeof parsed.baseUrl !== 'string' || typeof parsed.apiKey !== 'string') return null;
-		if (typeof parsed.expiresAt !== 'number' || typeof parsed.savedAt !== 'number') return null;
+		if (typeof parsed.savedAt !== 'number') return null;
 		return parsed as CoreRecord;
 	} catch {
 		return null;
@@ -40,7 +38,7 @@ function readCore(): CoreRecord | null {
 }
 
 function coreValid(record: CoreRecord | null): record is CoreRecord {
-	return !!record && record.expiresAt > Date.now() && record.apiKey.trim() !== '';
+	return !!record && record.apiKey.trim() !== '';
 }
 
 function readProgress(id: string): Progress {
@@ -181,10 +179,7 @@ function fillForm(root: HTMLElement, form: HTMLFormElement, progress: Progress) 
 		result.hidden = !done;
 	});
 	const expiry = scope.querySelector<HTMLElement>('[data-expiry]');
-	if (expiry && coreValid(record)) {
-		const date = new Date(record.expiresAt).toLocaleDateString(undefined, { dateStyle: 'medium' });
-		expiry.textContent = `Saved in this browser until ${date}.`;
-	}
+	if (expiry && coreValid(record)) expiry.textContent = 'Saved in this browser while a docs tab is open.';
 	const button = form.querySelector<HTMLButtonElement>('[data-run]');
 	if (button && !button.disabled) button.textContent = done ? 'Run again' : 'Run on your sandbox';
 }
@@ -219,11 +214,6 @@ async function postTutorial(body: Record<string, unknown>): Promise<{ status: nu
 function bind(root: HTMLElement) {
 	const tutorial = root.dataset.tutorial ?? '';
 	const progress = readProgress(tutorial);
-	const record = readCore();
-	if (record && record.expiresAt <= Date.now()) {
-		localStorage.setItem(CORE_KEY, JSON.stringify({ ...record, apiKey: '', expiresAt: 0 }));
-		progress.completed = progress.completed.filter((id) => id !== 'connect');
-	}
 	sessions.set(root, { root, progress });
 
 	root.addEventListener('input', (event) => {
@@ -332,8 +322,7 @@ function bind(root: HTMLElement) {
 				const baseUrl = form.querySelector<HTMLInputElement>('input[name="baseUrl"]')?.value.trim() ?? '';
 				const apiKey = form.querySelector<HTMLInputElement>('input[name="apiKey"]')?.value.trim() ?? '';
 				await postTutorial({ baseUrl, apiKey, tutorial, step: 'connect' });
-				const now = Date.now();
-				localStorage.setItem(CORE_KEY, JSON.stringify({ baseUrl, apiKey, savedAt: now, expiresAt: now + WEEK }));
+				localStorage.setItem(CORE_KEY, JSON.stringify({ baseUrl, apiKey, savedAt: Date.now() }));
 				if (previous && previous.baseUrl !== baseUrl) {
 					progress.saved = {};
 					progress.completed = [];

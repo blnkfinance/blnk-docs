@@ -1,0 +1,69 @@
+---
+title: "Assign role"
+description: "Set a member's role in the current organization."
+method: "PUT"
+path: "/organizations/members/{user_id}/role"
+enterprise: license
+noindex: true
+---
+Set a member's role in the current organization. `role` is the identifier, such as `admin` or `finance-ops`, not `role_id`.
+
+There is no unassign, so assign a different role to take one away. Invites from the dashboard only offer built-in roles, so assign a custom role with this endpoint after the person joins. The call fails if it would remove the last admin.
+
+Send `Authorization: Bearer` with a token for the current organization. On Blnk Cloud the host is `https://api.cloud.blnkfinance.com`.
+
+### Header
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the current organization.
+</ParamField>
+
+### Path
+
+<ParamField path="user_id" type="string" required>
+  Id of the member from [List team members](/reference/list-organization-members).
+</ParamField>
+
+### Body
+
+<ParamField body="role" type="string" required>
+  Identifier of the role, such as `admin` or `finance-ops`. Do not send `role_id`.
+</ParamField>
+
+### Response
+
+A `200` response returns a confirmation message.
+
+<ResponseField name="message" type="string" required>
+  `Member role updated successfully`.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT "https://api.cloud.blnkfinance.com/organizations/members/user_01K4EX0BRXHNNGCRVT2TPNK07W/role" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"finance-ops"}'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "message": "Member role updated successfully"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "List team members", href: "/reference/list-organization-members" },
+    { title: "RBAC", href: "/access-control/rbac" },
+    { title: "Team members", href: "/access-control/team" },
+    { title: "Create role", href: "/reference/create-role" },
+  ]}
+/>

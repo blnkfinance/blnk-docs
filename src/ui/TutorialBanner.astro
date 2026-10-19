@@ -33,7 +33,6 @@ const closeIcon = await renderIcon('close', 16);
 <script is:inline>
 	(() => {
 		const CORE_KEY = 'blnk.core';
-		const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 		function readCore() {
 			try {
@@ -41,7 +40,7 @@ const closeIcon = await renderIcon('close', 16);
 				if (!raw) return null;
 				const parsed = JSON.parse(raw);
 				if (typeof parsed.baseUrl !== 'string' || typeof parsed.apiKey !== 'string') return null;
-				if (typeof parsed.expiresAt !== 'number' || typeof parsed.savedAt !== 'number') return null;
+				if (typeof parsed.savedAt !== 'number') return null;
 				return parsed;
 			} catch {
 				return null;
@@ -49,7 +48,7 @@ const closeIcon = await renderIcon('close', 16);
 		}
 
 		function connected(record) {
-			return !!record && record.expiresAt > Date.now() && record.apiKey.trim() !== '';
+			return !!record && record.apiKey.trim() !== '';
 		}
 
 		function applyTutorialCore() {
@@ -130,8 +129,7 @@ const closeIcon = await renderIcon('close', 16);
 					showError('Enter the Core secret.');
 					return;
 				}
-				const now = Date.now();
-				localStorage.setItem(CORE_KEY, JSON.stringify({ baseUrl: origin, apiKey: secret, savedAt: now, expiresAt: now + WEEK }));
+				localStorage.setItem(CORE_KEY, JSON.stringify({ baseUrl: origin, apiKey: secret, savedAt: Date.now() }));
 				urlInput.value = origin;
 				close();
 				paint();

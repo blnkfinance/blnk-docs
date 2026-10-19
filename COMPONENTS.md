@@ -569,7 +569,9 @@ A tutorial is one page, with `tutorial: true` in the frontmatter. The sidenav li
 
 Each `TutorialStep` is one section. The label is `Step 1`, `Step 2`, and so on, from the order of the steps. A line sits under the label, across the article. The title renders as an `h2`.
 
-Every tutorial page has a banner. Until a Core URL and secret are saved in the browser, it asks you to connect a sandbox. After that, it says the credentials are connected. Connect and Edit open the same popover.
+Every tutorial page has a banner. Until a Core URL and secret are saved in the browser, it asks you to connect a sandbox. After that, it says the credentials are connected.
+
+The browser keeps those credentials while any docs tab is open, and clears them when the last one closes. Connect and Edit open the same popover.
 
 `TutorialFrame` sits to the right of that step. Anything inside the frame goes in that container. Several frames in one step stack down the right side.
 
@@ -603,10 +605,16 @@ Every tutorial page has a banner. Until a Core URL and secret are saved in the b
 | `TutorialForm` | `response` | `string` | Response key to store under `save`, when a later step needs a second `balance_id` or `identity_id` |
 | `TutorialInput` | `from` | `string` | Fills this field from a saved key when that step succeeds |
 | `TutorialInput` | `group` | `string` | Nests the field, such as `meta_data` |
+| `TutorialInput` | `list` | `string` | Puts the field on an array, such as `transactions` |
+| `TutorialInput` | `index` | `string` | Position in that array. Required with `list` |
+| `TutorialInput` | `as` | `string` | JSON name when it differs from `name`, so two legs can both send `reference` |
 | `TutorialInput` | `type` | `string` | `string`, `number`, `boolean`, or `amount`. Defaults to `string` |
-| `TutorialInput` | `precision` | `string` | With `type="amount"`, multiplies the decimal into `precise_amount` |
+| `TutorialInput` | `precision` | `string` | With `type="amount"`, multiplies the decimal into `precise_amount`. Another input name fills `{{that_name_precise}}` |
 | `TutorialValue` | `name` | `string` | Request field set before the form, such as `reference` |
 | `TutorialValue` | `value` | `string` | The fixed value sent to Core |
+| `TutorialValue` | `list` | `string` | Puts the fixed field on an array, such as `transactions` |
+| `TutorialValue` | `index` | `string` | Position in that array. Required with `list` |
+| `TutorialValue` | `as` | `string` | JSON name when it differs from `name` |
 | `TutorialResponse` | | | Stays hidden until the form in that frame is submitted. Then it shows the Core response |
 
 Connect your sandbox is the first `Step`. Use `Connect` for the URL, the key, and the result. The reader can read every step without running one.

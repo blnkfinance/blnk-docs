@@ -1,0 +1,93 @@
+---
+title: "List team members"
+description: "List the people in the current organization."
+method: "GET"
+path: "/organizations/members"
+enterprise: license
+noindex: true
+---
+List the people in the current organization.
+
+Send `Authorization: Bearer` with a token for the current organization. On Blnk Cloud the host is `https://api.cloud.blnkfinance.com`. To invite someone or verify a domain, use the dashboard on [Team members](/access-control/team).
+
+### Header
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the current organization.
+</ParamField>
+
+### Response
+
+The response is a JSON array. `user_id` is the id you pass when you [Assign role](/reference/assign-role). `status` is `pending` when the person has not finished joining, and `active` after they have.
+
+<ResponseField name="user_id" type="string" required>
+  Id of the member. Use this value as `{user_id}` on [Assign role](/reference/assign-role).
+</ResponseField>
+
+<ResponseField name="organization_id" type="string" required>
+  Id of the current organization.
+</ResponseField>
+
+<ResponseField name="role" type="string" required>
+  Role identifier, such as `admin` or `finance-ops`.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Email address of the member.
+</ResponseField>
+
+<ResponseField name="first_name" type="string" required>
+  First name. `-` when `status` is `pending`.
+</ResponseField>
+
+<ResponseField name="last_name" type="string" required>
+  Last name. `-` when `status` is `pending`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  `active` or `pending`.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.cloud.blnkfinance.com/organizations/members" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+[
+  {
+    "user_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+    "organization_id": "org_01K4EX0C3A9F2B7D6E1C8A5F40",
+    "role": "admin",
+    "email": "alex@example.com",
+    "first_name": "Alex",
+    "last_name": "Example",
+    "status": "active"
+  },
+  {
+    "user_id": "user_01K4EX0D8B2C4E6F1A9D3C7B50",
+    "organization_id": "org_01K4EX0C3A9F2B7D6E1C8A5F40",
+    "role": "analyst",
+    "email": "sam@example.com",
+    "first_name": "-",
+    "last_name": "-",
+    "status": "pending"
+  }
+]
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Assign role", href: "/reference/assign-role" },
+    { title: "Team members", href: "/access-control/team" },
+    { title: "RBAC", href: "/access-control/rbac" },
+  ]}
+/>

@@ -1,0 +1,606 @@
+---
+title: "Card payments"
+description: "Learn how to implement card payments with Blnk."
+icon: "layers"
+tutorial: true
+---
+
+A card payment reserves the amount when the network authorizes it, then takes the money when the processor settles it. The hold is an inflight transaction, and settlement commits that hold.
+
+This tutorial shows how to implement that with Blnk.
+
+<TutorialSteps>
+  <TutorialStep title="Design the money movement">
+    Before we start building, we need to define our [money movement](/ledgers/money-movement-map). This helps us outline how a card payment leaves Alice's balance.
+
+    Alice pays \$20.00 to a merchant. The source is her card balance, and the destination is `@WorldUSD`, an [internal balance](/balances/internal-balances) for money that leaves the system.
+
+    We record the payment with [inflight](/transactions/inflight/create-inflight) set, so the \$20.00 stays reserved until the processor settles it. Her available balance drops by \$20.00 while the hold is open.
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/sKo7FSCC0j" title="Card payment money movement" />
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create a ledger">
+    Before we start recording transactions, we need to set up our [ledger](/ledgers/introduction) to track customers and their card balances.
+
+    For our card example, we only support one currency, USD. Therefore, we'll create a ledger to manage all USD card balances belonging to our customers.
+
+    <Tip>
+      `@WorldUSD` is created in the [General Ledger](/ledgers/general-ledger) when we load the card, separate from this customer ledger.
+    </Tip>
+
+    Create the ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-ledger" method="POST" path="/ledgers" save="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer Card Ledger" />
+            <TutorialInput name="description" label="Description" value="USD card balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create an identity">
+    An [identity](/identities/introduction) is how we record the customer. We pass Alice's type, name, email, and phone number.
+
+    Anything else we want to keep goes in [metadata](/search/metadata). We'll store her customer id there as `customer_id`.
+
+    Create the identity:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-identity" method="POST" path="/identities" save="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Alice" />
+            <TutorialInput name="last_name" label="Last name" value="Johnson" />
+            <TutorialInput name="email_address" label="Email" value="alice@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567890" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-001" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the card balance">
+    Now that we have Alice in our ledger, we can create a balance for her card, stored in the ledger from step 2.
+
+    We'll use the `ledger_id` and `identity_id` from the earlier steps, set the currency, and submit. Blnk creates the balance and attaches it to Alice.
+
+    Create the card balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-balance" method="POST" path="/balances" save="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Load the card">
+    Alice loads \$100.00 onto the card before she spends. The source is `@WorldUSD`, and the destination is her card balance.
+
+    The amount is a decimal, and we multiply it by [precision](/transactions/precision) `100` to get `precise_amount`. The reference and the description are already set.
+
+    <Note>
+      To make sure the load applies, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@WorldUSD` is created with a 0 balance, and Blnk would reject the record because the source has insufficient funds.
+    </Note>
+
+    Load the card:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "CRD-DEP-20261019-103000",
+    "description": "Card load",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'CRD-DEP-20261019-103000',
+  description: 'Card load',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "CRD-DEP-20261019-103000",
+        Description: "Card load",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "CRD-DEP-20261019-103000",
+  "description": "Card load",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("CRD-DEP-20261019-103000")
+        .description("Card load")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="load-card" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="CRD-DEP-20261019-103000" />
+            <TutorialValue name="description" value="Card load" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="100.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" value="@WorldUSD" />
+            <TutorialInput name="destination" label="Destination" from="balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Authorize the payment">
+    The network asks whether Alice can cover \$20.00. We record an inflight transaction from her card balance to `@WorldUSD`, which reserves the amount without applying it yet.
+
+    While the hold is open, that \$20.00 is not available for another payment. A new transaction larger than the remaining \$80.00 is rejected.
+
+    Authorize the payment:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "CRD-20261019-103000",
+    "description": "Card payment",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "inflight": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'CRD-20261019-103000',
+  description: 'Card payment',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  inflight: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "CRD-20261019-103000",
+        Description: "Card payment",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    Inflight: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "CRD-20261019-103000",
+  "description": "Card payment",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "inflight": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("CRD-20261019-103000")
+        .description("Card payment")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .inflight(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="authorize-payment" method="POST" path="/transactions" save="transaction_id">
+            <TutorialValue name="reference" value="CRD-20261019-103000" />
+            <TutorialValue name="description" value="Card payment" />
+            <TutorialValue name="inflight" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="20.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@WorldUSD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Commit the payment">
+    The processor settles the payment, so we [commit](/transactions/inflight/commit-inflight) the hold. We send `commit` for the transaction from the previous step, and the \$20.00 leaves Alice's card.
+
+    <Note>
+      Blnk queues the commit. The response stays `INFLIGHT` until the worker applies it, and then the card balance shows \$80.00.
+    </Note>
+
+    <Tip>
+      If the payment is reversed, [void](/transactions/inflight/void-inflight) the hold instead, and Alice keeps the \$20.00. To settle part of it, commit a `precise_amount`, and the rest stays inflight.
+    </Tip>
+
+    Commit the payment:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X PUT "{{CORE_URL}}/transactions/inflight/{{transaction_id}}" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.updateStatus(
+  '{{transaction_id}}',
+  {
+    status: 'commit',
+  },
+);
+```
+
+```go Go wrap
+transaction, _, _ := client.Transaction.Update(
+    "{{transaction_id}}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusCommit,
+    },
+)
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(
+  "{{transaction_id}}",
+  {
+    "status": "commit",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{{transaction_id}}",
+    UpdateTransactionStatus.create()
+        .status("commit"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="commit-payment" method="PUT" path="/transactions/inflight/{transaction_id}">
+            <TutorialValue name="status" value="commit" />
+            <TutorialInput name="transaction_id" label="Transaction" from="transaction_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Confirmation">
+    The commit is queued. When it is applied, Alice's card balance is \$80.00.
+
+    If you have a Blnk Cloud account or an Enterprise license, you can confirm this by checking the dashboard or using the [CLI](/cli/balances).
+
+    Print every balance:
+
+```bash List balances wrap
+blnk balances list
+```
+
+  </TutorialStep>
+</TutorialSteps>

@@ -18,6 +18,7 @@ import '../styles/styles.css';
 import '../styles/mdx.css';
 import { renderIcon } from '../icons/mingcute';
 import { ClientRouter } from 'astro:transitions';
+import Analytics from './Analytics.astro';
 import Header from './Header.astro';
 import CodeBlocks from './mdx/CodeBlocks.astro';
 import Nav from './Nav.astro';
@@ -113,6 +114,101 @@ function structuredData(page: {
 				root.dataset.appearance = dark ? 'dark' : 'light';
 			})();
 		</script>
+		<script is:inline>
+			(() => {
+				if (window.__blnkCoreSession) return;
+				window.__blnkCoreSession = true;
+				const coreKey = 'blnk.core';
+				const holdKey = 'blnk.core.hold';
+				const prefix = 'blnk.core.tab.';
+				let id = '';
+				try {
+					id = crypto.randomUUID();
+				} catch {
+					id = String(Date.now()) + Math.random().toString(16).slice(2);
+				}
+				const tabKey = prefix + id;
+				const staleAfter = 24 * 60 * 60 * 1000;
+				let timer = 0;
+
+				function restoreHold() {
+					const hold = sessionStorage.getItem(holdKey);
+					if (!hold) return false;
+					if (!localStorage.getItem(coreKey)) localStorage.setItem(coreKey, hold);
+					sessionStorage.removeItem(holdKey);
+					return true;
+				}
+
+				function tabKeys() {
+					const keys = [];
+					for (let index = 0; index < localStorage.length; index += 1) {
+						const item = localStorage.key(index);
+						if (item && item.startsWith(prefix)) keys.push(item);
+					}
+					return keys;
+				}
+
+				function prune() {
+					const now = Date.now();
+					for (const item of tabKeys()) {
+						if (item === tabKey) continue;
+						const seen = Number(localStorage.getItem(item));
+						if (!Number.isFinite(seen) || now - seen > staleAfter) localStorage.removeItem(item);
+					}
+				}
+
+				function otherTabs() {
+					prune();
+					return tabKeys().some((item) => item !== tabKey);
+				}
+
+				function touch() {
+					localStorage.setItem(tabKey, String(Date.now()));
+				}
+
+				function start() {
+					touch();
+					if (timer) return;
+					timer = window.setInterval(touch, 5000);
+				}
+
+				function leave() {
+					if (timer) {
+						window.clearInterval(timer);
+						timer = 0;
+					}
+					localStorage.removeItem(tabKey);
+					if (otherTabs()) return;
+					const core = localStorage.getItem(coreKey);
+					if (core) sessionStorage.setItem(holdKey, core);
+					localStorage.removeItem(coreKey);
+				}
+
+				try {
+					if (!restoreHold() && !otherTabs()) localStorage.removeItem(coreKey);
+					start();
+				} catch {
+					return;
+				}
+
+				window.addEventListener('pagehide', () => {
+					try {
+						leave();
+					} catch {
+						/* ignore */
+					}
+				});
+				window.addEventListener('pageshow', (event) => {
+					if (!event.persisted) return;
+					try {
+						restoreHold();
+						start();
+					} catch {
+						/* ignore */
+					}
+				});
+			})();
+		</script>
 		<link rel="icon" href="/favicon.png" type="image/png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="generator" content={Astro.generator} />
@@ -141,6 +237,7 @@ function structuredData(page: {
 		<script type="application/ld+json" set:html={jsonLd} />
 		<Font cssVariable="--font-graphik" preload />
 		<Font cssVariable="--font-geist-mono" />
+		<Analytics />
 	</head>
 	<body data-pagefind-ignore={indexable ? undefined : 'all'}>
 		<div class="frame">
@@ -180,10 +277,14 @@ function structuredData(page: {
 							)
 						}
 						<slot />
-						<script is:inline>
+						<script is:inline data-astro-rerun>
 							(() => {
-								const article = document.currentScript?.parentElement;
-								if (!(article instanceof HTMLElement)) return;
+								const script = document.currentScript;
+								const article =
+									script?.parentElement instanceof HTMLElement
+										? script.parentElement
+										: document.querySelector('article:not(.has-examples)');
+								if (!(article instanceof HTMLElement) || article.classList.contains('has-examples')) return;
 								const examples = [...article.querySelectorAll(':scope > .example')];
 								if (examples.length === 0) return;
 								const copy = document.createElement('div');

@@ -1,80 +1,134 @@
 ---
 title: "RBAC"
 sidebarTitle: "RBAC"
-description: "Choose Cloud scopes for teammates, API keys, and OAuth clients, and see what each role can do."
-metaDescription: "Cloud scopes and role permissions for teammates, API keys, and OAuth clients in Blnk Cloud."
+description: "Choose a built-in role or create a custom one for a teammate."
+metaDescription: "Built-in and custom roles, and the permissions a teammate can use in Blnk Cloud."
 icon: "shield-shape"
 enterprise: license
 ---
 
-RBAC decides what a teammate, an API key, or an OAuth client can do in the workspace. A role is the ceiling, and a scope selects actions inside that ceiling.
+A role is the set of permissions a teammate has in the organization. Blnk checks those permissions on each request, not the name of the role.
 
-Assign roles on [Team members](/access-control/team). 
+Use a built-in role, or create a custom one when that is more access than the person needs. 
 
-Assign scopes when you create an [API key](/reference/enterprise-api-key) or an [OAuth client](/reference/oauth) in [Settings > API Keys](https://cloud.blnkfinance.com/cloud/settings/api-keys). 
+## Built-in roles
 
-A key keeps the role of the teammate who created it, including when the scope is `*`.
+Every organization already has these roles. You can assign them, and you cannot change or delete them.
 
-## Scopes
-
-A scope uses `resource:action`. `read` allows data reads. `write` allows create, update, and delete.
-
-| Scope | What it allows |
+| Role | What they can do |
 | :-- | :-- |
-| `data:read` | Read ledger data, reports, and the Data Lake, including a read through the proxy. |
-| `data:write` | Create and update Data Lake queries, and other writes under `/data`. Also covers a proxy write when the role allows that route. |
-| `proxy:read` | Read a connected Core instance through the proxy. |
-| `proxy:write` | Create, update, and delete on a connected Core instance through the proxy. |
-| `instances:read` | View connected instances. |
-| `instances:write` | Create, update, and delete instances. |
-| `deployments:read` | View deployments. |
-| `deployments:write` | Create, update, and delete deployments. |
-| `billing:read` | View billing. |
-| `billing:write` | Change the plan, payment method, and usage billing. |
-| `audit:read` | Read the [audit log](/access-control/audit-logs). |
-| `mcp:read` | Read the [MCP](/reference/mcp) endpoint for an instance. |
-| `mcp:write` | Call MCP tools on an instance. |
-| `alerts:read` | Read alerts. |
-| `alerts:write` | Create and update alerts. Admin can also delete them. |
-| `apps:read` | View apps in the workspace. |
-| `apps:write` | Register, update, install, and uninstall apps. |
-| `*` | Every route the role already allows, including team management, agents, and anomalies. |
+| `admin` | Everything in the organization, including billing reports. |
+| `operator` | Day-to-day operations: instances, data, the proxy, transactions, agents, and alerts. |
+| `analyst` | Read and monitor ledger data. |
+| `investigator` | Work across alerts, anomalies, and ledger data. |
 
-<Note>
-`POST /data/lake/query` accepts `data:read` as well as `data:write`. Saving or updating a query needs `data:write`.
-</Note>
+## Who can manage roles
 
-<Tip>For services that talk directly to your ledger, you can also use [Scoped keys](/operating/api-keys/scoped-keys) to manage their access and authentitcation instead of exposing your master secret.</Tip>
+Listing roles, changing them, and assigning them are separate permissions. 
 
-## Roles
+An admin has `roles.write` and `members.write`, so they can do all three.
 
-Every role can use the read scopes, and every role can use `data:write` for the Data Lake. The table lists the write scopes that vary by role.
+| Action | Permission |
+| :-- | :-- |
+| List roles | `roles.read` |
+| Create, update, or delete a role | `roles.write` |
+| Assign a role | `members.write` |
 
-| Scope | Admin | Operator | Investigator | Analyst |
-| :-- | :-- | :-- | :-- | :-- |
-| `instances:write` | Yes | — | — | — |
-| `deployments:write` | Yes | — | — | — |
-| `billing:write` | Yes | — | — | — |
-| `apps:write` | Yes | — | — | — |
-| `proxy:write` | Yes | Yes | — | — |
-| `mcp:write` | Yes | Yes | — | — |
-| `alerts:write` | Yes | — | Yes | — |
+## Create a role
 
-Admin and Operator can write through the proxy, which is how a key records transactions on a connected instance. Investigator can create and update alerts, and deleting an alert stays with Admin.
+Create a custom role with [Create role](/reference/create-role). 
 
-Inviting a teammate, changing a role, and removing a member stay with Admin. A key for team management, anomalies, or agents uses `*`, and the role still applies.
+The slug has to be new, and `permissions` needs at least one value from the [catalog](#permission-catalog).
 
-## Apps
+```bash Create role wrap
+curl -X POST "https://api.cloud.blnkfinance.com/organizations/roles" \
+  -H "X-blnk-key: CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "finance-ops",
+    "name": "Finance Ops",
+    "description": "Read billing and ledger data",
+    "permissions": ["billing.read", "data.read", "instances.read", "org.read"]
+  }'
+```
 
-An installed app can be granted `data:read`, `data:write`, `alerts:read`, and `alerts:write`. 
+| Field | Description | Required |
+| :-- | :-- | :-- |
+| `slug` | Slug for the role, such as `finance-ops`. Must not be a built-in role. | Yes |
+| `name` | Display name of the role. | Yes |
+| `description` | What the role is for. | No |
+| `permissions` | Permissions on the role. At least one, each from the [catalog](#permission-catalog). | Yes |
 
-The grant is the set chosen at install, and it stays on that install. See [How apps work](/apps/how-apps-work#application-permissions).
+## Assign role
+
+Set a member's role with [Assign role](/reference/assign-role). `role` is the slug, not `role_id`.
+
+```bash Assign role
+curl -X PUT "https://api.cloud.blnkfinance.com/organizations/members/YOUR_USER_ID/role" \
+  -H "X-blnk-key: CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role":"finance-ops"
+    }'
+```
+
+| Field | Description | Required |
+| :-- | :-- | :-- |
+| `user_id` | Id of the member. This is the path parameter. | Yes |
+| `role` | Slug of the role, such as `admin` or `finance-ops`. | Yes |
+
+## Permission catalog
+
+A custom role takes its permissions from this list. 
+
+A read needs the matching `*.read` permission, a change needs `*.write`, and a usage billing report needs `billing.report`.
+
+| Permission | What it allows |
+| :-- | :-- |
+| `instances.read` | Read instances. |
+| `instances.write` | Create, update, or delete instances. |
+| `data.read` | Read data. |
+| `data.write` | Create, update, or delete data. |
+| `transactions.create` | Create transactions. |
+| `transactions.metadata.write` | Update transaction metadata. |
+| `transactions.status.write` | Commit or void inflight transactions. |
+| `transactions.refund` | Refund transactions. |
+| `users.read` | Read users. |
+| `users.write` | Create or update users. |
+| `users.delete` | Delete users. |
+| `org.read` | Read organization details. |
+| `org.write` | Update organization details. |
+| `org.delete` | Delete organizations. |
+| `members.read` | Read organization members. |
+| `members.write` | Manage organization members. |
+| `roles.read` | Read organization roles. |
+| `roles.write` | Manage organization roles. |
+| `billing.read` | Read billing details. |
+| `billing.write` | Manage billing. |
+| `billing.report` | Generate usage billing reports. |
+| `audit.read` | Read audit logs. |
+| `alerts.read` | Read alerts. |
+| `alerts.write` | Manage alerts. |
+| `alerts.delete` | Delete alerts. |
+| `anomalies.read` | Read anomalies. |
+| `anomalies.write` | Manage anomalies. |
+| `anomalies.delete` | Delete anomalies. |
+| `deployments.read` | Read deployments. |
+| `deployments.write` | Manage deployments. |
+| `mcp.read` | Read MCP resources. |
+| `mcp.write` | Manage MCP resources. |
+| `apps.read` | Read apps. |
+| `apps.write` | Create or update apps. |
+| `proxy.read` | Read proxy resources. |
+| `proxy.write` | Manage proxy resources. |
+| `agents.read` | Read agents. |
+| `agents.write` | Manage agents. |
 
 <RelatedTopics
   items={[
     { title: "Team members", href: "/access-control/team" },
-    { title: "Enterprise API keys", href: "/reference/enterprise-api-key" },
-    { title: "Enterprise OAuth", href: "/reference/oauth" },
-    { title: "Audit logs", href: "/access-control/audit-logs" },
+    { title: "Create role", href: "/reference/create-role" },
+    { title: "Assign role", href: "/reference/assign-role" },
+    { title: "List roles", href: "/reference/list-roles" },
   ]}
 />

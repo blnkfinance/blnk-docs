@@ -7,6 +7,9 @@ interface Props {
 	from?: string;
 	type?: string;
 	precision?: string;
+	as?: string;
+	list?: string;
+	index?: string;
 }
 
 const { name, label, value = '', from, precision } = Astro.props;
@@ -86,7 +89,8 @@ const { name, label, value = '', from, precision } = Astro.props;
 			if (!input.dataset.precision) return;
 			const precise = preciseAmount(input.value, input.dataset.precision);
 			if (!precise) return;
-			step.querySelectorAll('[data-fill="precise_amount"]').forEach((node) => {
+			const preciseName = key === 'amount' ? 'precise_amount' : `${key}_precise`;
+			step.querySelectorAll(`[data-fill="${CSS.escape(preciseName)}"]`).forEach((node) => {
 				if (node.closest('.tutorial-response')) return;
 				node.textContent = precise;
 			});
@@ -120,7 +124,7 @@ const { name, label, value = '', from, precision } = Astro.props;
 				if (!raw) return null;
 				const parsed = JSON.parse(raw);
 				if (typeof parsed.baseUrl !== 'string' || typeof parsed.apiKey !== 'string') return null;
-				if (typeof parsed.expiresAt !== 'number' || parsed.expiresAt <= Date.now() || !parsed.apiKey.trim()) return null;
+				if (typeof parsed.savedAt !== 'number' || !parsed.apiKey.trim()) return null;
 				return parsed;
 			} catch {
 				return null;

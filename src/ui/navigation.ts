@@ -172,7 +172,7 @@ const palette = z.strictObject({
 
 const redirectSource = z
 	.string()
-	.regex(/^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/);
+	.regex(/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)?$/);
 
 const redirectDestination = z
 	.string()
@@ -411,7 +411,7 @@ export function assertRedirects(redirects: Record<string, string>, ids: Readonly
 	const sources = new Set(Object.keys(redirects));
 	const problems: string[] = [];
 	for (const [source, destination] of Object.entries(redirects)) {
-		const sourceId = source.slice(1);
+		const sourceId = source === '/' ? 'index' : source.slice(1);
 		const destinationPath = destination.split('#')[0];
 		const destinationId = destinationPath.slice(1);
 		if (ids.has(sourceId)) problems.push(`source is a page: ${source}`);

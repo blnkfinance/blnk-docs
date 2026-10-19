@@ -1,0 +1,790 @@
+---
+title: "Lending"
+description: "Learn how to implement lending with Blnk."
+icon: "layers"
+tutorial: true
+---
+
+A loan balance tracks what a customer owes. Disbursement moves the principal onto their main balance, interest increases what they owe, and a repayment pays it down.
+
+This tutorial shows how to implement that with Blnk.
+
+<TutorialSteps>
+  <TutorialStep title="Design the money movement">
+    Before we start building, we need to define our [money movement](/ledgers/money-movement-map). This helps us outline how a loan is disbursed, charged, and repaid.
+
+    Alice borrows \$500.00. The source is her loan balance, and the destination is her main balance. [Overdraft](/transactions/overdrafts) lets the loan balance go negative, and that negative amount is what she owes.
+
+    One day later we charge \$5.00 of interest from the loan balance to `@InterestRevenue`. Alice then repays \$200.00 from her main balance back to the loan balance.
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/ENUJhxp0Ud" title="Lending money movement" />
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the customer ledger">
+    Before we start recording transactions, we need a [ledger](/ledgers/introduction) for customer main balances, separate from the ledger that holds what they owe.
+
+    For our lending example, we only support one currency, USD. Therefore, we'll create a ledger to manage all USD main balances belonging to our customers.
+
+    Create the customer ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-customer-ledger" method="POST" path="/ledgers" save="customer_ledger_id" response="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer Accounts" />
+            <TutorialInput name="description" label="Description" value="USD balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the loan ledger">
+    The loan balances live in their own ledger, so we can roll up what customers owe without mixing it into their main balances.
+
+    `@InterestRevenue` is created in the [General Ledger](/ledgers/general-ledger) when we charge interest, separate from both of these customer ledgers.
+
+    Create the loan ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-loan-ledger" method="POST" path="/ledgers" save="loan_ledger_id" response="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Loan Accounts" />
+            <TutorialInput name="description" label="Description" value="USD loan balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create an identity">
+    An [identity](/identities/introduction) is how we record the customer. We pass Alice's type, name, email, and phone number.
+
+    Anything else we want to keep goes in [metadata](/search/metadata). We'll store her customer id there as `customer_id`. Both balances use this same identity.
+
+    Create the identity:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-identity" method="POST" path="/identities" save="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Alice" />
+            <TutorialInput name="last_name" label="Last name" value="Johnson" />
+            <TutorialInput name="email_address" label="Email" value="alice@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567890" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-001" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the main balance">
+    The main balance is where Alice receives the loan and from where she repays it. It sits on the customer ledger and uses her identity.
+
+    We'll use the customer `ledger_id` and `identity_id` from the earlier steps, set the currency, and submit.
+
+    Create the main balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-main-balance" method="POST" path="/balances" save="main_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="customer_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the loan balance">
+    The loan balance is what Alice owes. A negative balance is debt, and a balance of 0 means the loan is repaid.
+
+    It sits on the loan ledger and uses the same identity as her main balance.
+
+    Create the loan balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-loan-balance" method="POST" path="/balances" save="loan_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="loan_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Disburse the loan">
+    Alice borrows \$500.00. We debit her loan balance and credit her main balance, so she receives the funds and the loan balance shows what she owes.
+
+    The amount is a decimal, and we multiply it by [precision](/transactions/precision) `100` to get `precise_amount`. The reference and the description are already set.
+
+    <Note>
+      The loan balance starts at 0, so we turn on [overdraft](/transactions/overdrafts). That is what lets it go to -\$500.00.
+    </Note>
+
+    Disburse the loan:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "LOAN-20261019-103000",
+    "description": "Loan disbursement",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'LOAN-20261019-103000',
+  description: 'Loan disbursement',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "LOAN-20261019-103000",
+        Description: "Loan disbursement",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "LOAN-20261019-103000",
+  "description": "Loan disbursement",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("LOAN-20261019-103000")
+        .description("Loan disbursement")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="disburse-loan" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="LOAN-20261019-103000" />
+            <TutorialValue name="description" value="Loan disbursement" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="500.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="loan_balance_id" />
+            <TutorialInput name="destination" label="Destination" from="main_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Charge interest">
+    Interest is money Alice owes on top of the principal. We debit the loan balance again and credit `@InterestRevenue`, an internal balance for interest earned.
+
+    For this example the charge is \$5.00, which is 1% of the \$500.00 principal for the day. The loan balance moves from -\$500.00 to -\$505.00.
+
+    <Tip>
+      Repeat this step each day the loan is open, with a new reference and the interest for that day.
+    </Tip>
+
+    Charge the interest:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "INT-20261019-103000",
+    "description": "Daily interest charge",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'INT-20261019-103000',
+  description: 'Daily interest charge',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "INT-20261019-103000",
+        Description: "Daily interest charge",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "INT-20261019-103000",
+  "description": "Daily interest charge",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("INT-20261019-103000")
+        .description("Daily interest charge")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="charge-interest" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="INT-20261019-103000" />
+            <TutorialValue name="description" value="Daily interest charge" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="5.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="loan_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@InterestRevenue" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Record a repayment">
+    Alice repays \$200.00 from her main balance. We debit that balance and credit the loan balance, which moves the loan balance from -\$505.00 to -\$305.00.
+
+    Her main balance has the \$500.00 disbursement, so this repayment does not need overdraft.
+
+    Record the repayment:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "REPAY-20261019-103000",
+    "description": "Loan repayment",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'REPAY-20261019-103000',
+  description: 'Loan repayment',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "REPAY-20261019-103000",
+        Description: "Loan repayment",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "REPAY-20261019-103000",
+  "description": "Loan repayment",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("REPAY-20261019-103000")
+        .description("Loan repayment")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="record-repayment" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="REPAY-20261019-103000" />
+            <TutorialValue name="description" value="Loan repayment" />
+            <TutorialInput name="amount" label="Amount" value="200.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" from="main_balance_id" />
+            <TutorialInput name="destination" label="Destination" from="loan_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Confirmation">
+    Alice's main balance is \$300.00. Her loan balance is -\$305.00, which is the \$500.00 she borrowed, plus \$5.00 of interest, minus the \$200.00 repayment.
+
+    If you have a Blnk Cloud account or an Enterprise license, you can confirm this by checking the dashboard or using the [CLI](/cli/balances).
+
+    Print every balance:
+
+```bash List balances wrap
+blnk balances list
+```
+
+  </TutorialStep>
+</TutorialSteps>

@@ -1,0 +1,97 @@
+---
+title: "Update role"
+description: "Update a custom organization role."
+method: "PUT"
+path: "/organizations/roles/{role_id}"
+enterprise: license
+noindex: true
+---
+Update a custom role.
+
+<Authorization />
+
+### Path
+
+<ParamField path="role_id" type="string" required>
+  Id of the custom role (`role_...`).
+</ParamField>
+
+### Body
+
+<ParamField body="slug" type="string" required>
+  Identifier for the role. Must not be `admin`, `member`, `operator`, `analyst`, or `investigator`.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name of the role.
+</ParamField>
+
+<ParamField body="description" type="string">
+  What the role is for.
+</ParamField>
+
+<ParamField body="permissions" type="string[]" required>
+  Permissions on the role. At least one. Each value must be from the [permission catalog](/access-control/rbac#permission-catalog).
+</ParamField>
+
+### Response
+
+The response is the updated role.
+
+<ResponseField name="role_id" type="string" required>
+  Id of the role. This stays the same when the identifier changes.
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  Identifier of the role.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the role.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the role is for.
+</ResponseField>
+
+<ResponseField name="permissions" type="string[]" required>
+  Permissions on the role.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT "https://api.cloud.blnkfinance.com/organizations/roles/role_8f2c1a40-6b1e-4d3a-9c70-1e5a2b4d8f16" \
+  -H "X-blnk-key: CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "finance-ops",
+    "name": "Finance Ops",
+    "description": "Read billing and ledger data",
+    "permissions": ["billing.read", "data.read", "instances.read", "org.read"]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "role_id": "role_8f2c1a40-6b1e-4d3a-9c70-1e5a2b4d8f16",
+  "slug": "finance-ops",
+  "name": "Finance Ops",
+  "description": "Read billing and ledger data",
+  "permissions": ["billing.read", "data.read", "instances.read", "org.read"]
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "RBAC", href: "/access-control/rbac" },
+    { title: "Create role", href: "/reference/create-role" },
+    { title: "Delete role", href: "/reference/delete-role" },
+  ]}
+/>

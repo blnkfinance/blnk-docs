@@ -1,0 +1,1509 @@
+---
+title: "Order exchange"
+description: "Learn how to implement an order exchange with Blnk."
+icon: "layers"
+tutorial: true
+---
+
+An order exchange holds each side until the orders match, then settles them. Alice offers 1,000 USDC for 0.01 BTC, and Bob offers 0.01 BTC for 1,000 USDC.
+
+This tutorial shows how to implement that with Blnk.
+
+<TutorialSteps>
+  <TutorialStep title="Design the money movement">
+    Before we start building, we need to define our [money movement](/ledgers/money-movement-map). This helps us outline how the two orders meet.
+
+    Alice's USDC is held in `@USDC_Escrow`, and Bob's BTC is held in `@BTC_Escrow`. Both holds are [inflight](/transactions/inflight/create-inflight), so the funds stay reserved until the orders match.
+
+    Settlement commits those holds, then moves the BTC from escrow to Alice and the USDC from escrow to Bob.
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/VZQ6TdCPik" title="Order exchange money movement" />
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the USDC ledger">
+    Before we start recording transactions, we need a [ledger](/ledgers/introduction) for USDC balances, separate from BTC. Each currency stays in its own ledger so the balances roll up on their own.
+
+    The escrow balances are created in the [General Ledger](/ledgers/general-ledger) when the orders are placed.
+
+    Create the USDC ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-usdc-ledger" method="POST" path="/ledgers" save="usdc_ledger_id" response="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer USDC Ledger" />
+            <TutorialInput name="description" label="Description" value="USDC balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the BTC ledger">
+    BTC balances sit in their own ledger, for the same reason USDC does. Bob's BTC and the BTC Alice receives both use this ledger.
+
+    Create the BTC ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-btc-ledger" method="POST" path="/ledgers" save="btc_ledger_id" response="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer BTC Ledger" />
+            <TutorialInput name="description" label="Description" value="BTC balances belonging to customers" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Alice's identity">
+    An [identity](/identities/introduction) is how we record the customer. We pass Alice's type, name, email, and phone number.
+
+    Anything else we want to keep goes in [metadata](/search/metadata). We'll store her customer id there as `customer_id`. Her USDC and BTC balances both use this identity.
+
+    Create Alice's identity:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-alice" method="POST" path="/identities" save="alice_identity_id" response="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Alice" />
+            <TutorialInput name="last_name" label="Last name" value="Johnson" />
+            <TutorialInput name="email_address" label="Email" value="alice@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567890" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-001" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Bob's identity">
+    Bob is the other side of the trade. We record him the same way, with his own customer id, so his balances are not attached to Alice.
+
+    Create Bob's identity:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-bob" method="POST" path="/identities" save="bob_identity_id" response="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Bob" />
+            <TutorialInput name="last_name" label="Last name" value="Smith" />
+            <TutorialInput name="email_address" label="Email" value="bob@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567891" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-002" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Alice's USDC balance">
+    Alice spends from this balance. It sits on the USDC ledger and uses her identity.
+
+    Create Alice's USDC balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-alice-usdc" method="POST" path="/balances" save="alice_usdc_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="usdc_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="alice_identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USDC" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Alice's BTC balance">
+    This is where Alice receives the 0.01 BTC. It sits on the BTC ledger and uses her identity.
+
+    Create Alice's BTC balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-alice-btc" method="POST" path="/balances" save="alice_btc_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="btc_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="alice_identity_id" />
+            <TutorialInput name="currency" label="Currency" value="BTC" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Bob's USDC balance">
+    This is where Bob receives the 1,000 USDC. It sits on the USDC ledger and uses his identity.
+
+    Create Bob's USDC balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-bob-usdc" method="POST" path="/balances" save="bob_usdc_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="usdc_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="bob_identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USDC" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create Bob's BTC balance">
+    Bob spends from this balance. It sits on the BTC ledger and uses his identity.
+
+    Create Bob's BTC balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-bob-btc" method="POST" path="/balances" save="bob_btc_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="btc_ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="bob_identity_id" />
+            <TutorialInput name="currency" label="Currency" value="BTC" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Fund Alice's USDC">
+    Alice starts with 1,000 USDC, funded from `@USDC_FundingPool`. USDC has 6 decimal places, so [precision](/transactions/precision) is `1000000`, and 1,000 USDC is `precise_amount` `1000000000`.
+
+    <Note>
+      To make sure the funding applies, we turn on [overdraft](/transactions/overdrafts). Without it, `@USDC_FundingPool` is created with a 0 balance, and Blnk would reject the record.
+    </Note>
+
+    Fund Alice's USDC:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 1000000,
+    "reference": "ORD-USDC-20261019-090000",
+    "description": "Initial USDC funding",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 1000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'ORD-USDC-20261019-090000',
+  description: 'Initial USDC funding',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 1000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "ORD-USDC-20261019-090000",
+        Description: "Initial USDC funding",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 1000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "ORD-USDC-20261019-090000",
+  "description": "Initial USDC funding",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 1000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("ORD-USDC-20261019-090000")
+        .description("Initial USDC funding")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="fund-alice-usdc" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="ORD-USDC-20261019-090000" />
+            <TutorialValue name="description" value="Initial USDC funding" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="1000.000000" type="amount" precision="1000000" />
+            <TutorialInput name="currency" label="Currency" value="USDC" />
+            <TutorialInput name="source" label="Source" value="@USDC_FundingPool" />
+            <TutorialInput name="destination" label="Destination" from="alice_usdc_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Fund Bob's BTC">
+    Bob starts with 0.01 BTC, funded from `@BTC_FundingPool`. BTC is stored in satoshis, so precision is `100000000`, and 0.01 BTC is `precise_amount` `1000000`. Overdraft is on for the same reason as the USDC funding.
+
+    Fund Bob's BTC:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100000000,
+    "reference": "ORD-BTC-20261019-090000",
+    "description": "Initial BTC funding",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'ORD-BTC-20261019-090000',
+  description: 'Initial BTC funding',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "ORD-BTC-20261019-090000",
+        Description: "Initial BTC funding",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "ORD-BTC-20261019-090000",
+  "description": "Initial BTC funding",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("ORD-BTC-20261019-090000")
+        .description("Initial BTC funding")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="fund-bob-btc" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="ORD-BTC-20261019-090000" />
+            <TutorialValue name="description" value="Initial BTC funding" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="0.01000000" type="amount" precision="100000000" />
+            <TutorialInput name="currency" label="Currency" value="BTC" />
+            <TutorialInput name="source" label="Source" value="@BTC_FundingPool" />
+            <TutorialInput name="destination" label="Destination" from="bob_btc_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Place Alice's order">
+    Alice offers 1,000 USDC. We record an inflight transaction from her USDC balance to `@USDC_Escrow`, which reserves the USDC until the order is matched or voided.
+
+    Place Alice's order:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 1000000,
+    "reference": "ORD-ALICE-20261019-103000",
+    "description": "Exchange order",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "inflight": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 1000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'ORD-ALICE-20261019-103000',
+  description: 'Exchange order',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  inflight: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 1000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "ORD-ALICE-20261019-103000",
+        Description: "Exchange order",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    Inflight: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 1000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "ORD-ALICE-20261019-103000",
+  "description": "Exchange order",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "inflight": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 1000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("ORD-ALICE-20261019-103000")
+        .description("Exchange order")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .inflight(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="place-alice-order" method="POST" path="/transactions" save="alice_transaction_id" response="transaction_id">
+            <TutorialValue name="reference" value="ORD-ALICE-20261019-103000" />
+            <TutorialValue name="description" value="Exchange order" />
+            <TutorialValue name="inflight" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="1000.000000" type="amount" precision="1000000" />
+            <TutorialInput name="currency" label="Currency" value="USDC" />
+            <TutorialInput name="source" label="Source" from="alice_usdc_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@USDC_Escrow" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Place Bob's order">
+    Bob offers 0.01 BTC. We record an inflight transaction from his BTC balance to `@BTC_Escrow`.
+
+    <Tip>
+      If an order should expire when it is not matched, set `inflight_expiry_date` on the hold. Blnk voids it after that time.
+    </Tip>
+
+    Place Bob's order:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100000000,
+    "reference": "ORD-BOB-20261019-103000",
+    "description": "Exchange order",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "inflight": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'ORD-BOB-20261019-103000',
+  description: 'Exchange order',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  inflight: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "ORD-BOB-20261019-103000",
+        Description: "Exchange order",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    Inflight: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "ORD-BOB-20261019-103000",
+  "description": "Exchange order",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "inflight": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("ORD-BOB-20261019-103000")
+        .description("Exchange order")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .inflight(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="place-bob-order" method="POST" path="/transactions" save="bob_transaction_id" response="transaction_id">
+            <TutorialValue name="reference" value="ORD-BOB-20261019-103000" />
+            <TutorialValue name="description" value="Exchange order" />
+            <TutorialValue name="inflight" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="0.01000000" type="amount" precision="100000000" />
+            <TutorialInput name="currency" label="Currency" value="BTC" />
+            <TutorialInput name="source" label="Source" from="bob_btc_balance_id" />
+            <TutorialInput name="destination" label="Destination" value="@BTC_Escrow" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Commit Alice's order">
+    The orders match, so we [commit](/transactions/inflight/commit-inflight) Alice's hold. That moves her 1,000 USDC into `@USDC_Escrow`.
+
+    <Note>
+      Blnk queues the commit. The response stays `INFLIGHT` until the worker applies it.
+    </Note>
+
+    Commit Alice's order:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X PUT "{{CORE_URL}}/transactions/inflight/{{transaction_id}}" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.updateStatus(
+  '{{transaction_id}}',
+  {
+    status: 'commit',
+  },
+);
+```
+
+```go Go wrap
+transaction, _, _ := client.Transaction.Update(
+    "{{transaction_id}}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusCommit,
+    },
+)
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(
+  "{{transaction_id}}",
+  {
+    "status": "commit",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{{transaction_id}}",
+    UpdateTransactionStatus.create()
+        .status("commit"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="commit-alice-order" method="PUT" path="/transactions/inflight/{transaction_id}">
+            <TutorialValue name="status" value="commit" />
+            <TutorialInput name="transaction_id" label="Transaction" from="alice_transaction_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Commit Bob's order">
+    We commit Bob's hold the same way. That moves his 0.01 BTC into `@BTC_Escrow`.
+
+    <Tip>
+      If the match falls through, [void](/transactions/inflight/void-inflight) both holds instead, and each customer keeps what they offered.
+    </Tip>
+
+    Commit Bob's order:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X PUT "{{CORE_URL}}/transactions/inflight/{{transaction_id}}" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "commit"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Transactions.updateStatus(
+  '{{transaction_id}}',
+  {
+    status: 'commit',
+  },
+);
+```
+
+```go Go wrap
+transaction, _, _ := client.Transaction.Update(
+    "{{transaction_id}}",
+    blnkgo.UpdateStatus{
+        Status: blnkgo.InflightStatusCommit,
+    },
+)
+```
+
+```python Python wrap
+response = blnk.transactions.update_status(
+  "{{transaction_id}}",
+  {
+    "status": "commit",
+  },
+)
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
+    "{{transaction_id}}",
+    UpdateTransactionStatus.create()
+        .status("commit"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="commit-bob-order" method="PUT" path="/transactions/inflight/{transaction_id}">
+            <TutorialValue name="status" value="commit" />
+            <TutorialInput name="transaction_id" label="Transaction" from="bob_transaction_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Settle the USDC">
+    The USDC is in escrow, so we pay Bob. The source is `@USDC_Escrow`, and the destination is Bob's USDC balance.
+
+    Wait until Alice's commit is applied. This transfer does not turn on overdraft, so it fails if the escrow is still empty.
+
+    Settle the USDC:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 1000000,
+    "reference": "SET-USDC-20261019-103000",
+    "description": "USDC settlement",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 1000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'SET-USDC-20261019-103000',
+  description: 'USDC settlement',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 1000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "SET-USDC-20261019-103000",
+        Description: "USDC settlement",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 1000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "SET-USDC-20261019-103000",
+  "description": "USDC settlement",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 1000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("SET-USDC-20261019-103000")
+        .description("USDC settlement")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="settle-usdc" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="SET-USDC-20261019-103000" />
+            <TutorialValue name="description" value="USDC settlement" />
+            <TutorialInput name="amount" label="Amount" value="1000.000000" type="amount" precision="1000000" />
+            <TutorialInput name="currency" label="Currency" value="USDC" />
+            <TutorialInput name="source" label="Source" value="@USDC_Escrow" />
+            <TutorialInput name="destination" label="Destination" from="bob_usdc_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Settle the BTC">
+    The BTC is in escrow, so we pay Alice. The source is `@BTC_Escrow`, and the destination is Alice's BTC balance.
+
+    Wait until Bob's commit is applied before you record this transfer.
+
+    Settle the BTC:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100000000,
+    "reference": "SET-BTC-20261019-103000",
+    "description": "BTC settlement",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100000000;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'SET-BTC-20261019-103000',
+  description: 'BTC settlement',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100000000
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "SET-BTC-20261019-103000",
+        Description: "BTC settlement",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100000000
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "SET-BTC-20261019-103000",
+  "description": "BTC settlement",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100000000;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("SET-BTC-20261019-103000")
+        .description("BTC settlement")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="settle-btc" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="SET-BTC-20261019-103000" />
+            <TutorialValue name="description" value="BTC settlement" />
+            <TutorialInput name="amount" label="Amount" value="0.01000000" type="amount" precision="100000000" />
+            <TutorialInput name="currency" label="Currency" value="BTC" />
+            <TutorialInput name="source" label="Source" value="@BTC_Escrow" />
+            <TutorialInput name="destination" label="Destination" from="alice_btc_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Confirmation">
+    When the commits and both settlements are applied, Alice has 0 USDC and 0.01 BTC. Bob has 1,000 USDC and 0 BTC. Both escrow balances are back to 0.
+
+    If you have a Blnk Cloud account or an Enterprise license, you can confirm this by checking the dashboard or using the [CLI](/cli/balances).
+
+    Print every balance:
+
+```bash List balances wrap
+blnk balances list
+```
+
+  </TutorialStep>
+</TutorialSteps>

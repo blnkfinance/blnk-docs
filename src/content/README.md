@@ -1,6 +1,6 @@
 # Content
 
-Each `.mdx` file is a page. The URL is the path. `install.mdx` is `/install`. `ledgers/introduction.mdx` is `/ledgers/introduction`. `index.mdx` is `/`.
+Each `.mdx` file is a page. The URL is the path. `install.mdx` is `/install`. `ledgers/introduction.mdx` is `/ledgers/introduction`. `/` redirects to `/install`.
 
 A folder such as `ledgers` or `reference` is one section of the docs.
 

@@ -1,0 +1,678 @@
+---
+title: "Currency exchange"
+description: "Learn how to implement a currency exchange with Blnk."
+icon: "layers"
+tutorial: true
+---
+
+A currency exchange is two transactions, one for each currency. Alice gives up USD, and a nostro balance pays her the GBP. Both legs are one atomic batch, so they succeed or fail together.
+
+This tutorial shows how to implement that with Blnk.
+
+<TutorialSteps>
+  <TutorialStep title="Design the money movement">
+    Before we start building, we need to define our [money movement](/ledgers/money-movement-map). This helps us outline how one currency becomes another.
+
+    Alice converts \$1,000.00 to GBP. At \$1.00 = £0.79, she receives £790.00. Her USD balance pays `@NostroUSD`, and `@NostroGBP` pays her GBP balance.
+
+    Both are [internal balances](/balances/internal-balances) in the General Ledger. We send them in one [bulk](/transactions/bulk-transactions) request with `atomic` set, so a failed GBP leg does not leave her USD already taken.
+
+    <TutorialFrame plain>
+      <Map src="https://map.blnkfinance.xyz/XRe9jE0LFb" title="Currency exchange money movement" />
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create a ledger">
+    Before we start recording transactions, we need to set up our [ledger](/ledgers/introduction) to track customers and their balances.
+
+    Alice holds USD and GBP in the same ledger. The nostro balances are created in the [General Ledger](/ledgers/general-ledger) when we record the exchange.
+
+    Create the ledger:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/ledgers" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "{{name}}",
+    "meta_data": {
+      "description": "{{description}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Ledgers.create({
+  name: '{{name}}',
+  meta_data: {
+    description: '{{description}}',
+  },
+});
+```
+
+```go Go wrap
+ledger, _, _ := client.Ledger.Create(blnkgo.CreateLedgerRequest{
+    Name: "{{name}}",
+    MetaData: blnkgo.MetaData{
+        "description": "{{description}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.ledgers.create({
+  "name": "{{name}}",
+  "meta_data": {
+    "description": "{{description}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgers().create(
+    CreateLedger.create()
+        .name("{{name}}")
+        .metaData(Map.of(
+            "description", "{{description}}"
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-ledger" method="POST" path="/ledgers" save="ledger_id">
+            <TutorialInput name="name" label="Ledger name" value="Customer Accounts" />
+            <TutorialInput name="description" label="Description" value="Customer balances in each currency" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create an identity">
+    An [identity](/identities/introduction) is how we record the customer. We pass Alice's type, name, email, and phone number.
+
+    Anything else we want to keep goes in [metadata](/search/metadata). We'll store her customer id there as `customer_id`. Both currency balances use this same identity.
+
+    Create the identity:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/identities" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identity_type": "individual",
+    "first_name": "{{first_name}}",
+    "last_name": "{{last_name}}",
+    "email_address": "{{email_address}}",
+    "phone_number": "{{phone_number}}",
+    "meta_data": {
+      "customer_id": "{{customer_id}}"
+    }
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.Identity.create({
+  identity_type: 'individual',
+  first_name: '{{first_name}}',
+  last_name: '{{last_name}}',
+  email_address: '{{email_address}}',
+  phone_number: '{{phone_number}}',
+  meta_data: {
+    customer_id: '{{customer_id}}',
+  },
+});
+```
+
+```go Go wrap
+identity, _, _ := client.Identity.Create(blnkgo.Identity{
+    IdentityType: blnkgo.Individual,
+    FirstName: "{{first_name}}",
+    LastName: "{{last_name}}",
+    EmailAddress: "{{email_address}}",
+    PhoneNumber: "{{phone_number}}",
+    MetaData: blnkgo.MetaData{
+        "customer_id": "{{customer_id}}",
+    },
+})
+```
+
+```python Python wrap
+response = blnk.identity.create({
+  "identity_type": "individual",
+  "first_name": "{{first_name}}",
+  "last_name": "{{last_name}}",
+  "email_address": "{{email_address}}",
+  "phone_number": "{{phone_number}}",
+  "meta_data": {
+    "customer_id": "{{customer_id}}",
+  },
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.identity().create(
+    IdentityData.create()
+        .identityType("individual")
+        .firstName("{{first_name}}")
+        .lastName("{{last_name}}")
+        .emailAddress("{{email_address}}")
+        .phoneNumber("{{phone_number}}")
+        .metaData(Map.of("customer_id", "{{customer_id}}")));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-identity" method="POST" path="/identities" save="identity_id">
+            <TutorialValue name="identity_type" value="individual" />
+            <TutorialInput name="first_name" label="First name" value="Alice" />
+            <TutorialInput name="last_name" label="Last name" value="Johnson" />
+            <TutorialInput name="email_address" label="Email" value="alice@example.com" />
+            <TutorialInput name="phone_number" label="Phone" value="+1234567890" />
+            <TutorialInput name="customer_id" label="Customer id" value="CUST-001" group="meta_data" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the USD balance">
+    Alice needs a USD balance to convert from. It sits on the customer ledger and uses her identity.
+
+    We'll use the `ledger_id` and `identity_id` from the earlier steps, set the currency to USD, and submit.
+
+    Create the USD balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-usd-balance" method="POST" path="/balances" save="usd_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Create the GBP balance">
+    The GBP she receives needs its own balance. A balance has one currency, so we do not convert inside the USD balance.
+
+    It uses the same ledger and the same identity, with the currency set to GBP.
+
+    Create the GBP balance:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/balances" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ledger_id": "{{ledger_id}}",
+    "identity_id": "{{identity_id}}",
+    "currency": "{{currency}}"
+  }'
+```
+
+```typescript TypeScript wrap
+const response = await blnk.LedgerBalances.create({
+  ledger_id: '{{ledger_id}}',
+  identity_id: '{{identity_id}}',
+  currency: '{{currency}}',
+});
+```
+
+```go Go wrap
+balance, _, _ := client.LedgerBalance.Create(blnkgo.CreateLedgerBalanceRequest{
+    LedgerID: "{{ledger_id}}",
+    IdentityID: "{{identity_id}}",
+    Currency: "{{currency}}",
+})
+```
+
+```python Python wrap
+response = blnk.ledger_balances.create({
+  "ledger_id": "{{ledger_id}}",
+  "identity_id": "{{identity_id}}",
+  "currency": "{{currency}}",
+})
+```
+
+```java Java wrap
+ApiResponse<JsonNode> response = blnk.ledgerBalances().create(
+    CreateLedgerBalance.create()
+        .ledgerId("{{ledger_id}}")
+        .identityId("{{identity_id}}")
+        .currency("{{currency}}"));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="create-gbp-balance" method="POST" path="/balances" save="gbp_balance_id" response="balance_id">
+            <TutorialInput name="ledger_id" label="Ledger" from="ledger_id" />
+            <TutorialInput name="identity_id" label="Identity" from="identity_id" />
+            <TutorialInput name="currency" label="Currency" value="GBP" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Record a deposit">
+    Alice deposits \$1,000.00 before she converts. The source is `@WorldUSD`, and the destination is her USD balance.
+
+    The amount is a decimal, and we multiply it by [precision](/transactions/precision) `100` to get `precise_amount`. The reference and the description are already set.
+
+    <Note>
+      To make sure the deposit applies, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@WorldUSD` is created with a 0 balance, and Blnk would reject the record because the source has insufficient funds.
+    </Note>
+
+    Record the deposit:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": {{precise_amount}},
+    "precision": 100,
+    "reference": "FX-DEP-20261019-103000",
+    "description": "USD deposit",
+    "currency": "{{currency}}",
+    "source": "{{source}}",
+    "destination": "{{destination}}",
+    "allow_overdraft": true
+  }'
+```
+
+```typescript TypeScript wrap
+const amount = {{amount}};
+const precision = 100;
+const precise_amount = Math.round(amount * precision);
+
+const response = await blnk.Transactions.create({
+  precise_amount,
+  precision,
+  reference: 'FX-DEP-20261019-103000',
+  description: 'USD deposit',
+  currency: '{{currency}}',
+  source: '{{source}}',
+  destination: '{{destination}}',
+  allow_overdraft: true,
+});
+```
+
+```go Go wrap
+amount := {{amount}}
+precision := 100
+preciseAmount := big.NewInt(int64(math.Round(amount * float64(precision))))
+
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: preciseAmount,
+        Precision: precision,
+        Reference: "FX-DEP-20261019-103000",
+        Description: "USD deposit",
+        Currency: "{{currency}}",
+        Source: "{{source}}",
+        Destination: "{{destination}}",
+    },
+    AllowOverdraft: true,
+})
+```
+
+```python Python wrap
+amount = {{amount}}
+precision = 100
+precise_amount = round(amount * precision)
+
+response = blnk.transactions.create({
+  "precise_amount": precise_amount,
+  "precision": precision,
+  "reference": "FX-DEP-20261019-103000",
+  "description": "USD deposit",
+  "currency": "{{currency}}",
+  "source": "{{source}}",
+  "destination": "{{destination}}",
+  "allow_overdraft": True,
+})
+```
+
+```java Java wrap
+double amount = {{amount}};
+int precision = 100;
+int preciseAmount = (int) Math.round(amount * precision);
+
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(preciseAmount)
+        .precision(precision)
+        .reference("FX-DEP-20261019-103000")
+        .description("USD deposit")
+        .currency("{{currency}}")
+        .source("{{source}}")
+        .destination("{{destination}}")
+        .allowOverdraft(true));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="record-deposit" method="POST" path="/transactions">
+            <TutorialValue name="reference" value="FX-DEP-20261019-103000" />
+            <TutorialValue name="description" value="USD deposit" />
+            <TutorialValue name="allow_overdraft" value="true" type="boolean" />
+            <TutorialInput name="amount" label="Amount" value="1000.00" type="amount" precision="100" />
+            <TutorialInput name="currency" label="Currency" value="USD" />
+            <TutorialInput name="source" label="Source" value="@WorldUSD" />
+            <TutorialInput name="destination" label="Destination" from="usd_balance_id" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Exchange the currencies">
+    We record both legs in one request to `POST /transactions/bulk`. The USD leg debits Alice and credits `@NostroUSD`. The GBP leg debits `@NostroGBP` and credits Alice.
+
+    Each amount is a decimal, and we multiply it by precision `100`. The references and the description are already set. `@NostroGBP` starts at 0, so that leg turns on overdraft.
+
+    <Note>
+      `atomic` means Blnk rolls the batch back if either leg fails. The batch is queued, and each leg is linked to the same `batch_id`.
+    </Note>
+
+    <Tip>
+      If Alice receives £770.00 instead of £790.00, add a third leg in the same batch from `@NostroGBP` to `@SpreadGBP` for the £20.00 you keep. Set `inflight` on the bulk request when you want to hold both legs until the rate is confirmed.
+    </Tip>
+
+    Exchange the currencies:
+
+<TutorialCode>
+<CodeGroup>
+
+```bash cURL wrap
+curl -X POST "{{CORE_URL}}/transactions/bulk" \
+  -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "atomic": true,
+    "transactions": [
+      {
+        "precise_amount": {{usd_amount_precise}},
+        "precision": 100,
+        "reference": "FX-USD-20261019-103000",
+        "description": "USD to GBP conversion",
+        "currency": "USD",
+        "source": "{{usd_source}}",
+        "destination": "@NostroUSD"
+      },
+      {
+        "precise_amount": {{gbp_amount_precise}},
+        "precision": 100,
+        "reference": "FX-GBP-20261019-103000",
+        "description": "USD to GBP conversion",
+        "currency": "GBP",
+        "source": "@NostroGBP",
+        "destination": "{{gbp_destination}}",
+        "allow_overdraft": true
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript wrap
+const usdAmount = {{usd_amount}};
+const gbpAmount = {{gbp_amount}};
+const precision = 100;
+
+const response = await blnk.Transactions.createBulk({
+  atomic: true,
+  transactions: [
+    {
+      precise_amount: Math.round(usdAmount * precision),
+      precision,
+      reference: 'FX-USD-20261019-103000',
+      description: 'USD to GBP conversion',
+      currency: 'USD',
+      source: '{{usd_source}}',
+      destination: '@NostroUSD',
+    },
+    {
+      precise_amount: Math.round(gbpAmount * precision),
+      precision,
+      reference: 'FX-GBP-20261019-103000',
+      description: 'USD to GBP conversion',
+      currency: 'GBP',
+      source: '@NostroGBP',
+      destination: '{{gbp_destination}}',
+      allow_overdraft: true,
+    },
+  ],
+});
+```
+
+```go Go wrap
+usdAmount := {{usd_amount}}
+gbpAmount := {{gbp_amount}}
+precision := 100
+
+batch, _, _ := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
+    Atomic: true,
+    Transactions: []blnkgo.CreateTransactionRequest{
+        {
+            PreciseAmount: big.NewInt(int64(math.Round(usdAmount * float64(precision)))),
+            Precision: precision,
+            Reference: "FX-USD-20261019-103000",
+            Description: "USD to GBP conversion",
+            Currency: "USD",
+            Source: "{{usd_source}}",
+            Destination: "@NostroUSD",
+        },
+        {
+            PreciseAmount: big.NewInt(int64(math.Round(gbpAmount * float64(precision)))),
+            Precision: precision,
+            Reference: "FX-GBP-20261019-103000",
+            Description: "USD to GBP conversion",
+            Currency: "GBP",
+            Source: "@NostroGBP",
+            Destination: "{{gbp_destination}}",
+            AllowOverdraft: true,
+        },
+    },
+})
+```
+
+```python Python wrap
+usd_amount = {{usd_amount}}
+gbp_amount = {{gbp_amount}}
+precision = 100
+
+response = blnk.transactions.create_bulk({
+  "atomic": True,
+  "transactions": [
+    {
+      "precise_amount": round(usd_amount * precision),
+      "precision": precision,
+      "reference": "FX-USD-20261019-103000",
+      "description": "USD to GBP conversion",
+      "currency": "USD",
+      "source": "{{usd_source}}",
+      "destination": "@NostroUSD",
+    },
+    {
+      "precise_amount": round(gbp_amount * precision),
+      "precision": precision,
+      "reference": "FX-GBP-20261019-103000",
+      "description": "USD to GBP conversion",
+      "currency": "GBP",
+      "source": "@NostroGBP",
+      "destination": "{{gbp_destination}}",
+      "allow_overdraft": True,
+    },
+  ],
+})
+```
+
+```java Java wrap
+double usdAmount = {{usd_amount}};
+double gbpAmount = {{gbp_amount}};
+int precision = 100;
+
+ApiResponse<JsonNode> response = blnk.transactions().createBulk(
+    BulkTransactions.create()
+        .atomic(true)
+        .transactions(List.of(
+            CreateTransactions.create()
+                .preciseAmount((int) Math.round(usdAmount * precision))
+                .precision(precision)
+                .reference("FX-USD-20261019-103000")
+                .description("USD to GBP conversion")
+                .currency("USD")
+                .source("{{usd_source}}")
+                .destination("@NostroUSD"),
+            CreateTransactions.create()
+                .preciseAmount((int) Math.round(gbpAmount * precision))
+                .precision(precision)
+                .reference("FX-GBP-20261019-103000")
+                .description("USD to GBP conversion")
+                .currency("GBP")
+                .source("@NostroGBP")
+                .destination("{{gbp_destination}}")
+                .allowOverdraft(true)
+        )));
+```
+
+</CodeGroup>
+</TutorialCode>
+
+    <TutorialFrame>
+      <Tabs>
+        <Tab title="Try it out">
+          <TutorialForm id="exchange-currencies" method="POST" path="/transactions/bulk">
+            <TutorialValue name="atomic" value="true" type="boolean" />
+            <TutorialValue name="usd_reference" as="reference" value="FX-USD-20261019-103000" list="transactions" index="0" />
+            <TutorialValue name="usd_description" as="description" value="USD to GBP conversion" list="transactions" index="0" />
+            <TutorialValue name="usd_currency" as="currency" value="USD" list="transactions" index="0" />
+            <TutorialValue name="usd_destination" as="destination" value="@NostroUSD" list="transactions" index="0" />
+            <TutorialInput name="usd_amount" label="USD amount" value="1000.00" type="amount" precision="100" list="transactions" index="0" />
+            <TutorialInput name="usd_source" as="source" label="USD source" from="usd_balance_id" list="transactions" index="0" />
+            <TutorialValue name="gbp_reference" as="reference" value="FX-GBP-20261019-103000" list="transactions" index="1" />
+            <TutorialValue name="gbp_description" as="description" value="USD to GBP conversion" list="transactions" index="1" />
+            <TutorialValue name="gbp_currency" as="currency" value="GBP" list="transactions" index="1" />
+            <TutorialValue name="gbp_source" as="source" value="@NostroGBP" list="transactions" index="1" />
+            <TutorialValue name="gbp_overdraft" as="allow_overdraft" value="true" type="boolean" list="transactions" index="1" />
+            <TutorialInput name="gbp_amount" label="GBP amount" value="790.00" type="amount" precision="100" list="transactions" index="1" />
+            <TutorialInput name="gbp_destination" as="destination" label="GBP destination" from="gbp_balance_id" list="transactions" index="1" />
+          </TutorialForm>
+        </Tab>
+        <Tab title="Response">
+          <TutorialResponse />
+        </Tab>
+      </Tabs>
+    </TutorialFrame>
+  </TutorialStep>
+
+  <TutorialStep title="Confirmation">
+    The batch is queued. When both legs are applied, Alice's USD balance is 0 and her GBP balance is £790.00.
+
+    If you have a Blnk Cloud account or an Enterprise license, you can confirm this by checking the dashboard or using the [CLI](/cli/balances).
+
+    Print every balance:
+
+```bash List balances wrap
+blnk balances list
+```
+
+  </TutorialStep>
+</TutorialSteps>
