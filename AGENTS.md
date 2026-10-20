@@ -26,8 +26,8 @@ Keep the original path. A tag that is not in `src/ui/mdx/components.ts` and not 
 
 **docs-writer.** Any write or edit of a page in `src/content`. Read the skill before changing copy, layout, samples, or frontmatter. Follow it.
 
-**migrate-docs.** The user asked to migrate a chunk, a group, or a section, or said `next`. Read the skill, `status.md`, and `sections.md`. Post the plan and wait. Write nothing until they accept. One group, then stop. The page you write still follows docs-writer.
-
 **expert.** The user tagged the prompt with `expert`. It does not run on its own.
 
 **publish.** The user said `publish`. Commit this chat's work, push `main`, then confirm the Brimble deploy. Follow `.cursor/rules/publish.mdc`.
+
+**brimble.** Any Brimble task uses the CLI. Follow `.cursor/rules/brimble.mdc`. Do not use the Brimble MCP.
