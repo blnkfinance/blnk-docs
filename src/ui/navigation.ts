@@ -349,10 +349,9 @@ export type Crumb = {
 	href?: string;
 };
 
-/** Group name above the title. Home and pages outside the nav have none. */
+/** Group name above the title. Pages outside the nav have none. */
 export function pageLabel(navigation: Navigation, pathname: string): string | undefined {
 	const path = normalizePath(pathname);
-	if (path === '/') return undefined;
 	return groupFor(activeTab(navigation, path), path);
 }
 
