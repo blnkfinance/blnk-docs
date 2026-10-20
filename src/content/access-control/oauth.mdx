@@ -1,0 +1,90 @@
+---
+title: "OAuth"
+sidebarTitle: "OAuth"
+description: "Create an OAuth client and issue an access token for an app."
+metaDescription: "Create an OAuth client, then authorize the app and exchange the code for an access token."
+icon: "lock"
+enterprise: license
+---
+
+OAuth lets an app sign in to your workspace and call the Enterprise API as that user. Create a client in [Settings > API Keys](https://cloud.blnkfinance.com/cloud/settings/api-keys), then send the user through [Authorize OAuth](/reference/authorize-client) and [Create OAuth token](/reference/create-oauth-token).
+
+Each client has a name, a client id, a client secret shown once, scopes such as `mcp:read` or `*`, at least one redirect URI, and an expiration. Expiration can be a date or **Never**.
+
+## Create an OAuth client
+
+<Steps>
+<Step title="Open API keys">
+Go to **Settings > API Keys**. Click **Create API key**.
+
+![API keys page with the Create API key button highlighted](img/cloud/api-keys-create-button.png)
+</Step>
+<Step title="Set the client">
+- **Name:** A name for the client, such as the MCP integration.
+- **Type:** **OAuth**.
+- **Redirect URIs:** The callback URL for your app. At least one. It must match the `redirect_uri` you send to [Authorize OAuth](/reference/authorize-client).
+- **Scopes:** `*` for every permission, or a smaller set such as `mcp:read`, `proxy:write`, or `data:read`.
+- **Expires:** A date, or **Never**.
+</Step>
+<Step title="Copy the credentials">
+The client id and client secret are shown once. Copy both before you leave the screen.
+
+![OAuth credentials panel showing Client ID, Client Secret, and a warning to store them](img/cloud/new-oauth.png)
+
+<Warning>
+The client secret cannot be read again. If you lose it, revoke the client and create another.
+</Warning>
+</Step>
+</Steps>
+
+## Get an access token
+
+Send the user's browser to [Authorize OAuth](/reference/authorize-client). Blnk shows the sign-in page, then redirects to your app with a code.
+
+![Blnk login page](img/cloud/oauth-login.png)
+
+Exchange that code with [Create OAuth token](/reference/create-oauth-token). The access token lasts 1 hour.
+
+Use [Create OAuth token](/reference/create-oauth-token) again to refresh. The refresh token lasts 30 days, and each refresh replaces it.
+
+## Use the access token
+
+Send the access token in `X-blnk-key` on Cloud API requests.
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/proxy/ledgers?instance_id=YOUR_INSTANCE_ID" \
+  -H "X-blnk-key: OAUTH_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Integration Ledger"
+  }'
+```
+
+## Revoke an OAuth client
+
+Revoke a client to stop it immediately. A revoked client stays in the list and cannot authenticate.
+
+<Steps>
+<Step title="Open the client">
+Click the client name in the API Keys table.
+</Step>
+<Step title="Revoke it">
+In the details panel, click **Revoke key**.
+
+<Warning>
+Revoking a client disables it immediately. Apps using that client stop until you create a new one.
+</Warning>
+</Step>
+<Step title="Confirm">
+Confirm the revocation. The status in the table changes to **Revoked**.
+</Step>
+</Steps>
+
+<RelatedTopics
+  items={[
+    { title: "Authorize OAuth", href: "/reference/authorize-client" },
+    { title: "Create OAuth token", href: "/reference/create-oauth-token" },
+    { title: "RBAC", href: "/access-control/rbac" },
+    { title: "Enterprise API keys", href: "/reference/enterprise-api-key" },
+  ]}
+/>

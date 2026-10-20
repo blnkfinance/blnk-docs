@@ -240,8 +240,14 @@ Steer list copied from `blnkfinance/docs-v1` `docs.json`. A chunk is one group u
 
 ### Access control
 
+- `access-control/oauth`
+- `access-control/rbac`
 - `access-control/team`
 - `access-control/audit-logs`
+
+### AI
+
+- `ai/mcp`
 
 ### Insights
 
@@ -407,7 +413,11 @@ The API tab opens with this group. Authentication and Introduction are dropdowns
 - dropdown **Authentication** source icon `lock`
   - `reference/core-api-key`
   - `reference/enterprise-api-key`
-  - `reference/oauth`
+
+OAuth protocol calls live in the Access control group, above the role endpoints:
+
+- `reference/authorize-client`
+- `reference/create-oauth-token`
 
 #### Deployments
 
@@ -438,7 +448,6 @@ The proxy is a section on `reference/enterprise`. There is no `reference/proxy-a
 
 #### AI integrations
 
-- `reference/mcp`
 - `reference/create-agent`
 - `reference/get-agent-status`
 - `reference/get-agent-result`

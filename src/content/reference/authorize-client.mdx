@@ -1,0 +1,76 @@
+---
+title: "Authorize OAuth"
+sidebarTitle: "Authorize OAuth"
+description: "Send a user to sign in and receive an OAuth authorization code."
+method: "GET"
+path: "/oauth/authorize"
+enterprise: license
+noindex: true
+---
+
+Authorize OAuth starts sign-in for an [OAuth](/access-control/oauth) client. Send the user's browser to this URL. Blnk shows the sign-in page, then redirects to `redirect_uri` with a `code`.
+
+Send this request to `https://api.cloud.blnkfinance.com` on Blnk Cloud. On a self-hosted Enterprise deployment, send it to `ENTERPRISE_PUBLIC_URL`.
+
+The code lasts 10 minutes and works once. Exchange it with [Create OAuth token](/reference/create-oauth-token).
+
+### Query
+
+<ParamField query="response_type" type="string" required>
+  Must be `code`.
+</ParamField>
+
+<ParamField query="client_id" type="string" required>
+  Client id from [OAuth](/access-control/oauth).
+</ParamField>
+
+<ParamField query="redirect_uri" type="string" required>
+  Callback URL. It must be one of the redirect URIs registered on the client, and the same value you send to [Create OAuth token](/reference/create-oauth-token).
+</ParamField>
+
+<ParamField query="scope" type="string">
+  Space-separated scopes to request, such as `mcp:read data:read`. Omit it to use the scopes on the client.
+</ParamField>
+
+<ParamField query="state" type="string">
+  Value your app sends and checks on the redirect.
+</ParamField>
+
+<ParamField query="code_challenge" type="string">
+  PKCE challenge. If you send this, [Create OAuth token](/reference/create-oauth-token) must include `code_verifier`.
+</ParamField>
+
+<ParamField query="code_challenge_method" type="string">
+  `S256` or `plain`. Used with `code_challenge`. `plain` compares the verifier to the challenge directly.
+</ParamField>
+
+### Response
+
+Blnk returns the sign-in page. After the user signs in, Blnk redirects to `redirect_uri` with `302`.
+
+The `code` query parameter is the authorization code. `state` comes back when you sent it.
+
+An unknown `client_id`, or a `redirect_uri` that is not registered, shows an error page and does not redirect.
+
+<RequestExample>
+
+```text Authorization URL
+https://api.cloud.blnkfinance.com/oauth/authorize?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=https://your-app.com/oauth/callback
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text 302 Found
+https://your-app.com/oauth/callback?code=THE_AUTH_CODE
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Create OAuth token", href: "/reference/create-oauth-token" },
+    { title: "OAuth", href: "/access-control/oauth" },
+  ]}
+/>
