@@ -2,7 +2,7 @@
 title: "Data lake overview"
 sidebarTitle: "Overview"
 description: "See why the data lake exists, how records are copied into it, and what you use it for."
-metaDescription: "The data lake syncs ledger history into files that DuckDB reads, so large SQL stays off the live database."
+metaDescription: "The data lake syncs ledger history to object storage so Insights and analytics stay off the live database."
 icon: "storage"
 enterprise: license
 ---
@@ -15,21 +15,30 @@ The data lake is a separate copy of `transactions`, `balances`, `ledgers`, and `
 
 ## How it works
 
-Blnk reads posted records from the ledger on a schedule and writes them to daily Parquet files.
-
-Each day of history is stored in its own files. Blnk does not edit a file after writing it. A record that arrives later is added in a new file, for the day that record was posted.
-
-A query has a date range. DuckDB opens the files for those days and runs the SQL on them. Days outside that range are not part of the query.
+Blnk Core writes ledger data as Parquet. Those files sync to object storage, and a query engine runs Insights and analytics on the copy.
 
 <LakeFlow />
 
 <Note>
-You are not querying a replica of the ledger's Postgres database. The dialect is [DuckDB SQL](https://duckdb.org/docs/stable/sql/introduction.html), built for scans, aggregations, and joins over this copy. [Queries](/lake/queries) lists the statements the lake accepts.
+You are not querying a replica of the ledger's Postgres database. [Queries](/lake/queries) lists the statements the lake accepts.
 </Note>
+
+## When to use it
+
+Use the lake for activity over a period. Use the ledger when you need what a wallet holds right now.
+
+| Question | Where to get it |
+| :-- | :-- |
+| Money that moved over a period | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
+| Wallets, ledgers, and identities in that history | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
+| Amount in a wallet right now | [Get balance](/reference/get-balance) |
+| Amount in a wallet at a past time | [Historical balances](/balances/historical-balances) |
+
+[Schema](/lake/schema) lists the columns and how the four tables join.
 
 ## What you use it for
 
-Write the SQL yourself, or start from a [template](/lake/templates). The same copy serves a period report, a dashboard, and an AI client.
+Write the SQL yourself, or start from a [template](/lake/templates). The same copy serves a period report and a dashboard.
 
 <Steps>
   <Step title="Break down posted volume">
@@ -38,7 +47,7 @@ Write the SQL yourself, or start from a [template](/lake/templates). The same co
     Those scans run on the lake, including when the history runs into billions of records.
   </Step>
   <Step title="Write your own SQL">
-    Send one read-only DuckDB `SELECT` or `WITH` from Insights or [Create new query](/reference/create-new-query).
+    Send one read-only `SELECT` or `WITH` from Insights or [Create new query](/reference/create-new-query).
 
     This statement finds a common monitoring case: a balance that received money and sent nearly the same amount straight back out. It joins that balance to its ledger and its identity.
 
@@ -137,25 +146,7 @@ Write the SQL yourself, or start from a [template](/lake/templates). The same co
 
     ![Insights SQL workbench with a saved query, date range, Run button, and results table](img/insights/insights-sql-workbench.png)
   </Step>
-  <Step title="Let an AI client query the copy">
-    The [MCP server](/ai/mcp) gives a client this copy as a store it can query. It can look for failed payments, unusual volume, a fraud pattern, or another question you describe.
-
-    Those reads stay off the live ledger.
-  </Step>
 </Steps>
-
-## When to use it
-
-Use the lake for activity over a period. Use the ledger when you need what a wallet holds right now.
-
-| Question | Where to get it |
-| :-- | :-- |
-| Money that moved over a period | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
-| Wallets, ledgers, and identities in that history | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
-| Amount in a wallet right now | [Get balance](/reference/get-balance) |
-| Amount in a wallet at a past time | [Historical balances](/balances/historical-balances) |
-
-[Schema](/lake/schema) lists the columns and how the four tables join.
 
 <RelatedTopics
   items={[
