@@ -1,0 +1,214 @@
+---
+title: "List apps"
+description: "List the Custom Apps in the current organization."
+method: "GET"
+path: "/apps"
+enterprise: license
+noindex: true
+---
+List the Custom Apps in the current organization. Each app is private to that organization.
+
+Send `instance_id` to see whether each app is installed on that instance.
+
+<Authorization />
+
+### Query
+
+<ParamField query="search" type="string">
+  Match on name, `slug`, or description. `q` is an alias for this parameter.
+</ParamField>
+
+<ParamField query="instance_id" type="string">
+  Core instance (`instance_...`). When set, each app includes its install status on that instance. The caller has to be a user in the organization.
+</ParamField>
+
+### Response
+
+A `200` response returns `{ "apps": [] }`. Each item is an app.
+
+<ResponseField name="app_id" type="string" required>
+  Id of the app (`app_...`).
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  Identifier of the app. Use it on [Get app](/reference/get-app) and [Install app](/reference/install-app).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name shown in the Apps library.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Short explanation of what the app does.
+</ResponseField>
+
+<ResponseField name="logo_url" type="string">
+  Public URL of the app logo.
+</ResponseField>
+
+<ResponseField name="developer_name" type="string">
+  Company, team, or person that built the app.
+</ResponseField>
+
+<ResponseField name="registration_callback_url" type="string" required>
+  URL Blnk calls on install and uninstall.
+</ResponseField>
+
+<ResponseField name="portal_generator_url" type="string">
+  URL Blnk calls to open the app.
+</ResponseField>
+
+<ResponseField name="permissions" type="string[]">
+  Scopes the app can be granted.
+</ResponseField>
+
+<ResponseField name="is_private" type="boolean" required>
+  `true` when the app belongs to the current organization.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  Organization that owns the app.
+</ResponseField>
+
+<ResponseField name="assigned_to" type="string[]">
+  User ids allowed to launch the app. Empty means every member.
+</ResponseField>
+
+<ResponseField name="require_password_to_launch" type="boolean" required>
+  Whether a launch asks for the account password again.
+</ResponseField>
+
+<ResponseField name="pinned" type="boolean" required>
+  Whether the app is pinned in the sidebar for this instance. `false` when you omit `instance_id`.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the app was registered.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  When the app was last updated.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  `active` when the app is installed on `instance_id`, and `inactive` when it is not. Present only when you send `instance_id`.
+</ResponseField>
+
+<ResponseField name="installed_app_id" type="string">
+  Id of the installation (`instapp_...`). Present when `status` is `active`. Use it on [Launch app](/reference/launch-app) and [Uninstall app](/reference/uninstall-app).
+</ResponseField>
+
+<ResponseField name="granted_permissions" type="string[]">
+  Scopes granted on that installation. Present when `status` is `active`.
+</ResponseField>
+
+<ResponseField name="pinned_at" type="string">
+  When the app was pinned. Present when `pinned` is `true`.
+</ResponseField>
+
+<ResponseField name="can_launch" type="boolean">
+  `true` when this user may launch the app. Present only when you send `instance_id`.
+</ResponseField>
+
+<RequestExample>
+
+```bash List apps
+curl -X GET "https://api.cloud.blnkfinance.com/apps" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+```bash With an instance
+curl -X GET "https://api.cloud.blnkfinance.com/apps?instance_id=instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Apps
+{
+  "apps": [
+    {
+      "app_id": "app_049495fe-6f03-4e7b-b3b4-7b0466c127c7",
+      "slug": "stripe-sync",
+      "name": "Stripe Sync",
+      "description": "Sync Stripe payments into the ledger.",
+      "logo_url": "https://app.example.com/logo.png",
+      "developer_name": "Example",
+      "registration_callback_url": "https://app.example.com/api/callback",
+      "portal_generator_url": "https://app.example.com/api/portal",
+      "permissions": ["data:read", "data:write"],
+      "is_private": true,
+      "organization_id": "org_01K4EX0C3A9F2B7D6E1C8A5F40",
+      "assigned_to": [],
+      "require_password_to_launch": false,
+      "pinned": false,
+      "created_at": "2026-04-21T12:00:00Z",
+      "updated_at": "2026-04-21T12:00:00Z"
+    }
+  ]
+}
+```
+
+```json On an instance
+{
+  "apps": [
+    {
+      "app_id": "app_049495fe-6f03-4e7b-b3b4-7b0466c127c7",
+      "slug": "stripe-sync",
+      "name": "Stripe Sync",
+      "description": "Sync Stripe payments into the ledger.",
+      "logo_url": "https://app.example.com/logo.png",
+      "developer_name": "Example",
+      "registration_callback_url": "https://app.example.com/api/callback",
+      "portal_generator_url": "https://app.example.com/api/portal",
+      "permissions": ["data:read", "data:write"],
+      "is_private": true,
+      "organization_id": "org_01K4EX0C3A9F2B7D6E1C8A5F40",
+      "assigned_to": [],
+      "require_password_to_launch": false,
+      "status": "active",
+      "installed_app_id": "instapp_8cc22560-5ace-4989-8953-fcbad7947d48",
+      "granted_permissions": ["data:read"],
+      "pinned": false,
+      "can_launch": true,
+      "created_at": "2026-04-21T12:00:00Z",
+      "updated_at": "2026-04-21T12:00:00Z"
+    }
+  ]
+}
+```
+
+```json 401 No user
+{
+  "error": "User not authenticated"
+}
+```
+
+```json 401 No organization
+{
+  "error": "Organization not found"
+}
+```
+
+```json 500 Apps
+{
+  "error": "Unable to load apps. Please try again later."
+}
+```
+
+```json 500 Install status
+{
+  "error": "Unable to load install status. Please try again later."
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Get app", href: "/reference/get-app" },
+    { title: "Install app", href: "/reference/install-app" },
+  ]}
+/>

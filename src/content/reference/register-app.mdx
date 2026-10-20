@@ -1,0 +1,194 @@
+---
+title: "Register app"
+description: "Register a Custom App in the current organization."
+method: "POST"
+path: "/apps"
+enterprise: license
+noindex: true
+---
+A Custom App has to be registered before anyone can install it. This call adds the app to the current organization's Apps library and returns the `slug` you use to [install](/reference/install-app) it.
+
+Send `is_private` as `true`. An admin or a member can call this.
+
+<Authorization />
+
+### Body
+
+<ParamField body="name" type="string" required>
+  Name shown in the Apps library. Blnk builds `slug` from this name.
+</ParamField>
+
+<ParamField body="is_private" type="boolean" required>
+  Send `true` so the app stays in the current organization.
+</ParamField>
+
+<ParamField body="registration_callback_url" type="string" required>
+  Absolute `http` or `https` URL Blnk calls on install and uninstall. It cannot include credentials, and it cannot target localhost or a private address. See [Set Up Install and Uninstall Events](/apps/installation).
+</ParamField>
+
+<ParamField body="description" type="string">
+  Short explanation of what the app does.
+</ParamField>
+
+<ParamField body="logo_url" type="string">
+  Public URL of the app logo.
+</ParamField>
+
+<ParamField body="developer_name" type="string">
+  Company, team, or person that built the app.
+</ParamField>
+
+<ParamField body="portal_generator_url" type="string">
+  Absolute `http` or `https` URL Blnk calls to open the app. Same address rules as `registration_callback_url`. Required before anyone can [launch](/reference/launch-app) the app.
+</ParamField>
+
+<ParamField body="permissions" type="string[]">
+  Scopes the app can be granted: `data:read`, `data:write`, `alerts:read`, and `alerts:write`. Omit this and an install grants `data:read`.
+</ParamField>
+
+<ParamField body="assigned_to" type="string[]">
+  User ids allowed to launch the app, from [List team members](/reference/list-organization-members). Omit it, or send an empty array, and every member can launch it. Each id has to be an active member of this organization, with a first and last name, and this field is only for a private app.
+</ParamField>
+
+<ParamField body="require_password_to_launch" type="boolean">
+  When `true`, every [launch](/reference/launch-app) asks for the account password again, and for `two_factor_code` when 2FA is on.
+</ParamField>
+
+### Response
+
+A `201` response returns the app. Save `slug`.
+
+<ResponseField name="app_id" type="string" required>
+  Id of the app (`app_...`).
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  Identifier built from `name`. Use it on [Install app](/reference/install-app).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Name shown in the Apps library.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Short explanation of what the app does.
+</ResponseField>
+
+<ResponseField name="logo_url" type="string">
+  Public URL of the app logo.
+</ResponseField>
+
+<ResponseField name="developer_name" type="string">
+  Company, team, or person that built the app.
+</ResponseField>
+
+<ResponseField name="registration_callback_url" type="string" required>
+  URL Blnk calls on install and uninstall.
+</ResponseField>
+
+<ResponseField name="portal_generator_url" type="string">
+  URL Blnk calls to open the app.
+</ResponseField>
+
+<ResponseField name="permissions" type="string[]">
+  Scopes the app can be granted.
+</ResponseField>
+
+<ResponseField name="is_private" type="boolean" required>
+  `true` when the app belongs to the current organization.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  Organization that owns the app. Set when `is_private` is `true`.
+</ResponseField>
+
+<ResponseField name="assigned_to" type="string[]">
+  User ids allowed to launch the app. Empty means every member.
+</ResponseField>
+
+<ResponseField name="require_password_to_launch" type="boolean" required>
+  Whether a launch asks for the account password again.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  When the app was registered.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  When the app was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/apps" \
+  -H "X-blnk-key: CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Stripe Sync",
+    "is_private": true,
+    "description": "Sync Stripe payments into the ledger.",
+    "developer_name": "Example",
+    "logo_url": "https://app.example.com/logo.png",
+    "registration_callback_url": "https://app.example.com/api/callback",
+    "portal_generator_url": "https://app.example.com/api/portal",
+    "permissions": ["data:read", "data:write"]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "app_id": "app_049495fe-6f03-4e7b-b3b4-7b0466c127c7",
+  "slug": "stripe-sync",
+  "name": "Stripe Sync",
+  "description": "Sync Stripe payments into the ledger.",
+  "logo_url": "https://app.example.com/logo.png",
+  "developer_name": "Example",
+  "registration_callback_url": "https://app.example.com/api/callback",
+  "portal_generator_url": "https://app.example.com/api/portal",
+  "permissions": ["data:read", "data:write"],
+  "is_private": true,
+  "organization_id": "org_01K4EX0C3A9F2B7D6E1C8A5F40",
+  "assigned_to": [],
+  "require_password_to_launch": false,
+  "created_at": "2026-04-21T12:00:00Z",
+  "updated_at": "2026-04-21T12:00:00Z"
+}
+```
+
+```json 400 Invalid permission
+{
+  "error": "invalid app permission \"billing:read\" (allowed: data:read, data:write, alerts:read, alerts:write)"
+}
+```
+
+```json 400 Bad callback URL
+{
+  "error": "registration_callback_url must be an absolute http or https URL"
+}
+```
+
+```json 400 Assigned users
+{
+  "error": "assigned_to is only allowed for private apps"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Organization not found"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "List apps", href: "/reference/list-apps" },
+    { title: "Install app", href: "/reference/install-app" },
+  ]}
+/>

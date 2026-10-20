@@ -1,0 +1,201 @@
+---
+title: "Install app"
+description: "Install a registered app on a Cloud instance."
+method: "POST"
+path: "/apps/{slug}/install"
+enterprise: license
+noindex: true
+---
+Install a registered app on one Cloud instance. Blnk creates a scoped API key, sends the install to the app's registration callback, and finishes the install when that callback returns `2xx`.
+
+An admin or a member calls this with a user session token, the account password, and `two_factor_code` when 2FA is on. An API key cannot install an app.
+
+<Note>
+If the callback does not return `2xx` within 10 seconds, Blnk revokes the key and the install does not complete.
+</Note>
+
+### Header
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer` session token for the current organization.
+</ParamField>
+
+### Path
+
+<ParamField path="slug" type="string" required>
+  `slug` from [Register app](/reference/register-app).
+</ParamField>
+
+### Query
+
+<ParamField query="instance_id" type="string">
+  Core instance to install the app on (`instance_...`). Send this when the body does not include `instance_id`.
+</ParamField>
+
+### Body
+
+<ParamField body="instance_id" type="string" required>
+  Core instance to install the app on (`instance_...`). The instance has to belong to the current organization, and the app can be installed once on it. You can send this as a query parameter instead.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password of the signed-in user.
+</ParamField>
+
+<ParamField body="two_factor_code" type="string">
+  2FA code. Required when 2FA is on for this user.
+</ParamField>
+
+<ParamField body="permissions" type="string[]">
+  Scopes to grant on this install. Omit it to grant every permission the app declares. If the app declared none, Blnk grants `data:read`.
+
+  A list you send has to be a non-empty subset of those permissions.
+</ParamField>
+
+### Response
+
+A `201` response returns the installation and the API key. Save `installed_app_id` and `api_key`.
+
+<ResponseField name="installed_app_id" type="string" required>
+  Id of this installation (`instapp_...`). Use it on [Launch app](/reference/launch-app).
+</ResponseField>
+
+<ResponseField name="app_id" type="string" required>
+  Id of the app (`app_...`).
+</ResponseField>
+
+<ResponseField name="api_key" type="string" required>
+  Scoped API key for this installation (`blnk_...`). The app uses it to call Blnk for this instance.
+</ResponseField>
+
+<ResponseField name="api_key_prefix" type="string" required>
+  Prefix of `api_key`, safe to store in logs.
+</ResponseField>
+
+<ResponseField name="granted_permissions" type="string[]" required>
+  Scopes granted on the key.
+</ResponseField>
+
+<ResponseField name="pinned" type="boolean" required>
+  Whether the app is pinned in the sidebar. `false` on a new install.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  `App installed successfully.`
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/apps/stripe-sync/install" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+    "password": "account-password",
+    "permissions": ["data:read"]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "installed_app_id": "instapp_8cc22560-5ace-4989-8953-fcbad7947d48",
+  "app_id": "app_049495fe-6f03-4e7b-b3b4-7b0466c127c7",
+  "api_key": "blnk_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "api_key_prefix": "blnk_01234567",
+  "granted_permissions": ["data:read"],
+  "pinned": false,
+  "message": "App installed successfully."
+}
+```
+
+```json 401 Session required
+{
+  "error": "app installation requires a user session token"
+}
+```
+
+```json 401 Password required
+{
+  "error": "password is required to install an app"
+}
+```
+
+```json 401 Two-factor required
+{
+  "error": "two_factor_code is required"
+}
+```
+
+```json 401 Password failed
+{
+  "error": "password verification failed"
+}
+```
+
+```json 401 Two-factor failed
+{
+  "error": "2fa verification failed"
+}
+```
+
+```json 400 Instance required
+{
+  "error": "instance_id is required (body or query)"
+}
+```
+
+```json 400 Already installed
+{
+  "error": "app is already installed for this instance"
+}
+```
+
+```json 400 Wrong instance
+{
+  "error": "instance does not belong to this organization"
+}
+```
+
+```json 400 Callback failed
+{
+  "error": "registration handshake failed: registration callback returned status 500"
+}
+```
+
+```json 400 Invalid permission
+{
+  "error": "permission \"alerts:write\" is not among the permissions this app requests"
+}
+```
+
+```json 404 Not found
+{
+  "error": "App not found"
+}
+```
+
+```json 401 No organization
+{
+  "error": "Organization not found"
+}
+```
+
+```json 401 No user
+{
+  "error": "User not authenticated"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Launch app", href: "/reference/launch-app" },
+    { title: "List apps", href: "/reference/list-apps" },
+  ]}
+/>

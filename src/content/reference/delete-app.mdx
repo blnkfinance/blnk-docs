@@ -1,0 +1,87 @@
+---
+title: "Delete app"
+description: "Delete a private Custom App from the current organization."
+method: "DELETE"
+path: "/apps/{slug}"
+enterprise: license
+noindex: true
+---
+Delete a private Custom App from the current organization. The app has to have no active installations.
+
+<Warning>
+The call fails while the app is still installed. [Uninstall](/reference/uninstall-app) it on each instance first.
+</Warning>
+
+An admin or a member can call this.
+
+<Authorization />
+
+### Path
+
+<ParamField path="slug" type="string" required>
+  `slug` from [Get app](/reference/get-app).
+</ParamField>
+
+### Response
+
+A `200` response returns a confirmation. An app from another organization returns `404`.
+
+<ResponseField name="message" type="string" required>
+  `App deleted successfully`.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X DELETE "https://api.cloud.blnkfinance.com/apps/stripe-sync" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "message": "App deleted successfully"
+}
+```
+
+```json 400 Active installations
+{
+  "error": "app has active installations; uninstall before deleting"
+}
+```
+
+```json 403 Private apps
+{
+  "error": "only private apps can be deleted"
+}
+```
+
+```json 404 Not found
+{
+  "error": "App not found"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Organization not found"
+}
+```
+
+```json 500 Server error
+{
+  "error": "Unable to delete app. Please try again later."
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Uninstall app", href: "/reference/uninstall-app" },
+    { title: "List apps", href: "/reference/list-apps" },
+  ]}
+/>

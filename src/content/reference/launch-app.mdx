@@ -1,0 +1,146 @@
+---
+title: "Launch app"
+description: "Open an installed app and get a portal URL."
+method: "POST"
+path: "/apps/installed/{installed_app_id}/portal"
+enterprise: license
+noindex: true
+---
+Launch returns a short-lived `portal_url` for an installed app.
+
+Blnk asks the app's portal generator for that URL, then returns it so the app can open inside the dashboard.
+
+### Header
+
+<ParamField header="X-blnk-key" type="string">
+  Enterprise API key, or an OAuth access token. Use this when the app does not require a launch password.
+</ParamField>
+
+<ParamField header="Authorization" type="string">
+  `Bearer` session token for the current organization. Required when the app has `require_password_to_launch` set. An API key cannot confirm the password.
+</ParamField>
+
+### Path
+
+<ParamField path="installed_app_id" type="string" required>
+  Id of the installation from [Install app](/reference/install-app) or [List apps](/reference/list-apps) (`instapp_...`).
+</ParamField>
+
+### Body
+
+<ParamField body="password" type="string">
+  Account password of the signed-in user. Required when the app has `require_password_to_launch` set.
+</ParamField>
+
+<ParamField body="two_factor_code" type="string">
+  2FA code. Required with `password` when 2FA is on for this user.
+</ParamField>
+
+### Response
+
+A `200` response returns the portal URL. Load `portal_url` to open the app.
+
+<ResponseField name="portal_url" type="string" required>
+  Short-lived URL returned by the app's portal generator.
+</ResponseField>
+
+<RequestExample>
+
+```bash Launch
+curl -X POST "https://api.cloud.blnkfinance.com/apps/installed/instapp_8cc22560-5ace-4989-8953-fcbad7947d48/portal" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+```bash Launch with a password
+curl -X POST "https://api.cloud.blnkfinance.com/apps/installed/instapp_8cc22560-5ace-4989-8953-fcbad7947d48/portal" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "account-password"
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "portal_url": "https://app.example.com/portal/9f3c2a"
+}
+```
+
+```json 401 Session required
+{
+  "error": "launching this app requires a user session token"
+}
+```
+
+```json 401 Password required
+{
+  "error": "password is required to launch this app"
+}
+```
+
+```json 401 Two-factor required
+{
+  "error": "two_factor_code is required"
+}
+```
+
+```json 401 Password failed
+{
+  "error": "password verification failed"
+}
+```
+
+```json 401 Two-factor failed
+{
+  "error": "2fa verification failed"
+}
+```
+
+```json 403 Not assigned
+{
+  "error": "you are not assigned to launch this app"
+}
+```
+
+```json 400 No portal URL
+{
+  "error": "app has no portal generator URL configured"
+}
+```
+
+```json 400 Portal failed
+{
+  "error": "portal generator did not return a portal URL"
+}
+```
+
+```json 400 Not found
+{
+  "error": "installed app with id 'instapp_8cc22560-5ace-4989-8953-fcbad7947d48' not found"
+}
+```
+
+```json 401 No user
+{
+  "error": "User not authenticated"
+}
+```
+
+```json 401 No organization
+{
+  "error": "Organization not found"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Uninstall app", href: "/reference/uninstall-app" },
+    { title: "List apps", href: "/reference/list-apps" },
+  ]}
+/>

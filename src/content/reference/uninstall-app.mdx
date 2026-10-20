@@ -1,0 +1,87 @@
+---
+title: "Uninstall app"
+description: "Uninstall an app from a Cloud instance."
+method: "POST"
+path: "/apps/installed/{installed_app_id}/uninstall"
+enterprise: license
+noindex: true
+---
+Uninstall an app from the instance it was installed on. Blnk tells the registration callback, then revokes the API key when that callback returns `2xx`.
+
+An admin or a member can call this.
+
+<Warning>
+If the callback does not return `2xx` within 10 seconds, the installation stays active and the key stays valid.
+</Warning>
+
+<Authorization />
+
+### Path
+
+<ParamField path="installed_app_id" type="string" required>
+  Id of the installation from [Install app](/reference/install-app) or [List apps](/reference/list-apps) (`instapp_...`).
+</ParamField>
+
+### Response
+
+A `200` response returns a confirmation.
+
+<ResponseField name="message" type="string" required>
+  `App uninstalled successfully`.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.cloud.blnkfinance.com/apps/installed/instapp_8cc22560-5ace-4989-8953-fcbad7947d48/uninstall" \
+  -H "X-blnk-key: CLOUD_API_KEY"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "message": "App uninstalled successfully"
+}
+```
+
+```json 400 Not found
+{
+  "error": "installed app with id 'instapp_8cc22560-5ace-4989-8953-fcbad7947d48' not found"
+}
+```
+
+```json 400 Already uninstalled
+{
+  "error": "installed app with id 'instapp_8cc22560-5ace-4989-8953-fcbad7947d48' not found or already uninstalled"
+}
+```
+
+```json 400 Callback failed
+{
+  "error": "uninstall handshake failed: uninstall callback returned status 500"
+}
+```
+
+```json 401 No user
+{
+  "error": "User not authenticated"
+}
+```
+
+```json 401 No organization
+{
+  "error": "Organization not found"
+}
+```
+
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Delete app", href: "/reference/delete-app" },
+    { title: "List apps", href: "/reference/list-apps" },
+  ]}
+/>
