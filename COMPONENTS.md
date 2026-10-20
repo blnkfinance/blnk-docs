@@ -54,6 +54,7 @@ A snippet is compiled on its own. It imports each component it uses.
 | `ResponseExample.astro` | `ResponseExample` | Sample lifted into the right-hand rail |
 | `RelatedTopics.astro` | `RelatedTopics` | Follow-up links |
 | `SchemaChart.astro` | `SchemaChart` | Fixed diagram of ledgers, balances, identity, and transactions |
+| `LakeFlow.astro` | `LakeFlow` | Node diagram. The ledger copies into the sync, the sync stores archive files, and DuckDB reads them |
 
 The page heading, description, and endpoint bar come from frontmatter. See [README.md](README.md).
 
@@ -511,6 +512,14 @@ A fixed diagram. Transactions point to balances as source and destination. Balan
 
 ```mdx
 <SchemaChart />
+```
+
+## Lake flow
+
+A node diagram, drawn the same way as the schema chart. The ledger copies into the sync, the sync stores archive files, and DuckDB reads them. It takes no props.
+
+```mdx
+<LakeFlow />
 ```
 
 ## Snippets

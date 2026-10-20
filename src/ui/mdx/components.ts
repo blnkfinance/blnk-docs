@@ -35,6 +35,7 @@ export { default as Icon } from './Icon.astro';
 export { default as Tooltip } from './Tooltip.astro';
 export { default as RelatedTopics } from './RelatedTopics.astro';
 export { default as SchemaChart } from './SchemaChart.astro';
+export { default as LakeFlow } from './LakeFlow.astro';
 export { default as SectionLabel } from './SectionLabel.astro';
 export { default as Connect } from './Connect.astro';
 export { default as Action } from './Action.astro';

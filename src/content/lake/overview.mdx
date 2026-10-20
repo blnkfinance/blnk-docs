@@ -1,21 +1,148 @@
 ---
-title: "Overview"
+title: "Data lake overview"
 sidebarTitle: "Overview"
-description: "Read a stored copy of ledger history for reports, off the live ledger."
-metaDescription: "Insights is the SQL workbench on your instance data lake. Available on Production managed instances and for Enterprise customers."
+description: "See why the data lake exists, how records are copied into it, and what you use it for."
+metaDescription: "The data lake syncs ledger history into files that DuckDB reads, so large SQL stays off the live database."
 icon: "storage"
 enterprise: license
 ---
 
-The data lake is a stored copy of your ledger, kept for reports. It holds `transactions`, `balances`, `ledgers`, and `identity`.
+In a ledger, recording the payment is the start. Reports, investigations, and reviews all read that same history afterward.
 
-Insights and [Create new query](/reference/create-new-query) read that copy instead of the ledger that processes transactions. A volume report or an investigation stays off the path that moves money.
+Running those reads on the live database competes with the service that posts transactions, and the ledger slows down under work it still has to do.
 
-Your ledger stays the source of truth.
+The data lake is a separate copy of `transactions`, `balances`, `ledgers`, and `identity`, kept so those reads can easily work with billions of records without pressure on the live ledger instance. Insights and [Create new query](/reference/create-new-query) run SQL on the copy. The ledger stays the source of truth.
 
-<Info>
-Available on managed instances and to Enterprise customers. A connected self-hosted Core needs an Enterprise license.
-</Info>
+## How it works
+
+Blnk reads posted records from the ledger on a schedule and writes them to daily Parquet files.
+
+Each day of history is stored in its own files. Blnk does not edit a file after writing it. A record that arrives later is added in a new file, for the day that record was posted.
+
+A query has a date range. DuckDB opens the files for those days and runs the SQL on them. Days outside that range are not part of the query.
+
+<LakeFlow />
+
+<Note>
+You are not querying a replica of the ledger's Postgres database. The dialect is [DuckDB SQL](https://duckdb.org/docs/stable/sql/introduction.html), built for scans, aggregations, and joins over this copy. [Queries](/lake/queries) lists the statements the lake accepts.
+</Note>
+
+## What you use it for
+
+Write the SQL yourself, or start from a [template](/lake/templates). The same copy serves a period report, a dashboard, and an AI client.
+
+<Steps>
+  <Step title="Break down posted volume">
+    Total posted volume, then break it down by currency, day, or status, and see whether a period is up or down.
+
+    Those scans run on the lake, including when the history runs into billions of records.
+  </Step>
+  <Step title="Write your own SQL">
+    Send one read-only DuckDB `SELECT` or `WITH` from Insights or [Create new query](/reference/create-new-query).
+
+    This statement finds a common monitoring case: a balance that received money and sent nearly the same amount straight back out. It joins that balance to its ledger and its identity.
+
+    ```sql Pass-through balances expandable
+    WITH applied AS (
+      SELECT
+        currency,
+        source,
+        destination,
+        TRY_CAST(precise_amount AS DECIMAL(38, 8))
+          / NULLIF(TRY_CAST(precision AS DECIMAL(38, 8)), 0) AS amount
+      FROM transactions
+      WHERE status = 'APPLIED'
+    ),
+    inflow AS (
+      SELECT
+        destination AS balance_id,
+        currency,
+        SUM(amount) AS inflow
+      FROM applied
+      GROUP BY 1, 2
+    ),
+    outflow AS (
+      SELECT
+        source AS balance_id,
+        currency,
+        SUM(amount) AS outflow
+      FROM applied
+      GROUP BY 1, 2
+    ),
+    balances_one AS (
+      SELECT
+        balance_id,
+        ANY_VALUE(ledger_id) AS ledger_id,
+        ANY_VALUE(identity_id) AS identity_id
+      FROM balances
+      GROUP BY balance_id
+    ),
+    ledgers_one AS (
+      SELECT
+        ledger_id,
+        ANY_VALUE(name) AS ledger_name
+      FROM ledgers
+      GROUP BY ledger_id
+    ),
+    identity_one AS (
+      SELECT
+        identity_id,
+        ANY_VALUE(identity_type) AS identity_type,
+        ANY_VALUE(first_name) AS first_name,
+        ANY_VALUE(last_name) AS last_name,
+        ANY_VALUE(organization_name) AS organization_name,
+        ANY_VALUE(email_address) AS email_address
+      FROM identity
+      GROUP BY identity_id
+    )
+    SELECT
+      f.balance_id,
+      f.currency,
+      l.ledger_name,
+      i.identity_type,
+      i.organization_name,
+      i.first_name,
+      i.last_name,
+      i.email_address,
+      f.inflow,
+      o.outflow,
+      LEAST(f.inflow, o.outflow) AS passed_through
+    FROM inflow f
+    JOIN outflow o
+      ON o.balance_id = f.balance_id
+      AND o.currency = f.currency
+    JOIN balances_one b ON b.balance_id = f.balance_id
+    JOIN ledgers_one l ON l.ledger_id = b.ledger_id
+    JOIN identity_one i ON i.identity_id = b.identity_id
+    WHERE f.inflow > 0
+      AND o.outflow > 0
+      AND LEAST(f.inflow, o.outflow) / GREATEST(f.inflow, o.outflow) >= 0.8
+    ORDER BY passed_through DESC
+    LIMIT 100
+    ```
+  </Step>
+  <Step title="Run business intelligence on billions of rows">
+    Join `transactions`, `balances`, `ledgers`, and `identity`, group the rows, and use a window when a result needs the rows around it.
+
+    That calculation can cover billions of records on the copy, and the figure it returns was never stored as its own record.
+
+    <Warning>
+    Running this calculation with [Search via DB](/search/db/filtering) makes the query time out. It also slows the ledger for the rest of the day's transactions.
+    </Warning>
+  </Step>
+  <Step title="Run a report from a dashboard">
+    Save the statement in [Queries](/lake/queries) and run it on a schedule, or call it from your own BI tool through [Create new query](/reference/create-new-query).
+
+    That SQL is the report. It does not need a separate warehouse in front of the ledger.
+
+    ![Insights SQL workbench with a saved query, date range, Run button, and results table](img/insights/insights-sql-workbench.png)
+  </Step>
+  <Step title="Let an AI client query the copy">
+    The [MCP server](/ai/mcp) gives a client this copy as a store it can query. It can look for failed payments, unusual volume, a fraud pattern, or another question you describe.
+
+    Those reads stay off the live ledger.
+  </Step>
+</Steps>
 
 ## When to use it
 
@@ -23,59 +150,12 @@ Use the lake for activity over a period. Use the ledger when you need what a wal
 
 | Question | Where to get it |
 | :-- | :-- |
-| Money that moved over a period | [Create new query](/reference/create-new-query) or Insights |
-| Wallets, ledgers, and identities in that history | [Create new query](/reference/create-new-query) or Insights |
+| Money that moved over a period | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
+| Wallets, ledgers, and identities in that history | [Queries](/lake/queries) or [Create new query](/reference/create-new-query) |
 | Amount in a wallet right now | [Get balance](/reference/get-balance) |
 | Amount in a wallet at a past time | [Historical balances](/balances/historical-balances) |
 
-[Schema](/lake/schema) lists the columns. [Queries](/lake/queries) covers how the date range changes what a query can see.
-
-## Run a query
-
-<Tabs>
-  <Tab title="Using the API">
-    Send `instance_id`, `start_date`, `end_date`, and one read-only `sql`.
-
-    ```bash cURL
-    curl -X POST 'https://api.cloud.blnkfinance.com/data/lake/query' \
-      -H 'X-blnk-key: CLOUD_API_KEY' \
-      -H 'Content-Type: application/json' \
-      -d '{
-        "instance_id": "YOUR_INSTANCE_ID",
-        "start_date": "2026-08-01",
-        "end_date": "2026-08-31",
-        "sql": "SELECT currency, COUNT(*) AS txn_count FROM transactions GROUP BY currency LIMIT 1000"
-      }'
-    ```
-
-    Send `saved_query_id` instead of `sql` to rerun a saved query. Use filters when you do not want to write SQL.
-
-    Field details are on [Create new query](/reference/create-new-query).
-  </Tab>
-  <Tab title="Using the Dashboard">
-    <Steps>
-      <Step title="Open Insights">
-        Select **Insights** from the side navigation.
-
-        Check the instance in the top-right corner. The query runs on that instance's data lake.
-      </Step>
-      <Step title="Set the date range">
-        Use the date picker in the toolbar. Choose a preset, or enter a start and end date.
-      </Step>
-      <Step title="Run and save">
-        Paste a read-only `SELECT` or `WITH`, then click **Run**.
-
-        Click **Save** when you want to keep the query.
-
-        ![Insights SQL workbench with a saved query, date range, Run button, and results table](img/insights/insights-sql-workbench.png)
-      </Step>
-    </Steps>
-
-    - [Queries](/lake/queries) for saving, schedules, and history
-    - [Schema](/lake/schema) for tables and columns
-    - [Templates](/lake/templates) for ready-made SQL
-  </Tab>
-</Tabs>
+[Schema](/lake/schema) lists the columns and how the four tables join.
 
 <RelatedTopics
   items={[
