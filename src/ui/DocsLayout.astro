@@ -45,7 +45,8 @@ interface Props {
 const { title, documentTitle, description, indexable, headings, markdown, lede, method, endpoint, enterprise, toc = true, tutorial = false, steps } =
 	Astro.props;
 const notice = enterprise?.trim();
-const play = method && endpoint ? await renderIcon('play', 14) : '';
+const showTryIt = false;
+const play = showTryIt && method && endpoint ? await renderIcon('play', 14) : '';
 const enterpriseIcon = notice ? await renderIcon('building-1', 16) : '';
 const pageDescription = lede?.trim();
 const site = requireSite(Astro.site);
@@ -288,10 +289,14 @@ function structuredData(page: {
 										{methodLabel(method)}
 									</span>
 									<code class="endpoint-path">{endpoint.split(/(\{[^}]+\})/).map((part) => part.startsWith('{') ? <span class="endpoint-param">{part}</span> : part)}</code>
-									<button type="button" class="endpoint-try">
-										<Fragment set:html={play} />
-										Try it
-									</button>
+									{
+										showTryIt && (
+											<button type="button" class="endpoint-try">
+												<Fragment set:html={play} />
+												Try it
+											</button>
+										)
+									}
 								</div>
 							)
 						}
