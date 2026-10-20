@@ -30,6 +30,8 @@ export type NavDropdown = {
 	icon?: string;
 	/** Omit this dropdown from the sidebar. The pages stay. */
 	hidden?: boolean;
+	/** Start this dropdown open. */
+	expanded?: boolean;
 	pages: NavItem[];
 };
 
@@ -107,6 +109,7 @@ export const navDropdown: z.ZodType<NavDropdown> = z.lazy(() =>
 		page: pagePath.optional(),
 		icon: iconName.optional(),
 		hidden: z.boolean().optional(),
+		expanded: z.boolean().optional(),
 		pages: z.array(z.union([pagePath, navPage, navLink, navDropdown])),
 	}),
 );
