@@ -5,15 +5,15 @@ description: "Write conditions in the Blnk Watch DSL: comparisons, logical opera
 icon: "filter"
 ---
 
-<Note>Blnk Watch is currently in beta. [Send us a message](mailto:support@blnkfinance.com)</Note>
-
 The `when` clause is used to describe a set of conditions that trigger a transaction in Watch. Rules still evaluate **transactions only**. If you need extra context, include it in `meta_data` on the transaction first.
 
 When setting conditions, you can only use the supported fields in the Watch transaction payload: `transaction_id`, `amount`, `reference`, `source`, `destination`, `description`, `created_at`, and `meta_data`.
 
 ## Basic conditions
 
-Basic conditions compare transaction fields to literal values. You can compare numeric fields (e.g. `amount`), string fields (e.g. `currency`, `source`, `destination`), and metadata (e.g. `meta_data.kyc_tier`). For example, this is a simple rule flagging amounts greater than 10,000:
+Basic conditions compare transaction fields to literal values. You can compare numeric fields (e.g. `amount`), string fields (e.g. `currency`, `source`, `destination`), and metadata (e.g. `meta_data.kyc_tier`). 
+
+For example, this is a simple rule flagging amounts greater than 10,000:
 
 ```bash largeTransfer.ws {2}
 rule largeTransfer {
@@ -59,7 +59,9 @@ rule highValueTransfer {
 }
 ```
 
-With `or`, one of two conditions can trigger the same risk action. For example, in a cross-border app you might treat amounts over 10,000 as high-risk regardless of currency; but if the transaction is in PKR, IRR, or SYP, you treat it as high-risk regardless of amount.
+With `or`, one of two conditions can trigger the same risk action. 
+
+For example, in a cross-border app you might treat amounts over 10,000 as high-risk regardless of currency; but if the transaction is in PKR, IRR, or SYP, you treat it as high-risk regardless of amount.
 
 ```bash highRiskTransaction.ws {2,3}
 rule highRiskTransaction {
@@ -72,7 +74,9 @@ rule highRiskTransaction {
 }
 ```
 
-> **Recommended:** If your `or` conditions start to get complex, you should consider using a separate rule for each condition. For example, a complex set of conditions like this …
+### Recommendation
+
+If your `or` conditions start to get complex, you should consider using a separate rule for each condition. For example, a complex set of conditions like this …
 
 ```bash highRiskTransaction2.ws
 when (currency  == 'PKR' and amount > 1000)
@@ -80,7 +84,7 @@ when (currency  == 'PKR' and amount > 1000)
   or (currency == 'SYP' and amount > 5000)
 ```
 
-> … is better written as three separate rules:
+… is better written as three separate rules:
 
 <CodeGroup>
 ```bash highRiskPKRTransaction.ws {2}
@@ -114,11 +118,13 @@ rule highRiskSYPTransaction {
 ```
 </CodeGroup>
 
-> This makes your rule set easier to read, reason about, and change in your workflow.
+This makes your rule set easier to read, reason about, and change in your workflow.
 
 ## Metadata reference
 
-When setting conditions on information that is not part of the top-level parameters, such as source country, destination country, customer KYC tier, or promo code, pass the value in `meta_data`. You can then reference the value in your rule using dot notation. For example, here's a rule that flags when a customer has used at least one of the supported promo codes:
+When setting conditions on information that is not part of the top-level parameters, such as source country, destination country, customer KYC tier, or promo code, pass the value in `meta_data`. 
+
+You can then reference the value in your rule using dot notation. For example, here's a rule that flags when a customer has used at least one of the supported promo codes:
 
 ```bash promoCodeReuse.ws {2}
 rule promoCodeReuse {
@@ -142,7 +148,9 @@ If you want to monitor fields such as destination country, KYC tier, or promo co
 
 ## Dynamic references
 
-Dynamic references allow you to reuse values from the transaction being evaluated when defining a condition. This works with any field in the transaction payload, including values in `meta_data`. Use dynamic references when the value you want to compare depends on the transaction being evaluated, rather than a fixed value.
+Dynamic references allow you to reuse values from the transaction being evaluated when defining a condition. This works with any field in the transaction payload, including values in `meta_data`. 
+
+Use dynamic references when the value you want to compare depends on the transaction being evaluated, rather than a fixed value.
 
 To reference a value from the current transaction, use:
 
@@ -162,7 +170,9 @@ rule sameSourceAndDestination {
 }
 ```
 
-Another common use case is mismatched countries. For example, you may want to flag transactions where the customer's registered country is different from the country the transaction is coming from. This can indicate unusual activity or possible fraud:
+Another common use case is mismatched countries. For example, you may want to flag transactions where the customer's registered country is different from the country the transaction is coming from. 
+
+This can indicate unusual activity or possible fraud:
 
 ```bash mismatchedCountries.ws {2}
 rule mismatchedCountries {
@@ -214,7 +224,11 @@ rule repeatedTransactions {
 ```
 </CodeGroup>
 
-You can use them to identify behaviors such as repeated transactions from the same source, burst activity to the same destination, or a user spending above a defined limit within a period, to name a few. Instead of checking just the current transaction, aggregate conditions analyze related transactions that match a filter and calculate metrics such as count or sum within the specified time window. Rules can then trigger when those values cross a threshold defined in your condition.
+You can use them to identify behaviors such as repeated transactions from the same source, burst activity to the same destination, or a user spending above a defined limit within a period, to name a few. 
+
+Instead of checking just the current transaction, aggregate conditions analyze related transactions that match a filter and calculate metrics such as count or sum within the specified time window. 
+
+Rules can then trigger when those values cross a threshold defined in your condition.
 
 To use an aggregate:
 
@@ -264,7 +278,9 @@ rule lateNightLargeTransfer {
 }
 ```
 
-In this rule, Watch checks the transaction timestamp and evaluates whether it occurred after 10 PM. Time-based functions read from **`created_at`** on the transaction: the value you send on inject or that Watch syncs from Blnk Core. You can write time-based conditions using helper functions that extract parts of the timestamp.
+In this rule, Watch checks the transaction timestamp and evaluates whether it occurred after 10 PM. Time-based functions read from **`created_at`** on the transaction: the value you send on inject or that Watch syncs from Blnk Core. 
+
+You can write time-based conditions using helper functions that extract parts of the timestamp.
 
 | Function | Description | Example |
 | --- | --- | --- |
