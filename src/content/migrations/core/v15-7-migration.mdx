@@ -1,0 +1,59 @@
+---
+title: "0.15.7 Migration Guide"
+sidebarTitle: "Migration to 0.15.7"
+description: "Review new balance monitors, filter limits, and equality monitors before you upgrade to Blnk v0.15.7."
+metaDescription: "Migration guide for upgrading to Blnk v0.15.7, covering balance monitor triggers, filter limits, and equality monitors."
+---
+
+This guide covers the changes you need to review when upgrading to Blnk v0.15.7. 
+
+Most integrations can upgrade without code changes. Review this guide if you create balance monitors, page on filter results, or stored a monitor with `=`.
+
+## At a glance
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| New monitors default to `edge` | Apps that create monitors and expect a webhook on every update while the condition holds | A new monitor sends one webhook per crossing unless you send `"trigger": "level"`. Monitors created before 0.15.7 stay `level`. |
+| Filter `limit` out of range | Clients that sent `limit` above 100 and relied on a 20-row page | `limit` above 100 or below 0 returns `400 GEN_VALIDATION_ERROR`. `0` still means 20. |
+| Equality monitors fire | Monitors stored with `=` that never sent a webhook | Those monitors now fire when the balance matches the threshold. |
+
+## New balance monitors default to `edge`
+
+`edge` sends one `balance.monitor` webhook when the condition goes from false to true, then stays quiet until the condition has been false again. `level` sends a webhook on every committed update while the condition holds.
+
+Monitors created before 0.15.7 are migrated as `level`, so they keep the previous behavior. A monitor created after the upgrade defaults to `edge`. A PUT that omits `trigger` keeps the current mode.
+
+**What to do:** If a create call must keep alerting on every update, send `"trigger": "level"`. To switch a monitor that already exists, PUT `"trigger": "edge"` or `"trigger": "level"`. See [Balance monitoring](/balances/balance-monitoring).
+
+## Filter `limit` outside 1–100 returns 400
+
+`limit` of `0`, or a limit you omit, still means 20 rows. A limit from 1 to 100 is unchanged. A limit above 100 or below 0 used to be clamped to 20. 
+
+From 0.15.7 that request returns `400 GEN_VALIDATION_ERROR` with the message `limit must be between 1 and 100`.
+
+```json 400 Bad Request
+{
+  "error": "limit must be between 1 and 100",
+  "error_detail": {
+    "code": "GEN_VALIDATION_ERROR",
+    "message": "limit must be between 1 and 100"
+  }
+}
+```
+
+**What to do:** Send `limit` from 1 to 100, or omit it. Do not retry an out-of-range limit. Page with `offset` instead. See [Filter records](/search/db/filtering).
+
+## Equality monitors now fire
+
+A monitor with operator `=` was stored and then never matched, because evaluation only accepted `==`. From 0.15.7, `=` fires when the balance equals the threshold.
+
+**What to do:** If you created `=` monitors that you no longer want, delete them before you upgrade, or expect `balance.monitor` once the balance matches. See [Balance monitoring](/balances/balance-monitoring#operators).
+
+<RelatedTopics
+  items={[
+    { title: "Upgrade Core", href: "/migrations/core/upgrade" },
+    { title: "Blnk Core changelog", href: "/changelog/blnk-core" },
+    { title: "Balance monitoring", href: "/balances/balance-monitoring" },
+    { title: "Filter records", href: "/search/db/filtering" },
+  ]}
+/>

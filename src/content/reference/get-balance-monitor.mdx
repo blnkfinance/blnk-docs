@@ -27,12 +27,26 @@ noindex: true
       Specifies the balance type to be monitored. Every ledger balance has 6 balance types - `balance`, `inflight_balance`, `credit_balance`, `inflight_credit_balance`, `debit_balance`, and `inflight_debit_balance`.
     </ResponseField>
     <ResponseField name="operator" type="string">
-      Defines the comparison operator to apply. Accepted values: **>** (greater than), **\<** (less than), or **=** (equal to).
+      Comparison applied: `>`, `<`, `>=`, `<=`, `=`, or `!=`.
     </ResponseField>
-    <ResponseField name="value" type="integer">
-      The threshold amount that triggers the balance monitor.
+    <ResponseField name="value" type="number">
+      Threshold in major units.
+    </ResponseField>
+    <ResponseField name="precision" type="number">
+      Scale applied to `value`. A monitor created before precision existed is read as `1`.
+    </ResponseField>
+    <ResponseField name="precise_value" type="number">
+      Minor units Blnk compares against. `value` multiplied by `precision`.
     </ResponseField>
   </Expandable>
+</ResponseField>
+
+<ResponseField name="trigger" type="string">
+  `edge` or `level`. Monitors created before 0.15.7 are `level`.
+</ResponseField>
+
+<ResponseField name="condition_state" type="boolean">
+  Last value of the condition. Present when `trigger` is `edge`. Omitted when `trigger` is `level`.
 </ResponseField>
 
 <ResponseField name="description" type="string">
@@ -61,9 +75,13 @@ curl -X GET "http://localhost:5001/balance-monitors/{monitor_id}" \
   "condition": {
     "field": "debit_balance",
     "operator": ">",
-    "value": 100000
+    "value": 1000,
+    "precision": 100,
+    "precise_value": 100000
   },
   "description": "",
+  "trigger": "edge",
+  "condition_state": false,
   "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```

@@ -1,167 +1,174 @@
 ---
-title: "Balance Monitoring"
-sidebarTitle: "Balance monitoring"
+title: "Balance monitoring"
 icon: "activity"
-description: "Monitor a balance and get a webhook when it crosses a threshold."
-metaDescription: "Monitor balances and get notified via webhook when they meet set conditions."
+description: "Get a webhook when a balance crosses a threshold you set."
+metaDescription: "Watch one amount on a balance and get a webhook when it crosses a threshold you set."
 ---
 
-Balance monitors let you keep track of balances in your Blnk Ledger. This is useful for scenarios where balances should meet specific thresholds.
+A balance monitor watches one amount on a balance, such as what it holds or what it has sent. Blnk sends you a webhook when that amount crosses a threshold you set.
 
-You can monitor all 3 sub-balances of a ledger balance - credit balance (`credit_balance`), debit balance (`debit_balance`) and total balance (`balance`).
+Use it for a low balance, a spending cap, or money on hold past a limit. You choose the threshold, and whether the webhook arrives once or on every update while the amount stays past it.
 
-## Why monitor balances?
+## How monitors work
 
-1. **Fraud detection:** Unusual balance changes can be an early indication of fraudulent activities. Monitoring can trigger alerts for suspicious transactions and ensure timely intervention.
+You set `trigger` to `edge` or `level`. That choice decides how often Blnk sends the `balance.monitor` webhook.
 
-2. **Regulatory compliance:** Many financial regulations require institutions to maintain specific balance thresholds. Real-time balance monitoring makes it easy to comply with these regulations.
+<Version>`edge` is supported in Blnk Core 0.15.7. On earlier releases, `level` is the default mode.</Version>
 
-3. **Customer notifications:** Customers can be notified in real-time if their balance crosses a specific threshold. It can also be used for segmenting your customers in your application.
+| Trigger | When Blnk notifies you |
+| :--- | :--- |
+| `edge` | Once, the first time your rule matches. Quiet until the amount no longer matches, then again on the next match. |
+| `level` | On every transaction that updates the balance while your rule still matches. |
 
-4. **Operational efficiency:** Instantly knowing when a balance reaches a certain threshold can trigger automatic actions, such as transferring funds between accounts or purchasing assets.
+A monitor on `balance` matches when the balance is below 100.00. As transactions land, the two triggers notify you like this:
 
-## Set up balance monitors
+| Balance | `edge` | `level` |
+| :--- | :--- | :--- |
+| 150.00 | No webhook | No webhook |
+| 80.00 | Webhook | Webhook |
+| 60.00 | No webhook | Webhook |
+| 120.00 | No webhook | No webhook |
+| 90.00 | Webhook | Webhook |
 
-<Steps>
-<Step title="Define your condition">
-  Choose the balance to watch, the sub-balance field, the comparison operator, and the threshold value. Use the same `precision` you use when recording transactions for that currency.
+## Create a monitor
 
-  In this example, you want to get notified when `debit_balance` is greater than 1,000.00 (`value: 100000`, `precision: 100`).
-</Step>
+To create a new monitor, call [Create balance monitor](/reference/create-balance-monitor). 
 
-<Step title="Create the monitor">
-  Call `POST /balance-monitors` with your condition:
+This example watches `debit_balance` (the total the balance has sent), and notifies you once when that total goes above 1,000.00.
+
+Write `value` in the currency's normal units, and set `precision` to the scale you already use for that currency. `1000` at precision `100` is 1,000.00.
 
 <Tabs>
   <Tab title="Create monitor">
 <CodeGroup>
 
-```bash cURL wrap
+```bash cURL
 curl -X POST "http://localhost:5001/balance-monitors" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "trigger": "edge",
     "condition": {
       "field": "debit_balance",
       "operator": ">",
-      "value": 100000,
+      "value": 1000,
       "precision": 100
     },
-    "description": "Tier 1 Account"
+    "description": "Spending above 1000"
   }'
 ```
 
-```typescript TypeScript wrap
+```typescript TypeScript
 const response = await blnk.BalanceMonitor.create({
   balance_id: 'bln_0be360ca-86fe-457d-be43-daa3f966d8f0',
   condition: {
     field: 'debit_balance',
     operator: '>',
-    value: 100000,
+    value: 1000,
     precision: 100,
   },
-  description: 'Tier 1 Account',
+  description: 'Spending above 1000',
 });
 ```
 
-```go Go wrap
+```go Go
 monitor, _, _ := client.BalanceMonitor.Create(blnkgo.MonitorData{
     BalanceID: "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
     Condition: blnkgo.MonitorCondition{
         Field: "debit_balance",
         Operator: blnkgo.OperatorGreaterThan,
-        Value: 100000,
+        Value: 1000,
         Precision: 100,
     },
-    Description: "Tier 1 Account",
+    Description: "Spending above 1000",
 })
 ```
 
-```python Python wrap
+```python Python
 response = blnk.balance_monitor.create({
   "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
   "condition": {
     "field": "debit_balance",
     "operator": ">",
-    "value": 100000,
+    "value": 1000,
     "precision": 100,
   },
-  "description": "Tier 1 Account",
+  "description": "Spending above 1000",
 })
 ```
 
-```java Java wrap
+```java Java
 ApiResponse<JsonNode> response = blnk.balanceMonitor().create(
     MonitorData.create()
         .balanceId("bln_0be360ca-86fe-457d-be43-daa3f966d8f0")
         .condition(MonitorCondition.create()
             .field("debit_balance")
             .operator(">")
-            .value(100000)
+            .value(1000)
             .precision(100))
-        .description("Tier 1 Account"));
+        .description("Spending above 1000"));
 ```
 
 </CodeGroup>
 
 | Field | Description | Required |
-| :-- | :-- | :-- |
-| `balance_id` | Unique identifier of the balance to be monitored. | Yes |
-| `condition` | Object representing the condition to be satisfied. | Yes |
-| `field` | Sub-balance to monitor: `debit_balance`, `credit_balance`, or `balance`. | Yes |
-| `operator` | Comparison operator. See [Supported operators](#supported-operators). | Yes |
-| `value` | Threshold the `field` is compared against. | Yes |
-| `precision` | Precision applied to `value`. Must match how you record transactions for that currency. Cannot be negative. `0` means not supplied and is treated as `1`. | No |
-| `description` | Label for the monitor. Empty when omitted. | No |
+| :--- | :--- | :--- |
+| `balance_id` | Balance to watch. | Yes |
+| `condition` | The amount, the comparison, the threshold, and the precision. | Yes |
+| `field` | Which amount. `balance` is what it holds now. `credit_balance` is the total received. `debit_balance` is the total sent. `inflight_balance`, `inflight_credit_balance`, and `inflight_debit_balance` are amounts still on hold. See [Balances overview](/balances/introduction). | Yes |
+| `operator` | How to compare the amount with the threshold. See [Operators](#operators). | Yes |
+| `value` | Threshold in the currency. `0` and amounts such as `100.50` are valid. | Yes |
+| `precision` | Scale for `value`, the same one you use when you record that currency. Greater than `0`. | Yes |
+| `trigger` | `edge` or `level`. Leave it out on 0.15.7 and the monitor notifies you once per crossing. | No |
+| `description` | A label for the monitor. Empty when you leave it out. | No |
 
-<Note>
-  You can include `meta_data` in the request to attach custom data to the monitor.
-</Note>
   </Tab>
   <Tab title="Response">
 
-```json Response wrap
+```json 201 Created
 {
   "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
   "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
   "condition": {
     "field": "debit_balance",
     "operator": ">",
-    "value": 100000,
-    "precision": 100
+    "value": 1000,
+    "precision": 100,
+    "precise_value": 100000
   },
-  "description": "Tier 1 Account",
+  "description": "Spending above 1000",
+  "trigger": "edge",
+  "condition_state": false,
   "created_at": "2024-02-20T05:56:58.257315054Z"
 }
 ```
 
 | Field | Description |
-| :-- | :-- |
-| `monitor_id` | Unique identifier for your balance monitor. |
-| `created_at` | Date and time of creation. |
+| :--- | :--- |
+| `monitor_id` | Id of the monitor. Save it to view, update, or delete the monitor. |
+| `precise_value` | The same threshold in the currency's smallest unit. Here, 1,000.00 is `100000`. |
+| `trigger` | `edge` or `level`. |
+| `condition_state` | Whether your rule matches right now. An `edge` monitor includes this. |
+| `description` | The label on the monitor. |
+| `created_at` | When the monitor was created. |
 
   </Tab>
 </Tabs>
 
-Blnk stores the monitor and returns a unique `monitor_id`. Save it. You need it to view, update, or delete the monitor later.
-
-When the condition is met, Blnk posts a `balance.monitor` event to the webhook URL configured for your instance (`BLNK_WEBHOOK_URL`). If that URL is empty, Blnk does not send the event.
-</Step>
-</Steps>
-
 ## Supported operators
 
-This is a list of all supported operators by the Balance monitor:
+<Version>From 0.15.7, `=` notifies you when the amount matches the threshold.</Version>
 
-| Operators | Symbol | Description |
-| :-- | :-- | :-- |
-| Greater than | `>` | Checks if the specified balance in `field` is greater than `value` |
-| Less than | &lt; | Checks if the specified balance in `field` is less than `value` |
-| Equal to | `=` | Checks if the specified balance in `field` is exactly equal to `value` |
-| Not equal to | `!=` | Checks if the specified balance in `field` is not equal to `value` |
-| Greater than or equal to | `>=` | Checks if the specified balance in `field` is greater than or equal to `value` |
-| Less than or equal to | &lt;= | Checks if the specified balance in `field` is less than or equal to `value` |
+A symbol outside this list returns `400 GEN_VALIDATION_ERROR`.
+| Operator | Symbol | Description |
+| :--- | :--- | :--- |
+| Greater than | `>` | The amount is above the threshold. |
+| Less than | &lt; | The amount is below the threshold. |
+| Greater than or equal to | `>=` | The amount is at or above the threshold. |
+| Less than or equal to | &lt;= | The amount is at or below the threshold. |
+| Equal to | `=` | The amount matches the threshold. |
+| Not equal to | `!=` | The amount is different from the threshold. |
 
 <RelatedTopics
   items={[

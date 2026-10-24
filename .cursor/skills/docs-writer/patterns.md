@@ -141,7 +141,7 @@ Other quick starts follow the guide shape. They do not copy the Core page's two-
 
 `{Product} changelog`. `sidebarTitle` is `Changelog`. Each release is an `Update`. `label` is the version. `description` is the date, `Sep 24, 2026`.
 
-The first heading inside the entry is the change a reader must know. Fixes are a numbered list. Each item names the behavior, then links to the guide or the migration. A breaking change is a `Warning` with what to change before upgrading.
+The first heading inside the entry is the change a reader must know. Fixes are a numbered list. Each item names the behavior, then points to the guide or the migration as `See also: [Page title](/path).` Do not put `→` in the link. A breaking change is a `Warning` with what to change before upgrading.
 
 ## Migration
 

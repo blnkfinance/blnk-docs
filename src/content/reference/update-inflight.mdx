@@ -27,6 +27,13 @@ noindex: true
   Amount to commit for a partial commit. Blnk converts it using the inflight transaction's `precision`. When both are set, `precise_amount` takes precedence over `amount`.
 </ParamField>
 
+<ParamField body="reference" type="string">
+  Optional idempotency key for this commit or void. The same reference, action, and amount returns the original child with `200`. A different amount or action returns `409 TXN_DUPLICATE_REFERENCE`.
+
+  Omitting `reference` leaves each request able to apply again. On the queue, a finished repeat is returned immediately, without `queued: true`.
+
+  <Version>From Blnk Core 0.15.7, `reference` makes that commit or void idempotent.</Version>
+</ParamField>
 <ParamField body="skip_queue" type="boolean" default="false">
   When `false` (default), the commit or void is enqueued for asynchronous processing and the response includes `queued: true`. When `true`, Blnk processes the action synchronously and returns an immediate `APPLIED` or `VOID` child. See [Commit inflight](/transactions/inflight/commit-inflight) and [Void inflight](/transactions/inflight/void-inflight).
 </ParamField>

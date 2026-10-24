@@ -6,17 +6,51 @@ metaDescription: "Explore the Blnk Core changelog. Track releases, fixes, enhanc
 icon: "history"
 ---
 
-<Update label="0.15.5" description="Sep 24, 2026">
-  ## Metadata update webhooks
+<Update label="0.15.7" description="Oct 24, 2026">
+  ## Edge-triggered balance monitors
 
-  You can now receive a webhook when you update metadata on a ledger, balance, identity, or transaction. After a successful public update, Blnk sends `ledger.metadata.updated`, `balance.metadata.updated`, `identity.metadata.updated`, or `transaction.metadata.updated`.
+  A balance monitor now takes a `trigger` field. 
+  
+  `edge` sends one `balance.monitor` webhook when the condition goes from false to true, then stays quiet until the condition has been false again. `level` sends a webhook on every committed update while the condition holds.
 
-  [Supported events →](/webhooks/events#metadata)
+
+  <Warning>
+    If your app creates monitors and expects a webhook on every update while the condition holds, send `"trigger": "level"`. See the [0.15.7 migration guide](/migrations/core/v15-7-migration).
+  </Warning>
+
+  See also: [Balance monitoring](/balances/balance-monitoring).
 
   ## Fixes & improvements
 
-  1. **Queued effective date:** Applied transactions now keep `effective_date` when the request went through the queue. GET by id and by reference also return the field. [Backdated transactions →](/transactions/backdated-transactions)
-  2. **Redis idle connections:** Pooled Redis connections now recycle before managed Redis or Valkey close them. Set `BLNK_REDIS_CONN_MAX_IDLE_TIME` if you need a different idle window (default 2 minutes). [Redis configuration →](/operating/configuration/data-stores#redis-configuration)
+  1. **Read scopes on queries:** Filter routes and search queries accept the resource's `read` scope. See also: [Scopes](/operating/api-keys/scopes).
+  2. **Equality monitors:** A monitor stored with `=` now fires. A threshold of `0` is accepted, and a fractional threshold such as `100.50` no longer fails or drops a minor unit. See also: [0.15.7 migration guide](/migrations/core/v15-7-migration).
+  3. **Inflight reference:** Commit and void actions can now take an optional `reference`. See also: [Update inflight](/reference/update-inflight).
+  4. **Partial commits and lineage:** A partial inflight commit now updates fund lineage for the committed amount only.
+  5. **Identity tokenization:** `PUT /identities/:id` keeps the stored tokenization record and ignores a client-sent `tokenized_fields`. See also: [Edit identity](/reference/edit-identity).
+  6. **Filter limit:** `limit` above 100 or below 0 now returns `400 GEN_VALIDATION_ERROR`. `limit` of `0` still means 20. An out-of-range limit used to be clamped to 20. See also: [0.15.7 migration guide](/migrations/core/v15-7-migration).
+  7. **Metadata merges:** Concurrent metadata updates on balances, ledgers, and identities merge in the database, so two writers no longer drop each other's keys.
+  8. General bug fixes and improvements.
+</Update>
+
+<Update label="0.15.6" description="Sep 28, 2026">
+  ## Fixes & improvements
+
+  1. **Identity metadata webhook:** `identity.metadata.updated` also fires when `PUT /identities/:id` changes `meta_data`. A field-only update does not send it. See also: [Supported events](/webhooks/events#metadata).
+</Update>
+
+<Update label="0.15.5" description="Sep 24, 2026">
+  ## Metadata update webhooks
+
+  You can now receive a webhook when you update metadata on a ledger, balance, identity, or transaction. 
+  
+  After a successful public update, Blnk sends `ledger.metadata.updated`, `balance.metadata.updated`, `identity.metadata.updated`, or `transaction.metadata.updated`.
+
+  See also: [Supported events](/webhooks/events#metadata).
+
+  ## Fixes & improvements
+
+  1. **Queued effective date:** Applied transactions now keep `effective_date` when the request went through the queue. GET by id and by reference also return the field. See also: [Backdated transactions](/transactions/backdated-transactions).
+  2. **Redis idle connections:** Pooled Redis connections now recycle before managed Redis or Valkey close them. Set `BLNK_REDIS_CONN_MAX_IDLE_TIME` if you need a different idle window (default 2 minutes). See also: [Redis configuration](/operating/configuration/data-stores#redis-configuration).
   3. General bug fixes and improvements.
 </Update>
 
@@ -29,11 +63,11 @@ icon: "history"
     If you left `ssl: true` while talking HTTP, set it to `false` before you upgrade, or follow [Enable HTTPS](/operating/enable-https).
   </Warning>
 
-  [0.15.4 migration guide →](/migrations/core/v15-4-migration#serverssl-starts-https)
+  See also: [0.15.4 migration guide](/migrations/core/v15-4-migration#serverssl-starts-https).
 
   ## Fixes & improvements
 
-  1. **Split validation:** A transaction that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR` instead of a misleading `404`. [0.15.4 migration guide →](/migrations/core/v15-4-migration)
+  1. **Split validation:** A transaction that includes both `sources[]` and `destinations[]` is rejected with `400 TXN_VALIDATION_ERROR` instead of a misleading `404`. See also: [0.15.4 migration guide](/migrations/core/v15-4-migration).
   2. **Missing balance on a transaction route:** A source or destination that does not exist now returns `404 BAL_NOT_FOUND` instead of `TXN_NOT_FOUND`.
   3. **Already-refunded:** A second refund of the same transaction returns `409 TXN_ALREADY_REFUNDED` instead of `GEN_CONFLICT`, and no longer reverses the original refund.
   4. **Mixed refund batches:** When some legs of a parent refund fail for reasons other than already-refunded, the batch returns `409 GEN_CONFLICT`.
@@ -71,8 +105,8 @@ icon: "history"
 <Update label="0.15.2" description="Jul 31, 2026">
   ## Fixes & improvements
 
-  1. **Queue backpressure:** Blnk now rejects new queue enqueues when Redis memory usage or pending task count exceeds configured limits. Affected requests return `503 Service Unavailable` with `error_detail.code` set to `QUEUE_BACKPRESSURE`. Backpressure is enabled by default. [Learn more →](/operating/configuration/queue)
-  2. **Typesense memory backpressure:** Reindex and search indexing now retry gracefully when Typesense hits memory limits instead of failing immediately. [Reindex Typesense →](/search/typesense/reindex)
+  1. **Queue backpressure:** Blnk now rejects new queue enqueues when Redis memory usage or pending task count exceeds configured limits. Affected requests return `503 Service Unavailable` with `error_detail.code` set to `QUEUE_BACKPRESSURE`. Backpressure is enabled by default. See also: [Queue configuration](/operating/configuration/queue).
+  2. **Typesense memory backpressure:** Reindex and search indexing now retry gracefully when Typesense hits memory limits instead of failing immediately. See also: [Reindex Typesense](/search/typesense/reindex).
   3. **Typesense reindex:** `effective_date` is now preserved when rebuilding the Typesense index from Postgres.
   4. General bug fixes and improvements.
 </Update>
@@ -80,7 +114,7 @@ icon: "history"
 <Update label="0.15.1" description="Jul 17, 2026">
   ## Fixes & improvements
 
-  1. **Transaction lock duration:** Fixed an overflow bug when applying `BLNK_TRANSACTION_LOCK_DURATION`. [0.15.1 migration guide →](/migrations/core/v15-1-migration)
+  1. **Transaction lock duration:** Fixed an overflow bug when applying `BLNK_TRANSACTION_LOCK_DURATION`. See also: [0.15.1 migration guide](/migrations/core/v15-1-migration).
   2. **Transaction filter:** `POST /transactions/filter` now returns `parent_transaction` instead of an empty string.
   3. **Queued inflight commits:** Committing against a multi-leg parent transaction id now works when the request goes through the queue.
   4. **Search/reindex:** Transaction search and reindex now include `parent_transaction`, `precise_amount`, and `precision`.
@@ -108,7 +142,7 @@ icon: "history"
     If your app checks status codes or error message text, review the [0.15.0 migration guide](/migrations/core/v15-migration) before upgrading.
   </Warning>
 
-  [API error codes →](/operating/error-codes)
+  See also: [API error codes](/operating/error-codes).
 
   ## Removed `rate`, `currency_multiplier`, and `modification_ref`
 
@@ -124,7 +158,7 @@ icon: "history"
   
   Enable `skip_queue` in the request body when you need the previous synchronous behavior.
 
-  [Commit & void inflight →](/transactions/inflight/commit-inflight)
+  See also: [Commit & void inflight](/transactions/inflight/commit-inflight).
 
   ## Transaction hash chain
 
@@ -132,12 +166,12 @@ icon: "history"
   
   It is disabled by default; enable it in config and run `blnk verify-chain` from your Core deployment.
 
-  [Transaction hashing →](/transactions/hash)
+  See also: [Transaction hashing](/transactions/hash).
 
   ## Fixes & improvements
 
   1. Added DELETE endpoints for balance monitors and [identities](/reference/delete-identity).
-  2. **Reconciliation webhooks:** Blnk now sends `reconciliation.completed` and `reconciliation.failed` webhooks when a run completes or fails. [Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) now return only `reconciliation_id` in the start response. [0.15.0 migration guide →](/migrations/core/v15-migration#reconciliation-response-changed) · [Supported events →](/webhooks/events#reconciliations)
+  2. **Reconciliation webhooks:** Blnk now sends `reconciliation.completed` and `reconciliation.failed` webhooks when a run completes or fails. [Start reconciliation](/reference/start-reconciliation) and [Instant reconciliation](/reference/instant-reconciliation) now return only `reconciliation_id` in the start response. See also: [0.15.0 migration guide](/migrations/core/v15-migration#reconciliation-response-changed) · [Supported events](/webhooks/events#reconciliations).
   3. Added a `system.error` webhook for internal failures during async processing.
   4. Increased default worker and database pool limits. 
   5. Added configurable [request and upload size caps](/operating/configuration/server-security#request-and-payload-limits). 
@@ -157,7 +191,7 @@ icon: "history"
 
   Blnk now supports optional remote export of logs, traces, and metrics through a Cloud DSN. Set **`BLNK_CLOUD_DSN`** to forward observability data to your Blnk Cloud monitoring project. Exported logs have sensitive values redacted.
 
-  [Monitoring in Blnk →](/operating/monitoring)
+  See also: [Monitoring in Blnk](/operating/monitoring).
 
   ## Fixes & improvements
 
@@ -178,7 +212,7 @@ icon: "history"
     These auth rules can break integrations that manage hooks or cross-owner API keys with a scoped key. Review the [0.14.3 migration guide](/migrations/core/v14-3-migration) before upgrading.
   </Warning>
 
-  [Owner context →](/operating/api-keys/owner-context) · [Transaction hooks →](/webhooks/transaction-hooks)
+  See also: [Owner context](/operating/api-keys/owner-context) · [Transaction hooks](/webhooks/transaction-hooks).
 </Update>
 
 <Update label="0.14.2" description="May 18, 2026">
@@ -202,7 +236,7 @@ icon: "history"
 
   You can now set **`inflight_commit_date`** when recording an inflight transaction (**`inflight: true`**). This lets Blnk reserve funds immediately like a normal inflight transaction and automatically commit at the date and time you specify, without committing the transaction yourself.
 
-  [Schedule inflight commits →](/transactions/inflight/commit-inflight#schedule-a-commit)
+  See also: [Schedule inflight commits](/transactions/inflight/commit-inflight#schedule-a-commit).
 </Update>
 
 <Update label="0.14.0" description="Apr 9, 2026">
@@ -212,15 +246,15 @@ icon: "history"
   
   In internal benchmarks under heavy contention and burst load, processing throughput improved by **up to about 5×**; your results depend on workload shape, how much traffic overlaps on the same balances, and how you configure the server.
 
-  [Handling hot balances →](/guides/hot-balances)
+  See also: [Handling hot balances](/guides/hot-balances).
 
-  [Transaction configuration →](/operating/configuration/transactions) 
+  See also: [Transaction configuration](/operating/configuration/transactions).
   
-  [Queue configuration →](/operating/configuration/queue)
+  See also: [Queue configuration](/operating/configuration/queue).
 
   ## Fixes & improvements
 
-  1. **Update Metadata response:** The [Update Metadata](/reference/update-metadata) endpoint now returns **`meta_data`** in the response instead of `metadata`. [View migration guide →](/migrations/core/v14-migration)
+  1. **Update Metadata response:** The [Update Metadata](/reference/update-metadata) endpoint now returns **`meta_data`** in the response instead of `metadata`. See also: [0.14.0 migration guide](/migrations/core/v14-migration).
 </Update>
 
 <Update label="0.13.5" description="Mar 9, 2026">
@@ -496,7 +530,7 @@ icon: "history"
   }
   ```
 
-  [See configuration docs →](/operating/configuration/data-stores#redis-configuration)
+  See also: [Redis configuration](/operating/configuration/data-stores#redis-configuration).
 </Update>
 
 <Update label="0.10.5" description="Jul 4, 2025">
@@ -581,7 +615,7 @@ icon: "history"
   }
   ```
 
-  [Set your API keys →](/operating/api-keys/overview)
+  See also: [Set your API keys](/operating/api-keys/overview).
 
   ## Overdraft limits
 
@@ -603,7 +637,7 @@ icon: "history"
   
   For example, setting `overdraft_limit` to 500.00 ensures the balance does not drop below -\$500.00, providing a safeguard against excessive overdrafts.
 
-  [Set Overdraft Limits →](/transactions/overdrafts#setting-overdraft-limits)
+  See also: [Set Overdraft Limits](/transactions/overdrafts#setting-overdraft-limits).
 
   ## Use historical balances without balance snapshots
 
@@ -632,7 +666,7 @@ icon: "history"
   }
   ```
 
-  [Applying precision with `precise_amount` →](/transactions/precision#applying-precision)
+  See also: [Applying precision with `precise_amount`](/transactions/precision#applying-precision).
 
   ## Balance reconstruction
 
@@ -676,7 +710,7 @@ icon: "history"
 
   Additionally, the API supports asynchronous processing to efficiently manage large batches of transactions.
 
-  [Bulk Transactions →](/transactions/bulk-transactions)
+  See also: [Bulk Transactions](/transactions/bulk-transactions).
   
   ## Backdated transactions
 
@@ -684,7 +718,7 @@ icon: "history"
 
   This capability ensures seamless [migration](/migrations/migrating-to-blnk), accurate financial reporting, [reconciliation](/reconciliations/overview), and [historical balance](/balances/historical-balances) calculations.
 
-  [Backdated Transactions →](/transactions/backdated-transactions)
+  See also: [Backdated Transactions](/transactions/backdated-transactions).
 </Update>
 
 <Update label="0.8.8" description="Feb 26, 2025">
@@ -694,7 +728,7 @@ icon: "history"
 
   This enhances security, reduces compliance scope, and maintains full functionality within your applications.
 
-  [PII Tokenization →](/identities/pii-tokenization)
+  See also: [PII Tokenization](/identities/pii-tokenization).
 </Update>
 
 <Update label="0.8.7" description="Feb 25, 2025">
@@ -715,9 +749,9 @@ icon: "history"
 
   Introduced the Balance Snapshots feature, enabling users to retrieve historical balance data at any specific point in time. This enhances accurate financial reporting and analysis while maintaining efficient storage and retrieval mechanisms for optimal performance and scalability.
 
-  [Balance Snapshots →](/balances/balance-snapshots)
+  See also: [Balance Snapshots](/balances/balance-snapshots).
 
-  [Historical Balances →](/balances/historical-balances)
+  See also: [Historical Balances](/balances/historical-balances).
 </Update>
 
 <Update label="0.8.3" description="Feb 22, 2025">
@@ -1009,7 +1043,7 @@ icon: "history"
   items={[
     { title: "Install", href: "/" },
     { title: "Upgrade Core", href: "/migrations/core/upgrade" },
-    { title: "0.15.4 migration", href: "/migrations/core/v15-4-migration" },
+    { title: "0.15.7 migration", href: "/migrations/core/v15-7-migration" },
     { title: "Transactions", href: "/transactions/introduction" },
     { title: "Configuration overview", href: "/advanced/configuration/overview" },
   ]}

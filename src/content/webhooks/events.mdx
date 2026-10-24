@@ -24,7 +24,7 @@ These are the `event` values Blnk sends to your [global webhook](/webhooks/globa
 
 | Event name | Description |
 | :-- | :-- |
-| `balance.monitor` | When a balance monitor is triggered because its conditions are met. |
+| `balance.monitor` | When the monitor's trigger says to send. An `edge` monitor sends once per crossing. A `level` monitor sends on every committed update while the condition holds. |
 
 ## Transactions
 
@@ -58,12 +58,10 @@ These are the `event` values Blnk sends to your [global webhook](/webhooks/globa
 | :-- | :-- |
 | `ledger.metadata.updated` | After a successful public ledger metadata update. |
 | `balance.metadata.updated` | After a successful public balance metadata update. |
-| `identity.metadata.updated` | After a successful public identity metadata update. |
+| `identity.metadata.updated` | After a successful public identity metadata update, including `PUT /identities/{identity_id}` when the body writes `meta_data`. |
 | `transaction.metadata.updated` | After a successful public transaction metadata update. |
 
-Blnk sends these events only after a successful public [Update metadata](/reference/update-metadata) request. Internal metadata writes do not emit them.
-
-Each payload includes `event_id` and `timestamp` in `data` for deduplication.
+Internal metadata writes do not emit these events. Each payload includes `event_id` and `timestamp` in `data` for deduplication.
 
 **Ledger, balance, and identity** — full resource snapshot with merged `meta_data` for this write (same shape as `*.created` events).
 
