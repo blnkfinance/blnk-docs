@@ -48,14 +48,27 @@ SELECT
 	) operations) AS operations
 `;
 
+const IDLE_MS = 10 * 1000;
+
 let pool: Pool | undefined;
 let ready: Promise<void> | undefined;
 
 function database(): Pool {
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) throw new Error('DATABASE_URL is not set');
-	pool ??= new Pool({ connectionString, max: 1, idleTimeoutMillis: 0 });
-	return pool;
+	if (pool) return pool;
+	const created = new Pool({ connectionString, max: 1, idleTimeoutMillis: IDLE_MS });
+	created.on('error', (error: unknown) => {
+		console.error('postgres pool error', error);
+		if (pool !== created) return;
+		pool = undefined;
+		ready = undefined;
+		void created.end().catch((endError: unknown) => {
+			console.error('postgres pool end failed', endError);
+		});
+	});
+	pool = created;
+	return created;
 }
 
 async function readyPool(): Promise<Pool> {
