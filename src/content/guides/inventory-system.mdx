@@ -1,0 +1,122 @@
+---
+title: "How to build an inventory system"
+description: "Model each SKU’s inventory stages as balances, then record every change between them with Blnk transactions."
+metaDescription: "Build an inventory system with Blnk by tracking each SKU and seller across available, reserved, shipped, returned, and damaged stages."
+---
+
+An inventory system needs to answer two questions: how many units can you promise now, and how did that number change? Use a Blnk balance for each stage of a SKU, then record every movement between stages as a transaction. Your application still owns the product rules and user experience; the ledger keeps the stock history auditable.
+
+## Choose what to track
+
+Start with the stages your product needs to report. A marketplace might track `available`, `reserved`, `sold`, `in_transit`, `delivered`, `returned`, and `damaged` units. Add a stage only when your system needs to distinguish it in a workflow or report.
+
+This guide tracks quantities in a `UNIT` currency with precision `1`. It does not track purchase cost or accounting valuation. Keep those measures separate if your application needs them.
+
+## Group balances by stage
+
+A ledger groups balances that your team needs to find or report together. For this example, create a ledger for each stage. A query against the Available ledger then shows the available quantity across your SKUs.
+
+| Ledger | Balances |
+| :--- | :--- |
+| Available inventory | One balance per SKU and seller |
+| Reserved inventory | One balance per SKU and seller |
+| Sold inventory | One balance per SKU and seller |
+| In-transit inventory | One balance per SKU and seller |
+| Delivered inventory | One balance per SKU and seller |
+| Returned inventory | One balance per SKU and seller |
+| Damaged inventory | One balance per SKU and seller |
+
+Create an [identity](/reference/create-identity) for each seller and SKU combination. Store the seller ID, SKU, and any product attributes in `meta_data`. Then create one [balance](/reference/create-balance) for each stage, link every balance to that identity, and set `currency` to `UNIT`.
+
+If you need to show the opening quantity, agree with your accounting team which source balance supplies it. Record an opening transaction from that balance into Available. Use the same source-and-destination model when new stock enters the system.
+
+## Record stock movements
+
+Move units when the event in your product workflow happens. For a checkout, move units from Available to Reserved. When payment succeeds, move them from Reserved to Sold; if the checkout is cancelled, move them back to Available.
+
+For each movement, call [Create transaction](/reference/create-transaction) with the source and destination balance IDs. Use a unique `reference` for every movement. Add `order_id` and `sku` to `meta_data` so your application can trace the stock change to the business event.
+
+This request moves two reserved units to Sold after checkout payment succeeds:
+
+<Tabs>
+  <Tab title="Record the movement">
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "http://localhost:5001/transactions" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "precise_amount": 2,
+    "precision": 1,
+    "currency": "UNIT",
+    "reference": "order_4821_reserved_to_sold",
+    "source": "bln_reserved_balance_id",
+    "destination": "bln_sold_balance_id",
+    "description": "Order 4821 paid",
+    "skip_queue": true,
+    "meta_data": {
+      "order_id": "order_4821",
+      "sku": "IP16-BLK-128"
+    }
+  }'
+```
+
+</CodeGroup>
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| `precise_amount` | Number of units to move. | Yes |
+| `precision` | Unit precision. Use `1` for whole units. | Yes |
+| `currency` | The balance asset class. Use `UNIT` for inventory counts. | Yes |
+| `reference` | Unique reference for this movement. | Yes |
+| `source` | Balance that loses the units. | Yes |
+| `destination` | Balance that receives the units. | Yes |
+| `description` | Why the movement happened. | Yes |
+| `meta_data` | Business context, such as order and SKU. | No |
+
+  </Tab>
+  <Tab title="Response">
+
+```json 201 Created
+{
+  "amount": 2,
+  "amount_string": "2",
+  "precision": 1,
+  "precise_amount": 2,
+  "reference": "order_4821_reserved_to_sold",
+  "currency": "UNIT",
+  "source": "bln_reserved_balance_id",
+  "destination": "bln_sold_balance_id",
+  "description": "Order 4821 paid",
+  "status": "APPLIED",
+  "meta_data": {
+    "order_id": "order_4821",
+    "sku": "IP16-BLK-128"
+  }
+}
+```
+
+With `skip_queue: true`, Blnk processes the transaction immediately. Check the returned status before treating the movement as complete. See [Transaction lifecycle](/transactions/transaction-lifecycle) for queued processing and verification.
+
+  </Tab>
+</Tabs>
+
+Continue the same pattern for later stages: Sold to In transit when the item ships, In transit to Delivered when delivery is confirmed, and Delivered to Returned when an item comes back. After inspection, move a resellable return to Available or a damaged return to Damaged. The source balance must have enough available units for the movement.
+
+## Reconstruct a stock position
+
+The balance in Available tells you how many units are currently available for that SKU and seller. To explain how the count changed, retrieve the transactions linked to the SKU or order and read the movements in time order.
+
+For a past position, use [Historical balances](/reference/historical-balances) with the balance ID and timestamp. This lets you compare the current count with the count your system recorded at an earlier time.
+
+<RelatedTopics
+  items={[
+    { title: "Ledgers overview", href: "/ledgers/introduction" },
+    { title: "Identities overview", href: "/identities/introduction" },
+    { title: "Balances overview", href: "/balances/introduction" },
+    { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+    { title: "Historical balances", href: "/reference/historical-balances" },
+  ]}
+/>
