@@ -1,75 +1,107 @@
 ---
-title: "Custom Apps"
+title: "Apps overview"
 sidebarTitle: "Overview"
-description: "Plan, build, or install a Custom App in Blnk."
-metaDescription: "What Custom Apps are, how they work in Blnk, and how to plan, build, or install them."
+description: "Learn how apps work and why they are important."
+metaDescription: "Build an app that reads or writes your Blnk ledger with a scoped key, and trace every operation in the audit log."
 icon: "grid"
 enterprise: license
-noindex: true
 ---
 
-![Custom Apps cover image](img/apps/apps-cover.png)
+Apps help you safely build plugins and connectors that operate on your ledger.
 
-The ledger is the source of truth for your financial records, but the work around it often happens elsewhere.
+For example, a Stripe app can periodically sync invoices from your Stripe account to your ledger; an import tool can sync transactions from your main Core into Blnk as your shadow ledger; a KYC app can update identity metadata with the verification status as it changes.
 
-A finance or operations team may need to check a payment provider, review an order system, calculate interest, approve a payout, or investigate an exception before they can close out a workflow. This work often happens across different tools, spreadsheets, scripts, and manual steps.
+<Frame caption="A Stripe sync app in the dashboard, with the scopes granted for that install.">
+![Apps library showing an installed Stripe sync app, its granted scopes, and the app open beside it](img/apps/apps-snapshot.png)
+</Frame>
 
-Custom Apps let teams build private, ledger-aware workflows inside Blnk. Use them to connect external systems, review financial operations, automate checks, and give your team purpose-built tools around the ledger.
+## How apps work
 
-## Quick start
-
-Here's how you can start using Custom Apps in your workspace:
+Here's how apps work:
 
 <Steps>
-  <Step title="Pick and install an app">
-    Browse the app library, choose the app you want, and install it into your workspace.
+  <Step title="Setting up the app">
+    To use an app, it must be registered and installed. Blnk requires you to set what scopes the app has, and optionally who is allowed to launch and use the app.
+
+    Every successful install mints a scoped API key belonging to the app. Then, Blnk uses this key to identify that the app is the source of the operation, confirm it has sufficient permissions, and log it.
   </Step>
-  <Step title="Register your own app">
-    If you have a more personalised workflow, you can build your own app and register it so Blnk can install and launch it for your workspace.
+  <Step title="Building the app">
+    An app can be headless or UI-based. Either way, it follows the same operational lifecycle.
+
+    1. Build the app
+    2. Register the app with its callback and optional portal URLs
+    3. Launch the app
+
+    <Frame caption="Register the app, install it on an instance, then launch it.">
+    ![Lifecycle from registering an app, through install and launch, to reading and writing the ledger](img/apps/app-lifecycle.png)
+    </Frame>
   </Step>
-  <Step title="Operate from your back office">
-    Each app you install is automatically scoped to the instance you're currently on. Once installed, you can launch the app at any time and start to use it from within Blnk.
+  <Step title="Connecting the app">
+    Apps should use the [Proxy API](/reference/enterprise#enterprise-proxy) when making calls to the ledger.
 
-    <Note>
-      **For example:** A crypto exchange startup might move between Bridge by Stripe, an order book, and the Blnk ledger to verify a trade or swap. Each system is useful on its own, but the workflow spans all of them.
+    This means that apps never directly touch your ledger. Blnk serves as the trust boundary between the app and the ledger.
 
-      With Custom Apps, the team can:
+    <Frame caption="The app calls Blnk. Blnk forwards ledger calls to Core.">
+    ![Request flow from the app backend through Blnk Cloud to Core](img/apps/how-apps-request-flow.png)
+    </Frame>
 
-      1. Register an app that talks to Bridge and their order system.
-      2. Surface the checks they need to verify a trade.
-      3. Review and manage the trade workflow from Blnk, instead of splitting attention across browser tabs and tools.
-    </Note>
+    This makes it easy to disable an app or rotate its key without affecting your core implementation or the other connected apps.
   </Step>
 </Steps>
 
-## Real-life applications
+## Audit logs
 
-Here's a few common real life use cases for Custom Apps:
+When an app reads or writes to the ledger, Blnk stores an audit log for that operation belonging to the app. Blnk records the app as `acting_app`.
 
-| App | What it does | Systems and data | Why Custom Apps? |
-| --- | --- | --- | --- |
-| Loan management | Approvals, disbursements, repayments, loan status. | Core balances, identities, history, loan tools, CRM. | See loan state and ledger activity together. |
-| Interest calculator | Accruals and interest from ledger balances. | Core balances plus rate, day-count, rounding rules. | Keep rate rules next to the balances they affect. |
-| Treasury or float manager | Monitor float across accounts and providers. | Ledger balances, bank data, PSP dashboards. | Compare float and ledger impact in one place. |
-| End-of-day close | Checklists, cutoffs, sign-offs, ledger totals. | Core txn/balance queries; optional accounting export. | Close beside the ledger data you're closing against. |
-| Trade or swap verification | Match execution, fees, settlement, postings. | Order books, trading rails, Core balances/transfers. | One verification flow instead of many tools. |
-| Reconciliation review | Match records to bank/PSP files; resolve exceptions. | Ledger exports, statements, provider files, queues. | Review where the ledger truth lives. |
-| Payout approval | Stage, approve, and review before payout. | Pending payouts, ledger moves, beneficiaries, CRM. | See payout context and ledger impact first. |
+For example, if a Stripe Sync app created a transaction, the audit log would look something like this:
 
-## When to use a custom app
+```json 200 OK highlight=11-20
+{
+  "data": [
+    {
+      "audit_log_id": "audit_845e6b1e-0463-4ce8-b858-2b3a398beff9",
+      "action": "Transaction Created",
+      "performed_by_id": "user_01K4EX0BRXHNNGCRVT2TPNK07W",
+      "performed_by": "Alex Example",
+      "api_key_id": "apikey_6e6feddd-930b-4e38-8ba1-1a3eee659bb3",
+      "instance_id": "instance_073f7ffe-9dfd-42ce-aa50-d1dca1788adc",
+      "transaction_id": "txn_c5d9e2a1-7b4f-4a3c-9e8d-1f6a2b4c8d30",
+      "app_id": "app_9a1c4e70-2b8d-4f61-8c3a-7e5d2b1f0a94",
+      "installed_app_id": "instapp_3d5e8f2a-1c94-4b7e-9a2c-6f481d0e3b17",
+      "app_name": "Stripe Sync",
+      "acting_app": {
+        "app_id": "app_9a1c4e70-2b8d-4f61-8c3a-7e5d2b1f0a94",
+        "name": "Stripe Sync",
+        "logo_url": "https://cdn.example.com/stripe.png",
+        "slug": "stripe-sync",
+        "installed_app_id": "instapp_3d5e8f2a-1c94-4b7e-9a2c-6f481d0e3b17"
+      },
+      "created_at": "2026-09-10T21:56:12.112739Z"
+    }
+  ]
+}
+```
 
-Consider a Custom App when:
+App operations such as install, launch, and uninstall are also logged.
 
-- A workflow repeatedly pulls your team out of Blnk into other tools for steps that could be guided or automated in the dashboard
-- You need a small, purpose-built UI on top of ledger data that Blnk does not already provide
-- You want to connect an external system you rely on (payments, trading, spreadsheets) in a way that is specific to how your team works
+See also: [Audit logs](/access-control/audit-logs).
 
-If a workflow is already covered by a built-in Blnk feature or a shared app in the library, prefer that before maintaining your own app.
+## Scopes
+
+The scopes you set at install are checked on every call the app makes through the Proxy API. Blnk forwards the call only when the key includes the scope for that action.
+
+Creating a transaction or updating identity metadata needs `data:write`. A call that only reads the ledger stays on `data:read`.
+
+| Scope | What the app can do |
+| :--- | :--- |
+| `data:read` | Read ledger data, such as ledgers, balances, identities, and transactions. |
+| `data:write` | Write ledger data, such as committing a transaction or updating an identity. |
+| `alerts:read` | Read alerts. |
+| `alerts:write` | Create, update, and delete alerts. |
 
 <RelatedTopics
   items={[
-    { title: "How apps work", href: "/apps/how-apps-work" },
-    { title: "Install an app", href: "/apps/install-app" },
-    { title: "Define workflow", href: "/apps/define-workflow" },
+    { title: "Install your app", href: "/apps/install-app" },
+    { title: "Audit logs", href: "/access-control/audit-logs" },
   ]}
 />
