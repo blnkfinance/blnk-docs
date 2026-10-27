@@ -24,7 +24,7 @@ The same `dry_run` flag works on [bulk create](/reference/bulk-transactions), [r
 </Tip>
 
 <CodeGroup>
-```bash cURL wrap
+```bash cURL wrap {5}
 curl -X POST "http://localhost:5001/transactions" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -39,11 +39,66 @@ curl -X POST "http://localhost:5001/transactions" \
     "description": "Card settlement"
   }'
 ```
+
+```typescript TypeScript {2}
+const preview = await blnk.Transactions.create({
+  dry_run: true,
+  precise_amount: 12000,
+  precision: 100,
+  currency: 'USD',
+  source: 'bln_source-bal-001',
+  destination: 'bln_dest-bal-001',
+  reference: 'ref_card_settle_4821',
+  description: 'Card settlement',
+});
+```
+
+```go Go {1}
+preview, _, err := client.Transaction.CreateDryRun(
+	blnkgo.CreateTransactionRequest{
+		ParentTransaction: blnkgo.ParentTransaction{
+			PreciseAmount: big.NewInt(12000),
+			Precision: 100,
+			Currency: "USD",
+			Source: "bln_source-bal-001",
+			Destination: "bln_dest-bal-001",
+			Reference: "ref_card_settle_4821",
+			Description: "Card settlement",
+		},
+	},
+)
+```
+
+```python Python {2}
+preview = blnk.transactions.create({
+  "dry_run": True,
+  "precise_amount": 12000,
+  "precision": 100,
+  "currency": "USD",
+  "source": "bln_source-bal-001",
+  "destination": "bln_dest-bal-001",
+  "reference": "ref_card_settle_4821",
+  "description": "Card settlement",
+})
+```
+
+```java Java {10}
+ApiResponse<JsonNode> preview = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(12000)
+        .precision(100)
+        .currency("USD")
+        .source("bln_source-bal-001")
+        .destination("bln_dest-bal-001")
+        .reference("ref_card_settle_4821")
+        .description("Card settlement")
+        .dryRun(true));
+```
 </CodeGroup>
 
 The response is always HTTP `200` when the preview itself succeeds. A projected rejection is not an HTTP error.
 
-```json 200 OK wrap expandable
+```json 200 OK wrap expandable {2}
 {
   "dry_run": true,
   "would_apply": true,
@@ -117,7 +172,7 @@ An `@indicator` that does not exist yet is projected against a zeroed stand-in a
 
 If the transaction would be rejected, you still get HTTP `200`. Read `would_apply` and `rejection`, not the status code.
 
-```json 200 Would not apply wrap
+```json 200 Would not apply wrap {2}
 {
   "dry_run": true,
   "would_apply": false,
@@ -170,7 +225,7 @@ In this example `bln_source-bal-001` has 500.00 available. The batch sends 450.0
 Set `skip_queue` to `true`. The first item leaves 50.00. The second item needs 100.00, so `would_apply` is `false`.
 
 <CodeGroup>
-```bash cURL wrap expandable
+```bash cURL wrap expandable {5}
 curl -X POST "http://localhost:5001/transactions/bulk" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -201,7 +256,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
 ```
 </CodeGroup>
 
-```json 200 OK wrap expandable
+```json 200 OK wrap expandable {2,8,18}
 {
   "dry_run": true,
   "would_apply": false,
@@ -295,7 +350,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
 Set `skip_queue` to `false`. Each item is checked against the current 500.00 on its own, so both pass.
 
 <CodeGroup>
-```bash cURL wrap expandable
+```bash cURL wrap expandable {5}
 curl -X POST "http://localhost:5001/transactions/bulk" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
@@ -326,7 +381,7 @@ curl -X POST "http://localhost:5001/transactions/bulk" \
 ```
 </CodeGroup>
 
-```json 200 OK wrap expandable
+```json 200 OK wrap expandable {2,8,54}
 {
   "dry_run": true,
   "would_apply": true,
