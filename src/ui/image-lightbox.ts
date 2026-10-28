@@ -1,3 +1,5 @@
+export {};
+
 declare global {
 	interface Window {
 		__blnkImageLightbox?: boolean;
@@ -74,7 +76,7 @@ if (!window.__blnkImageLightbox) {
 	});
 	document.addEventListener('click', (event) => {
 		const dialog = document.querySelector<HTMLDialogElement>('.image-lightbox');
-		if (event.target === dialog) dialog.close();
+		if (dialog && event.target === dialog) dialog.close();
 	});
 	enhanceImages();
 }
