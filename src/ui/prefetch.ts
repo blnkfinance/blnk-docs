@@ -172,7 +172,7 @@ function scheduleIdle() {
 		for (const href of collect()) queue.push(href);
 		pump();
 	};
-	if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 });
+	if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 1500 });
 	else window.setTimeout(run, 200);
 }
 
