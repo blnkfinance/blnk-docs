@@ -21,13 +21,27 @@ if (!window.__blnkImageLightbox) {
 
 	function openPreview(image: HTMLImageElement) {
 		const dialog = document.querySelector<HTMLDialogElement>('.image-lightbox');
-		const preview = dialog?.querySelector<HTMLImageElement>('img');
+		const previewPicture = dialog?.querySelector<HTMLPictureElement>('.image-lightbox-picture');
 		const caption = dialog?.querySelector<HTMLElement>('.image-lightbox-caption');
-		if (!dialog || !preview || !caption) return;
+		if (!dialog || !previewPicture || !caption) return;
 
 		trigger = image;
-		preview.src = image.currentSrc || image.src;
-		preview.alt = image.alt;
+		const sourcePicture = image.closest('picture');
+		const children = sourcePicture ? Array.from(sourcePicture.children) : [image];
+		const previewChildren = children.map((child) => {
+			const clone = child.cloneNode(true) as HTMLElement;
+			if (clone instanceof HTMLSourceElement && clone.hasAttribute('srcset')) clone.sizes = '96vw';
+			if (clone instanceof HTMLImageElement) {
+				clone.alt = image.alt;
+				clone.removeAttribute('tabindex');
+				clone.removeAttribute('role');
+				clone.removeAttribute('aria-haspopup');
+				clone.removeAttribute('aria-label');
+				if (clone.hasAttribute('srcset')) clone.sizes = '96vw';
+			}
+			return clone;
+		});
+		previewPicture.replaceChildren(...previewChildren);
 		caption.textContent = image.alt;
 		caption.hidden = !image.alt;
 		if (!dialog.dataset.restoreFocusBound) {
