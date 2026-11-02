@@ -1,0 +1,55 @@
+---
+title: "0.15.8 Migration Guide"
+sidebarTitle: "Migration to 0.15.8"
+description: "Review how expiry handles queued inflight holds before you upgrade to Blnk v0.15.8."
+metaDescription: "Migration guide for upgrading to Blnk v0.15.8, covering inflight expiry for queued holds."
+---
+
+This guide covers the changes you need to review when upgrading to Blnk v0.15.8.
+
+Most integrations can upgrade without code changes. Review this guide if you create inflight transactions without `skip_queue`, set `inflight_expiry_date`, and commit or void those holds before they expire.
+
+## At a glance
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| Queued hold expiry | Apps that create queued inflight holds with `inflight_expiry_date` | Expiry voids the `_q` hold, not the placeholder, and skips a hold that is already committed or voided. |
+| Holds settled before expiry | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Check these balances after you upgrade. |
+
+## Expiry skips a settled queued hold
+
+When you create an inflight transaction without `skip_queue`, the response returns a `QUEUED` placeholder. The worker then writes the real hold with the reference `<reference>_q`, and that is the transaction you commit or void.
+
+From 0.15.8, expiry finds the `_q` hold behind the placeholder, or each leg of a split, and voids only what is still held. If you already committed or voided the hold, expiry skips it.
+
+Holds created with `"skip_queue": true` are unchanged. Expiry tasks scheduled before the upgrade use the new behavior once a 0.15.8 worker runs them.
+
+**What to do:** Upgrade every server and worker, because the worker runs expiry. If you read the `VOID` child of an expired queued hold, find it under the `_q` hold, not under the placeholder. See [Schedule inflight expiry](/transactions/inflight/void-inflight#schedule-inflight-expiry).
+
+## Holds settled before expiry on 0.15.7 or earlier
+
+On 0.15.7 and earlier, the expiry still ran after you committed or voided the `_q` hold. It released the hold's amount from `inflight_debit_balance` a second time, after the commit or void had already released it. That second release came out of the amount reserved for other holds on the same balance.
+
+A hold is affected when its placeholder has a `VOID` child and its `_q` hold has its own `APPLIED` or `VOID` child. List queued inflight placeholders with `status` `QUEUED` and `meta_data.inflight` `true`, then list each one's children with `parent_transaction`:
+
+```bash cURL
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "parent_transaction", "operator": "eq", "value": "<placeholder_transaction_id>" }
+    ]
+  }'
+```
+
+**What to do:** After you upgrade, run this check on balances that use queued holds with an expiry. The `source` and `precise_amount` of the placeholder's `VOID` show the balance and the amount released. See [Filter records](/search/db/filtering).
+
+<RelatedTopics
+  items={[
+    { title: "Upgrade Core", href: "/migrations/core/upgrade" },
+    { title: "Blnk Core changelog", href: "/changelog/blnk-core" },
+    { title: "Void inflight transactions", href: "/transactions/inflight/void-inflight" },
+    { title: "Filter records", href: "/search/db/filtering" },
+  ]}
+/>
