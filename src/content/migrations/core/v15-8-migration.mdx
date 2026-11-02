@@ -13,7 +13,7 @@ Most integrations can upgrade without code changes. Review this guide if you cre
 
 | Change | Who is affected? | What changed |
 | :-- | :-- | :-- |
-| Worker upgrade order | Deployments that run more than one worker | Workers run expiry. Stop every older worker before you start a 0.15.8 worker. |
+| Worker upgrade order | Self-hosted deployments that upgrade servers and workers one at a time | Workers run expiry. Stop every older worker before you start a 0.15.8 worker. |
 | Queued hold expiry | Apps that create queued inflight holds with `inflight_expiry_date` | Expiry voids the `_q` hold, not the placeholder, and skips a hold that is already committed or voided. |
 | Queued split holds expire | Apps that create queued split holds with `inflight_expiry_date` | A split hold now expires. On 0.15.7 and earlier, it stayed held. |
 | Holds released twice | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Find these holds and correct the balances once. |
@@ -36,9 +36,9 @@ From 0.15.8, expiry finds the `_q` hold behind the placeholder and voids only wh
 
 ## Queued split holds expire
 
-A queued split hold has one placeholder for each leg, `<reference>_1`, `<reference>_2`, and so on, and a `_q` hold under each one. On 0.15.7 and earlier, expiry did not run for a queued split, so its legs stayed held. Split holds were not released twice.
+A queued split hold has one placeholder for each leg, `<reference>_1`, `<reference>_2`, and so on, and a `_q` hold under each one. On 0.15.7 and earlier, expiry failed for a queued split, so its legs stayed held. Split holds were not released twice.
 
-From 0.15.8, expiry voids each leg that is still held. A split that passed its expiry before the upgrade is voided when the 0.15.8 worker retries that expiry.
+From 0.15.8, expiry voids each leg that is still held. A split that passed its expiry before the upgrade may still be held.
 
 **What to do:** If you relied on a queued split staying held past its `inflight_expiry_date`, commit it before you upgrade. After the upgrade, void any split that is still held past its expiry with [Void inflight](/transactions/inflight/void-inflight).
 
@@ -78,13 +78,13 @@ curl -X POST "http://localhost:5001/transactions/filter" \
 
 The amount released twice is the smaller of the expiry `VOID`'s `precise_amount` and that total. If the total is `0`, the hold expired normally and is not affected.
 
-**What to do:** After every worker runs 0.15.8, run this check. For each affected hold, record the placeholder, the expiry `VOID`, the `_q` hold, the `source`, the `destination`, and the amount released twice. Page with `offset` until you have every `VOID`. See [Filter records](/search/db/filtering).
+**What to do:** After every worker runs 0.15.8, run this check. It only reads data. For each affected hold, record the placeholder, the expiry `VOID`, the `_q` hold, the `source`, the `destination`, and the amount released twice. Page with `offset` until you have every `VOID`. See [Filter records](/search/db/filtering).
 
 ## Correct affected balances
 
 Each affected balance holds less than it should by the total released twice for its holds. `inflight_debit_balance` is short on the source, and `inflight_credit_balance` is short on the destination.
 
-Blnk still shows the `_q` hold under an expiry `VOID` as `INFLIGHT`, but the expiry already released it. Committing or voiding that hold releases the amount again and widens the gap.
+Blnk still shows the `_q` hold under an expiry `VOID` as `INFLIGHT`, but the expiry already released it. Committing or voiding that hold can release the amount again and widen the gap.
 
 **What to do:** Do not commit or void a `_q` hold whose placeholder has an expiry `VOID`. Do not edit balances in the database, because a direct edit leaves no transaction record. Send the list from the previous step to [Support](mailto:support@blnkfinance.com), and keep it as the record of the correction.
 
