@@ -16,7 +16,7 @@ Most integrations can upgrade without code changes. Review this guide if you cre
 | Worker upgrade order | Self-hosted deployments that upgrade servers and workers one at a time | Workers run expiry. Stop every older worker before you start a 0.15.8 worker. |
 | Queued hold expiry | Apps that create queued inflight holds with `inflight_expiry_date` | Expiry voids the `_q` hold, not the placeholder, and skips a hold that is already committed or voided. |
 | Queued split holds expire | Apps that create queued split holds with `inflight_expiry_date` | A split hold now expires. On 0.15.7 and earlier, it stayed held. |
-| Holds released twice | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Find these holds and correct the balances once. |
+| Holds released twice | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Find these holds and correct the balances once: on Cloud through Support, on self-hosted Core in Postgres. |
 
 ## Stop older workers before you start 0.15.8
 
@@ -84,9 +84,33 @@ The amount released twice is the smaller of the expiry `VOID`'s `precise_amount`
 
 Each affected balance holds less than it should by the total released twice for its holds. `inflight_debit_balance` is short on the source, and `inflight_credit_balance` is short on the destination.
 
-Blnk still shows the `_q` hold under an expiry `VOID` as `INFLIGHT`, but the expiry already released it. Committing or voiding that hold can release the amount again and widen the gap.
+Blnk still shows the `_q` hold under an expiry `VOID` as `INFLIGHT`, but the expiry already released it. Committing or voiding that hold can release the amount again and widen the gap. Do not commit or void a `_q` hold whose placeholder has an expiry `VOID`.
 
-**What to do:** Do not commit or void a `_q` hold whose placeholder has an expiry `VOID`. Do not edit balances in the database, because a direct edit leaves no transaction record. Send the list from the previous step to [Support](mailto:support@blnkfinance.com), and keep it as the record of the correction.
+On Blnk Cloud, send the list from the previous step to [Support](mailto:support@blnkfinance.com). Blnk corrects the balances for you.
+
+If you host Core yourself, add the amount released twice back to each balance in Postgres. `inflight_balance` is `inflight_credit_balance` minus `inflight_debit_balance`, so it changes with them. Run one transaction for each affected hold:
+
+```sql Correct one affected hold
+BEGIN;
+
+UPDATE blnk.balances
+SET inflight_debit_balance = inflight_debit_balance + <amount_released_twice>,
+    inflight_balance = inflight_balance - <amount_released_twice>,
+    version = version + 1
+WHERE balance_id = '<source>';
+
+UPDATE blnk.balances
+SET inflight_credit_balance = inflight_credit_balance + <amount_released_twice>,
+    inflight_balance = inflight_balance + <amount_released_twice>,
+    version = version + 1
+WHERE balance_id = '<destination>';
+
+COMMIT;
+```
+
+The update changes inflight amounts only. Settled balances and transactions stay as they are. The check in the previous step reads transactions, so it still lists a hold after you correct it. Correct each hold once.
+
+**What to do:** On Cloud, send the list to Support. If you host Core yourself, back up Postgres and stop every server and worker. Run the update once for each affected hold, then start Blnk again. Confirm that each corrected balance holds what its open holds need, and keep the list as the record of the correction. See [Backup to disk](/operating/backup-disk).
 
 <RelatedTopics
   items={[
