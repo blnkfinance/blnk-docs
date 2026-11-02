@@ -2,48 +2,91 @@
 title: "0.15.8 Migration Guide"
 sidebarTitle: "Migration to 0.15.8"
 description: "Review how expiry handles queued inflight holds before you upgrade to Blnk v0.15.8."
-metaDescription: "Migration guide for upgrading to Blnk v0.15.8, covering inflight expiry for queued holds."
+metaDescription: "Migration guide for upgrading to Blnk v0.15.8, covering inflight expiry for queued holds, worker upgrade order, and balance reconciliation."
 ---
 
 This guide covers the changes you need to review when upgrading to Blnk v0.15.8.
 
-Most integrations can upgrade without code changes. Review this guide if you create inflight transactions without `skip_queue`, set `inflight_expiry_date`, and commit or void those holds before they expire.
+Most integrations can upgrade without code changes. Review this guide if you create inflight transactions without `skip_queue` and set `inflight_expiry_date`.
 
 ## At a glance
 
 | Change | Who is affected? | What changed |
 | :-- | :-- | :-- |
+| Worker upgrade order | Deployments that run more than one worker | Workers run expiry. Stop every older worker before you start a 0.15.8 worker. |
 | Queued hold expiry | Apps that create queued inflight holds with `inflight_expiry_date` | Expiry voids the `_q` hold, not the placeholder, and skips a hold that is already committed or voided. |
-| Holds settled before expiry | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Check these balances after you upgrade. |
+| Queued split holds expire | Apps that create queued split holds with `inflight_expiry_date` | A split hold now expires. On 0.15.7 and earlier, it stayed held. |
+| Holds released twice | Apps that committed or voided a queued hold before it expired, on 0.15.7 or earlier | Expiry may have released the hold's amount a second time. Find these holds and correct the balances once. |
+
+## Stop older workers before you start 0.15.8
+
+Blnk workers run expiry. The server only schedules it. While any worker on 0.15.7 or earlier is running, it can pick up a scheduled expiry and release a committed hold again.
+
+Scheduled expiry waits in Redis while no worker runs. When the first 0.15.8 worker starts, it runs every expiry that came due, with the new behavior.
+
+**What to do:** Stop every worker on 0.15.7 or earlier, then start the 0.15.8 workers. Do not run old and new workers side by side. Servers can be upgraded in any order. See [Upgrade Core](/migrations/core/upgrade).
 
 ## Expiry skips a settled queued hold
 
 When you create an inflight transaction without `skip_queue`, the response returns a `QUEUED` placeholder. The worker then writes the real hold with the reference `<reference>_q`, and that is the transaction you commit or void.
 
-From 0.15.8, expiry finds the `_q` hold behind the placeholder, or each leg of a split, and voids only what is still held. If you already committed or voided the hold, expiry skips it.
+From 0.15.8, expiry finds the `_q` hold behind the placeholder and voids only what is still held. If you already committed or voided the hold, expiry skips it.
 
-Holds created with `"skip_queue": true` are unchanged. Expiry tasks scheduled before the upgrade use the new behavior once a 0.15.8 worker runs them.
+**What to do:** Nothing in your code. If you read the `VOID` from an expired queued hold, find it under the `_q` hold, not under the placeholder. See [Schedule inflight expiry](/transactions/inflight/void-inflight#schedule-inflight-expiry).
 
-**What to do:** Upgrade every server and worker, because the worker runs expiry. If you read the `VOID` child of an expired queued hold, find it under the `_q` hold, not under the placeholder. See [Schedule inflight expiry](/transactions/inflight/void-inflight#schedule-inflight-expiry).
+## Queued split holds expire
 
-## Holds settled before expiry on 0.15.7 or earlier
+A queued split hold has one placeholder for each leg, `<reference>_1`, `<reference>_2`, and so on, and a `_q` hold under each one. On 0.15.7 and earlier, expiry did not run for a queued split, so its legs stayed held. Split holds were not released twice.
 
-On 0.15.7 and earlier, the expiry still ran after you committed or voided the `_q` hold. It released the hold's amount from `inflight_debit_balance` a second time, after the commit or void had already released it. That second release came out of the amount reserved for other holds on the same balance.
+From 0.15.8, expiry voids each leg that is still held. A split that passed its expiry before the upgrade is voided when the 0.15.8 worker retries that expiry.
 
-A hold is affected when its placeholder has a `VOID` child and its `_q` hold has its own `APPLIED` or `VOID` child. List queued inflight placeholders with `status` `QUEUED` and `meta_data.inflight` `true`, then list each one's children with `parent_transaction`:
+**What to do:** If you relied on a queued split staying held past its `inflight_expiry_date`, commit it before you upgrade. After the upgrade, void any split that is still held past its expiry with [Void inflight](/transactions/inflight/void-inflight).
 
-```bash cURL
+## Find holds released twice on 0.15.7 or earlier
+
+On 0.15.7 and earlier, the expiry still ran after you committed or voided the `_q` hold. It wrote a `VOID` directly under the placeholder and released the hold's amount a second time. That lowered the source balance's `inflight_debit_balance` and the destination balance's `inflight_credit_balance`, out of the amounts reserved for other holds.
+
+An expiry `VOID` from an older version is the only `VOID` whose `parent_transaction` is the placeholder itself. A `VOID` from a manual void or from 0.15.8 expiry sits under the `_q` hold. List every `VOID` that belongs to a queued hold, and keep the ones where `parent_transaction` equals `meta_data.QUEUED_PARENT_TRANSACTION`:
+
+```bash List expiry voids
 curl -X POST "http://localhost:5001/transactions/filter" \
   -H "X-blnk-key: <api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "filters": [
-      { "field": "parent_transaction", "operator": "eq", "value": "<placeholder_transaction_id>" }
-    ]
+      { "field": "status", "operator": "eq", "value": "VOID" },
+      { "field": "meta_data.QUEUED_PARENT_TRANSACTION", "operator": "isnotnull" }
+    ],
+    "limit": 100,
+    "offset": 0
   }'
 ```
 
-**What to do:** After you upgrade, run this check on balances that use queued holds with an expiry. The `source` and `precise_amount` of the placeholder's `VOID` show the balance and the amount released. See [Filter records](/search/db/filtering).
+For each `VOID` you keep, list every transaction under its placeholder. The `INFLIGHT` row whose `parent_transaction` is the placeholder is the `_q` hold. Add up the `precise_amount` of the `APPLIED` and `VOID` rows whose `parent_transaction` is the `_q` hold:
+
+```bash List a placeholder's transactions
+curl -X POST "http://localhost:5001/transactions/filter" \
+  -H "X-blnk-key: <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "field": "meta_data.QUEUED_PARENT_TRANSACTION", "operator": "eq", "value": "<placeholder_transaction_id>" }
+    ],
+    "limit": 100
+  }'
+```
+
+The amount released twice is the smaller of the expiry `VOID`'s `precise_amount` and that total. If the total is `0`, the hold expired normally and is not affected.
+
+**What to do:** After every worker runs 0.15.8, run this check. For each affected hold, record the placeholder, the expiry `VOID`, the `_q` hold, the `source`, the `destination`, and the amount released twice. Page with `offset` until you have every `VOID`. See [Filter records](/search/db/filtering).
+
+## Correct affected balances
+
+Each affected balance holds less than it should by the total released twice for its holds. `inflight_debit_balance` is short on the source, and `inflight_credit_balance` is short on the destination.
+
+Blnk still shows the `_q` hold under an expiry `VOID` as `INFLIGHT`, but the expiry already released it. Committing or voiding that hold releases the amount again and widens the gap.
+
+**What to do:** Do not commit or void a `_q` hold whose placeholder has an expiry `VOID`. Do not edit balances in the database, because a direct edit leaves no transaction record. Send the list from the previous step to [Support](mailto:support@blnkfinance.com), and keep it as the record of the correction.
 
 <RelatedTopics
   items={[
