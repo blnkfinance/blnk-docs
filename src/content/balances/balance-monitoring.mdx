@@ -154,6 +154,47 @@ ApiResponse<JsonNode> response = blnk.balanceMonitor().create(
 | `created_at` | When the monitor was created. |
 
   </Tab>
+  <Tab title="Webhook">
+
+When a monitor fires, Blnk sends a `balance.monitor` event to your [global webhook](/webhooks/global-webhooks) URL. `data` is the monitor that fired, so you can tell which rule matched and on which balance.
+
+```json balance.monitor
+{
+  "event": "balance.monitor",
+  "data": {
+    "monitor_id": "mon_e0e77b0c-4985-472a-9bf5-76a48b0259b0",
+    "balance_id": "bln_0be360ca-86fe-457d-be43-daa3f966d8f0",
+    "description": "Spending above 1000",
+    "created_at": "2024-02-20T05:56:58.257315054Z",
+    "condition": {
+      "field": "debit_balance",
+      "operator": ">",
+      "value": 1000,
+      "precision": 100,
+      "precise_value": 100000
+    },
+    "trigger": "edge",
+    "condition_state": true
+  }
+}
+```
+
+| Field | Description |
+| :--- | :--- |
+| `event` | Always `balance.monitor`. |
+| `data.monitor_id` | Id of the monitor that fired. |
+| `data.balance_id` | Balance whose update matched the rule. |
+| `data.description` | The label on the monitor. Left out when the monitor has none. |
+| `data.condition` | The rule that matched: the `field`, `operator`, and threshold you set. `precise_value` is the threshold in the currency's smallest unit. |
+| `data.trigger` | `edge` or `level`. |
+| `data.condition_state` | `true` on an `edge` monitor, because Blnk only sends when the rule starts to match. Don't rely on it for a `level` monitor. |
+| `data.created_at` | When the monitor was created. |
+
+The payload describes the monitor, not the balance. To see the amount that crossed the threshold, call [Get balance](/reference/get-balance) with `data.balance_id`.
+
+Blnk signs the request like every other webhook. See [Webhook security](/webhooks/overview#webhook-security) to verify it.
+
+  </Tab>
 </Tabs>
 
 ## Supported operators

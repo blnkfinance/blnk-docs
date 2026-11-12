@@ -1,0 +1,96 @@
+---
+title: "List metadata templates"
+description: "Return the metadata templates in your organization, newest first."
+method: "GET"
+path: "/data/metadata-templates"
+enterprise: license
+noindex: true
+---
+This endpoint returns the metadata templates in your organization, newest first (`created_at` descending), one page at a time.
+
+<Authorization />
+
+### Query parameters
+
+<ParamField query="page" type="integer" default="1">
+Page to return, starting at `1`.
+</ParamField>
+
+<ParamField query="pageSize" type="integer" default="20">
+Number of templates per page.
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="array">
+Templates on this page, newest first.
+<Expandable title="Template properties">
+  <ResponseField name="metadata_template_id" type="string">
+  Unique id of the template (`metadata_template_...`). Use it to get, update, or delete the template.
+  </ResponseField>
+
+  <ResponseField name="name" type="string">
+  Template name. Unique within your organization.
+  </ResponseField>
+
+  <ResponseField name="description" type="string">
+  Note on when to use the template. Empty string when none was set.
+  </ResponseField>
+
+  <ResponseField name="keys" type="string[]">
+  Metadata keys the template adds to a form, in the order you sent them.
+  </ResponseField>
+
+  <ResponseField name="org_id" type="string">
+  Organization the template belongs to. Templates are shared across every instance in the organization.
+  </ResponseField>
+
+  <ResponseField name="created_at" type="timestamp">
+  When the template was created.
+  </ResponseField>
+
+  <ResponseField name="updated_at" type="timestamp">
+  When the name, description, or keys last changed.
+  </ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+Number of templates in the organization across all pages. Use it with `pageSize` to work out how many pages there are.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET 'https://api.cloud.blnkfinance.com/data/metadata-templates?page=1&pageSize=20' \
+  -H 'X-blnk-key: CLOUD_API_KEY'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "data": [
+    {
+      "metadata_template_id": "metadata_template_7c1e9a42-5b3d-4f8e-9a61-2d4c8b0e3f57",
+      "name": "Loan metadata",
+      "description": "Fields for every loan balance and disbursement",
+      "keys": ["loan_id", "risk_tier", "repayment_schedule", "loan_officer"],
+      "org_id": "org_01K4EX0BRXHNNGCRVT2TPNK07W",
+      "created_at": "2026-11-11T09:14:22.418203Z",
+      "updated_at": "2026-11-11T09:14:22.418203Z"
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Get metadata template", href: "/reference/get-metadata-template" },
+    { title: "Create metadata template", href: "/reference/create-metadata-template" },
+    { title: "Metadata templates", href: "/search/metadata-templates" },
+  ]}
+/>

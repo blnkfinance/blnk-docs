@@ -1,0 +1,104 @@
+---
+title: "Create metadata template"
+description: "Save a reusable set of metadata keys for your organization."
+method: "POST"
+path: "/data/metadata-templates"
+enterprise: license
+noindex: true
+---
+A **metadata template** is a named list of metadata keys. People in your organization import it on any Cloud form with a metadata section, so the same keys are spelled the same way on every record. See [Metadata templates](/search/metadata-templates) for how teams use them.
+
+<Authorization />
+
+### Body
+
+<ParamField body="name" type="string" required>
+Template name, such as `Loan metadata`. Must be unique within your organization.
+</ParamField>
+
+<ParamField body="description" type="string">
+Note on when to use the template.
+</ParamField>
+
+<ParamField body="keys" type="string[]" required>
+Metadata keys the template adds. Keys are trimmed, empty keys are dropped, and duplicates are removed without regard to case (`Region` and `region` count as one key). At least one key must remain.
+</ParamField>
+
+### Response
+
+<ResponseField name="metadata_template_id" type="string">
+Unique id of the template (`metadata_template_...`). Use it to get, update, or delete the template.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Template name. Unique within your organization.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Note on when to use the template. Empty string when none was set.
+</ResponseField>
+
+<ResponseField name="keys" type="string[]">
+Metadata keys the template adds to a form, in the order you sent them.
+</ResponseField>
+
+<ResponseField name="org_id" type="string">
+Organization the template belongs to. Templates are shared across every instance in the organization.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the template was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the name, description, or keys last changed.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST 'https://api.cloud.blnkfinance.com/data/metadata-templates' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Loan metadata",
+    "description": "Fields for every loan balance and disbursement",
+    "keys": ["loan_id", "risk_tier", "repayment_schedule", "loan_officer"]
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "metadata_template_id": "metadata_template_7c1e9a42-5b3d-4f8e-9a61-2d4c8b0e3f57",
+  "name": "Loan metadata",
+  "description": "Fields for every loan balance and disbursement",
+  "keys": ["loan_id", "risk_tier", "repayment_schedule", "loan_officer"],
+  "org_id": "org_01K4EX0BRXHNNGCRVT2TPNK07W",
+  "created_at": "2026-11-11T09:14:22.418203Z",
+  "updated_at": "2026-11-11T09:14:22.418203Z"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "A metadata template with this name already exists."
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "at least one key is required"
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "List metadata templates", href: "/reference/list-metadata-templates" },
+    { title: "Update metadata template", href: "/reference/update-metadata-template" },
+    { title: "Metadata templates", href: "/search/metadata-templates" },
+  ]}
+/>

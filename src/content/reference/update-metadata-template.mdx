@@ -1,0 +1,112 @@
+---
+title: "Update metadata template"
+description: "Rename a metadata template or change its description or keys."
+method: "PATCH"
+path: "/data/metadata-templates/{metadata_template_id}"
+enterprise: license
+noindex: true
+---
+Send only the fields you want to change. Fields you leave out keep their current value.
+
+Sending `keys` replaces the whole list, so include every key you want to keep. Records that already used the template keep their metadata. The change only affects forms that import the template from now on.
+
+<Authorization />
+
+### Path
+
+<ParamField path="metadata_template_id" type="string" required>
+Unique id of the template (`metadata_template_...`). Get it from [List metadata templates](/reference/list-metadata-templates) or [Create metadata template](/reference/create-metadata-template).
+</ParamField>
+
+### Body
+
+<ParamField body="name" type="string">
+New template name. Cannot be empty, and must be unique within your organization.
+</ParamField>
+
+<ParamField body="description" type="string">
+New note on when to use the template. Send `""` to clear it.
+</ParamField>
+
+<ParamField body="keys" type="string[]">
+Full list of keys to replace the current ones. Keys are trimmed, empty keys are dropped, and duplicates are removed without regard to case (`Region` and `region` count as one key). At least one key must remain.
+</ParamField>
+
+### Response
+
+Returns the updated template.
+
+<ResponseField name="metadata_template_id" type="string">
+Unique id of the template (`metadata_template_...`). Use it to get, update, or delete the template.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+Template name. Unique within your organization.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+Note on when to use the template. Empty string when none was set.
+</ResponseField>
+
+<ResponseField name="keys" type="string[]">
+Metadata keys the template adds to a form, in the order you sent them.
+</ResponseField>
+
+<ResponseField name="org_id" type="string">
+Organization the template belongs to. Templates are shared across every instance in the organization.
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+When the template was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+When the name, description, or keys last changed.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X PATCH 'https://api.cloud.blnkfinance.com/data/metadata-templates/metadata_template_7c1e9a42-5b3d-4f8e-9a61-2d4c8b0e3f57' \
+  -H 'X-blnk-key: CLOUD_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "keys": ["loan_id", "risk_tier", "repayment_schedule", "loan_officer", "branch"]
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "metadata_template_id": "metadata_template_7c1e9a42-5b3d-4f8e-9a61-2d4c8b0e3f57",
+  "name": "Loan metadata",
+  "description": "Fields for every loan balance and disbursement",
+  "keys": ["loan_id", "risk_tier", "repayment_schedule", "loan_officer", "branch"],
+  "org_id": "org_01K4EX0BRXHNNGCRVT2TPNK07W",
+  "created_at": "2026-11-11T09:14:22.418203Z",
+  "updated_at": "2026-11-11T10:02:41.993117Z"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Metadata template not found"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "A metadata template with this name already exists."
+}
+```
+</ResponseExample>
+
+<RelatedTopics
+  items={[
+    { title: "Get metadata template", href: "/reference/get-metadata-template" },
+    { title: "Delete metadata template", href: "/reference/delete-metadata-template" },
+    { title: "Metadata templates", href: "/search/metadata-templates" },
+  ]}
+/>

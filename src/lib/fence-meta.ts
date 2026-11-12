@@ -4,6 +4,7 @@ import type { ShikiTransformer } from 'shiki';
 type FenceMeta = {
 	title: string;
 	wrap: boolean;
+	nowrap: boolean;
 	expandable: boolean;
 	icon?: string;
 	highlight: Set<number>;
@@ -13,11 +14,12 @@ type FenceMeta = {
 /**
  * Fence info after the language.
  * `cURL wrap`, `200 OK wrap expandable highlight={2} focus={2,4-5}`,
- * `200 Success icon="check-circle"`.
+ * `200 Success icon="check-circle"`, `200 Success nowrap` (keep lines whole and scroll sideways).
  */
 export function parseFenceMeta(meta: string): FenceMeta {
 	const tokens = meta.match(/icon="[^"]*"|[^\s]+/g) ?? [];
 	let wrap = false;
+	let nowrap = false;
 	let expandable = false;
 	let icon: string | undefined;
 	const highlight = new Set<number>();
@@ -25,6 +27,7 @@ export function parseFenceMeta(meta: string): FenceMeta {
 	const title = [];
 	for (const token of tokens) {
 		if (token === 'wrap') wrap = true;
+		else if (token === 'nowrap') nowrap = true;
 		else if (token === 'expandable') expandable = true;
 		else if (token.startsWith('icon="') && token.endsWith('"')) icon = token.slice(6, -1);
 		else if (token.startsWith('highlight=')) addLines(highlight, token.slice('highlight='.length));
@@ -32,7 +35,7 @@ export function parseFenceMeta(meta: string): FenceMeta {
 		else if (/^\{[\d,\-]+\}$/.test(token)) addLines(highlight, token);
 		else title.push(token);
 	}
-	return { title: title.join(' '), wrap, expandable, icon, highlight, focus };
+	return { title: title.join(' '), wrap, nowrap, expandable, icon, highlight, focus };
 }
 
 /** `2`, `{2,4-6}`, or `2,4-6`. */
@@ -68,6 +71,7 @@ export function fenceMetaTransformer(): ShikiTransformer {
 			if (parsed.title) properties['data-title'] = parsed.title;
 			else if (this.options.lang) properties['data-language'] = this.options.lang;
 			if (parsed.wrap) properties['data-wrap'] = '';
+			if (parsed.nowrap) properties['data-nowrap'] = '';
 			if (parsed.expandable) properties['data-expandable'] = '';
 			if (parsed.icon) properties['data-icon'] = parsed.icon;
 			if (parsed.focus.size) properties['data-focus'] = '';
