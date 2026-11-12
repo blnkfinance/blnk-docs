@@ -1,10 +1,12 @@
 <script>
 	import copyRaw from '../../icons/line/copy-2.svg?raw';
 	import checkRaw from '../../icons/line/check.svg?raw';
+	import expandRaw from '../../icons/line/fullscreen.svg?raw';
 	import { prepareSvg } from '../../icons/prepare';
 
 	const copyIcon = prepareSvg(copyRaw, 16);
 	const copiedIcon = prepareSvg(checkRaw, 16);
+	const expandIcon = prepareSvg(expandRaw, 16);
 
 	function codeLabel(pre: HTMLElement) {
 		return pre.dataset.title || pre.dataset.language || 'Code';
@@ -40,7 +42,7 @@
 
 	function addCopy(pre: HTMLElement) {
 		if (pre.closest('.example')) return;
-		if (pre.querySelector('.code-copy')) return;
+		if (pre.querySelector('.code-copy') || titleActions(pre)?.querySelector('.code-copy')) return;
 		const button = document.createElement('button');
 		button.type = 'button';
 		button.className = 'code-copy';
@@ -58,7 +60,74 @@
 				button.innerHTML = copyIcon;
 			}, 2000);
 		});
-		pre.append(button);
+		const actions = titleActions(pre);
+		if (actions) actions.append(button);
+		else pre.append(button);
+	}
+
+	/** Wide output (`nowrap`) keeps its buttons in the title bar, so they never sit on top of the table. */
+	function titleActions(pre: HTMLElement) {
+		if (!pre.hasAttribute('data-nowrap')) return null;
+		const title = pre.closest('.code-frame')?.querySelector(':scope > .code-title');
+		if (!(title instanceof HTMLElement)) return null;
+		let actions = title.querySelector(':scope > .code-actions');
+		if (!actions) {
+			actions = document.createElement('div');
+			actions.className = 'code-actions';
+			title.append(actions);
+		}
+		return actions as HTMLElement;
+	}
+
+	function codeLightbox() {
+		let dialog = document.querySelector<HTMLDialogElement>('dialog.code-lightbox');
+		if (dialog) return dialog;
+		dialog = document.createElement('dialog');
+		dialog.className = 'code-lightbox';
+		dialog.innerHTML =
+			'<div class="code-lightbox-bar"><span class="code-lightbox-title"></span>' +
+			'<button class="code-lightbox-close" type="button" aria-label="Close">&times;</button></div>' +
+			'<div class="code-lightbox-body"></div>';
+		dialog.querySelector('.code-lightbox-close')?.addEventListener('click', () => dialog?.close());
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) dialog?.close();
+		});
+		dialog.addEventListener('close', () => {
+			const body = dialog?.querySelector('.code-lightbox-body');
+			if (body) body.textContent = '';
+		});
+		document.body.append(dialog);
+		return dialog;
+	}
+
+	function addExpand(pre: HTMLElement) {
+		const actions = titleActions(pre);
+		if (!actions || actions.querySelector('.code-open')) return;
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'code-open';
+		button.setAttribute('aria-label', 'Expand to full width');
+		button.setAttribute('aria-haspopup', 'dialog');
+		button.innerHTML = `${expandIcon}<span>Expand</span>`;
+		button.addEventListener('click', () => {
+			const dialog = codeLightbox();
+			const title = dialog.querySelector('.code-lightbox-title');
+			const body = dialog.querySelector('.code-lightbox-body');
+			if (!title || !body) return;
+			title.textContent = codeLabel(pre);
+			const copy = pre.cloneNode(true) as HTMLElement;
+			copy.querySelectorAll('button').forEach((node) => node.remove());
+			copy.classList.remove('is-collapsed');
+			copy.removeAttribute('style');
+			body.replaceChildren(copy);
+			dialog.showModal();
+		});
+		actions.prepend(button);
+		const sync = () => {
+			button.hidden = pre.scrollWidth <= pre.clientWidth + 1;
+		};
+		sync();
+		if ('ResizeObserver' in window) new ResizeObserver(sync).observe(pre);
 	}
 
 	const collapsedLines = 12;
@@ -77,6 +146,8 @@
 
 	function collapse(pre: HTMLElement, isHidden: () => boolean = () => collapsed(pre)) {
 		if (pre.dataset.collapsed || lineCount(pre) <= collapsedLines) return;
+		// Terminal tables read as one unit; folding them cuts a row in half.
+		if (pre.hasAttribute('data-nowrap')) return;
 		pre.dataset.collapsed = 'true';
 		pre.classList.add('is-collapsed');
 		const button = document.createElement('button');
@@ -299,6 +370,10 @@
 
 		document.querySelectorAll('.article pre').forEach((pre) => {
 			if (pre instanceof HTMLElement) addCopy(pre);
+		});
+
+		document.querySelectorAll('.article pre[data-nowrap]').forEach((pre) => {
+			if (pre instanceof HTMLElement) addExpand(pre);
 		});
 	}
 
