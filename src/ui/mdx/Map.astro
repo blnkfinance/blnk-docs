@@ -26,6 +26,7 @@ const allowed = url != null && url.protocol === 'https:' && hosts.has(url.hostna
 				<iframe
 					src={url.toString()}
 					title={title}
+					data-blnk-map
 					loading="lazy"
 					referrerpolicy="no-referrer"
 				/>
@@ -37,3 +38,36 @@ const allowed = url != null && url.protocol === 'https:' && hosts.has(url.hostna
 		</div>
 	)
 }
+
+<script>
+	// Keep embedded maps on the same theme as the docs. The map announces itself
+	// with `blnk-map:ready` and switches when it receives `blnk-map:theme`.
+	// '*' is deliberate: short links redirect to another origin, and the theme
+	// name is not sensitive.
+	const THEME = 'blnk-map:theme';
+	const READY = 'blnk-map:ready';
+
+	const appearance = () =>
+		document.documentElement.dataset.appearance === 'light' ? 'light' : 'dark';
+	const frames = () => document.querySelectorAll<HTMLIFrameElement>('iframe[data-blnk-map]');
+	const send = (frame: HTMLIFrameElement) =>
+		frame.contentWindow?.postMessage({ type: THEME, theme: appearance() }, '*');
+	const sendAll = () => frames().forEach(send);
+
+	window.addEventListener('message', (event) => {
+		if (event.data?.type !== READY) return;
+		for (const frame of frames()) if (frame.contentWindow === event.source) send(frame);
+	});
+
+	const watchLoads = () =>
+		frames().forEach((frame) => frame.addEventListener('load', () => send(frame)));
+
+	new MutationObserver(sendAll).observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ['data-appearance'],
+	});
+	document.addEventListener('astro:page-load', () => {
+		watchLoads();
+		sendAll();
+	});
+</script>
