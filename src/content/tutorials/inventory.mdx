@@ -18,17 +18,17 @@ This tutorial shows how to implement that with Blnk.
 
     Bob orders 2 phones. They move from available to sold, then to in transit, then to delivered.
 
-    We hold all three transactions as [inflight](/transactions/inflight/create-inflight) when Bob checks out, so no one else can buy his 2 phones. We commit each one when it happens.
+    We hold the sale as [inflight](/transactions/inflight/create-inflight) when Bob checks out, so no one else can buy his 2 phones, and commit it when he pays. We record the pickup and the delivery when each one happens.
 
     <TutorialFrame plain>
-      <Map src="https://map.blnkfinance.xyz/OSO5ZXHolx" title="Alice's inventory" />
+      <Map src="https://map.blnkfinance.xyz/bU0dXBFEfd" title="Alice's inventory" />
     </TutorialFrame>
   </TutorialStep>
 
   <TutorialStep title="Create the ledgers">
     Before we start recording transactions, we need to set up our [ledgers](/ledgers/introduction) to track Alice's stock. We create one ledger for each stage: available, sold, in transit, and delivered.
 
-    Each ledger holds that stage for every product Alice sells. Reading the available ledger then tells her how many units she can still sell, across all her products.
+    Each ledger holds that stage for every product Alice sells. Listing the balances in the available ledger then shows how many of each product she can still sell.
 
     Create the four ledgers:
 
@@ -197,6 +197,8 @@ ApiResponse<JsonNode> delivered = blnk.ledgers().create(
     An [identity](/identities/introduction) is how we record the iPhone. We'll link its four balances to it, one per stage, so we can see where every unit is.
 
     Blnk has two identity types, individual and organization. We use organization for the phone and pass its name and category.
+
+    One identity is one seller's stock of one SKU. If another seller lists the same phone, they get their own identity.
 
     Anything else we want to keep goes in [metadata](/search/metadata). We'll store the phone's SKU (stock keeping unit) there as `sku`, so we can find every transaction for this phone later. We'll also store `item_code` for the iPhone 16 family and `seller_id` for Alice.
 
@@ -521,7 +523,7 @@ ApiResponse<JsonNode> delivered = blnk.ledgerBalances().create(
     After the transaction, `@StockIntake` shows -30, one for each phone Alice received.
 
     <Note>
-      To make sure the receipt applies, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@StockIntake` is created with a 0 balance, and Blnk would reject the record because the source has insufficient units.
+      For this transaction to go through, we need to turn on [overdraft](/transactions/overdrafts). Without it, `@StockIntake` is created with a 0 balance, and Blnk would reject the record because the source has insufficient units.
     </Note>
 
     Receive the stock:
@@ -642,259 +644,110 @@ ApiResponse<JsonNode> response = blnk.transactions().create(
     </TutorialFrame>
   </TutorialStep>
 
-  <TutorialStep title="Hold the order">
-    Bob places an order for 2 phones. We record it as three transactions in one [bulk](/transactions/bulk-transactions) request: the sale, the pickup, and the delivery.
+  <TutorialStep title="Hold the sale">
+    Bob checks out with 2 phones. We record the sale from Alice's available balance to her sold balance as [inflight](/transactions/inflight/create-inflight), so his 2 phones are reserved and no one else can buy them.
 
-    `inflight` holds each transaction until we commit it. Bob's 2 phones are reserved now, so no one else can buy them.
-
-    `atomic` records all three transactions or none. If Alice has fewer than 2 phones available, the whole order fails instead of being half recorded.
-
-    `skip_queue` records the transactions straight away instead of queueing them. Each reference starts with Bob's order ID, `ord_4412`, which is how we find them in the next step.
-
-    <Note>
-      Alice's sold and in-transit balances are still 0 when we hold the order, so the pickup and delivery transactions turn on [overdraft](/transactions/overdrafts). The sale transaction doesn't, so her available balance can never go below 0.
-    </Note>
+    Each transaction's reference starts with Bob's order ID, `ord_4412`, and the SKU goes in metadata. `skip_queue` records the hold straight away, so we can commit it in the next step.
 
     <Tip>
-      If Bob's order is wrong, for example 3 phones instead of 2, [void](/transactions/inflight/void-inflight) it with its `batch_id` before any transaction is committed. The 2 phones go back to Alice's available balance, and you record the order again with new references.
+      If Bob's payment fails or he cancels, [void](/transactions/inflight/void-inflight) the hold, and the 2 phones go back to Alice's available balance. Set `inflight_expiry_date` as well, so an abandoned checkout releases the phones on its own.
     </Tip>
 
-    Hold the order:
+    Hold the sale:
 
 <TutorialCode>
 <CodeGroup>
 
 ```bash cURL wrap
-curl -X POST "{{CORE_URL}}/transactions/bulk" \
+curl -X POST "{{CORE_URL}}/transactions" \
   -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
   -H "Content-Type: application/json" \
   -d '{
-    "atomic": true,
+    "precise_amount": 2,
+    "precision": 1,
+    "reference": "ord_4412_sold",
+    "description": "Checkout paid",
+    "currency": "UNIT",
+    "source": "{{sale_source}}",
+    "destination": "{{sale_destination}}",
     "inflight": true,
     "skip_queue": true,
-    "transactions": [
-      {
-        "precise_amount": 2,
-        "precision": 1,
-        "reference": "ord_4412_sold",
-        "description": "Checkout paid",
-        "currency": "UNIT",
-        "source": "{{sold_source}}",
-        "destination": "{{sold_destination}}",
-        "meta_data": {
-          "order_id": "ord_4412",
-          "sku": "IP16-BLK-128"
-        }
-      },
-      {
-        "precise_amount": 2,
-        "precision": 1,
-        "reference": "ord_4412_in_transit",
-        "description": "Picked up for delivery",
-        "currency": "UNIT",
-        "source": "{{transit_source}}",
-        "destination": "{{transit_destination}}",
-        "allow_overdraft": true,
-        "meta_data": {
-          "order_id": "ord_4412",
-          "sku": "IP16-BLK-128"
-        }
-      },
-      {
-        "precise_amount": 2,
-        "precision": 1,
-        "reference": "ord_4412_delivered",
-        "description": "Customer confirmed delivery",
-        "currency": "UNIT",
-        "source": "{{delivered_source}}",
-        "destination": "{{delivered_destination}}",
-        "allow_overdraft": true,
-        "meta_data": {
-          "order_id": "ord_4412",
-          "sku": "IP16-BLK-128"
-        }
-      }
-    ]
+    "meta_data": {
+      "order_id": "ord_4412",
+      "sku": "IP16-BLK-128"
+    }
   }'
 ```
 
 ```typescript TypeScript wrap
-const meta_data = { order_id: 'ord_4412', sku: 'IP16-BLK-128' };
-
-const response = await blnk.Transactions.createBulk({
-  atomic: true,
+const response = await blnk.Transactions.create({
+  precise_amount: 2,
+  precision: 1,
+  reference: 'ord_4412_sold',
+  description: 'Checkout paid',
+  currency: 'UNIT',
+  source: '{{sale_source}}',
+  destination: '{{sale_destination}}',
   inflight: true,
   skip_queue: true,
-  transactions: [
-    {
-      precise_amount: 2,
-      precision: 1,
-      reference: 'ord_4412_sold',
-      description: 'Checkout paid',
-      currency: 'UNIT',
-      source: '{{sold_source}}',
-      destination: '{{sold_destination}}',
-      meta_data,
-    },
-    {
-      precise_amount: 2,
-      precision: 1,
-      reference: 'ord_4412_in_transit',
-      description: 'Picked up for delivery',
-      currency: 'UNIT',
-      source: '{{transit_source}}',
-      destination: '{{transit_destination}}',
-      allow_overdraft: true,
-      meta_data,
-    },
-    {
-      precise_amount: 2,
-      precision: 1,
-      reference: 'ord_4412_delivered',
-      description: 'Customer confirmed delivery',
-      currency: 'UNIT',
-      source: '{{delivered_source}}',
-      destination: '{{delivered_destination}}',
-      allow_overdraft: true,
-      meta_data,
-    },
-  ],
+  meta_data: {
+    order_id: 'ord_4412',
+    sku: 'IP16-BLK-128',
+  },
 });
 ```
 
 ```go Go wrap
-metaData := blnkgo.MetaData{"order_id": "ord_4412", "sku": "IP16-BLK-128"}
-
-batch, _, _ := client.Transaction.CreateBulk(blnkgo.CreateBulkTransactionRequest{
-    Atomic: true,
-    Inflight: true,
-    SkipQueue: true,
-    Transactions: []blnkgo.CreateTransactionRequest{
-        {
-            ParentTransaction: blnkgo.ParentTransaction{
-                PreciseAmount: big.NewInt(2),
-                Precision: 1,
-                Reference: "ord_4412_sold",
-                Description: "Checkout paid",
-                Currency: "UNIT",
-                Source: "{{sold_source}}",
-                Destination: "{{sold_destination}}",
-                MetaData: metaData,
-            },
-        },
-        {
-            ParentTransaction: blnkgo.ParentTransaction{
-                PreciseAmount: big.NewInt(2),
-                Precision: 1,
-                Reference: "ord_4412_in_transit",
-                Description: "Picked up for delivery",
-                Currency: "UNIT",
-                Source: "{{transit_source}}",
-                Destination: "{{transit_destination}}",
-                MetaData: metaData,
-            },
-            AllowOverdraft: true,
-        },
-        {
-            ParentTransaction: blnkgo.ParentTransaction{
-                PreciseAmount: big.NewInt(2),
-                Precision: 1,
-                Reference: "ord_4412_delivered",
-                Description: "Customer confirmed delivery",
-                Currency: "UNIT",
-                Source: "{{delivered_source}}",
-                Destination: "{{delivered_destination}}",
-                MetaData: metaData,
-            },
-            AllowOverdraft: true,
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(2),
+        Precision: 1,
+        Reference: "ord_4412_sold",
+        Description: "Checkout paid",
+        Currency: "UNIT",
+        Source: "{{sale_source}}",
+        Destination: "{{sale_destination}}",
+        SkipQueue: true,
+        MetaData: blnkgo.MetaData{
+            "order_id": "ord_4412",
+            "sku": "IP16-BLK-128",
         },
     },
+    Inflight: true,
 })
 ```
 
 ```python Python wrap
-meta_data = {"order_id": "ord_4412", "sku": "IP16-BLK-128"}
-
-response = blnk.transactions.create_bulk({
-  "atomic": True,
+response = blnk.transactions.create({
+  "precise_amount": 2,
+  "precision": 1,
+  "reference": "ord_4412_sold",
+  "description": "Checkout paid",
+  "currency": "UNIT",
+  "source": "{{sale_source}}",
+  "destination": "{{sale_destination}}",
   "inflight": True,
   "skip_queue": True,
-  "transactions": [
-    {
-      "precise_amount": 2,
-      "precision": 1,
-      "reference": "ord_4412_sold",
-      "description": "Checkout paid",
-      "currency": "UNIT",
-      "source": "{{sold_source}}",
-      "destination": "{{sold_destination}}",
-      "meta_data": meta_data,
-    },
-    {
-      "precise_amount": 2,
-      "precision": 1,
-      "reference": "ord_4412_in_transit",
-      "description": "Picked up for delivery",
-      "currency": "UNIT",
-      "source": "{{transit_source}}",
-      "destination": "{{transit_destination}}",
-      "allow_overdraft": True,
-      "meta_data": meta_data,
-    },
-    {
-      "precise_amount": 2,
-      "precision": 1,
-      "reference": "ord_4412_delivered",
-      "description": "Customer confirmed delivery",
-      "currency": "UNIT",
-      "source": "{{delivered_source}}",
-      "destination": "{{delivered_destination}}",
-      "allow_overdraft": True,
-      "meta_data": meta_data,
-    },
-  ],
+  "meta_data": {
+    "order_id": "ord_4412",
+    "sku": "IP16-BLK-128",
+  },
 })
 ```
 
 ```java Java wrap
-Map<String, Object> metaData = Map.of("order_id", "ord_4412", "sku", "IP16-BLK-128");
-
-ApiResponse<JsonNode> response = blnk.transactions().createBulk(
-    BulkTransactions.create()
-        .atomic(true)
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(2)
+        .precision(1)
+        .reference("ord_4412_sold")
+        .description("Checkout paid")
+        .currency("UNIT")
+        .source("{{sale_source}}")
+        .destination("{{sale_destination}}")
         .inflight(true)
         .skipQueue(true)
-        .transactions(List.of(
-            CreateTransactions.create()
-                .preciseAmount(2)
-                .precision(1)
-                .reference("ord_4412_sold")
-                .description("Checkout paid")
-                .currency("UNIT")
-                .source("{{sold_source}}")
-                .destination("{{sold_destination}}")
-                .metaData(metaData),
-            CreateTransactions.create()
-                .preciseAmount(2)
-                .precision(1)
-                .reference("ord_4412_in_transit")
-                .description("Picked up for delivery")
-                .currency("UNIT")
-                .source("{{transit_source}}")
-                .destination("{{transit_destination}}")
-                .allowOverdraft(true)
-                .metaData(metaData),
-            CreateTransactions.create()
-                .preciseAmount(2)
-                .precision(1)
-                .reference("ord_4412_delivered")
-                .description("Customer confirmed delivery")
-                .currency("UNIT")
-                .source("{{delivered_source}}")
-                .destination("{{delivered_destination}}")
-                .allowOverdraft(true)
-                .metaData(metaData)
-        )));
+        .metaData(Map.of("order_id", "ord_4412", "sku", "IP16-BLK-128")));
 ```
 
 </CodeGroup>
@@ -903,39 +756,18 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
     <TutorialFrame>
       <Tabs>
         <Tab title="Try it out">
-          <TutorialForm id="hold-order" method="POST" path="/transactions/bulk" save="batch_id">
-            <TutorialValue name="atomic" value="true" type="boolean" />
+          <TutorialForm id="hold-sale" method="POST" path="/transactions" save="sale_transaction_id" response="transaction_id">
+            <TutorialValue name="sale_amount" as="precise_amount" value="2" type="number" />
+            <TutorialValue name="sale_precision" as="precision" value="1" type="number" />
+            <TutorialValue name="sale_reference" as="reference" value="ord_4412_sold" />
+            <TutorialValue name="sale_description" as="description" value="Checkout paid" />
+            <TutorialValue name="sale_currency" as="currency" value="UNIT" />
             <TutorialValue name="inflight" value="true" type="boolean" />
-            <TutorialValue name="skip_queue" value="true" type="boolean" />
-            <TutorialValue name="sold_amount" as="precise_amount" value="2" type="number" list="transactions" index="0" />
-            <TutorialValue name="sold_precision" as="precision" value="1" type="number" list="transactions" index="0" />
-            <TutorialValue name="sold_reference" as="reference" value="ord_4412_sold" list="transactions" index="0" />
-            <TutorialValue name="sold_description" as="description" value="Checkout paid" list="transactions" index="0" />
-            <TutorialValue name="sold_currency" as="currency" value="UNIT" list="transactions" index="0" />
-            <TutorialValue name="sold_order" as="order_id" value="ord_4412" group="meta_data" list="transactions" index="0" />
-            <TutorialValue name="sold_sku" as="sku" value="IP16-BLK-128" group="meta_data" list="transactions" index="0" />
-            <TutorialInput name="sold_source" as="source" label="Sale: from available" from="available_balance_id" list="transactions" index="0" />
-            <TutorialInput name="sold_destination" as="destination" label="Sale: to sold" from="sold_balance_id" list="transactions" index="0" />
-            <TutorialValue name="transit_amount" as="precise_amount" value="2" type="number" list="transactions" index="1" />
-            <TutorialValue name="transit_precision" as="precision" value="1" type="number" list="transactions" index="1" />
-            <TutorialValue name="transit_reference" as="reference" value="ord_4412_in_transit" list="transactions" index="1" />
-            <TutorialValue name="transit_description" as="description" value="Picked up for delivery" list="transactions" index="1" />
-            <TutorialValue name="transit_currency" as="currency" value="UNIT" list="transactions" index="1" />
-            <TutorialValue name="transit_overdraft" as="allow_overdraft" value="true" type="boolean" list="transactions" index="1" />
-            <TutorialValue name="transit_order" as="order_id" value="ord_4412" group="meta_data" list="transactions" index="1" />
-            <TutorialValue name="transit_sku" as="sku" value="IP16-BLK-128" group="meta_data" list="transactions" index="1" />
-            <TutorialInput name="transit_source" as="source" label="Pickup: from sold" from="sold_balance_id" list="transactions" index="1" />
-            <TutorialInput name="transit_destination" as="destination" label="Pickup: to in transit" from="in_transit_balance_id" list="transactions" index="1" />
-            <TutorialValue name="delivered_amount" as="precise_amount" value="2" type="number" list="transactions" index="2" />
-            <TutorialValue name="delivered_precision" as="precision" value="1" type="number" list="transactions" index="2" />
-            <TutorialValue name="delivered_reference" as="reference" value="ord_4412_delivered" list="transactions" index="2" />
-            <TutorialValue name="delivered_description" as="description" value="Customer confirmed delivery" list="transactions" index="2" />
-            <TutorialValue name="delivered_currency" as="currency" value="UNIT" list="transactions" index="2" />
-            <TutorialValue name="delivered_overdraft" as="allow_overdraft" value="true" type="boolean" list="transactions" index="2" />
-            <TutorialValue name="delivered_order" as="order_id" value="ord_4412" group="meta_data" list="transactions" index="2" />
-            <TutorialValue name="delivered_sku" as="sku" value="IP16-BLK-128" group="meta_data" list="transactions" index="2" />
-            <TutorialInput name="delivered_source" as="source" label="Delivery: from in transit" from="in_transit_balance_id" list="transactions" index="2" />
-            <TutorialInput name="delivered_destination" as="destination" label="Delivery: to delivered" from="delivered_balance_id" list="transactions" index="2" />
+            <TutorialValue name="sale_skip_queue" as="skip_queue" value="true" type="boolean" />
+            <TutorialValue name="sale_order" as="order_id" value="ord_4412" group="meta_data" />
+            <TutorialValue name="sale_sku" as="sku" value="IP16-BLK-128" group="meta_data" />
+            <TutorialInput name="sale_source" as="source" label="Source" from="available_balance_id" />
+            <TutorialInput name="sale_destination" as="destination" label="Destination" from="sold_balance_id" />
           </TutorialForm>
         </Tab>
         <Tab title="Response">
@@ -946,13 +778,17 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
   </TutorialStep>
 
   <TutorialStep title="Commit the sale">
-    Bob's payment goes through, so his 2 phones are sold. We find the sale transaction by its reference, `ord_4412_sold`, and [commit](/transactions/inflight/commit-inflight) it.
+    Bob's payment goes through, so we [commit](/transactions/inflight/commit-inflight) the hold. The 2 phones move from Alice's available balance to her sold balance.
 
-    The pickup and delivery transactions stay inflight. After the commit, Alice's available balance is 28 and her sold balance is 2.
+    After the commit, her available balance is 28 and her sold balance is 2.
 
     <Note>
       Blnk queues the commit, so the response can still show `INFLIGHT`. The balances update once the commit is processed.
     </Note>
+
+    <Tip>
+      A void only works before the commit. To undo a sale after it, record a new transaction from sold back to available.
+    </Tip>
 
     Commit the sale:
 
@@ -960,10 +796,7 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
 <CodeGroup>
 
 ```bash cURL wrap
-curl -X GET "{{CORE_URL}}/transactions/reference/ord_4412_sold" \
-  -H "X-blnk-key: {{CORE_SECRET_KEY}}"
-
-curl -X PUT "{{CORE_URL}}/transactions/inflight/{{sold_transaction_id}}" \
+curl -X PUT "{{CORE_URL}}/transactions/inflight/{{sale_transaction_id}}" \
   -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -972,10 +805,8 @@ curl -X PUT "{{CORE_URL}}/transactions/inflight/{{sold_transaction_id}}" \
 ```
 
 ```typescript TypeScript wrap
-const transaction = await blnk.Transactions.getByReference('ord_4412_sold');
-
 const response = await blnk.Transactions.updateStatus(
-  transaction.data.transaction_id,
+  '{{sale_transaction_id}}',
   {
     status: 'commit',
   },
@@ -983,10 +814,8 @@ const response = await blnk.Transactions.updateStatus(
 ```
 
 ```go Go wrap
-transaction, _, _ := client.Transaction.GetByReference("ord_4412_sold")
-
-committed, _, _ := client.Transaction.Update(
-    transaction.TransactionID,
+transaction, _, _ := client.Transaction.Update(
+    "{{sale_transaction_id}}",
     blnkgo.UpdateStatus{
         Status: blnkgo.InflightStatusCommit,
     },
@@ -994,10 +823,8 @@ committed, _, _ := client.Transaction.Update(
 ```
 
 ```python Python wrap
-transaction = blnk.transactions.get_by_reference("ord_4412_sold")
-
 response = blnk.transactions.update_status(
-  transaction.data["transaction_id"],
+  "{{sale_transaction_id}}",
   {
     "status": "commit",
   },
@@ -1005,10 +832,8 @@ response = blnk.transactions.update_status(
 ```
 
 ```java Java wrap
-ApiResponse<JsonNode> transaction = blnk.transactions().getByReference("ord_4412_sold");
-
 ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
-    transaction.data().get("transaction_id").asText(),
+    "{{sale_transaction_id}}",
     UpdateTransactionStatus.create()
         .status("commit"));
 ```
@@ -1018,23 +843,10 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
 
     <TutorialFrame>
       <Tabs>
-        <Tab title="Find the transaction">
-          <TutorialForm id="find-sold-leg" method="GET" path="/transactions/reference/{reference}" save="sold_transaction_id" response="transaction_id">
-            <TutorialValue name="reference" value="ord_4412_sold" />
-          </TutorialForm>
-        </Tab>
-        <Tab title="Response">
-          <TutorialResponse />
-        </Tab>
-      </Tabs>
-    </TutorialFrame>
-
-    <TutorialFrame>
-      <Tabs>
-        <Tab title="Commit">
-          <TutorialForm id="commit-sold-leg" method="PUT" path="/transactions/inflight/{sold_transaction_id}">
+        <Tab title="Try it out">
+          <TutorialForm id="commit-sale" method="PUT" path="/transactions/inflight/{sale_transaction_id}">
             <TutorialValue name="status" value="commit" />
-            <TutorialInput name="sold_transaction_id" label="Transaction" from="sold_transaction_id" />
+            <TutorialInput name="sale_transaction_id" label="Transaction" from="sale_transaction_id" />
           </TutorialForm>
         </Tab>
         <Tab title="Response">
@@ -1044,68 +856,101 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
     </TutorialFrame>
   </TutorialStep>
 
-  <TutorialStep title="Commit the pickup">
-    The courier picks up Bob's phones. We find the pickup transaction by its reference, `ord_4412_in_transit`, and commit it the same way.
+  <TutorialStep title="Record the pickup">
+    The courier picks up Bob's phones. We record a transaction from Alice's sold balance to her in-transit balance.
 
-    After the commit, Alice's sold balance is back to 0 and her in-transit balance is 2. Sold only holds phones that are paid for and waiting for pickup.
+    This one is not inflight, because the pickup has already happened. After it, her sold balance is back to 0 and her in-transit balance is 2.
 
-    Commit the pickup:
+    Record the pickup:
 
 <TutorialCode>
 <CodeGroup>
 
 ```bash cURL wrap
-curl -X GET "{{CORE_URL}}/transactions/reference/ord_4412_in_transit" \
-  -H "X-blnk-key: {{CORE_SECRET_KEY}}"
-
-curl -X PUT "{{CORE_URL}}/transactions/inflight/{{transit_transaction_id}}" \
+curl -X POST "{{CORE_URL}}/transactions" \
   -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
   -H "Content-Type: application/json" \
   -d '{
-    "status": "commit"
+    "precise_amount": 2,
+    "precision": 1,
+    "reference": "ord_4412_in_transit",
+    "description": "Picked up for delivery",
+    "currency": "UNIT",
+    "source": "{{pickup_source}}",
+    "destination": "{{pickup_destination}}",
+    "skip_queue": true,
+    "meta_data": {
+      "order_id": "ord_4412",
+      "sku": "IP16-BLK-128"
+    }
   }'
 ```
 
 ```typescript TypeScript wrap
-const transaction = await blnk.Transactions.getByReference('ord_4412_in_transit');
-
-const response = await blnk.Transactions.updateStatus(
-  transaction.data.transaction_id,
-  {
-    status: 'commit',
+const response = await blnk.Transactions.create({
+  precise_amount: 2,
+  precision: 1,
+  reference: 'ord_4412_in_transit',
+  description: 'Picked up for delivery',
+  currency: 'UNIT',
+  source: '{{pickup_source}}',
+  destination: '{{pickup_destination}}',
+  skip_queue: true,
+  meta_data: {
+    order_id: 'ord_4412',
+    sku: 'IP16-BLK-128',
   },
-);
+});
 ```
 
 ```go Go wrap
-transaction, _, _ := client.Transaction.GetByReference("ord_4412_in_transit")
-
-committed, _, _ := client.Transaction.Update(
-    transaction.TransactionID,
-    blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusCommit,
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(2),
+        Precision: 1,
+        Reference: "ord_4412_in_transit",
+        Description: "Picked up for delivery",
+        Currency: "UNIT",
+        Source: "{{pickup_source}}",
+        Destination: "{{pickup_destination}}",
+        SkipQueue: true,
+        MetaData: blnkgo.MetaData{
+            "order_id": "ord_4412",
+            "sku": "IP16-BLK-128",
+        },
     },
-)
+})
 ```
 
 ```python Python wrap
-transaction = blnk.transactions.get_by_reference("ord_4412_in_transit")
-
-response = blnk.transactions.update_status(
-  transaction.data["transaction_id"],
-  {
-    "status": "commit",
+response = blnk.transactions.create({
+  "precise_amount": 2,
+  "precision": 1,
+  "reference": "ord_4412_in_transit",
+  "description": "Picked up for delivery",
+  "currency": "UNIT",
+  "source": "{{pickup_source}}",
+  "destination": "{{pickup_destination}}",
+  "skip_queue": True,
+  "meta_data": {
+    "order_id": "ord_4412",
+    "sku": "IP16-BLK-128",
   },
-)
+})
 ```
 
 ```java Java wrap
-ApiResponse<JsonNode> transaction = blnk.transactions().getByReference("ord_4412_in_transit");
-
-ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
-    transaction.data().get("transaction_id").asText(),
-    UpdateTransactionStatus.create()
-        .status("commit"));
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(2)
+        .precision(1)
+        .reference("ord_4412_in_transit")
+        .description("Picked up for delivery")
+        .currency("UNIT")
+        .source("{{pickup_source}}")
+        .destination("{{pickup_destination}}")
+        .skipQueue(true)
+        .metaData(Map.of("order_id", "ord_4412", "sku", "IP16-BLK-128")));
 ```
 
 </CodeGroup>
@@ -1113,23 +958,18 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
 
     <TutorialFrame>
       <Tabs>
-        <Tab title="Find the transaction">
-          <TutorialForm id="find-transit-leg" method="GET" path="/transactions/reference/{reference}" save="transit_transaction_id" response="transaction_id">
-            <TutorialValue name="reference" value="ord_4412_in_transit" />
-          </TutorialForm>
-        </Tab>
-        <Tab title="Response">
-          <TutorialResponse />
-        </Tab>
-      </Tabs>
-    </TutorialFrame>
-
-    <TutorialFrame>
-      <Tabs>
-        <Tab title="Commit">
-          <TutorialForm id="commit-transit-leg" method="PUT" path="/transactions/inflight/{transit_transaction_id}">
-            <TutorialValue name="status" value="commit" />
-            <TutorialInput name="transit_transaction_id" label="Transaction" from="transit_transaction_id" />
+        <Tab title="Try it out">
+          <TutorialForm id="record-pickup" method="POST" path="/transactions">
+            <TutorialValue name="pickup_amount" as="precise_amount" value="2" type="number" />
+            <TutorialValue name="pickup_precision" as="precision" value="1" type="number" />
+            <TutorialValue name="pickup_reference" as="reference" value="ord_4412_in_transit" />
+            <TutorialValue name="pickup_description" as="description" value="Picked up for delivery" />
+            <TutorialValue name="pickup_currency" as="currency" value="UNIT" />
+            <TutorialValue name="pickup_skip_queue" as="skip_queue" value="true" type="boolean" />
+            <TutorialValue name="pickup_order" as="order_id" value="ord_4412" group="meta_data" />
+            <TutorialValue name="pickup_sku" as="sku" value="IP16-BLK-128" group="meta_data" />
+            <TutorialInput name="pickup_source" as="source" label="Source" from="sold_balance_id" />
+            <TutorialInput name="pickup_destination" as="destination" label="Destination" from="in_transit_balance_id" />
           </TutorialForm>
         </Tab>
         <Tab title="Response">
@@ -1139,68 +979,101 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
     </TutorialFrame>
   </TutorialStep>
 
-  <TutorialStep title="Commit the delivery">
-    Bob receives his phones. We find the delivery transaction by its reference, `ord_4412_delivered`, and commit it.
+  <TutorialStep title="Record the delivery">
+    Bob receives his phones. We record a transaction from Alice's in-transit balance to her delivered balance.
 
-    After the commit, Alice's in-transit balance is back to 0 and her delivered balance is 2.
+    After it, her in-transit balance is back to 0 and her delivered balance is 2.
 
-    Commit the delivery:
+    Record the delivery:
 
 <TutorialCode>
 <CodeGroup>
 
 ```bash cURL wrap
-curl -X GET "{{CORE_URL}}/transactions/reference/ord_4412_delivered" \
-  -H "X-blnk-key: {{CORE_SECRET_KEY}}"
-
-curl -X PUT "{{CORE_URL}}/transactions/inflight/{{delivered_transaction_id}}" \
+curl -X POST "{{CORE_URL}}/transactions" \
   -H "X-blnk-key: {{CORE_SECRET_KEY}}" \
   -H "Content-Type: application/json" \
   -d '{
-    "status": "commit"
+    "precise_amount": 2,
+    "precision": 1,
+    "reference": "ord_4412_delivered",
+    "description": "Customer confirmed delivery",
+    "currency": "UNIT",
+    "source": "{{delivery_source}}",
+    "destination": "{{delivery_destination}}",
+    "skip_queue": true,
+    "meta_data": {
+      "order_id": "ord_4412",
+      "sku": "IP16-BLK-128"
+    }
   }'
 ```
 
 ```typescript TypeScript wrap
-const transaction = await blnk.Transactions.getByReference('ord_4412_delivered');
-
-const response = await blnk.Transactions.updateStatus(
-  transaction.data.transaction_id,
-  {
-    status: 'commit',
+const response = await blnk.Transactions.create({
+  precise_amount: 2,
+  precision: 1,
+  reference: 'ord_4412_delivered',
+  description: 'Customer confirmed delivery',
+  currency: 'UNIT',
+  source: '{{delivery_source}}',
+  destination: '{{delivery_destination}}',
+  skip_queue: true,
+  meta_data: {
+    order_id: 'ord_4412',
+    sku: 'IP16-BLK-128',
   },
-);
+});
 ```
 
 ```go Go wrap
-transaction, _, _ := client.Transaction.GetByReference("ord_4412_delivered")
-
-committed, _, _ := client.Transaction.Update(
-    transaction.TransactionID,
-    blnkgo.UpdateStatus{
-        Status: blnkgo.InflightStatusCommit,
+transaction, _, _ := client.Transaction.Create(blnkgo.CreateTransactionRequest{
+    ParentTransaction: blnkgo.ParentTransaction{
+        PreciseAmount: big.NewInt(2),
+        Precision: 1,
+        Reference: "ord_4412_delivered",
+        Description: "Customer confirmed delivery",
+        Currency: "UNIT",
+        Source: "{{delivery_source}}",
+        Destination: "{{delivery_destination}}",
+        SkipQueue: true,
+        MetaData: blnkgo.MetaData{
+            "order_id": "ord_4412",
+            "sku": "IP16-BLK-128",
+        },
     },
-)
+})
 ```
 
 ```python Python wrap
-transaction = blnk.transactions.get_by_reference("ord_4412_delivered")
-
-response = blnk.transactions.update_status(
-  transaction.data["transaction_id"],
-  {
-    "status": "commit",
+response = blnk.transactions.create({
+  "precise_amount": 2,
+  "precision": 1,
+  "reference": "ord_4412_delivered",
+  "description": "Customer confirmed delivery",
+  "currency": "UNIT",
+  "source": "{{delivery_source}}",
+  "destination": "{{delivery_destination}}",
+  "skip_queue": True,
+  "meta_data": {
+    "order_id": "ord_4412",
+    "sku": "IP16-BLK-128",
   },
-)
+})
 ```
 
 ```java Java wrap
-ApiResponse<JsonNode> transaction = blnk.transactions().getByReference("ord_4412_delivered");
-
-ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
-    transaction.data().get("transaction_id").asText(),
-    UpdateTransactionStatus.create()
-        .status("commit"));
+ApiResponse<JsonNode> response = blnk.transactions().create(
+    CreateTransactions.create()
+        .preciseAmount(2)
+        .precision(1)
+        .reference("ord_4412_delivered")
+        .description("Customer confirmed delivery")
+        .currency("UNIT")
+        .source("{{delivery_source}}")
+        .destination("{{delivery_destination}}")
+        .skipQueue(true)
+        .metaData(Map.of("order_id", "ord_4412", "sku", "IP16-BLK-128")));
 ```
 
 </CodeGroup>
@@ -1208,23 +1081,18 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
 
     <TutorialFrame>
       <Tabs>
-        <Tab title="Find the transaction">
-          <TutorialForm id="find-delivered-leg" method="GET" path="/transactions/reference/{reference}" save="delivered_transaction_id" response="transaction_id">
-            <TutorialValue name="reference" value="ord_4412_delivered" />
-          </TutorialForm>
-        </Tab>
-        <Tab title="Response">
-          <TutorialResponse />
-        </Tab>
-      </Tabs>
-    </TutorialFrame>
-
-    <TutorialFrame>
-      <Tabs>
-        <Tab title="Commit">
-          <TutorialForm id="commit-delivered-leg" method="PUT" path="/transactions/inflight/{delivered_transaction_id}">
-            <TutorialValue name="status" value="commit" />
-            <TutorialInput name="delivered_transaction_id" label="Transaction" from="delivered_transaction_id" />
+        <Tab title="Try it out">
+          <TutorialForm id="record-delivery" method="POST" path="/transactions">
+            <TutorialValue name="delivery_amount" as="precise_amount" value="2" type="number" />
+            <TutorialValue name="delivery_precision" as="precision" value="1" type="number" />
+            <TutorialValue name="delivery_reference" as="reference" value="ord_4412_delivered" />
+            <TutorialValue name="delivery_description" as="description" value="Customer confirmed delivery" />
+            <TutorialValue name="delivery_currency" as="currency" value="UNIT" />
+            <TutorialValue name="delivery_skip_queue" as="skip_queue" value="true" type="boolean" />
+            <TutorialValue name="delivery_order" as="order_id" value="ord_4412" group="meta_data" />
+            <TutorialValue name="delivery_sku" as="sku" value="IP16-BLK-128" group="meta_data" />
+            <TutorialInput name="delivery_source" as="source" label="Source" from="in_transit_balance_id" />
+            <TutorialInput name="delivery_destination" as="destination" label="Destination" from="delivered_balance_id" />
           </TutorialForm>
         </Tab>
         <Tab title="Response">
@@ -1237,9 +1105,13 @@ ApiResponse<JsonNode> response = blnk.transactions().updateStatus(
   <TutorialStep title="Read the phone's history">
     Every transaction for the phone has its SKU in metadata, so one [filter](/search/db/filtering) on `meta_data.sku` returns its whole history. We sort it by `created_at`, newest first.
 
-    The results show the 30 phones Alice received and the three transactions in Bob's order, which keep the status `INFLIGHT`. Each commit appears as its own `APPLIED` transaction, so you can see when every stage happened.
+    The results show the 30 phones Alice received, the sale hold with its commit, the pickup, and the delivery. If Alice asks why her count changed, this is the record you show her.
 
-    If Alice asks why her count changed, this is the record you show her.
+    The filter returns 20 results by default. Pass `limit` (up to 100) and `offset` to page through a longer history.
+
+    <Tip>
+      With more than one seller, the same SKU can belong to several identities. Add `seller_id` to each transaction's metadata and filter on both fields.
+    </Tip>
 
     Read the history:
 
