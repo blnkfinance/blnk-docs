@@ -1220,16 +1220,16 @@ ApiResponse<JsonNode> response = blnk.search().filter(
   <TutorialStep title="Read a past stock count">
     Alice may ask how many phones she had available at an earlier time. A [historical balance](/balances/historical-balances) returns her available balance as it was then, not as it is today.
 
-    Pass her available `balance_id` and a timestamp from your own run. A time after she received the phones and before Bob's order returns 30.
+    Pass her available `balance_id` and a timestamp from your own run, in RFC 3339 format. A time after the transaction in step 5 and before the hold in step 6 shows 30.
 
-    Any time after the order is held returns 28, because a historical balance counts held phones as already gone.
+    A time after the sale is held returns 28. The historical balance counts the 2 held phones from the moment of the hold, even though her live `balance` still shows 30 until the commit.
 
     Read the available balance at a past time:
 
 <CodeGroup>
 
 ```bash cURL wrap
-curl -X GET "{{CORE_URL}}/balances/{{available_balance_id}}/at?timestamp=2026-10-19T09:30:00Z" \
+curl -X GET "{{CORE_URL}}/balances/{{available_balance_id}}/at?timestamp={{timestamp}}" \
   -H "X-blnk-key: {{CORE_SECRET_KEY}}"
 ```
 
@@ -1237,13 +1237,13 @@ curl -X GET "{{CORE_URL}}/balances/{{available_balance_id}}/at?timestamp=2026-10
 const response = await blnk.LedgerBalances.getAt(
   '{{available_balance_id}}',
   {
-    timestamp: '2026-10-19T09:30:00Z',
+    timestamp: '{{timestamp}}',
   },
 );
 ```
 
 ```go Go wrap
-timestamp, _ := time.Parse(time.RFC3339, "2026-10-19T09:30:00Z")
+timestamp, _ := time.Parse(time.RFC3339, "{{timestamp}}")
 
 balance, _, _ := client.LedgerBalance.GetHistorical(
     "{{available_balance_id}}",
@@ -1256,7 +1256,7 @@ balance, _, _ := client.LedgerBalance.GetHistorical(
 response = blnk.ledger_balances.get_at(
   "{{available_balance_id}}",
   {
-    "timestamp": "2026-10-19T09:30:00Z",
+    "timestamp": "{{timestamp}}",
   },
 )
 ```
@@ -1265,7 +1265,7 @@ response = blnk.ledger_balances.get_at(
 ApiResponse<JsonNode> response = blnk.ledgerBalances().getAt(
     "{{available_balance_id}}",
     GetBalanceAtRequest.create()
-        .timestamp("2026-10-19T09:30:00Z"));
+        .timestamp("{{timestamp}}"));
 ```
 
 </CodeGroup>
