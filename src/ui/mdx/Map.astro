@@ -59,8 +59,14 @@ const allowed = url != null && url.protocol === 'https:' && hosts.has(url.hostna
 		for (const frame of frames()) if (frame.contentWindow === event.source) send(frame);
 	});
 
+	// Runs after every navigation. The marker keeps a frame that Astro carries
+	// across pages from collecting a second load listener.
 	const watchLoads = () =>
-		frames().forEach((frame) => frame.addEventListener('load', () => send(frame)));
+		frames().forEach((frame) => {
+			if (frame.dataset.blnkMapWatched != null) return;
+			frame.dataset.blnkMapWatched = '';
+			frame.addEventListener('load', () => send(frame));
+		});
 
 	new MutationObserver(sendAll).observe(document.documentElement, {
 		attributes: true,
