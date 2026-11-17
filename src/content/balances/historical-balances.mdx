@@ -142,7 +142,9 @@ When querying for a balance at a specific timestamp, Blnk follows these steps to
 
     <Warning>If no snapshot is found, Blnk builds the historical balance from genesis (using transactions only).</Warning>
 
-2. **Apply intervening transactions:** It then applies all transactions that occurred between the time of the snapshot and the requested timestamp. This reconstructs the balance state by accounting for any credits, debits, or other financial activities that took place during that period.
+2. **Apply intervening transactions:** It then adds the transactions the snapshot does not include and that are effective by the requested timestamp. It also removes transactions the snapshot includes but that take effect after the requested timestamp. Each transaction is counted once, at its `effective_date`, so backdated and future-dated transactions land at the right time.
+
+    From 0.15.9, each snapshot records the last transaction it includes. Snapshots taken before 0.15.9 do not have this record, so Blnk skips them and builds the balance from transactions, the same way `from_source=true` does. See the [0.15.9 migration guide](/migrations/core/v15-9-migration#balance-history).
 
 3. **Return the computed balance:** The final computed balance, reflecting the exact state at the requested timestamp, is returned in the response.
 

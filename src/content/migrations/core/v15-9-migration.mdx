@@ -1,0 +1,93 @@
+---
+title: "0.15.9 Migration Guide"
+sidebarTitle: "Migration to 0.15.9"
+description: "Review hook calls for rejected transactions, queued create errors, atomic bulk rollback, and two database migrations before you upgrade to Blnk v0.15.9."
+metaDescription: "Migration guide for upgrading to Blnk v0.15.9, covering post-transaction hooks for rejected transactions, queued create errors, atomic bulk rollback, monitor updates, split validation, and balance history."
+---
+
+This guide covers the changes you need to review when upgrading to Blnk v0.15.9.
+
+Most integrations can upgrade without code changes. Review this guide if you use `POST_TRANSACTION` hooks, create queued or bulk transactions, or read historical balances.
+
+## At a glance
+
+| Change | Who is affected? | What changed |
+| :-- | :-- | :-- |
+| Database migrations | Everyone | Two migrations run with `blnk migrate up`. |
+| Hooks for rejected transactions | Apps with `POST_TRANSACTION` hooks | Hooks now also run when a transaction is rejected. |
+| Queued create errors | Apps that create queued transactions | A used reference or unknown balance now returns an error instead of `201`. |
+| Atomic bulk rollback | Apps that send atomic bulk requests | Queued atomic batches now roll back when an item fails. |
+| Monitor updates | Apps that update balance monitors | A PUT changes only the fields you send. |
+| Negative split distributions | Apps that send split transactions | A negative distribution is rejected. |
+| Balance history | Apps that read historical balances | Backdated transactions are now counted correctly. |
+
+## Database migrations
+
+0.15.9 adds a column that balance history uses, and drops four database triggers that Blnk no longer uses.
+
+**What to do:** Run `blnk migrate up` before you start 0.15.9. If it stops on a lock timeout, run it again once long-running queries finish.
+
+## Hooks for rejected transactions
+
+From 0.15.9, a rejected transaction calls your `POST_TRANSACTION` hooks. `data.status` is `REJECTED`, and `data.meta_data.blnk_rejection_reason` says why.
+
+```json Rejected transaction hook (shortened) {5,7} wrap
+{
+  "transaction_id": "txn_aa13b549-c278-47ee-87d7-2e2cfcad99ce",
+  "hook_type": "POST_TRANSACTION",
+  "data": {
+    "status": "REJECTED",
+    "meta_data": {
+      "blnk_rejection_reason": "failed to apply transaction to balances: insufficient funds in source balance"
+    }
+  }
+}
+```
+
+**What to do:** Check `data.status` before your hook acts on the call. See [Transaction hooks](/webhooks/transaction-hooks).
+
+## Queued create errors
+
+Blnk now saves a queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. Before, both returned `201` and the transaction was never recorded.
+
+Bulk requests return `409` for a used reference too. Items after it are not queued.
+
+**What to do:** Handle `409` and `404` on queued creates. Do not retry a `409` with the same reference. See [Bulk transactions](/transactions/bulk-transactions#duplicate-references).
+
+## Atomic bulk rollback
+
+From 0.15.9, an `atomic: true` bulk request rolls back in queued mode, the default. When an item is rejected, Blnk refunds the applied items, skips the rest, and sends one `bulk_transaction.failed` webhook. Before, only `skip_queue: true` rolled back.
+
+The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
+
+**What to do:** Listen for `bulk_transaction.failed`. If your code matches the old message text, match the event instead. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications).
+
+## Monitor updates
+
+From 0.15.9, `PUT /balance-monitors/{monitor_id}` changes only the fields you send. A partial body used to fail with `500`.
+
+**What to do:** No change is required. To change `precision`, send `value` with it. See [Update balance monitor](/reference/edit-balance-monitor).
+
+## Negative split distributions
+
+A negative `distribution` used to be accepted, and the `"left"` leg received the difference. From 0.15.9, it returns `400 TXN_VALIDATION_ERROR` and no balance moves.
+
+**What to do:** Send `0` or a positive value for each leg. See [Split transactions](/transactions/split-transactions#distribution).
+
+## Balance history
+
+Balance history could miss a backdated transaction or count a future-dated one twice. From 0.15.9, each transaction is counted once, at its `effective_date`.
+
+Snapshots taken before the upgrade are skipped until new ones replace them. `from_source=true` results do not change.
+
+**What to do:** Expect some past balances to change. If you store history results, read them again, and take a snapshot after you upgrade. See [Historical balances](/balances/historical-balances#how-it-works).
+
+<RelatedTopics
+  items={[
+    { title: "Upgrade Core", href: "/migrations/core/upgrade" },
+    { title: "Blnk Core changelog", href: "/changelog/blnk-core" },
+    { title: "Transaction hooks", href: "/webhooks/transaction-hooks" },
+    { title: "Bulk transactions", href: "/transactions/bulk-transactions" },
+    { title: "Historical balances", href: "/balances/historical-balances" },
+  ]}
+/>

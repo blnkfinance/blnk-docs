@@ -8,6 +8,8 @@ noindex: true
 ---
 <Key />
 
+From 0.15.9, a PUT changes only the fields you send. Every body field is optional, and a field you leave out keeps its stored value.
+
 ### Path
 
 <ParamField path="monitor_id" type="string" required>
@@ -16,24 +18,24 @@ noindex: true
 
 ### Body
 
-<ParamField body="balance_id" type="string" required>
+<ParamField body="balance_id" type="string">
   Specifies the balance id of the ledger balance to be monitored.
 </ParamField>
 
-<ParamField body="condition" type="object" required>
+<ParamField body="condition" type="object">
   Defines the criteria for monitoring a specific balance type.
   <Expandable>
-    <ParamField body="field" type="string" required>
+    <ParamField body="field" type="string">
       Specifies the balance type to be monitored. Every ledger balance has 6 balance types - `balance`, `inflight_balance`, `credit_balance`, `inflight_credit_balance`, `debit_balance`, and `inflight_debit_balance`.
     </ParamField>
-    <ParamField body="operator" type="string" required>
-      Comparison to apply: `>`, `<`, `>=`, `<=`, `=`, or `!=`.
+    <ParamField body="operator" type="string">
+      Comparison to apply: `>`, `<`, `>=`, `<=`, `=`, or `!=`. Any other value returns `400 GEN_VALIDATION_ERROR`.
     </ParamField>
-    <ParamField body="value" type="number" required>
-      Threshold in major units. `0` and fractions such as `100.50` are valid. The PUT writes this value as sent, including `0` when the field is omitted.
+    <ParamField body="value" type="number">
+      Threshold in major units. `0` and fractions such as `100.50` are valid.
     </ParamField>
     <ParamField body="precision" type="number">
-      Scale for `value`. Omit it to keep the stored precision. A sent precision is written, and `precise_value` is recomputed.
+      Scale for `value`. Send it together with `value`. If you send it alone, it is ignored and the response includes `precision_unchanged`.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -45,13 +47,17 @@ noindex: true
 </ParamField>
 
 <ParamField body="description" type="string">
-  A brief explanation of the purpose of the monitor. The PUT writes this as sent.
+  A brief explanation of the purpose of the monitor.
 </ParamField>
 
 ### Response
 
 <ResponseField name="message" type="string" required>
   Confirms the monitor was updated.
+</ResponseField>
+
+<ResponseField name="precision_unchanged" type="boolean">
+  `true` when you sent `precision` without `value`. The stored precision and threshold were kept. Only included in that case.
 </ResponseField>
 
 <RequestExample>

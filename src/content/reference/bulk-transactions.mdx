@@ -20,7 +20,7 @@ noindex: true
   When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response.
 </ParamField>
 <ParamField body="skip_queue" type="boolean" default="false">  
-  When `true`, transactions bypass the queue and are processed inline in the request. Duplicate-reference handling differs from the default queued path. See [Duplicate references](/transactions/bulk-transactions#duplicate-references).
+  When `true`, transactions bypass the queue and are processed inline in the request. From 0.15.9, a used reference returns `409 TXN_DUPLICATE_REFERENCE` on both paths. See [Duplicate references](/transactions/bulk-transactions#duplicate-references).
 </ParamField>
 <ParamField body="dry_run" type="boolean" default="false">
   When `true`, Blnk projects the batch without writing anything. `skip_queue` selects cumulative vs independent projection. `run_async` is ignored. See [Dry-run a transaction](/reference/dry-run).
@@ -53,7 +53,7 @@ A write returns the batch fields below. `POST` with `dry_run: true` returns a pr
   When `run_async` is `false`, `applied` means the bulk request was accepted. With default queueing (`skip_queue: false`), children are processed asynchronously - `applied` does not mean every child is already `APPLIED` on balances. With `skip_queue: true`, children are processed inline before the response returns. Value is `inflight` when `inflight: true`. When `run_async` is `true`, value is `processing`.
 </ResponseField>
 <ResponseField name="transaction_count" type="integer">
-  Number of transactions in the request. Present on successful synchronous responses. On the default queued path, this reflects items submitted, not necessarily rows created - see [Duplicate references](/transactions/bulk-transactions#duplicate-references).
+  Number of transactions in the request. Present on successful synchronous responses. On the default queued path, this reflects items submitted, not items applied.
 </ResponseField>
 <ResponseField name="message" type="string">
   Human-readable status message. Included on the immediate response when `run_async` is `true` (for example, confirming that background processing started).

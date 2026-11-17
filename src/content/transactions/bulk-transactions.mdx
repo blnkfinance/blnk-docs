@@ -211,6 +211,8 @@ When `run_async` is `false`:
 
 <Note>
 On the default queued path, `status: "applied"` means the bulk request was **successfully submitted**, not that every child is already `APPLIED` on balances. Blnk enqueues each item for asynchronous processing.
+
+From 0.15.9, if an item of a queued `atomic: true` batch is rejected, Blnk refunds the applied items, rejects the rest, and sends `bulk_transaction.failed`. See [Webhook notifications](#webhook-notifications).
 </Note>
 
 </Tab>
@@ -444,6 +446,8 @@ Holds created one by one use [Commit multiple inflights](/transactions/inflight/
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
 
+From 0.15.9, a queued `atomic: true` batch also sends `bulk_transaction.failed` when one of its items is rejected, with or without `run_async`. Blnk sends it once, after it has refunded the applied items or voided the inflight ones. The `error` says how many transactions were rolled back.
+
 The webhooks follow this structure:
 
 ```json Response
@@ -489,7 +493,7 @@ The webhooks follow this structure:
     "data": {
       "batch_id": "bulk_4192d961-5b0e-46ca-bf2f-9386763057f8",
       "status": "failed",
-      "error": "failed to queue transaction 2 (Reference: ref_967yg16hhh4q0t0dnsczvud9, Source: bln_a03ef6af-1e5d-46a8-86a9-5fb1f2286f66, Destination: bln_68be0aed-383c-4d27-87db-fb0650093686, Amount: 313333369.18): failed to apply transaction to balances: insufficient funds in source balance. All transactions in this batch have been refunded.",
+      "error": "transaction rejected. 1 applied transaction(s) from this batch have been refunded; the remaining transactions will not be processed.",
       "timestamp": "2025-03-02T19:30:22.43597+01:00"
     }
   }
@@ -1009,18 +1013,24 @@ Duplicate-reference handling depends on whether items go through the queue.
 <Tabs>
 <Tab title="skip_queue: false">
 
-On the default queued path, duplicate references are deduplicated in the queue and never recorded. The batch still returns `201` with `status: "applied"` representing the request was successfully submitted:
+From 0.15.9, Blnk saves each queued item before it answers. A reference that has already been used returns `409` with `TXN_DUPLICATE_REFERENCE`. The items after it are not queued. The items before it were already queued.
 
-```json 201 Created wrap
+```json 409 Conflict wrap
 {
-  "batch_id": "bulk_847544fb-2616-43be-a188-f6b8c8f20cf2",
-  "status": "applied",
-  "transaction_count": 2
+  "batch_id": "bulk_72b8ae2b-51df-4609-bbaf-e6b005ebc898",
+  "error": "failed to queue transactions[1] (Reference: INV-2026-0042, Source: bln_0f014ca7-3853-4541-a9d0-31da9e4d2ff5, Destination: bln_f60cb0e8-9098-4490-a3e4-ac8a1ca5ef38, Amount: 1.00): failed to persist original transaction: TXN_DUPLICATE_REFERENCE: reference INV-2026-0042 has already been used. Previous transactions were not rolled back.",
+  "error_detail": {
+    "code": "TXN_DUPLICATE_REFERENCE",
+    "message": "failed to queue transactions[1] (Reference: INV-2026-0042, Source: bln_0f014ca7-3853-4541-a9d0-31da9e4d2ff5, Destination: bln_f60cb0e8-9098-4490-a3e4-ac8a1ca5ef38, Amount: 1.00): failed to persist original transaction: TXN_DUPLICATE_REFERENCE: reference INV-2026-0042 has already been used. Previous transactions were not rolled back.",
+    "details": {
+      "batch_id": "bulk_72b8ae2b-51df-4609-bbaf-e6b005ebc898"
+    }
+  }
 }
 ```
 
 <Warning>
-`transaction_count` reflects items in the request, not necessarily rows created. A deduplicated item produces no `REJECTED` row and no error. 
+On 0.15.8 and earlier, the queued path dropped a duplicate item without an error and returned `201`. Check that every reference in the batch is new before you send it.
 </Warning>
 
 </Tab>
@@ -1028,15 +1038,15 @@ On the default queued path, duplicate references are deduplicated in the queue a
 
 When `skip_queue: true`, Blnk validates references inline. A duplicate fails the batch and returns `409` with `TXN_DUPLICATE_REFERENCE`. 
 
-For atomic batches, previously applied items in the same request are refunded via `_refund` child transactions.
+For atomic batches, previously applied items in the same request are refunded via `_refund` child transactions. The error says how many were refunded.
 
 ```json 409 Conflict wrap
 {
   "batch_id": "bulk_305873c0-518a-470c-bf3a-bc3f3e0b562c",
-  "error": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded.",
+  "error": "failed to queue transactions[1] (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. 1 applied transaction(s) from this batch have been refunded; the remaining transactions will not be processed.",
   "error_detail": {
     "code": "TXN_DUPLICATE_REFERENCE",
-    "message": "failed to queue transaction 2 (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. All transactions in this batch have been refunded."
+    "message": "failed to queue transactions[1] (Reference: sqdup-17372-existing, Source: bln_b4819533-9570-4770-a1a0-25c191da0557, Destination: bln_34111155-4015-4e84-bf7c-13a60794bf0b, Amount: 4.00): transaction validation failed: reference sqdup-17372-existing has already been used. 1 applied transaction(s) from this batch have been refunded; the remaining transactions will not be processed."
   }
 }
 ```
@@ -1047,7 +1057,7 @@ For atomic batches, previously applied items in the same request are refunded vi
 ## Important notes
 
 1. When `atomic` is `true`, transactions are processed in the order provided in the request.
-2. Each transaction's `reference` should be unique. On the default queued path, duplicates are silently deduplicated rather than rejected - see [Duplicate references](#duplicate-references).
+2. Each transaction's `reference` must be unique. From 0.15.9, a used reference returns `409 TXN_DUPLICATE_REFERENCE` on both paths. See [Duplicate references](#duplicate-references).
 3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
 4. For large transaction batches, using `run_async: true` is recommended to avoid timeout issues.
 5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
