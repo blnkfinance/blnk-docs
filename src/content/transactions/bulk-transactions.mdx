@@ -212,7 +212,7 @@ When `run_async` is `false`:
 <Note>
 On the default queued path, `status: "applied"` means the bulk request was **successfully submitted**, not that every child is already `APPLIED` on balances. Blnk enqueues each item for asynchronous processing.
 
-From 0.15.9, if an item of a queued `atomic: true` batch is rejected, Blnk refunds the applied items, rejects the rest, and sends `bulk_transaction.failed`. See [Webhook notifications](#webhook-notifications).
+If Blnk rejects an item in a queued `atomic: true` batch, it refunds the applied items, rejects the rest, and sends `bulk_transaction.failed`. See [Webhook notifications](#webhook-notifications).
 </Note>
 
 </Tab>
@@ -446,7 +446,7 @@ Holds created one by one use [Commit multiple inflights](/transactions/inflight/
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
 
-From 0.15.9, a queued `atomic: true` batch also sends `bulk_transaction.failed` when one of its items is rejected, with or without `run_async`. Blnk sends it once, after it has refunded the applied items or voided the inflight ones. The `error` says how many transactions were rolled back.
+For a queued atomic batch, Blnk sends `bulk_transaction.failed` if it rejects an item, whether or not `run_async` is `true`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back.
 
 The webhooks follow this structure:
 
@@ -1013,7 +1013,7 @@ Duplicate-reference handling depends on whether items go through the queue.
 <Tabs>
 <Tab title="skip_queue: false">
 
-From 0.15.9, Blnk saves each queued item before it answers. A reference that has already been used returns `409` with `TXN_DUPLICATE_REFERENCE`. The items after it are not queued. The items before it were already queued.
+On the queued path, Blnk saves each transaction before returning. If a reference has already been used, Blnk returns `409` with `TXN_DUPLICATE_REFERENCE`. Transactions queued before the duplicate remain queued. Blnk does not queue the transactions after it.
 
 ```json 409 Conflict wrap
 {
@@ -1030,7 +1030,7 @@ From 0.15.9, Blnk saves each queued item before it answers. A reference that has
 ```
 
 <Warning>
-On 0.15.8 and earlier, the queued path dropped a duplicate item without an error and returned `201`. Check that every reference in the batch is new before you send it.
+In Core 0.15.8 and earlier, the queued path silently dropped duplicate transactions and returned `201`. If you use one of these versions, check that every reference in the batch is unique before sending it.
 </Warning>
 
 </Tab>
