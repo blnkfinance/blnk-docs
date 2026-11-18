@@ -27,7 +27,7 @@ Before upgrading, check whether your integration assumes every `POST_TRANSACTION
 
 **What to do:** Use a maintenance window. Pause transaction submissions, let existing jobs finish, and stop the old API and workers. Back up the database, run `blnk migrate up`, then start the 0.15.9 API and workers together. If a migration hits its lock timeout, wait for the blocking queries to finish before retrying.
 
-Mixed-version workers can use different queued rollback behavior. Validate mixed-version operation in staging before planning a rolling upgrade.
+For this upgrade procedure, run the API and workers on the same version. Older workers can apply different queued rollback rules, so keep them stopped once you start 0.15.9.
 
 The trigger migration’s down SQL recreates the four triggers and their function. It cannot replay notifications missed while the triggers were absent. The snapshot migration’s down SQL drops the new sequence column and its stored values. Plan any schema rollback with a database operator and test it on a copy of your database.
 
@@ -52,11 +52,11 @@ From 0.15.9, a rejected transaction calls your `POST_TRANSACTION` hooks. `data.s
 
 ## Queued create errors
 
-Blnk now saves a queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. Before, both returned `201` and the transaction was never recorded.
+Blnk saves an accepted queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. For a single transfer, either error leaves the new attempt without a transaction or `REJECTED` record. A `409` leaves the existing transaction under that reference available for lookup.
 
-With `run_async: false`, bulk requests return `409` for a used reference. On the queued path, Blnk stops adding items at the duplicate.
+With `run_async: false`, queued bulk requests return the error for the failing item and stop adding items there. Items already queued can still process. A split can also have earlier legs saved before a later leg fails.
 
-**What to do:** Handle `409` and `404` on queued creates. Do not retry a `409` with the same reference. See [Bulk transactions](/transactions/bulk-transactions#duplicate-references).
+**What to do:** For a single transfer, look up the original reference on `409`. On `404`, correct the balance ID before retrying. For a bulk request, reconcile by batch ID and reference before retrying any item. Check the individual legs of a failed split. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 
 ## Atomic bulk rollback
 
@@ -87,6 +87,15 @@ Balance history could miss a backdated transaction or count a future-dated one t
 Snapshots taken before the upgrade are skipped until new ones replace them. `from_source=true` results do not change.
 
 **What to do:** Expect some past balances to change. If you store history results, read them again, and take a snapshot after you upgrade. See [Historical balances](/balances/historical-balances#how-it-works).
+
+## Core release references
+
+- [Queued atomic rollback and final item states](https://github.com/blnkfinance/blnk/blob/v0.15.9/cmd/workers_lifecycle_test.go#L125-L276), [worker rollback event timing](https://github.com/blnkfinance/blnk/blob/v0.15.9/cmd/workers_lifecycle_test.go#L484-L548), and [the enqueue loop that stops at the first failure](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_bulk.go#L51-L75).
+- [Queued create status and record tests](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/transaction_queue_durability_test.go#L43-L86).
+- [Rejected transaction hook test](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_rejection_test.go#L35-L108) and [global webhook retry test](https://github.com/blnkfinance/blnk/blob/v0.15.9/webhooks_process_test.go#L215-L234).
+- [Precision-only monitor update test](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/balance_monitor_defects_e2e_test.go#L384-L411) and [negative split validation test](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/model/model_test.go#L523-L544).
+- [Historical balances with legacy snapshots, backdated transactions, and future-dated transactions](https://github.com/blnkfinance/blnk/blob/v0.15.9/database/balance_at_time_snapshot_seq_test.go#L107-L175).
+- [Snapshot migration SQL](https://github.com/blnkfinance/blnk/blob/v0.15.9/sql/1793212597.sql) and [trigger migration SQL](https://github.com/blnkfinance/blnk/blob/v0.15.9/sql/1793890679.sql). The [release CI test run](https://github.com/blnkfinance/blnk/actions/runs/43839589650/job/133204642809) applied the migrations and passed these Core tests.
 
 <RelatedTopics
   items={[
