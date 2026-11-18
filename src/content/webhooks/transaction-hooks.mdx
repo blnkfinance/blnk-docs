@@ -13,7 +13,7 @@ Transaction hooks let you plug custom logic into your transaction lifecycle, bef
 Register an endpoint for each stage you care about, and Blnk calls it with the transaction context so you can validate, enrich, or trigger side effects at the right moment.
 
 <Note>
-**Note:** Blnk only sends `transaction.*` events to transaction hooks. Other events are not supported. See [Supported events](/webhooks/events) for the full list of transaction event names.
+**Note:** Transaction hooks only run for transactions. A hook request has no `event` field. Use `hook_type` and `data.status` to tell calls apart.
 </Note>
 
 ## Hook types
@@ -21,7 +21,7 @@ Register an endpoint for each stage you care about, and Blnk calls it with the t
 Blnk supports two hook types:
 
 - `PRE_TRANSACTION`: before a transaction is applied
-- `POST_TRANSACTION`: after a transaction is applied
+- `POST_TRANSACTION`: after a transaction is applied or rejected
 
 <Tabs>
 <Tab title="Pre-transaction">
@@ -31,8 +31,9 @@ Blnk supports two hook types:
 
 ```json PRE_TRANSACTION payload {3} wrap
 {
-  "event": "transaction.applied",
+  "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
   "hook_type": "PRE_TRANSACTION",
+  "timestamp": "2025-02-23T08:43:49.712301Z",
   "data": {
     "precise_amount": 20000,
     "amount": 200,
@@ -57,14 +58,15 @@ Blnk supports two hook types:
 ```
 </Tab>
 <Tab title="Post-transaction">
-  `POST_TRANSACTION` runs after a transaction is applied. 
-  
+  `POST_TRANSACTION` runs after a transaction is applied or rejected.
+
   Use it for notifications, workflow updates, or forwarding data to external systems once the transaction has been processed.
 
 ```json POST_TRANSACTION payload {3} wrap
 {
-  "event": "transaction.applied",
+  "transaction_id": "txn_9c2f1a8e-4b3d-4c91-9f2a-1a7b6c5d4e3f",
   "hook_type": "POST_TRANSACTION",
+  "timestamp": "2025-02-23T08:43:49.712301Z",
   "data": {
     "precise_amount": 20000,
     "amount": 200,
@@ -87,8 +89,19 @@ Blnk supports two hook types:
   }
 }
 ```
+
+<Note>
+  Check `data.status` before you act on a call. A rejected transaction has the status `REJECTED`, and `data.meta_data.blnk_rejection_reason` says why.
+</Note>
 </Tab>
 </Tabs>
+
+| Field | Description |
+| :-- | :-- |
+| `transaction_id` | ID of the transaction the hook is for. |
+| `hook_type` | `PRE_TRANSACTION` or `POST_TRANSACTION`. |
+| `timestamp` | When Blnk queued the hook call. A retry keeps the same value. |
+| `data` | The transaction. Read `data.status` to check its state. |
 
 <Note>
 Treat `data` as the contract for your integration; fields depend on the transaction type and Blnk version. Always handle unknown keys safely when parsing JSON.
@@ -288,5 +301,6 @@ Return a `2xx` response only after you have safely recorded or processed the eve
     { title: "Supported events", href: "/webhooks/events" },
     { title: "Create hooks", href: "/reference/create-hooks" },
     { title: "0.14.3 migration", href: "/migrations/core/v14-3-migration" },
+    { title: "0.15.9 migration", href: "/migrations/core/v15-9-migration" },
   ]}
 />

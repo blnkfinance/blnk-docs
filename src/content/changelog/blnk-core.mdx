@@ -6,6 +6,30 @@ metaDescription: "Explore the Blnk Core changelog. Track releases, fixes, enhanc
 icon: "history"
 ---
 
+<Update label="0.15.9" description="Nov 16, 2026">
+  ## Atomic bulk rollback in queued mode
+
+  Queued atomic batches now roll back when a worker rejects an item. Blnk refunds applied items or voids inflight items, rejects the items still waiting, and sends one `bulk_transaction.failed` event per batch. A failure while adding items to the queue does not roll back the items already queued. See [Atomic processing](/transactions/bulk-transactions#atomic-processing).
+
+  <Warning>
+    0.15.9 changes how some requests and hooks behave, and adds two database migrations. Read the [0.15.9 migration guide](/migrations/core/v15-9-migration) before you upgrade.
+  </Warning>
+
+  See also: [Bulk transactions](/transactions/bulk-transactions).
+
+  ## Fixes & improvements
+
+  1. **Hooks for rejected transactions:** `POST_TRANSACTION` hooks now also run when a transaction is rejected. See also: [Transaction hooks](/webhooks/transaction-hooks).
+  2. **Queued create errors:** A used reference or unknown balance now returns an error instead of `201`. See also: [Bulk transactions](/transactions/bulk-transactions#duplicate-references).
+  3. **Monitor updates:** A PUT changes only the fields you send. See also: [Update balance monitor](/reference/edit-balance-monitor).
+  4. **Negative split distributions:** Negative `distribution` and `precise_distribution` values are rejected. See also: [Split transactions](/transactions/split-transactions#distribution).
+  5. **Balance history:** Backdated transactions are now counted correctly. See also: [Historical balances](/balances/historical-balances#how-it-works).
+  6. **Faster writes:** Removed unused database triggers that slowed writes under load.
+  7. **Faster search reindex:** Records are sent to Typesense in bulk.
+  8. **Docker Compose shutdown:** `docker stop` now stops Blnk cleanly.
+  9. General bug fixes for queued batches and balance updates.
+</Update>
+
 <Update label="0.15.8" description="Nov 2, 2026">
   ## Queued inflight expiry
 
