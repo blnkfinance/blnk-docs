@@ -7,7 +7,7 @@ metaDescription: "Migration guide for upgrading to Blnk v0.15.9, covering post-t
 
 This guide covers the changes you need to review when upgrading to Blnk v0.15.9.
 
-Most integrations can upgrade without code changes. Review this guide if you use `POST_TRANSACTION` hooks, create queued or bulk transactions, or read historical balances.
+Before upgrading, check whether your integration assumes every `POST_TRANSACTION` hook signals success, expects `201` for queued duplicates or unknown balances, or matches bulk failure text. Update those handlers before switching versions. If you store historical balances, plan to refresh the results after upgrading.
 
 ## At a glance
 
@@ -25,7 +25,11 @@ Most integrations can upgrade without code changes. Review this guide if you use
 
 0.15.9 adds a column that balance history uses, and drops four database triggers that Blnk no longer uses.
 
-**What to do:** Run `blnk migrate up` before you start 0.15.9. If it stops on a lock timeout, run it again once long-running queries finish.
+**What to do:** Use a maintenance window. Pause transaction submissions, let existing jobs finish, and stop the old API and workers. Back up the database, run `blnk migrate up`, then start the 0.15.9 API and workers together. If a migration hits its lock timeout, wait for the blocking queries to finish before retrying.
+
+Mixed-version workers can use different queued rollback behavior. Validate mixed-version operation in staging before planning a rolling upgrade.
+
+The trigger migration’s down SQL recreates the four triggers and their function. It cannot replay notifications missed while the triggers were absent. The snapshot migration’s down SQL drops the new sequence column and its stored values. Plan any schema rollback with a database operator and test it on a copy of your database.
 
 ## Hooks for rejected transactions
 
@@ -56,13 +60,13 @@ With `run_async: false`, bulk requests return `409` for a used reference. On the
 
 ## Atomic bulk rollback
 
-From 0.15.9, when a worker rejects an item in a queued `atomic: true` batch, Blnk refunds applied items or voids inflight items and sends one `bulk_transaction.failed` webhook. Blnk records the items still waiting in the queue as `REJECTED` when it reaches them. Before, only `skip_queue: true` rolled back.
+From 0.15.9, when a worker rejects an item in a queued `atomic: true` batch, Blnk refunds applied items or voids inflight items and emits one `bulk_transaction.failed` event for the batch. Blnk records the items still waiting in the queue as `REJECTED` when it reaches them. Before, only `skip_queue: true` rolled back.
 
 If Blnk finds a duplicate reference while adding items to the queue, items already queued may still process, even in an atomic batch. Reconcile by batch ID and reference before resubmitting any items. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 
 The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
 
-**What to do:** Listen for `bulk_transaction.failed`. If your code matches the old message text, match the event instead. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications).
+**What to do:** Handle `bulk_transaction.failed` using the event name and `data.batch_id` as your deduplication key. Blnk can retry delivery of the same event. If your code matches the old message text, switch to the event name. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications).
 
 ## Monitor updates
 

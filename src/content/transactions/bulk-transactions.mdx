@@ -458,6 +458,8 @@ When using `run_async: true`, the API sends webhook notifications upon completio
 
 When a worker rejects an item in a queued atomic batch, Blnk sends `bulk_transaction.failed` for either value of `run_async`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back. Items still waiting in the queue can receive their `REJECTED` records after the webhook. Check the [batch records](#retrieving-transactions-in-a-batch) for each item’s outcome.
 
+Blnk emits one failure event for a queued atomic batch rejected by a worker. Delivery can be retried. Make your handler idempotent using `event` and `data.batch_id` together. See [Global webhooks](/webhooks/global-webhooks#delivery-semantics).
+
 The webhooks follow this structure:
 
 ```json Response

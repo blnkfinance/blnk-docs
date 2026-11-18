@@ -47,7 +47,7 @@ Each delivery is an HTTP `POST` with a JSON body in this shape:
 
 ## Delivery semantics
 
-Blnk delivers webhooks at least once. Your endpoint may receive the same event more than once, often with an identical payload and `X-Blnk-Signature`.
+Your endpoint may receive the same event more than once. The payload can repeat even when the signature timestamp changes.
 
 Make handlers idempotent so a duplicate delivery does not trigger the same side effect twice, for example, sending two emails or crediting a balance twice. Dedupe on a stable key such as the event name plus the resource identifier in data, e.g. `transaction_id`.
 
@@ -56,7 +56,7 @@ Return a `2xx` response only after you have safely recorded or processed the eve
 </Warning>
 
 <Note>
-If your global webhook endpoint returns a non-`2xx` response, Blnk does not retry the delivery. For configurable retries, use [transaction hooks](/webhooks/transaction-hooks) instead.
+Blnk retries global webhook delivery when your endpoint returns a non-`2xx` response or the request fails. For configurable retries, use [transaction hooks](/webhooks/transaction-hooks) instead.
 </Note>
 
 ## Configuration
