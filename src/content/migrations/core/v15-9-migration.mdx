@@ -56,7 +56,9 @@ Bulk requests return `409` for a used reference too. Items after it are not queu
 
 ## Atomic bulk rollback
 
-From 0.15.9, an `atomic: true` bulk request rolls back in queued mode, the default. When an item is rejected, Blnk refunds the applied items, skips the rest, and sends one `bulk_transaction.failed` webhook. Before, only `skip_queue: true` rolled back.
+From 0.15.9, an `atomic: true` bulk request rolls back in queued mode, the default, when a queued item is rejected during processing. Blnk refunds applied items, skips the rest, and sends one `bulk_transaction.failed` webhook. Before, only `skip_queue: true` rolled back.
+
+A duplicate reference found while Blnk is queuing the request is an enqueue-time error, not a worker rejection. Items queued before that `409` may still process, including in an atomic batch. Check every reference before sending the batch.
 
 The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
 
@@ -66,11 +68,11 @@ The failure message now says how many items were refunded, instead of `All trans
 
 From 0.15.9, `PUT /balance-monitors/{monitor_id}` changes only the fields you send. A partial body used to fail with `500`.
 
-**What to do:** No change is required. To change `precision`, send `value` with it. See [Update balance monitor](/reference/edit-balance-monitor).
+**What to do:** If your app sends `precision` without `value`, include `value` in the same request to change the scale. If your app does not send `precision` alone, no change is required. See [Update balance monitor](/reference/edit-balance-monitor).
 
 ## Negative split distributions
 
-A negative `distribution` used to be accepted, and the `"left"` leg received the difference. From 0.15.9, it returns `400 TXN_VALIDATION_ERROR` and no balance moves.
+A negative `distribution` used to be accepted, and the `"left"` leg received the difference. From 0.15.9, negative `distribution` and `precise_distribution` values return `400 TXN_VALIDATION_ERROR`; no balance moves.
 
 **What to do:** Send `0` or a positive value for each leg. See [Split transactions](/transactions/split-transactions#distribution).
 

@@ -1013,7 +1013,11 @@ Duplicate-reference handling depends on whether items go through the queue.
 <Tabs>
 <Tab title="skip_queue: false">
 
-On the queued path, Blnk saves each transaction before returning. If a reference has already been used, Blnk returns `409` with `TXN_DUPLICATE_REFERENCE`. Transactions queued before the duplicate remain queued. Blnk does not queue the transactions after it.
+On the queued path, Blnk saves each transaction before returning. If a reference has already been used, Blnk returns `409` with `TXN_DUPLICATE_REFERENCE`. With the default `atomic: false`, transactions queued before the duplicate remain queued and Blnk does not queue transactions after it.
+
+<Warning>
+A duplicate found while Blnk is queuing an `atomic: true` batch is an enqueue-time error, not a worker rejection. Queued atomic rollback applies when a queued item is rejected during processing; items queued before this `409` may still process. Check every reference before sending the batch.
+</Warning>
 
 ```json 409 Conflict wrap
 {
@@ -1057,7 +1061,7 @@ For atomic batches, previously applied items in the same request are refunded vi
 ## Important notes
 
 1. When `atomic` is `true`, transactions are processed in the order provided in the request.
-2. Each transaction's `reference` must be unique. From 0.15.9, a used reference returns `409 TXN_DUPLICATE_REFERENCE` on both paths. See [Duplicate references](#duplicate-references).
+2. Each transaction's `reference` must be unique. A used reference returns `409 TXN_DUPLICATE_REFERENCE` on both queue paths. See [Duplicate references](#duplicate-references).
 3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
 4. For large transaction batches, using `run_async: true` is recommended to avoid timeout issues.
 5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
