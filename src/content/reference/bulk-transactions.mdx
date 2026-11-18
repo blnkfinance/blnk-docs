@@ -11,7 +11,7 @@ noindex: true
 ### Body
 
 <ParamField body="atomic" type="boolean" default="false">
-  When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. Omit it to use `false`.
+  When `true`, Blnk rolls back work after a processing failure. On the queued path, if submission fails while adding items to the queue, items already queued can still process. When `false` or omitted, Blnk processes items independently. See [Atomic processing](/transactions/bulk-transactions#atomic-processing) and [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 </ParamField>
 <ParamField body="inflight" type="boolean" default="false">
   When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are applied immediately. Omit it to use `false`.
@@ -20,7 +20,7 @@ noindex: true
   When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response.
 </ParamField>
 <ParamField body="skip_queue" type="boolean" default="false">  
-  When `true`, transactions bypass the queue and are processed inline in the request. A used reference returns `409 TXN_DUPLICATE_REFERENCE` whether or not you skip the queue. See [Duplicate references](/transactions/bulk-transactions#duplicate-references).
+  When `true`, transactions bypass the queue and are processed inline in the request. With `run_async: false`, a used reference returns `409 TXN_DUPLICATE_REFERENCE` on either path. See [Duplicate references](/transactions/bulk-transactions#duplicate-references).
 </ParamField>
 <ParamField body="dry_run" type="boolean" default="false">
   When `true`, Blnk projects the batch without writing anything. `skip_queue` selects cumulative vs independent projection. `run_async` is ignored. See [Dry-run a transaction](/reference/dry-run).

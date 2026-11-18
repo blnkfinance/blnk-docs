@@ -16,7 +16,7 @@ Most integrations can upgrade without code changes. Review this guide if you use
 | Database migrations | Everyone | Two migrations run with `blnk migrate up`. |
 | Hooks for rejected transactions | Apps with `POST_TRANSACTION` hooks | Hooks now also run when a transaction is rejected. |
 | Queued create errors | Apps that create queued transactions | A used reference or unknown balance now returns an error instead of `201`. |
-| Atomic bulk rollback | Apps that send atomic bulk requests | Queued atomic batches now roll back when an item fails. |
+| Atomic bulk rollback | Apps that send atomic bulk requests | Queued atomic batches now roll back when a worker rejects an item. |
 | Monitor updates | Apps that update balance monitors | A PUT changes only the fields you send. |
 | Negative split distributions | Apps that send split transactions | A negative distribution is rejected. |
 | Balance history | Apps that read historical balances | Backdated transactions are now counted correctly. |
@@ -50,7 +50,7 @@ From 0.15.9, a rejected transaction calls your `POST_TRANSACTION` hooks. `data.s
 
 Blnk now saves a queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. Before, both returned `201` and the transaction was never recorded.
 
-Bulk requests return `409` for a used reference too. Items after it are not queued.
+With `run_async: false`, bulk requests return `409` for a used reference. On the queued path, Blnk stops adding items at the duplicate.
 
 **What to do:** Handle `409` and `404` on queued creates. Do not retry a `409` with the same reference. See [Bulk transactions](/transactions/bulk-transactions#duplicate-references).
 
@@ -58,7 +58,7 @@ Bulk requests return `409` for a used reference too. Items after it are not queu
 
 From 0.15.9, an `atomic: true` bulk request rolls back in queued mode, the default, when a queued item is rejected during processing. Blnk refunds applied items, skips the rest, and sends one `bulk_transaction.failed` webhook. Before, only `skip_queue: true` rolled back.
 
-A duplicate reference found while Blnk is queuing the request is an enqueue-time error, not a worker rejection. Items queued before that `409` may still process, including in an atomic batch. Check every reference before sending the batch.
+If Blnk finds a duplicate reference while adding items to the queue, items already queued may still process, even in an atomic batch. Reconcile by batch ID and reference before resubmitting any items. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 
 The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
 

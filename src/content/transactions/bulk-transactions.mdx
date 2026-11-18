@@ -7,7 +7,7 @@ metaDescription: "Process multiple transactions at once using Blnk bulk API, spe
 
 <Version>Available in version 0.9.0 and later.</Version>
 
-The Bulk Transaction API enables you to process multiple transactions within a single request. It offers two processing options: **atomic processing**, where all transactions either succeed or fail as a unit, and **independent processing**, where each transaction is handled separately. 
+The Bulk Transaction API enables you to process multiple transactions within a single request. Use `atomic: true` to roll back work after a processing failure. On the default queued path, a failure while adding items to the queue can leave earlier items active, even with `atomic: true`. See [Atomic processing](#atomic-processing).
 
 Additionally, the API supports asynchronous processing to efficiently manage large batches of transactions.
 
@@ -182,7 +182,7 @@ ApiResponse<JsonNode> response = blnk.transactions().createBulk(
 
 | Field | Description |
 | :-- | :-- |
-| `atomic` | When `true`, either all transactions succeed or all fail. When `false`, transactions are processed independently. |
+| `atomic` | When `true`, Blnk rolls back work after a processing failure. Items already queued can still process if submission fails while queueing. When `false`, Blnk processes items independently. See [Atomic processing](#atomic-processing). |
 | `inflight` | When `true`, transactions are created in `INFLIGHT` status and require a separate commit. When `false`, transactions are processed immediately. |
 | `run_async` | When `true`, processing happens in the background and results are delivered via webhook. When `false` or not provided, processing happens synchronously and results are returned in the response. |
 | `skip_queue` | Defaults to `false`. When `true`, transactions bypass the queue and are processed inline in the request. Affects duplicate-reference handling - see [Duplicate references](#duplicate-references). |
@@ -243,6 +243,16 @@ See [Webhook notifications](#webhook-notifications).
 
 </Step>
 </Steps>
+
+## Atomic processing
+
+With `atomic: true`, the outcome depends on where the failure occurs.
+
+| Failure phase | What Blnk does |
+| :--- | :--- |
+| Adding items to the queue (`skip_queue: false`) | Stops adding items at the failure. Items already queued may still process and move balances. |
+| Processing a queued item (`skip_queue: false`) | On rejection, refunds applied items or voids inflight items, rejects remaining items, and reports the failure in `bulk_transaction.failed`. |
+| Processing inline (`skip_queue: true`) | On failure, refunds applied items or voids inflight items from the batch and stops processing later items. |
 
 ## Retrieving transactions in a batch
 
@@ -446,7 +456,7 @@ Holds created one by one use [Commit multiple inflights](/transactions/inflight/
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
 
-For a queued atomic batch, Blnk sends `bulk_transaction.failed` if it rejects an item, whether or not `run_async` is `true`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back.
+When a worker rejects an item in a queued atomic batch, Blnk sends `bulk_transaction.failed` for either value of `run_async`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back.
 
 The webhooks follow this structure:
 
@@ -506,7 +516,7 @@ The webhooks follow this structure:
 <Tabs>
 <Tab title="Synchronous">
 
-Process multiple transactions atomically (`atomic: true`, `run_async: false`):
+Submit a batch with rollback on processing failure (`atomic: true`, `run_async: false`):
 
 <CodeGroup>
 ```bash cURL wrap
@@ -1013,10 +1023,10 @@ Duplicate-reference handling depends on whether items go through the queue.
 <Tabs>
 <Tab title="skip_queue: false">
 
-On the queued path, Blnk saves each transaction before returning. If a reference has already been used, Blnk returns `409` with `TXN_DUPLICATE_REFERENCE`. With the default `atomic: false`, transactions queued before the duplicate remain queued and Blnk does not queue transactions after it.
+Blnk saves items as it queues them. When it encounters a used reference, it stops at that item. With `run_async: false`, the request returns `409 TXN_DUPLICATE_REFERENCE`. With `run_async: true`, Blnk reports the failure through `bulk_transaction.failed` after accepting the request.
 
 <Warning>
-A duplicate found while Blnk is queuing an `atomic: true` batch is an enqueue-time error, not a worker rejection. Queued atomic rollback applies when a queued item is rejected during processing; items queued before this `409` may still process. Check every reference before sending the batch.
+Items queued before the duplicate can still move balances, even with `atomic: true`. Reconcile the batch before submitting any of its items again.
 </Warning>
 
 ```json 409 Conflict wrap
@@ -1034,13 +1044,13 @@ A duplicate found while Blnk is queuing an `atomic: true` batch is an enqueue-ti
 ```
 
 <Warning>
-In Core 0.15.8 and earlier, the queued path silently dropped duplicate transactions and returned `201`. If you use one of these versions, check that every reference in the batch is unique before sending it.
+In Core 0.15.8 and earlier, the queued path silently dropped duplicate transactions and returned `201`. If you use one of these versions, reconcile the batch by reference even after a `201`.
 </Warning>
 
 </Tab>
 <Tab title="skip_queue: true">
 
-When `skip_queue: true`, Blnk validates references inline. A duplicate fails the batch and returns `409` with `TXN_DUPLICATE_REFERENCE`. 
+When `skip_queue: true`, Blnk validates references inline. A duplicate stops processing at that item. With `run_async: false`, the request returns `409 TXN_DUPLICATE_REFERENCE`. With `run_async: true`, Blnk reports the failure through `bulk_transaction.failed`.
 
 For atomic batches, previously applied items in the same request are refunded via `_refund` child transactions. The error says how many were refunded.
 
@@ -1058,10 +1068,19 @@ For atomic batches, previously applied items in the same request are refunded vi
 </Tab>
 </Tabs>
 
+### Reconcile a queued batch after a duplicate reference
+
+Derive each reference from a stable business operation ID and a stable item ID, such as `payout-8472-recipient-03`. Keep the same reference for the same intended movement across attempts, and use distinct references for distinct movements. A lookup before submission can detect an existing reference, but concurrent submissions can still race.
+
+1. Save the `batch_id` from the `409` response or the asynchronous failure webhook. Keep the original ordered list of references. If the error identifies a position such as `transactions[1]`, use that zero-based index to identify the duplicate and the items before it.
+2. [Retrieve transactions in the failed batch](#retrieving-transactions-in-a-batch) by filtering on `meta_data.QUEUED_PARENT_TRANSACTION`. Use [Get transaction by reference](/reference/get-transaction-by-reference) to check the duplicate and each original reference, including items after the duplicate. Compare the batch ID, source, destination, currency, and amount with your records to distinguish this attempt from another submission.
+3. Track queued items until you can account for their outcome. Check for applied movements, inflight holds, rejections, and any refunds or voids. If the original record is still `QUEUED`, check its [child transactions](/transactions/parent-transactions). If you still cannot account for the item, leave it pending in your application and recheck.
+4. Submit only movements that you confirm are still needed and have no accepted transaction. Keep their original references. If an existing transaction needs to be reversed or replaced, handle that as a separate operation after you verify its outcome. Never resend the entire batch or generate new references to bypass the conflict.
+
 ## Important notes
 
-1. When `atomic` is `true`, transactions are processed in the order provided in the request.
-2. Each transaction's `reference` must be unique. A used reference returns `409 TXN_DUPLICATE_REFERENCE` on both queue paths. See [Duplicate references](#duplicate-references).
+1. Blnk submits items in request order. Use each queued item’s status to verify when it finishes.
+2. Each transaction’s `reference` must be unique. Use stable references so you can reconcile duplicate submissions. See [Duplicate references](#duplicate-references).
 3. When `run_async` is `true`, processing happens in the background and you'll receive an immediate response with a batch ID.
 4. For large transaction batches, using `run_async: true` is recommended to avoid timeout issues.
 5. Webhook notifications for async processing contain the same detailed error information as synchronous responses, including rollback status.
