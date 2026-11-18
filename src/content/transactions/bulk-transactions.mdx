@@ -212,7 +212,7 @@ When `run_async` is `false`:
 <Note>
 On the default queued path, `status: "applied"` means the bulk request was **successfully submitted**, not that every child is already `APPLIED` on balances. Blnk enqueues each item for asynchronous processing.
 
-If Blnk rejects an item in a queued `atomic: true` batch, it refunds the applied items, rejects the rest, and sends `bulk_transaction.failed`. See [Webhook notifications](#webhook-notifications).
+A worker rejection in a queued `atomic: true` batch triggers rollback. See [Atomic processing](#atomic-processing) for the outcome of each item.
 </Note>
 
 </Tab>
@@ -251,7 +251,7 @@ With `atomic: true`, the outcome depends on where the failure occurs.
 | Failure phase | What Blnk does |
 | :--- | :--- |
 | Adding items to the queue (`skip_queue: false`) | Stops adding items at the failure. Items already queued may still process and move balances. |
-| Processing a queued item (`skip_queue: false`) | On rejection, refunds applied items or voids inflight items, rejects remaining items, and reports the failure in `bulk_transaction.failed`. |
+| Processing a queued item (`skip_queue: false`) | On rejection, refunds applied items or voids inflight items and sends `bulk_transaction.failed`. As Blnk reaches the items still waiting in the queue, it records them as `REJECTED`. |
 | Processing inline (`skip_queue: true`) | On failure, refunds applied items or voids inflight items from the batch and stops processing later items. |
 
 ## Retrieving transactions in a batch
@@ -456,7 +456,7 @@ Holds created one by one use [Commit multiple inflights](/transactions/inflight/
 
 When using `run_async: true`, the API sends webhook notifications upon completion or failure.
 
-When a worker rejects an item in a queued atomic batch, Blnk sends `bulk_transaction.failed` for either value of `run_async`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back.
+When a worker rejects an item in a queued atomic batch, Blnk sends `bulk_transaction.failed` for either value of `run_async`. Blnk sends the event after it refunds any applied transactions or voids any inflight transactions. The `error` field says how many transactions were rolled back. Items still waiting in the queue can receive their `REJECTED` records after the webhook. Check the [batch records](#retrieving-transactions-in-a-batch) for each item’s outcome.
 
 The webhooks follow this structure:
 

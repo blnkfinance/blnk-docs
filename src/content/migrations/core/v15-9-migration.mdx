@@ -56,7 +56,7 @@ With `run_async: false`, bulk requests return `409` for a used reference. On the
 
 ## Atomic bulk rollback
 
-From 0.15.9, an `atomic: true` bulk request rolls back in queued mode, the default, when a queued item is rejected during processing. Blnk refunds applied items, skips the rest, and sends one `bulk_transaction.failed` webhook. Before, only `skip_queue: true` rolled back.
+From 0.15.9, when a worker rejects an item in a queued `atomic: true` batch, Blnk refunds applied items or voids inflight items and sends one `bulk_transaction.failed` webhook. Blnk records the items still waiting in the queue as `REJECTED` when it reaches them. Before, only `skip_queue: true` rolled back.
 
 If Blnk finds a duplicate reference while adding items to the queue, items already queued may still process, even in an atomic batch. Reconcile by batch ID and reference before resubmitting any items. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 
