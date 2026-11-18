@@ -7,7 +7,7 @@ metaDescription: "Migration guide for upgrading to Blnk v0.15.9, covering post-t
 
 This guide covers the changes you need to review when upgrading to Blnk v0.15.9.
 
-Before upgrading, check whether your integration assumes every `POST_TRANSACTION` hook signals success, expects `201` for queued duplicates or unknown balances, or matches bulk failure text. Verify that your global webhook handler can receive duplicate deliveries safely. Update those handlers before switching versions. If you store historical balances, plan to refresh the results after upgrading.
+Review this guide before you upgrade if your app uses `POST_TRANSACTION` hooks, creates queued or bulk transactions, matches bulk failure messages, or reads historical balances. Each section links to the Core 0.15.9 code or test that shows the behavior.
 
 ## At a glance
 
@@ -25,11 +25,16 @@ Before upgrading, check whether your integration assumes every `POST_TRANSACTION
 
 0.15.9 adds a column that balance history uses, and drops four database triggers that Blnk no longer uses.
 
-**What to do:** Use a maintenance window. Pause transaction submissions, let existing jobs finish, and stop the old API and workers. Back up the database, run `blnk migrate up`, then start the 0.15.9 API and workers together. If a migration hits its lock timeout, wait for the blocking queries to finish before retrying.
+**What to do:**
 
-For this upgrade procedure, run the API and workers on the same version. Older workers can apply different queued rollback rules, so keep them stopped once you start 0.15.9.
+1. Pause transaction submissions and let queued jobs finish.
+2. Stop the old API and every old worker. A 0.15.8 worker does not check whether a queued atomic batch has failed, so it can apply items that 0.15.9 would reject.
+3. Back up the database and run `blnk migrate up`. The bundled Docker Compose file runs it on start.
+4. Start the 0.15.9 API and workers.
 
-The trigger migration’s down SQL recreates the four triggers and their function. It cannot replay notifications missed while the triggers were absent. The snapshot migration’s down SQL drops the new sequence column and its stored values. Plan any schema rollback with a database operator and test it on a copy of your database.
+The trigger migration sets a 3-second lock timeout so it fails instead of blocking writes. If it times out, wait for long-running queries to finish and run it again.
+
+Both migrations have down steps. The trigger down step recreates the triggers. The snapshot down step drops `last_tx_seq`, so snapshots taken on 0.15.9 lose it. Test a rollback on a copy of your database first.
 
 ## Hooks for rejected transactions
 
@@ -52,11 +57,17 @@ From 0.15.9, a rejected transaction calls your `POST_TRANSACTION` hooks. `data.s
 
 ## Queued create errors
 
-Blnk saves an accepted queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. For a single transfer, either error leaves the new attempt without a transaction or `REJECTED` record. A `409` leaves the existing transaction under that reference available for lookup.
+Blnk now saves a queued transaction before it answers. A used reference returns `409 TXN_DUPLICATE_REFERENCE`, and an unknown balance returns `404 BAL_NOT_FOUND`. Before, both returned `201` and the transaction was never recorded.
 
-With `run_async: false`, queued bulk requests return the error for the failing item and stop adding items there. Items already queued can still process. A split can also have earlier legs saved before a later leg fails.
+What is saved depends on the request:
 
-**What to do:** For a single transfer, look up the original reference on `409`. On `404`, correct the balance ID before retrying. For a bulk request, reconcile by batch ID and reference before retrying any item. Check the individual legs of a failed split. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
+| Request | What Blnk keeps after the error |
+| :-- | :-- |
+| Single transaction | Nothing. The new attempt has no transaction or `REJECTED` record. On `409`, the original transaction with that reference is unchanged. |
+| Bulk request | The items before the failing one. They were already queued and still process, even with `atomic: true`. Items after it are not saved. |
+| Split transaction | The legs before the failing one, saved as `QUEUED`. Queue recovery picks up `QUEUED` rows after about 2 hours and can apply them. |
+
+**What to do:** On `409`, look up the original reference instead of retrying. On `404`, fix the balance ID before retrying. After a failed bulk request or split, check each reference before you resend anything. See [Reconcile a queued batch after a duplicate reference](/transactions/bulk-transactions#reconcile-a-queued-batch-after-a-duplicate-reference).
 
 ## Atomic bulk rollback
 
@@ -66,7 +77,7 @@ If Blnk finds a duplicate reference while adding items to the queue, items alrea
 
 The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
 
-**What to do:** Handle `bulk_transaction.failed` using the event name and `data.batch_id` as your deduplication key. Global webhook delivery already retries failed requests and non-`2xx` responses in Core 0.15.8. Apply the same deduplication to the new queued rollback event before it triggers any side effects. If your code matches the old message text, switch to the event name. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications) and [Global webhooks](/webhooks/global-webhooks#delivery-semantics).
+**What to do:** Listen for `bulk_transaction.failed` and deduplicate it on `data.batch_id`. Blnk queues one event per batch, but webhook delivery can repeat. If your code matches the old message text, match the event instead. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications).
 
 ## Monitor updates
 
@@ -91,8 +102,8 @@ Snapshots taken before the upgrade are skipped until new ones replace them. `fro
 ## Core release references
 
 - [Queued atomic rollback and final item states](https://github.com/blnkfinance/blnk/blob/v0.15.9/cmd/workers_lifecycle_test.go#L125-L276), [worker rollback event timing](https://github.com/blnkfinance/blnk/blob/v0.15.9/cmd/workers_lifecycle_test.go#L484-L548), and [the enqueue loop that stops at the first failure](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_bulk.go#L51-L75).
-- [Queued create status and record tests](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/transaction_queue_durability_test.go#L43-L86).
-- [Rejected transaction hook test](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_rejection_test.go#L35-L108) and [global webhook retry test](https://github.com/blnkfinance/blnk/blob/v0.15.9/webhooks_process_test.go#L215-L234).
+- [Queued create status and record tests](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/transaction_queue_durability_test.go#L43-L86), [split legs saved one by one](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_queue.go#L339-L360), and [queue recovery of stuck `QUEUED` rows](https://github.com/blnkfinance/blnk/blob/v0.15.9/queue_recovery.go#L53-L64).
+- [Rejected transaction hook test](https://github.com/blnkfinance/blnk/blob/v0.15.9/transaction_rejection_test.go#L35-L108).
 - [Precision-only monitor update test](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/balance_monitor_defects_e2e_test.go#L384-L411) and [negative split validation test](https://github.com/blnkfinance/blnk/blob/v0.15.9/api/model/model_test.go#L523-L544).
 - [Historical balances with legacy snapshots, backdated transactions, and future-dated transactions](https://github.com/blnkfinance/blnk/blob/v0.15.9/database/balance_at_time_snapshot_seq_test.go#L107-L175).
 - [Snapshot migration SQL](https://github.com/blnkfinance/blnk/blob/v0.15.9/sql/1793212597.sql) and [trigger migration SQL](https://github.com/blnkfinance/blnk/blob/v0.15.9/sql/1793890679.sql). The [release CI test run](https://github.com/blnkfinance/blnk/actions/runs/43839589650/job/133204642809) applied the migrations and passed these Core tests.
