@@ -7,7 +7,7 @@ metaDescription: "Migration guide for upgrading to Blnk v0.15.9, covering post-t
 
 This guide covers the changes you need to review when upgrading to Blnk v0.15.9.
 
-Before upgrading, check whether your integration assumes every `POST_TRANSACTION` hook signals success, expects `201` for queued duplicates or unknown balances, or matches bulk failure text. Update those handlers before switching versions. If you store historical balances, plan to refresh the results after upgrading.
+Before upgrading, check whether your integration assumes every `POST_TRANSACTION` hook signals success, expects `201` for queued duplicates or unknown balances, or matches bulk failure text. Verify that your global webhook handler can receive duplicate deliveries safely. Update those handlers before switching versions. If you store historical balances, plan to refresh the results after upgrading.
 
 ## At a glance
 
@@ -16,7 +16,7 @@ Before upgrading, check whether your integration assumes every `POST_TRANSACTION
 | Database migrations | Everyone | Two migrations run with `blnk migrate up`. |
 | Hooks for rejected transactions | Apps with `POST_TRANSACTION` hooks | Hooks now also run when a transaction is rejected. |
 | Queued create errors | Apps that create queued transactions | A used reference or unknown balance now returns an error instead of `201`. |
-| Atomic bulk rollback | Apps that send atomic bulk requests | Queued atomic batches now roll back when a worker rejects an item. |
+| Atomic bulk rollback | Apps that send atomic bulk requests | Queued atomic batches now roll back when a worker rejects an item. Handle the new batch failure event idempotently. |
 | Monitor updates | Apps that update balance monitors | A PUT changes only the fields you send. |
 | Negative split distributions | Apps that send split transactions | A negative distribution is rejected. |
 | Balance history | Apps that read historical balances | Backdated transactions are now counted correctly. |
@@ -66,7 +66,7 @@ If Blnk finds a duplicate reference while adding items to the queue, items alrea
 
 The failure message now says how many items were refunded, instead of `All transactions in this batch have been refunded`.
 
-**What to do:** Handle `bulk_transaction.failed` using the event name and `data.batch_id` as your deduplication key. Blnk can retry delivery of the same event. If your code matches the old message text, switch to the event name. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications).
+**What to do:** Handle `bulk_transaction.failed` using the event name and `data.batch_id` as your deduplication key. Global webhook delivery already retries failed requests and non-`2xx` responses in Core 0.15.8. Apply the same deduplication to the new queued rollback event before it triggers any side effects. If your code matches the old message text, switch to the event name. See [Bulk transactions](/transactions/bulk-transactions#webhook-notifications) and [Global webhooks](/webhooks/global-webhooks#delivery-semantics).
 
 ## Monitor updates
 
