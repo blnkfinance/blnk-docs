@@ -1,18 +1,20 @@
 ---
 title: "Transactions"
 sidebarTitle: "Transactions"
-description: "Use the Blnk CLI to list, create, and update transactions on your Core instance."
-metaDescription: "Use the Blnk CLI to list, create, and update transactions on your Core instance."
+description: "Use the Blnk CLI to list, create, update, bulk-process, and recover transactions on your Core instance."
+metaDescription: "Use the Blnk CLI to list, create, update, bulk-process, and recover transactions on your Core instance."
 icon: "transfer"
 ---
 
-Use the `transactions` command to list transfers, inspect a single post, create transactions interactively, and commit, void, or refund inflight work. Reach for this command when you are debugging money movement or testing a flow on Core.
+Use the `transactions` command to list transfers, inspect a single post, create transactions, and commit, void, or refund inflight work. Reach for this command when you are debugging money movement or testing a flow on Core.
 
 | Command | Alias | Description |
 | :-- | :-- | :-- |
 | list | l | Browse transfers with filters; add `--id` for one transaction |
-| create | c | Post a transfer via interactive prompts |
+| create | c | Post a transfer with flags, or prompts when no field flags are passed |
 | update | u | Commit, void, or refund an existing transaction |
+| bulk | | Create, commit, or void many transactions from a JSON file |
+| queue recover | | Re-enqueue queued transactions older than a threshold |
 
 ## `list`
 
@@ -29,6 +31,7 @@ blnk transactions list [options]
 | `--{field}` | string | - | Filter by any indexed field (for example `--status APPLIED`, `--currency "USD,EUR"`). |
 | `-p, --page` | integer | `1` | Page number. |
 | `--per-page` | integer | `10` | Results per page. |
+| `--json` | boolean | - | Print the Core response as JSON instead of the table. |
 | `-h, --help` | boolean | - | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -61,9 +64,10 @@ Filter and paginate:
 blnk transactions list --page 3 --per-page 25
 blnk transactions list --status APPLIED --currency "USD,EUR"
 blnk transactions list --balance-id bln_5ce86029-3c2e-4e2a-aae2-7fb931ca4c4f --status APPLIED
+blnk transactions list --json
 ```
 
-Status values may appear colorized in your terminal.
+Pass `--json` when you want the Core response instead of the table. Status values may appear colorized in your terminal.
 </Step>
 </Steps>
 
@@ -127,51 +131,92 @@ Transaction details:
 
 ## `create`
 
-Post a transfer between balances (or indicators) through prompts for amount, precision, parties, reference, and inflight options. Handy for quick manual tests; multi-leg or high-volume flows should go through your application integration instead.
+Post a transfer between balances or indicators through prompts for amount, precision, parties, reference, and inflight options, or pass those same values as flags. Handy for a quick test on Core. For many transfers at once, use bulk.
 
 ```bash blnk transactions create
 blnk transactions create [options]
 ```
 
-<Note>
-The interactive flow covers common fields. For complex multi-leg or bulk transactions, use your application integration against Core directly.
-</Note>
-
 <SectionLabel icon="brackets">Arguments</SectionLabel>
 
-The CLI prompts for these values. They are not passed on the command line.
+Pass these as flags, or leave them off and answer the prompts. If you pass any flag and omit a required one, the CLI stops and names the missing flag.
 
 | Argument | Type | Required | Description |
 | :-- | :-- | :-- | :-- |
-| `amount` | string | Yes | Transaction amount. Prompt: `amount >` |
-| `precision` | integer | Yes | Amount precision (for example `100` for cents). Prompt: `precision >` |
-| `currency` | string | Yes | Currency code. Prompt: `currency >` |
-| `source` | string | Yes | Source balance ID or indicator. Prompt: `source >` |
-| `destination` | string | Yes | Destination balance ID or indicator. Prompt: `destination >` |
-| `reference` | string | Yes | Unique reference for the transaction. Prompt: `reference >` |
-| `description` | string | Yes | Short description. Prompt: `description >` |
-| `allow_overdraft` | boolean | No | Whether overdraft is allowed. Prompt: `allow overdraft >` |
-| `inflight` | boolean | No | Whether the transaction is inflight. Prompt: `inflight >` |
-| `meta_data` | object | No | Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip. |
+| `amount` | string | Yes | Transaction amount. Flag: `--amount`. Prompt: `amount >` |
+| `precision` | integer | Yes | Amount precision (for example `100` for cents). Flag: `--precision`. Prompt: `precision >` |
+| `currency` | string | Yes | Currency code. Flag: `--currency`. Prompt: `currency >` |
+| `source` | string | Yes | Source balance ID or indicator. Flag: `--source`. Prompt: `source >` |
+| `destination` | string | Yes | Destination balance ID or indicator. Flag: `--destination`. Prompt: `destination >` |
+| `reference` | string | Yes | Unique reference. Flag: `--reference`. Prompt: `reference >` |
+| `description` | string | Yes | Short description. Flag: `--description`. Prompt: `description >` |
+| `allow_overdraft` | boolean | No | Allow a negative source balance. Flag: `--allow-overdraft`. Prompt: `allow overdraft >` |
+| `inflight` | boolean | No | Hold the transfer until you commit or void it. Flag: `--inflight`. Prompt: `inflight >` |
+| `meta_data` | object | No | Metadata as JSON. Flag: `--metadata`. Prompt: `metadata (json) >`. Press **Enter** to skip. |
 
 <SectionLabel icon="settings-2">Options</SectionLabel>
 
 | Option | Type | Description |
 | :-- | :-- | :-- |
+| `--scheduled-for` | string | When to apply the transfer, for example `2026-12-01T10:00:00Z`. |
+| `--dry-run` | boolean | Preview the transfer without writing it. |
 | `--json` | boolean | After a successful create, print the full API response as JSON. |
 | `-h, --help` | boolean | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
 
 <Steps>
-<Step title="Create new transaction">
-Run the command:
+<Step title="Create a transaction">
+Pass the fields on the command line:
 
-```bash Create a transaction wrap
-blnk transactions create
+```bash Create a transaction
+blnk transactions create \
+  --amount 10 \
+  --precision 100 \
+  --currency USD \
+  --source @WorldUSD \
+  --destination @Customer \
+  --reference ref_001 \
+  --description "Test transfer" \
+  --allow-overdraft \
+  --dry-run \
+  --json
 ```
 
-The CLI prompts for each argument:
+```text JSON icon="check-circle"
+Transaction preview:
+{
+  "dry_run": true,
+  "would_apply": true,
+  "status": "APPLIED",
+  "reference": "ref_001",
+  "currency": "USD",
+  "amount": 10
+}
+```
+
+To apply the transfer later, add `--scheduled-for`. Core keeps it until that time and reports the status as scheduled.
+
+```bash Schedule a transaction
+blnk transactions create \
+  --amount 10 \
+  --precision 100 \
+  --currency USD \
+  --source @WorldUSD \
+  --destination @Customer \
+  --reference ref_002 \
+  --description "Scheduled transfer" \
+  --allow-overdraft \
+  --scheduled-for 2026-12-01T10:00:00Z \
+  --json
+```
+</Step>
+<Step title="Create with prompts">
+With no field flags, the CLI prompts:
+
+```bash Create interactively wrap
+blnk transactions create
+```
 
 ```text Prompts wrap
 amount >
@@ -185,8 +230,6 @@ allow overdraft >
 inflight >
 metadata (json) >
 ```
-
-Press **Enter** at the metadata prompt to leave it empty.
 </Step>
 <Step title="Read the created transaction">
 <CodeGroup>
@@ -239,6 +282,7 @@ blnk transactions update [options] <transaction-id>
 | `--commit` | boolean | Fully commit an inflight transaction. |
 | `--void` | boolean | Void an inflight transaction. |
 | `--refund` | boolean | Refund a transaction. |
+| `--json` | boolean | Print the Core response as JSON. |
 | `-h, --help` | boolean | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -303,11 +347,50 @@ Transaction refunded:
 </Step>
 </Steps>
 
+## `bulk`
+
+Use bulk when one file holds many transfers, or when you need to commit or void several inflight holds together. Each command takes `--input`. Add `--dry-run` to preview, and `--json` to print the Core response.
+
+| Subcommand | Description |
+| :-- | :-- |
+| `create` | Post the transfers in the file |
+| `commit` | Commit the inflight holds in the file |
+| `void` | Void the inflight holds in the file |
+
+```bash Bulk create wrap
+blnk transactions bulk create --input batch.json --dry-run --json
+```
+
+```bash Bulk commit and void wrap
+blnk transactions bulk commit --input commit.json --skip-queue --json
+blnk transactions bulk void --input void.json --skip-queue --json
+```
+
+Commit input is `{ "transactions": [{ "transaction_id": "txn_…" }] }`. Void input is `{ "transaction_ids": ["txn_…"] }`.
+
+## `queue recover`
+
+Use this when transfers have stayed queued longer than you expect. `--threshold` is how old they must be, for example `5m` or `1h`. Leave it off and the CLI uses two minutes. A recovered count of zero means nothing was waiting that long.
+
+```bash Recover the queue wrap
+blnk transactions queue recover --threshold 5m --json
+```
+
+```text JSON icon="check-circle"
+Queue recovery:
+{
+  "recovered": 0,
+  "threshold": "5m0s"
+}
+```
+
 <RelatedTopics
   items={[
     { title: "Create inflight", href: "/transactions/inflight/create-inflight" },
     { title: "Handling hot balances", href: "/guides/hot-balances" },
     { title: "Overdrafts", href: "/transactions/overdrafts" },
     { title: "Transaction lifecycle", href: "/transactions/transaction-lifecycle" },
+    { title: "Queue recovery", href: "/operating/queue-recovery" },
+    { title: "Scheduling transactions", href: "/transactions/scheduling" },
   ]}
 />

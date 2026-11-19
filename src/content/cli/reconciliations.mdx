@@ -1,15 +1,18 @@
 ---
 title: "Reconciliation"
 sidebarTitle: "Reconciliation"
-description: "Use the Blnk CLI to list reconciliations on your Core instance."
-metaDescription: "Use the Blnk CLI to list reconciliations on your Core instance."
+description: "Use the Blnk CLI to upload records, start a run, and list reconciliations on your Core instance."
+metaDescription: "Use the Blnk CLI to upload records, start a run, and list reconciliations on your Core instance."
 icon: "balance"
 ---
 
-Use the `reconciliations` command to list reconciliation runs and their status against upload batches on Core. Use it after imports or scheduled jobs to confirm a batch finished or to find runs still in progress.
+Use the `reconciliations` command to upload records, start runs, fetch one job, and list reconciliation work on Core.
 
 | Command | Alias | Description |
 | :-- | :-- | :-- |
+| upload | | Upload a CSV or JSON file of external records |
+| start | | Start a batch reconciliation against an upload |
+| get | | Fetch one run by ID |
 | list | l | Browse reconciliation jobs with filters |
 
 ## `list`
@@ -27,6 +30,7 @@ blnk reconciliations list [options]
 | `--{field}` | string | - | Filter by any indexed field (for example `--status COMPLETED`, `--upload-id upl_abc123`). |
 | `-p, --page` | integer | `1` | Page number. |
 | `--per-page` | integer | `10` | Results per page. |
+| `--json` | boolean | - | Print the Core response as JSON instead of the table. |
 | `-h, --help` | boolean | - | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -64,10 +68,36 @@ Filter and paginate:
 ```bash Filter and paginate wrap
 blnk reconciliations list --page 2 --per-page 20
 blnk reconciliations list --status COMPLETED --upload-id upl_abc123
+blnk reconciliations list --json
 ```
 
 </Step>
 </Steps>
+
+## `upload`
+
+Upload a CSV or JSON file of external records. `--source` is optional.
+
+```bash Upload wrap
+blnk reconciliations upload --file statement.csv --source Stripe --json
+```
+
+## `start`
+
+Start a run against an upload. Repeat `--matching-rule-id` for more than one rule. Grouped strategies require `--grouping-criteria`. `--dry-run` calculates matches without writing them.
+
+```bash Start wrap
+blnk reconciliations start --upload-id upload_123 --strategy one_to_one --matching-rule-id rule_123 --json
+blnk reconciliations start --upload-id upload_123 --strategy one_to_many --matching-rule-id rule_123 --grouping-criteria reference --dry-run
+```
+
+## `get`
+
+Fetch one run.
+
+```bash Get wrap
+blnk reconciliations get recon_abc123 --json
+```
 
 <RelatedTopics
   items={[

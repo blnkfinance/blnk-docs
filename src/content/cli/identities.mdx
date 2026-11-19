@@ -11,7 +11,7 @@ Use the `identities` command to list people and organizations on Core, inspect o
 | Command | Alias | Description |
 | :-- | :-- | :-- |
 | list | l | Browse and filter identities; add `--id` for one record |
-| create | c | Register an individual or organization via prompts |
+| create | c | Register an identity with flags, or prompts when no field flags are passed |
 
 ## `list`
 
@@ -28,6 +28,7 @@ blnk identities list [options]
 | `--{field}` | string | - | Filter by any indexed field (for example `--email-address jane@example.com`). |
 | `-p, --page` | integer | `1` | Page number. |
 | `--per-page` | integer | `10` | Results per page. |
+| `--json` | boolean | - | Print the Core response as JSON instead of the table. |
 | `-h, --help` | boolean | - | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -60,6 +61,7 @@ Filter and paginate:
 blnk identities list --page 2 --per-page 20
 blnk identities list --email-address jane@example.com
 blnk identities list --first-name Jane --last-name Doe
+blnk identities list --json
 ```
 
 </Step>
@@ -121,7 +123,7 @@ Identity details:
 
 ## `create`
 
-Register a new `individual` or `organization` through interactive prompts for type, name, email, and optional metadata. Use this for manual onboarding or smoke tests. The fields mirror what you send to the Core identities API.
+Register a person or an organization. Pass the type and name as flags when you already know them, or leave the flags off and answer the prompts. A blank optional flag is left off the request.
 
 ```bash blnk identities create
 blnk identities create [options]
@@ -129,15 +131,15 @@ blnk identities create [options]
 
 <SectionLabel icon="brackets">Arguments</SectionLabel>
 
-The CLI prompts for these values. They are not passed on the command line.
+Pass these as flags, or leave them off and answer the prompts.
 
 | Argument | Type | Required | Description |
 | :-- | :-- | :-- | :-- |
-| `identity_type` | string | Yes | Identity type (for example `individual` or `organization`). Prompt: `identity type >` |
-| `first_name` | string | Yes | First name. Prompt: `first name >` |
-| `last_name` | string | Yes | Last name. Prompt: `last name >` |
-| `email_address` | string | Yes | Email address. Prompt: `email >` |
-| `meta_data` | object | No | Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip. |
+| `identity_type` | string | Yes | `individual` or `organization`. Flag: `--identity-type`. Prompt: `identity type >` |
+| `first_name` | string | No | First name. Flag: `--first-name`. Prompt: `first name >` |
+| `last_name` | string | No | Last name. Flag: `--last-name`. Prompt: `last name >` |
+| `email_address` | string | No | Email. Flag: `--email`. Prompt: `email >` |
+| `meta_data` | object | No | Metadata as JSON. Flag: `--metadata`. Prompt: `metadata (json) >`. Press **Enter** to skip. |
 
 <SectionLabel icon="settings-2">Options</SectionLabel>
 
@@ -153,6 +155,7 @@ The CLI prompts for these values. They are not passed on the command line.
 Run the command:
 
 ```bash Create an identity wrap
+blnk identities create --identity-type individual --first-name Jane --last-name Doe --email jane@example.com --json
 blnk identities create
 ```
 

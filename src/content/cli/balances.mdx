@@ -1,18 +1,21 @@
 ---
 title: "Balances"
 sidebarTitle: "Balances"
-description: "Use the Blnk CLI to list, create, and update balances on your Core instance."
-metaDescription: "Use the Blnk CLI to list, create, and update balances on your Core instance."
+description: "Use the Blnk CLI to list, create, update, snapshot, and read historical or lineage balances."
+metaDescription: "Use the Blnk CLI to list, create, update, snapshot, and read historical or lineage balances."
 icon: "wallet"
 ---
 
-Use the `balances` command to list monetary accounts, inspect one balance by ID, create balances on a ledger, and link balances to identities. Balances hold currency positions and appear as sources or destinations on transactions.
+Use the `balances` command to list, create, and update balances on your connected Core instance.
 
 | Command | Alias | Description |
 | :-- | :-- | :-- |
 | list | l | Browse balances in a table; add `--id` for one record |
-| create | c | Open a balance on a ledger via interactive prompts |
+| create | c | Open a balance on a ledger with flags, or prompts when no field flags are passed |
 | update | u | Link an existing balance to an identity |
+| at | | Get a balance as it stood at a timestamp |
+| lineage | | Get the provider breakdown when fund lineage is enabled |
+| snapshots | | Start daily snapshots of your balances |
 
 ## `list`
 
@@ -29,6 +32,7 @@ blnk balances list [options]
 | `--{field}` | string | - | Filter by any indexed field (for example `--currency "USD,EUR"`). |
 | `-p, --page` | integer | `1` | Page number. |
 | `--per-page` | integer | `10` | Results per page. |
+| `--json` | boolean | - | Print the Core response as JSON instead of the table. |
 | `-h, --help` | boolean | - | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -60,6 +64,7 @@ Filter and paginate:
 ```bash Filter and paginate wrap
 blnk balances list --page 2 --per-page 3
 blnk balances list --currency "USD,EUR" --indicator World
+blnk balances list --json
 ```
 
 </Step>
@@ -126,7 +131,7 @@ Balance details:
 
 ## `create`
 
-Open a new balance on a ledger through prompts for currency, ledger ID, and optional identity. Every balance belongs to exactly one ledger; you can link an identity now or later with `update`.
+Open a new balance on a ledger. Every balance belongs to exactly one ledger. Pass the ledger and currency as flags when you already know them, or leave the flags off and answer the prompts. You can link an identity now, or later with `update`.
 
 ```bash blnk balances create
 blnk balances create [options]
@@ -134,12 +139,14 @@ blnk balances create [options]
 
 <SectionLabel icon="brackets">Arguments</SectionLabel>
 
+Pass these as flags, or leave them off and answer the prompts. If you pass any flag and omit a required one, the CLI stops and names the missing flag.
+
 | Argument | Type | Required | Description |
 | :-- | :-- | :-- | :-- |
-| `currency` | string | Yes | Balance currency. Prompt: `currency >` |
-| `ledger_id` | string | Yes | Ledger ID for the balance. Prompt: `ledger id >` |
-| `identity_id` | string | No | Optional identity to link. Prompt: `identity id >`. Press **Enter** to skip. |
-| `meta_data` | object | No | Optional metadata as JSON. Prompt: `metadata (json) >`. Press **Enter** to skip. |
+| `ledger_id` | string | Yes | Ledger ID for the balance. Flag: `--ledger-id`. Prompt: `ledger id >` |
+| `currency` | string | Yes | Balance currency. Flag: `--currency`. Prompt: `currency >` |
+| `identity_id` | string | No | Identity ID to link. Flag: `--identity-id`. Prompt: `identity id >` |
+| `meta_data` | object | No | Metadata as JSON. Flag: `--metadata`. Prompt: `metadata (json) >`. Press **Enter** to skip. |
 
 <SectionLabel icon="settings-2">Options</SectionLabel>
 
@@ -152,9 +159,8 @@ blnk balances create [options]
 
 <Steps>
 <Step title="Create new balance">
-Run the command:
-
 ```bash Create a balance wrap
+blnk balances create --ledger-id ldg_abc123 --currency USD --json
 blnk balances create
 ```
 
@@ -195,7 +201,7 @@ Balance created:
 
 ## `update`
 
-Attach an identity to a balance that was created without one (or change the linked identity). Pass the balance ID on the command line; the CLI prompts for the `identity_id` to store on the record.
+Attach an identity to a balance that was created without one, or change the linked identity. Pass the balance ID on the command line. Pass `--identity-id` to skip the prompt, or leave it off and the CLI asks.
 
 ```bash blnk balances update
 blnk balances update <balance-id> [options]
@@ -212,6 +218,8 @@ blnk balances update <balance-id> [options]
 
 | Option | Type | Description |
 | :-- | :-- | :-- |
+| `--identity-id` | string | Identity ID to link. Required when any flag is passed. |
+| `--json` | boolean | Print the Core response as JSON. |
 | `-h, --help` | boolean | Show help for this command. |
 
 <SectionLabel icon="list-ordered">Usage</SectionLabel>
@@ -221,6 +229,7 @@ blnk balances update <balance-id> [options]
 Run the command with a balance ID:
 
 ```bash Link an identity wrap
+blnk balances update bln_01dab2b7-3ec7-4253-b302-edd947423883 --identity-id idt_fa2e58ba-9826-4614-9ba2-02b62df8c4d0 --json
 blnk balances update bln_01dab2b7-3ec7-4253-b302-edd947423883
 ```
 
@@ -231,21 +240,66 @@ identity id >
 ```
 </Step>
 <Step title="Read the updated balance">
-```text 200 Success icon="check-circle"
+```text JSON icon="check-circle"
 Balance identity updated:
-  balance_id: bln_01dab2b7-3ec7-4253-b302-edd947423883
-  ledger_id: ldg_feb41a88-02e0-46b1-813d-e60aba7fe0aa
-  identity_id: idt_fa2e58ba-9826-4614-9ba2-02b62df8c4d0
-  currency: USDC
-  created_at: 2026-06-03T12:37:50Z
+{
+  "message": "Balance identity updated successfully"
+}
 ```
 </Step>
 </Steps>
+
+## `at`
+
+Read a balance as it stood at a time, for example `2026-11-19T00:30:00Z`. Use this when you are checking a past position. Add `--from-source` when you want that figure rebuilt from the transactions rather than from a saved snapshot.
+
+```bash Historical balance wrap
+blnk balances at bln_01dab2b7-3ec7-4253-b302-edd947423883 --timestamp 2026-11-19T00:30:00Z --from-source --json
+```
+
+```text JSON icon="check-circle"
+Balance at:
+{
+  "balance": {
+    "balance": -1200,
+    "balance_id": "bln_01dab2b7-3ec7-4253-b302-edd947423883",
+    "credit_balance": 0,
+    "currency": "USD",
+    "debit_balance": 1200
+  },
+  "from_source": true,
+  "timestamp": "2026-11-19T00:30:00Z"
+}
+```
+
+## `lineage`
+
+See where the funds on a balance came from. Use this when that balance is set up to track fund lineage. If it is not, Core tells you lineage is not enabled for that balance.
+
+```bash Lineage wrap
+blnk balances lineage bln_01dab2b7-3ec7-4253-b302-edd947423883 --json
+```
+
+## `snapshots`
+
+Start the daily snapshots of your balances. Use this when you want a saved picture of every balance for the current day. Core writes one snapshot per balance and returns while that work continues.
+
+```bash Snapshots wrap
+blnk balances snapshots --batch-size 500 --json
+```
+
+```text JSON icon="check-circle"
+Balance snapshots:
+{
+  "message": "Snapshotting in progress. should be completed shortly"
+}
+```
 
 <RelatedTopics
   items={[
     { title: "Balances overview", href: "/balances/introduction" },
     { title: "Internal balances", href: "/balances/internal-balances" },
+    { title: "Historical balances", href: "/balances/historical-balances" },
     { title: "Create balance", href: "/reference/create-balance" },
   ]}
 />
